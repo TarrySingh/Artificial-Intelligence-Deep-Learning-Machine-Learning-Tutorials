@@ -31,8 +31,14 @@
 
 <br/>
 <p align="center">
-  <img src="http://i.imgur.com/ZhKXrKZ.png">
+  <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
+
+### pytorch-tuts
+
+* [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
+* [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
+* [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source)
 
 ## deep-learning
 
@@ -42,12 +48,6 @@ IPython Notebook(s) demonstrating deep learning functionality.
 <p align="center">
   <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
 </p>
-
-### pytorch-tuts
-
-* [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
-* [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
-* [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source)
 
 
 ### tensor-flow-tutorials
