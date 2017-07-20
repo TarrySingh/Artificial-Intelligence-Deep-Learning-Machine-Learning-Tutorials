@@ -8,7 +8,9 @@
     * [theano](#theano-tutorials)
     * [keras](#keras-tutorials)
     * [caffe](#deep-learning-misc)
-    * [Torch/Lua](
+    * [Torch/Lua]()
+    * [MXNET]()
+   
 * [scikit-learn](#scikit-learn)
 * [statistical-inference-scipy](#statistical-inference-scipy)
 * [pandas](#pandas)
