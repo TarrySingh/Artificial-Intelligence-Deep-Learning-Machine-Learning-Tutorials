@@ -1,22 +1,14 @@
-<br/>
-<p align="center">
-  <img src="https://raw.githubusercontent.com/donnemartin/data-science-ipython-notebooks/master/images/README_1200x800.gif">
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/donnemartin/data-science-ipython-notebooks/master/images/coversmall_alt.png">
-  <br/>
-</p>
-
-# data-science-ipython-notebooks
+# NEW LIST 2017 - 2018: Machine-Learning-Tutorials
 
 ## Index
 
 * [deep-learning](#deep-learning)
+    * [PyTorch](#pytorch-tuts)
     * [tensorflow](#tensor-flow-tutorials)
     * [theano](#theano-tutorials)
     * [keras](#keras-tutorials)
     * [caffe](#deep-learning-misc)
+    * [Torch/Lua](
 * [scikit-learn](#scikit-learn)
 * [statistical-inference-scipy](#statistical-inference-scipy)
 * [pandas](#pandas)
@@ -48,6 +40,13 @@ IPython Notebook(s) demonstrating deep learning functionality.
 <p align="center">
   <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
 </p>
+
+### pytorch-tuts
+
+* [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
+* [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
+* [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source)
+
 
 ### tensor-flow-tutorials
 
@@ -399,27 +398,29 @@ Notebooks tested with Python 2.7.x.
 
 ## contributing
 
-Contributions are welcome!  For bug reports or requests please [submit an issue](https://github.com/donnemartin/data-science-ipython-notebooks/issues).
+Contributions are welcome!  For bug reports or requests please [submit an issue](https://github.com/tarrysingh/Machine-Learning-Tutorials//issues).
 
 ## contact-info
 
 Feel free to contact me to discuss any issues, questions, or comments.
 
-* Email: [donne.martin@gmail.com](mailto:donne.martin@gmail.com)
-* Twitter: [@donne_martin](https://twitter.com/donne_martin)
-* GitHub: [donnemartin](https://github.com/donnemartin)
-* LinkedIn: [donnemartin](https://www.linkedin.com/in/donnemartin)
-* Website: [donnemartin.com](http://donnemartin.com)
+* Email: [tarry.singh@gmail.com](mailto:tarry.singh@gmail.com)
+* Twitter: [@tarrysingh](https://twitter.com/tarrysingh)
+* GitHub: [tarrysingh](https://github.com/tarrysingh.com)
+* LinkedIn: [Tarry Singh](https://www.linkedin.com/in/tarrysingh)
+* Website: [tarrysingh.com](https://tarrysingh.com)
+* Medium: [tarry@Medium](https://medium.com/@tarrysingh)
+* Quora : [Answers from Tarry on Quora](https://www.quora.com/profile/Tarry-Singh)
 
 ## license
 
-This repository contains a variety of content; some developed by Donne Martin, and some from third-parties.  The third-party content is distributed under the license provided by those parties.
+This repository contains a variety of content; some developed by Donne Martin, and some from third-parties and a lot will be maintained by me.  The third-party content is distributed under the license provided by those parties.
 
-The content developed by Donne Martin is distributed under the following license:
+The content was originally developed by Donne Martin is distributed under the following license. I will be maintaining and revamping it by adding PyTorch, Torch/Lua, MXNET and much more:
 
 *I am providing code and resources in this repository to you under an open source license.  Because this is my personal repository, the license you receive to my code and resources is from me and not my employer (Facebook).*
 
-    Copyright 2015 Donne Martin
+    Copyright 2017 Tarry Singh
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
