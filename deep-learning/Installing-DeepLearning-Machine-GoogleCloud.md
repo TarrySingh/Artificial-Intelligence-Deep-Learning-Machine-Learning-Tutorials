@@ -77,8 +77,4 @@ import tensorflow as tf
 
 sess = tf.InteractiveSession()
 
-sess.close()``
-
-
-
-
+sess.close()```
