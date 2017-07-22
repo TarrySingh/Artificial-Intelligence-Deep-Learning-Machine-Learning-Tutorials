@@ -71,13 +71,13 @@ Add these params!`
 
 ` sudo pip3 install /tmp/tensorflow_pkg/tensorflow[PRESS TAB TO COMPLETE FILENAME]`
 
-`python
+```python
 
 import tensorflow as tf
 
 sess = tf.InteractiveSession()
 
-sess.close()
+sess.close()``
 
 
 
