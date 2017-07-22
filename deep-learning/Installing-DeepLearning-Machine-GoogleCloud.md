@@ -61,9 +61,9 @@ Get Tensorflow:  `git clone https://github.com/tensorflow/tensorflow`
 
 `git checkout r1.2`
 
- `./configure
+ `./configure`
 
-Add these params!`
+Add these params!
 
 `bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_package`
 
@@ -77,4 +77,4 @@ import tensorflow as tf
 
 sess = tf.InteractiveSession()
 
-sess.close()```
+sess.close()
