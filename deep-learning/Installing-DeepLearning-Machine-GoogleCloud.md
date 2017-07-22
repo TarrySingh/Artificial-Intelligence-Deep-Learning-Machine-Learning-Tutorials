@@ -71,13 +71,3 @@ bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_
 bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
 
 sudo pip3 install /tmp/tensorflow_pkg/tensorflow[PRESS TAB TO COMPLETE FILENAME]
-
-
-
-```python
-
-import tensorflow as tf
-
-sess = tf.InteractiveSession()
-
-sess.close()
