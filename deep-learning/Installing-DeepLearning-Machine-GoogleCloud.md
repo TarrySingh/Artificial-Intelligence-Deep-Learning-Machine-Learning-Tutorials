@@ -65,13 +65,16 @@ Get Tensorflow:  `git clone https://github.com/tensorflow/tensorflow`
 
 Add these params!
 
-`bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_package`
+```
+bazel build --config=opt --config=cuda //tensorflow/tools/pip_package:build_pip_package
 
-`bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg`
+bazel-bin/tensorflow/tools/pip_package/build_pip_package /tmp/tensorflow_pkg
 
-` sudo pip3 install /tmp/tensorflow_pkg/tensorflow[PRESS TAB TO COMPLETE FILENAME]`
+sudo pip3 install /tmp/tensorflow_pkg/tensorflow[PRESS TAB TO COMPLETE FILENAME]```
 
-```python
+
+
+python
 
 import tensorflow as tf
 
