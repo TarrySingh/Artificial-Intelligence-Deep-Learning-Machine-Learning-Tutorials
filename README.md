@@ -24,6 +24,7 @@
 * [command lines](#commands)
 * [misc](#misc)
 * [notebook-installation](#notebook-installation)
+* [Curated list of Deep Learning / AI blogs](#curated-list-of-deeplearning-blogs)
 * [credits](#credits)
 * [contributing](#contributing)
 * [contact-info](#contact-info)
@@ -379,7 +380,9 @@ To view interactive content or to modify elements within the IPython notebooks, 
     $ cd data-science-ipython-notebooks
     $ jupyter notebook
 
-Notebooks tested with Python 2.7.x.
+Notebooks tested with Python 2.7.x.(will soon be updated to Python 3.5+)
+
+## curated-list-of-deeplearning-blogs
 
 ## credits
 
