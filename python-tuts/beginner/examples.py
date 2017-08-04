@@ -79,7 +79,7 @@ def compare(u1, u2):
         else:
             return('Scissors wins!')
     else:
-        return("Incorrect niput! You must enter rock, paper or scissors. Try one more time")
+        return("Incorrect input! You must enter rock, paper or scissors. Try one more time")
         sys.exit()
 
 print(compare(user1_answer, user2_answer))
