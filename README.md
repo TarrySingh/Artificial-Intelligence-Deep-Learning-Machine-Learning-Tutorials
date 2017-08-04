@@ -1,8 +1,12 @@
 # NEW LIST 2017 - 2020: Machine-Learning / Deep-Learning / AI -Tutorials
 
-Hi - Thanks for dropping by!<br> 
+Hi - Thanks for dropping by!<br>
+<br>
 I will be updating this tutorials site on a <b>daily basis</b> adding all relevant topcis, including latest researches papers from internet such as [arxiv.org](https://arxiv.org) etc. <br>
+<br>
 More importantly the applications of ML/DL/AI into industry areas such as Transportation, Medicine/Healthcare etc. will be something I'll watch with keen interest and would love to share the same with you.
+<br>
+Finally, it is your help I will seek to make it more useful and less boring, so please do suggest/comment/contribute!
 
 ## Index
 
