@@ -176,19 +176,19 @@ def check_winner(game):
         for index in range(3):
             game_slices.append(get_row(game, index))
                 game_slices.append(get_col(game, index))
-    
+
         # check diagonals
         down_diagonal = [game[x][x] for x in range(3)]
         up_diagonal = [game[0][2], game[1][1], game[2][0]]
         game_slices.append(down_diagonal)
         game_slices.append(up_diagonal)
-        
+
         for game_slice in game_slices:
             winner = check_row_winner(game_slice)
                 if winner != 0:
                     display_winner(winner)
                         return winner
-        
+
         display_winner(winner)
                             return winner
 
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     game = start_game()
         display_game(game)
         player = 1
-        
+
         # go on forever
         while True:
             print("Currently player: " + str(player))
@@ -256,3 +256,78 @@ for story_heading in soup.find_all(class_="story-heading"):
         print(story_heading.a.text.replace("\n", " ").strip())
     else:
         print(story_heading.contents[0].strip())
+
+########################################################
+# Example 5 : Guess capital of a state
+########################################################
+
+
+capitals_dict = {
+'Alabama' : 'Montgomery',
+'Alaska' : 'Juneau',
+'Arizona' : 'Phoenix',
+'Arkansas' : 'Little Rock',
+'California' : 'Sacramento',
+'Colorado' : 'Denver',
+'Connecticut' : 'Hartford',
+'Delaware' : 'Dover',
+'Florida' : 'Tallahassee',
+'Georgia' : 'Atlanta',
+'Hawaii' : 'Honolulu',
+'Idaho' : 'Boise',
+'Illinois' : 'Springfield',
+'Indiana' : 'Indianapolis',
+'Iowa' : 'Des Moines',
+'Kansas' : 'Topeka',
+'Kentucky' : 'Frankfort',
+'Louisiana' : 'Baton Rouge',
+'Maine' : 'Augusta',
+'Maryland' : 'Annapolis',
+'Massachusetts' : 'Boston',
+'Michigan' : 'Lansing',
+'Minnesota' : 'Saint Paul',
+'Mississippi' : 'Jackson',
+'Missouri' : 'Jefferson City',
+'Montana' : 'Helena',
+'Nebraska' : 'Lincoln',
+'Nevada' : 'Carson City',
+'New Hampshire' : 'Concord',
+'New Jersey' : 'Trenton',
+'New Mexico' : 'Santa Fe',
+'New York' : 'Albany',
+'North Carolina' : 'Raleigh',
+'North Dakota' : 'Bismarck',
+'Ohio' : 'Columbus',
+'Oklahoma' : 'Oklahoma City',
+'Oregon' : 'Salem',
+'Pennsylvania' : 'Harrisburg',
+'Rhode Island' : 'Providence',
+'South Carolina' : 'Columbia',
+'South Dakota' : 'Pierre',
+'Tennessee' : 'Nashville',
+'Texas' : 'Austin',
+'Utah' : 'Salt Lake City',
+'Vermont' : 'Montpelier',
+'Virginia' : 'Richmond',
+'Washington' : 'Olympia',
+'West Virginia' : 'Charleston',
+'Wisconsin' : 'Madison',
+'Wyoming' : 'Cheyenne',
+}
+
+import random
+states = list(capitals_dict.keys())
+
+for i in [1,2,3,4,5]:
+    state = random.choice(states)
+    capital = capitals_dict[state]
+    capital_guess = input("What is the capital of " + state + "? ")
+    if capital_guess == "Exit":
+        print("Goodbye")
+        break
+
+    if capital_guess == capital.lower():
+        print("Correct! Awesome job.")
+    else:
+        print("Incorrect. The capital of " + state + " is " + capital + ".")
+print("We're all done here!")
