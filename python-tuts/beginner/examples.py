@@ -331,3 +331,56 @@ for i in [1,2,3,4,5]:
     else:
         print("Incorrect. The capital of " + state + " is " + capital + ".")
 print("We're all done here!")
+
+###########################################################
+# Example 6: Fibonacci series
+###########################################################
+# define the function
+def fib():
+    num = int(input("How many numbers that generates?:"))
+    i = 1
+    if num == 0:
+        fib = []
+    elif num == 1:
+        fib = [1]
+    elif num == 2:
+        fib = [1,1]
+    elif num > 2:
+        fib = [1,1]
+        while i < (num - 1):
+            fib.append(fib[i] + fib[i-1])
+            i += 1
+    return fib
+print(fib())
+input()
+
+# Declare x upfront
+x = int(input("How many fibonacci's you want: "))
+def fib(x):
+    a = 0
+    b = 1
+    i = 0
+    fiblist = []
+    while i<x:
+        a,b = b, a+b
+        fiblist.append(a)
+        i = i+1
+    return fiblist
+print(fib(x))
+
+# Another way to do it
+
+def fibo(num):
+    s1 = 0
+    s2  = 1
+    l = []
+    for i in range(num+1):
+        s2 = s2 + s1
+        s1 = s2 - s1
+        l.append(s2)
+        print (l)
+
+num = int(input("Add a range of numbers: "))
+fibo(num)
+
+
