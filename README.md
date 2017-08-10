@@ -118,8 +118,10 @@ Additional TensorFlow tutorials:
 | Notebook | Description |
 |--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | keras | Keras is an open source neural network library written in Python. It is capable of running on top of either Tensorflow or Theano. |
-| [setup](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/0.%20Preamble.ipynb) | Learn about the tutorial goals and how to set up your Keras environment. |
-| [intro-deep-learning-ann](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.1%20Introduction%20-%20Deep%20Learning%20and%20ANN.ipynb) | Get an intro to deep learning with Keras and Artificial Neural Networks (ANN). |
+| [setup](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/README.md) | Learn about the tutorial goals and how to set up your Keras environment. |
+| [intro-deep-learning-ann](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.%20ANN/1.1%20Introduction%20-%20Deep%20Learning%20and%20ANN.ipynb) | Get an intro to deep learning with Keras and Artificial Neural Networks (ANN). |
+| [Perceptrons and Adaline](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.%20ANN/1.1.1%20Perceptron%20and%20Adaline.ipynb) | Implement Peceptron and adaptive linear neurons. |
+| [MLP and MNIST Data](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.%20ANN/1.1.2%20MLP%20and%20MNIST.ipynb) | Classifying handwritten digits,implement MLP, train and debug ANN |
 | [theano](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.2%20Introduction%20-%20Theano.ipynb) | Learn about Theano by working with weights matrices and gradients. |
 | [keras-otto](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.3%20Introduction%20-%20Keras.ipynb) | Learn about Keras by looking at the Kaggle Otto challenge. |
 | [ann-mnist](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/1.4%20(Extra)%20A%20Simple%20Implementation%20of%20ANN%20for%20MNIST.ipynb) | Review a simple implementation of ANN for MNIST using Keras. |
