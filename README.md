@@ -43,18 +43,21 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 <p align="left">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/Netflix.png">
 </p>
-<br/>
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
 </p>
-### netflix-vectorflow-tuts
+## netflix-vectorflow-tuts
+Vectorflow is a minimalist neural network library optimized for sparse data and single machine environments.
+
+* [MNIST Example, running with Dlang](https://github.com/Netflix/vectorflow/tree/master/examples)
+* [
 
 
 <br/>
 <p align="center">
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
-### pytorch-tuts
+## pytorch-tuts
 
 * [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
 * [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
