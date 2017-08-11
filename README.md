@@ -39,6 +39,15 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 * [contact-info](#contact-info)
 * [license](#license)
 
+## deep-learning
+
+IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demonstrating deep learning functionality.
+
+<br/>
+<p align="center">
+  <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
+</p>
+
 <br/>
 <p align="left">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/Netflix.png">
@@ -46,8 +55,7 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
 </p>
-## netflix-vectorflow-tuts
-Vectorflow is a minimalist neural network library optimized for sparse data and single machine environments.<br>
+### netflix-vectorflow-tuts
 
 * [MNIST Example, running with Dlang](https://github.com/Netflix/vectorflow/tree/master/examples)
 
@@ -55,20 +63,11 @@ Vectorflow is a minimalist neural network library optimized for sparse data and 
 <p align="center">
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
-## pytorch-tuts
+### pytorch-tuts
 
 * [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
 * [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
 * [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source)
-
-## deep-learning
-
-IPython Notebook(s) demonstrating deep learning functionality.
-
-<br/>
-<p align="center">
-  <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
-</p>
 
 
 ### tensor-flow-tutorials
