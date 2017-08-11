@@ -42,22 +42,19 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 ## deep-learning
 
 IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demonstrating deep learning functionality.
-<br/>
-<p align="left">
-  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/Netflix.png">
-</p>
+
+
+### netflix-vectorflow-tutorials
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
 </p>
-### netflix-vectorflow-tutorials
 
 * [MNIST Example, running with Dlang](https://github.com/Netflix/vectorflow/tree/master/examples)
 
-<br/>
+### pytorch-tutorials
 <p align="center">
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
-### pytorch-tutorials
 
 * [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
 * [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
