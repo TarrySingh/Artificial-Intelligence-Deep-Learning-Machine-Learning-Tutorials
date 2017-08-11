@@ -11,8 +11,8 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 ## Index
 
 * [deep-learning](#deep-learning)
-   * [Netflix | VectorFlow](#netflix-vectorflow-tuts)
-   * [PyTorch](#pytorch-tuts)
+   * [Netflix | VectorFlow](#netflix-vectorflow-tutorials)
+   * [PyTorch](#pytorch-tutorials)
    * [tensorflow](#tensor-flow-tutorials)
    * [theano](#theano-tutorials)
    * [keras](#keras-tutorials)
@@ -42,12 +42,6 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 ## deep-learning
 
 IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demonstrating deep learning functionality.
-
-<br/>
-<p align="center">
-  <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
-</p>
-
 <br/>
 <p align="left">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/Netflix.png">
@@ -55,7 +49,7 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
 </p>
-### netflix-vectorflow-tuts
+### netflix-vectorflow-tutorials
 
 * [MNIST Example, running with Dlang](https://github.com/Netflix/vectorflow/tree/master/examples)
 
@@ -63,7 +57,7 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 <p align="center">
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
-### pytorch-tuts
+### pytorch-tutorials
 
 * [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
 * [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
@@ -71,7 +65,10 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 
 
 ### tensor-flow-tutorials
-
+<br/>
+<p align="center">
+  <img src="https://avatars0.githubusercontent.com/u/15658638?v=3&s=100">
+</p>
 Additional TensorFlow tutorials:
 
 * [pkmital/tensorflow_tutorials](https://github.com/pkmital/tensorflow_tutorials)
