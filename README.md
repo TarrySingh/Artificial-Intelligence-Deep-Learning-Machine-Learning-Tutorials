@@ -56,9 +56,11 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
 
-* [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
-* [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source)
-* [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source)
+| Level | Description |
+|--------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source) | Learning the basics of PyTorch from Facebook. |
+| [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source) | Learning the intermediate stuff about PyTorch of from Facebook. |
+| [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source) | Learning the advanced stuff about PyTorch of from Facebook. |
 
 
 ### tensor-flow-tutorials
