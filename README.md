@@ -11,6 +11,7 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 ## Index
 
 * [deep-learning](#deep-learning)
+    * [Netflix | VectorFlow](#netflix-vectorflow-tuts)
     * [PyTorch](#pytorch-tuts)
     * [tensorflow](#tensor-flow-tutorials)
     * [theano](#theano-tutorials)
@@ -39,10 +40,20 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 * [license](#license)
 
 <br/>
+<p align="left">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/Netflix.png">
+</p>
+<br/>
+<p align="center">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
+</p>
+### netflix-vectorflow-tuts
+
+
+<br/>
 <p align="center">
   <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
 </p>
-
 ### pytorch-tuts
 
 * [Beginners/Zakizhou](https://github.com/pytorch/tutorials/tree/master/beginner_source)
