@@ -11,14 +11,14 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
 ## Index
 
 * [deep-learning](#deep-learning)
-    * [Netflix | VectorFlow](#netflix-vectorflow-tuts)
-    * [PyTorch](#pytorch-tuts)
-    * [tensorflow](#tensor-flow-tutorials)
-    * [theano](#theano-tutorials)
-    * [keras](#keras-tutorials)
-    * [caffe](#deep-learning-misc)
-    * [Torch/Lua]()
-    * [MXNET]()
+   * [Netflix | VectorFlow](#netflix-vectorflow-tuts)
+   * [PyTorch](#pytorch-tuts)
+   * [tensorflow](#tensor-flow-tutorials)
+   * [theano](#theano-tutorials)
+   * [keras](#keras-tutorials)
+   * [caffe](#deep-learning-misc)
+   * [Torch/Lua]()
+   * [MXNET]()
    
 * [scikit-learn](#scikit-learn)
 * [statistical-inference-scipy](#statistical-inference-scipy)
@@ -47,11 +47,9 @@ Finally, it is your help I will seek to make it more useful and less boring, so 
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/VectorFlow.png">
 </p>
 ## netflix-vectorflow-tuts
-Vectorflow is a minimalist neural network library optimized for sparse data and single machine environments.
+Vectorflow is a minimalist neural network library optimized for sparse data and single machine environments.<br>
 
 * [MNIST Example, running with Dlang](https://github.com/Netflix/vectorflow/tree/master/examples)
-* [
-
 
 <br/>
 <p align="center">
