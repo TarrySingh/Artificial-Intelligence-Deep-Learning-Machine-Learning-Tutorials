@@ -53,7 +53,7 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 
 ### pytorch-tutorials
 <p align="center">
-  <img src="https://github.com/TarrySingh/Machine-Learning-Tutorials/blob/master/PyTorch.png">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/PyTorch.png">
 </p>
 
 | Level | Description |
