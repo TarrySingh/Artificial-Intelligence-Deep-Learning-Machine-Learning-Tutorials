@@ -392,11 +392,14 @@ For detailed instructions, scripts, and tools to set up your development environ
 
 ### running-notebooks
 
+Note: If you intend to learn the hard way (preferred method)then I'd strongly advice to write as much code as you can yourself and not just run pre-written code. If you still want to test it, then do the following: 
+
 To view interactive content or to modify elements within the IPython notebooks, you must first clone or download the repository then run the notebook.  More information on IPython Notebooks can be found [here.](http://ipython.org/notebook.html)
 
-    $ git clone https://github.com/donnemartin/data-science-ipython-notebooks.git
+    $ git clone https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials.git
     $ cd data-science-ipython-notebooks
     $ jupyter notebook
+    
 
 Notebooks tested with Python 2.7.x.(will soon be updated to Python 3.5+)
 
