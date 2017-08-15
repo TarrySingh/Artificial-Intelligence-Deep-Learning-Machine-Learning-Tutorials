@@ -397,7 +397,7 @@ Note: If you intend to learn the hard way (preferred method)then I'd strongly ad
 To view interactive content or to modify elements within the IPython notebooks, you must first clone or download the repository then run the notebook.  More information on IPython Notebooks can be found [here.](http://ipython.org/notebook.html)
 
     $ git clone https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials.git
-    $ cd data-science-ipython-notebooks
+    $ cd Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials
     $ jupyter notebook
     
 
