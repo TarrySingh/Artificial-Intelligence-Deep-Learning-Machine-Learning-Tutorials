@@ -62,6 +62,7 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 | [Intermedia/Quanvuong](https://github.com/pytorch/tutorials/tree/master/intermediate_source) | Learning the intermediate stuff about PyTorch of from Facebook. |
 | [Advanced/Chsasank](https://github.com/pytorch/tutorials/tree/master/advanced_source) | Learning the advanced stuff about PyTorch of from Facebook. |
 | [Learning PyTorch by Examples - Numpy, Tensors and Autograd](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/master/pytorch) | At its core, PyTorch provides two main features an n-dimensional Tensor, similar to numpy but can run on GPUs AND automatic differentiation for building and training neural networks. |
+| [PyTorch - Getting to know autograd.Variable, Gradient, Neural Network](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/pytorch/PyTorch%20NN%20Basics%20-%20Autograd%20Gradient%20Neural%20Network%20Loss%20Backprop.ipynb) | Here we start with ultimate basics of Tensors, wrap a Tensor with Variable module, play with nn.Module and implement forward and backward function. |
 
 
 ### tensor-flow-tutorials
