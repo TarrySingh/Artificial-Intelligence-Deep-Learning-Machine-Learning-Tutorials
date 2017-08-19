@@ -28,7 +28,7 @@ def nn_model(data):
     hidden_layer_2 = {'weights':tf.Variable(tf.random_normal([n_nodes_hlayer1, n_nodes_hlayer2])),
         'biases':tf.Variable(tf.random_normal([n_nodes_hlayer2]))}
 
-hidden_layer_3 = {'weights':tf.Variable(tf.random_normal([n_nodes_hlayer2, n_nodes_hlayer3])),
+    hidden_layer_3 = {'weights':tf.Variable(tf.random_normal([n_nodes_hlayer2, n_nodes_hlayer3])),
     'biases':tf.Variable(tf.random_normal([n_nodes_hlayer3]))}
     
     output_layer = {'weights':tf.Variable(tf.random_normal([n_nodes_hlayer3, n_classes])),
@@ -37,7 +37,7 @@ hidden_layer_3 = {'weights':tf.Variable(tf.random_normal([n_nodes_hlayer2, n_nod
     layer1 = tf.add(tf.matmul(data, hidden_layer_1['weights']), hidden_layer_1['biases'])
     layer1 = tf.nn.relu(layer1)
 
-layer2 = tf.add(tf.matmul(layer1, hidden_layer_2['weights']), hidden_layer_2['biases'])
+    layer2 = tf.add(tf.matmul(layer1, hidden_layer_2['weights']), hidden_layer_2['biases'])
     layer2 = tf.nn.relu(layer2)
     
     layer3 = tf.add(tf.matmul(layer2, hidden_layer_3['weights']), hidden_layer_3['biases'])
@@ -75,6 +75,6 @@ train_nn(x)
 
 # Examine results with Tensorboard
 
-print("Run the command line:\n" \
-      "--> tensorboard --logdir=/tmp/tensorflow_logs " \
+print("Run the command line:\n"
+      "--> tensorboard --logdir=/tmp/tensorflow_logs "
       "\nThen open http://0.0.0.0:6006/ into your web browser")
