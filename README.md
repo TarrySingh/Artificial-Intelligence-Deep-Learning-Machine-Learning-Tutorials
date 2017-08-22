@@ -8,6 +8,8 @@ More importantly the applications of ML/DL/AI into industry areas such as Transp
 <br>
 Finally, it is your help I will seek to make it more useful and less boring, so please do suggest/comment/contribute!
 
+Soon I will be launching a online learning plarform. 
+
 ## Index
 
 * [deep-learning](#deep-learning)
