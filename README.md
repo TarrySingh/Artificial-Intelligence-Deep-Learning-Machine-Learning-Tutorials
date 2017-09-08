@@ -141,9 +141,11 @@ Additional TensorFlow tutorials:
 | [conv-net-1](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/2.2.1%20Supervised%20Learning%20-%20ConvNet%20HandsOn%20Part%20I.ipynb) | Recognize handwritten digits from MNIST using Keras - Part 1. |
 | [conv-net-2](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/2.2.2%20Supervised%20Learning%20-%20ConvNet%20HandsOn%20Part%20II.ipynb) | Recognize handwritten digits from MNIST using Keras - Part 2. |
 | [keras-models](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/2.3%20Supervised%20Learning%20-%20Famous%20Models%20with%20Keras.ipynb) | Use pre-trained models such as VGG16, VGG19, ResNet50, and Inception v3 with Keras. |
-| [auto-encoders](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/3.1%20Unsupervised%20Learning%20-%20AutoEncoders%20and%20Embeddings.ipynb) | Learn about Autoencoders with Keras. |
-| [rnn-lstm](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/3.2%20RNN%20and%20LSTM.ipynb) | Learn about Recurrent Neural Networks (RNNs) with Keras. |
-| [lstm-sentence-gen](http://nbviewer.ipython.org/github/leriomaggio/deep-learning-keras-tensorflow/blob/master/3.3%20(Extra)%20LSTM%20for%20Sentence%20Generation.ipynb) |  Learn about RNNs using Long Short Term Memory (LSTM) networks with Keras. |
+| [auto-encoders](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/6.%20AutoEncoders%20and%20Embeddings/6.1.%20AutoEncoders%20and%20Embeddings.ipynb) | Learn about Autoencoders with Keras. |
+| [rnn-lstm](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/7.%20Recurrent%20Neural%20Networks/7.1%20RNN%20and%20LSTM.ipynb) | Learn about Recurrent Neural Networks (RNNs) with Keras. |
+| [lstm-sentence-gen](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/7.%20Recurrent%20Neural%20Networks/7.2%20LSTM%20for%20Sentence%20Generation.ipynb) |  Learn about RNNs using Long Short Term Memory (LSTM) networks with Keras. |
+| [nlp-deep-learning](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/6.%20AutoEncoders%20and%20Embeddings/6.2%20NLP%20and%20Deep%20Learning.ipynb) | Learn about NLP using ANN (Artificial Neural Networks. |
+| [hyperparamter-tuning](https://github.com/leriomaggio/deep-learning-keras-tensorflow/blob/master/5.%20HyperParameter%20Tuning%20and%20Transfer%20Learning/5.1%20HyperParameter%20Tuning.ipynb) | Hyperparamters tuning using keras-wrapper.scikit-learn |
 
 ### deep-learning-misc
 
