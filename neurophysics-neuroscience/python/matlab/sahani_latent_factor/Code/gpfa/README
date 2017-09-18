@@ -1,0 +1,369 @@
+Matlab code for extracting neural trajectories using
+Gaussian-process factor analysis (GPFA) and two-stage methods. 
+
+The algorithms are described in full detail in the following
+reference.  Please read the paper carefully before using the code,
+as it describes all of the terminology and usage modes:
+
+"Gaussian-process factor analysis for low-dimensional single-trial
+analysis of neural population activity"
+by B. M. Yu, J. P. Cunningham, G. Santhanam, S. I. Ryu, K. V.
+Shenoy, and M. Sahani.
+J Neurophysiol, vol. 102, 2009, pp. 614-635.
+
+==========
+COPYRIGHT
+==========
+
+@ 2009 Byron Yu         byronyu@stanford.edu 
+       John Cunningham  jcunnin@stanford.edu
+       
+This code may not be distributed in any form without prior consent
+of the authors.  While it has been carefully checked for bugs and
+applied to many datasets, the code comes with no warranty of any
+kind.  The authors take no responsibility for support or maintenance
+of the code, although feedback is appreciated.  
+
+
+================
+VERSION HISTORY
+================
+
+Versions 1.01, 1.02, 1.03 -- September 2009.
+
+Version 1.10 -- October 29, 2009.
+- MAJOR changes throughout code pack for speed-up.
+- exactInferenceWithLL.m exploits block persymmetry and other tricks to 
+  avoid redundant computations.
+- exactInferenceWithLL.m allows option to not compute data likelihood.
+- learnGPparams.m does not restart minimize.m if it uses maximum number
+  of iterations.  By restricting the number of function evaluations
+  in minimize.m, we get a huge speedup with no apparent loss in
+  performance, as measured by data log-likelihood.  This is also known
+  as a partial M-step, which still preserves the monotonicity of EM.
+- cutTrials.m created, which segments trials before model fitting.
+  After model fitting, gpfaEngine.m calls another E-step with full
+  (non-segmented) trials.
+- invToeplitz.m created for fast mex inversion of Toeplitz matrix
+  using the Zohar method.
+- getSeq.m is now more efficient for long trials.
+
+Version 2.00 -- November 5, 2009.
+- cosmoother_gpfa_viaOrth_fast.m created, which uses matrix
+  downdates and exploits persymmetry for fast cosmoothing when R is
+  diagonal.
+- in em.m, compute R more efficiently if R is diagonal.
+- in gpfaEngine.m, if no segments extracted from cutTrials.m, defaults
+  to segLength = Inf, rather than quitting.
+- grad_betgam.m exploits persymmetry for speedup.
+- ffa_ext.m sped up by computing only sufficient statistics in
+  E-step and not computing state posteriors for each observation.
+  New version is called fastfa.m.
+- makePrecomp.m created for fast mex precomputations needed for
+  learning GP timescales.
+- SUMMARY of speedups obtained in versions 1.10 and 2.00:
+  1.5 orders of magnitude by segmenting trials before model fitting
+    (with possibly small loss in accuracy, see "Are there knobs..." 
+    section below)
+  0.5 orders of magnitude with all other changes
+    (with no loss in accuracy)
+    
+Version 2.01 -- November 24, 2009.
+- postprocess.m now extracts neural trajectories for test data.
+- getTrajNewTrial.m created, which extracts neural trajectories of
+  new trials using previously fit model parameters.
+
+
+===================
+HOW TO GET STARTED
+===================
+
+Look at example.m.
+
+Note: Matlab should be started in the current directory (gpfa) so
+that it executes startup.m automatically.
+
+
+==================================================
+ARE THERE KNOBS I NEED TO TURN WHEN FITTING GPFA?
+==================================================
+
+The GPFA fitting algorithm is fully automatic, as there are no knobs
+in the guts of the fitting algorithm that the user should have to
+worry about.  However, there are two knobs in the preprocessing of
+the data that the user should think about on per-dataset basis:
+
+1) Segment length ('segLength')
+
+  The time required for fitting a GPFA model scales roughly with
+  T^3, where T is the number of timesteps in the longest trial.
+  When different trials have the same number of timesteps, expensive
+  computations can be reused.  This provides motivation for having a
+  small number of unique trial lengths in the dataset, as well as
+  having those unique trial lengths be small.
+
+  To speed up GPFA model fitting (by roughly 1.5 orders of
+  magnitude), we first segment the trials into many segments of the
+  same length ('segLength').  The GPFA model parameters are fit
+  using those segments.  We then take those fitted parameters and
+  the original (non-segmented) trials to extract full-length neural
+  trajectories. All of this is done automatically in the code pack,
+  but one knob the user can adjust is 'segLength', which can be
+  passed as an optional argument into neuralTraj:
+
+  result = neuralTraj(runIdx, dat, 'segLength', 50);
+
+  Note that the optional argment (in this case, 50) is the number of
+  timesteps, not the number of milliseconds.  If the optional
+  argument is not passed in, neuralTraj.m will use a default of 20
+  timesteps, which we found to be a reasonable value for various
+  datasets collected in the Shenoy lab.  Segmenting can be turned
+  off by setting 'segLength' to Inf, in which case the original
+  (non-segmented) trials will be used for model fitting.
+    
+  The choice of 'segLength' should be guided by the following two
+  considerations:
+
+  a) Capturing longer timescales
+
+  In general, choosing a shorter 'segLength' gives faster GPFA model
+  fitting.  However, 'segLength' should not be made so small that
+  GPFA cannot find the longer timescales, whose adverse effect can
+  be quantified by evaluating the cross-validated prediction error.
+  Thus, one should typically choose as large of a 'segLength' as
+  possible, as long as the run time is acceptable.  From our
+  experience, the prediction error penalty due to segmenting is
+  exceedingly small and the run time gains are huge.
+
+  b) Minimizing overlap
+
+  The segmentation is performed with overlap, where the overlap is
+  randomly distributed within a trial.  There is always one segment
+  that starts at the first timestep and another segment the ends at
+  the last timestep.  Take, for example, a trial with 55 timesteps
+  and 'segLength'=50.  There will be two segments, each 50 timesteps
+  long, but 45 timesteps of overlap.  The overlap creates extra work
+  for the fitting algorithm (i.e., it slows down the algorithm) and
+  over-represents the central portion of trials (which may mean
+  higher cross-validated prediction error). Thus, one should
+  typically choose a 'segLength' that minimizes the amount of
+  overlap in view of the distribution of original trial lengths.
+
+2) Spike bin width ('binWidth')
+
+  Since spikes are counted in non-overlapping bins, the bin width (in
+  msec) is also the time between adjacent timesteps.
+
+  There are two advantages to using a larger bin width:
+
+  - A larger bin width means larger spike counts.  The larger the
+    counts are, the better the square-root transform stabilizes the
+    variance of Poisson-distributed counts (see Kihlberg et al.,
+    1972).  Recall that all methods here (including two-stage
+    methods and GPFA) assume stationary observation noise.  Using a
+    larger bin width is particularly important when firing rates are
+    low across the neural population.
+
+  - A larger bin width also means fewer timesteps in each trial. This
+    makes the code run faster.  Furthermore, a smaller 'segLength'
+    (measured in number of timesteps) can be used to cover the same
+    amount of absolute time.  Running time scales roughly with
+    segLength^3, subject to issues of overlap discussed above.
+   
+  The drawback of a larger bin width is less temporal resolution.  We
+  recommend using the largest bin width possible that still gives
+  reasonable temporal resolution.  We typically use 'binWidth'
+  values of 20, 50, or 100 msec.  The default 'binWidth' is 20
+  msec.  The 'binWidth' can be passed as an optional argument into
+  neuralTraj:
+
+  result = neuralTraj(runIdx, dat, 'binWidth', 50);
+
+
+====================================================
+WHY DO THE EXTRACTED TRAJECTORIES NOT 'MAKE SENSE'?
+====================================================
+
+If the trajectories are jagged....
+
+- Check for and remove any units affected by crosstalk.  
+
+  Crosstalk between electrodes may lead different units have the
+  same (or nearly the same) activity on each trial.  Because the
+  neural trajectory attempts to capture correlated activity across
+  the neural population, it will identify the shorted units as being
+  strongly correlated and dedicate a latent dimension to those
+  units.
+      
+- Remove low-firing rate units, e.g., all those firing less than 5
+  spikes per second on average across all trials.
+  
+  The fitted observation noise (diagonal element of R) for a
+  low-firing rate unit will be small, so the neural trajectory may
+  show a deflection each time the neuron spikes.
+ 
+If the trajectories look like a jumbled mess in 3D space...
+
+- Try plotting one trajectory at a time, rather than all at the same
+  time.
+
+- Add experimental/behavioral time markers (e.g., colored dots at
+  stimulus onset and movement onset).
+
+- It may be misleading to look at just the top 3 dimensions (or any
+  3 dimensions), if the trajectories evolve in a space of
+  dimensionality larger than 3.  A trajectory that looks nice in a
+  10-dimensional space may look jumbled when projected into a 3D
+  space. You can first orient yourself by plotting each
+  orthonormalized dimension versus time using plotEachDimVsTime.m.
+  This plot usually looks more lawful than the 3D plot.  Then, you
+  can choose an informative projection for the 3D plot.
+
+
+=======================================================
+HOW DO I EXTRACT A NEW TRAJECTORY USING PREVIOUSLY-FIT 
+MODEL PARAMETERS?
+=======================================================
+
+There are two possibilities:
+
+1) Load the previously-fit model parameters, then call
+   getTrajNewTrials.m using new trials contained in 'dat':
+
+   result = load('mat_results/runXXX/gpfa_xDimXX.mat);
+   seqNew = getTrajNewTrials(result, dat);
+
+2) Using the built-in cross-validation feature (by passing in some
+   non-zero value for 'numFolds'), the 'result' will include
+   structures 'seqTrain' (the trials used for fitting the model
+   parameters) and 'seqTest' (trials NOT used for fitting the model
+   parameters).  The trajectories for 'seqTest' can be obtained in the
+   following way:
+
+   result = load('mat_results/runXXX/gpfa_xDimXX_cvXX.mat);
+   [estParams, seqTrain, seqTest] = postprocess(result);
+   
+
+=====================================
+HOW CAN I MAKE THE CODE RUN FASTER?
+=====================================
+
+We have put in substantial effort to optimize the GPFA code.  It
+currently runs roughly two orders of magnitude (~100X, varies by
+dataset) faster than the numbers shown in Table A1 of Yu et al.,
+2009.  On typical datasets being collected using 96-electrode arrays
+in the Shenoy lab, we have found the time for GPFA model fitting to
+be on the order of minutes. If further speed-up is desired, one can
+consider the following options:
+
+1) Adjust 'segLength' and 'binWidth', as described above
+
+2) Use a smaller state dimensionality
+
+   Tradeoff: Might not be able to capture all the structure in data.
+   
+   How to do it: Set 'xDim', an optional argument to neuralTraj.m.
+
+   Running time scales roughly with xDim^3.
+
+3) Use fewer EM iterations (dangerous)
+
+   Tradeoff: EM might not have converged yet.
+  
+   How to do it: Set 'emMaxIters', an optional argument to neuralTraj.m.
+
+   Running time scales linearly with 'emMaxIters'.
+
+4) Use a two-stage method rather than GPFA
+
+   Tradeoff:  Temporal smoothing and dimensionality reduction are performed 
+              sequentially rather than simultaneously.
+              
+   How to do it: Set 'method', an optional argument to neuralTraj.m, as
+                 'fa', 'ppca', or 'pca'.
+
+
+=============================
+NOTE ON THE USE OF C/MEX CODE
+=============================
+
+The function invToeplitz(), which inverts Toeplitz matrices such
+as the GP RBF kernels, attains major runtime speedups by exploiting
+special properties of Toeplitz matrices in a C environment better
+suited to such computations (for loops).
+
+The function makePrecomp(), which calculates posterior covariance
+matrices within learnGPparams.m, attains major runtime speedups by
+offloading parallelizable/pipelineable computations to a C environment
+better suited to such computations (for loops).
+
+These improvements require the C/MEX MATLAB interface, whereby C
+code can be compiled and used from within MATLAB.  We have compiled
+this code on a number of platforms in the hopes that this will be
+seamless to the user, but some compilation may be required on the
+part of the user if he/she is using an unusual architecture (such as
+Solaris).
+
+If the proper mex files are not available, this compilation should
+be automatically done by the startup.m file, so please see the notes
+there that call the "mex" command.
+
+To understand more, please read "help invToeplitz" in
+util/invToeplitz.
+Please also read "help makePrecomp" in util/makePrecomp.
+Other useful files to read include invToeplitzFast.m,
+invToeplitzFastZohar.c, and makePautoSumFast.c.
+
+If you have not used MEX previously, try
+"help mex" and some of the online tutorials such as:
+http://www.mathworks.com/support/tech-notes/1600/1605.html .
+
+Importantly, all of this code is written to default to a native MATLAB
+code implementation if the mex file can not be properly executed.
+Though the user may lose significant runtime performance, the code
+should still work the same and produce identical answers.
+
+
+================================================
+WHAT DOES THE WARNING ABOUT PRIVATE NOISE MEAN?
+================================================
+
+The private noise variance (or uniqueness, in FA speak) for one or
+more units may be driven to zero.
+
+There are three possible causes:
+
+1) Crosstalk between electrodes.  This can lead to different units
+   having the same (or nearly the same) activity on each trial.
+   
+   Solution: Remove units affected by crosstalk from 'dat'.
+
+2) The state dimensionality (xDim) is too large.  The extra
+   dimensions in the latent space may be dedicated to explaining
+   particular units perfectly, thus giving zero private noise for
+   those units.
+
+   Solution: Reduce 'xDim', an optional argument to neuralTraj.m.
+
+3) You have encountered a Heywood case.  It's an issue with
+   maximum-likelihood parameter learning, whereby more likelihood
+   can be gained by setting a private noise to 0 than by finding a
+   compromise.  This is a corner case of FA that has been known
+   since the 1930's.  Various Bayesian FA models have been proposed,
+   but here we simply set a minimum private noise variance for each
+   unit as a percentage of its raw data variance.  This problem can
+   also arise in GPFA, but is less common because of the GP
+   smoothing.
+
+   Two possible solutions: 
+   1) Do nothing.  The private variance is automatically capped at 
+      some minimum non-zero value.
+   2) Remove the offending unit from 'dat'.
+
+   For more about Heywood cases, see:
+ 
+   "Bayesian Estimation in Unrestricted Factor Analysis: A Treatment
+   for Heywood Cases"
+   J. K. Martin and R. P. McDonald.
+   Psychometrika, 40, 4, 505-17, Dec 1975.
+
