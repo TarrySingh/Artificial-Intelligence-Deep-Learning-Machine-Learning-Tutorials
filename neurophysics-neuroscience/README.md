@@ -1,4 +1,4 @@
-# Evolutionary Neurual Network Tools
+# Evolutionary Neurual Network Frameworks
 
 
 ## Nengo
