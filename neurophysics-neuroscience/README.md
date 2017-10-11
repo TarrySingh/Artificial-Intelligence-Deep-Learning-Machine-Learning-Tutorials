@@ -3,7 +3,7 @@
 
 ## Nengo
 
-<img src="image/nengo.png">
+<img src="image/Nengo.png">
 
 [Nengo](https://www.nengo.ai) is a graphical and scripting based software package for simulating large-scale neural systems. The book How to build a brain, which includes Nengo tutorials, is now available. This website also has additional information on the book.
 
