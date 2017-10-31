@@ -58,13 +58,13 @@ $ python eval.py --is_training False
 
 
 ## Results
-Results for the 'wrong' version(Issues #8):
+Results coming soon in a day or two:
 
 - training loss
-![total_loss]() Coming soon!
+![total_loss] Coming soon!
 
-![margin_loss]() Coming soon!
-![reconstruction_loss]() Coming soon!
+![margin_loss] Coming soon!
+![reconstruction_loss] Coming soon!
 
 - test accuracy (I'm running with some slight modifications to hyperparamters such as batch_size and num_epochs to start with)
 ------------
