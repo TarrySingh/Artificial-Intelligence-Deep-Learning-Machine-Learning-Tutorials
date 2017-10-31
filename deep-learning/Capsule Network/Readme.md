@@ -66,17 +66,17 @@ Results for the 'wrong' version(Issues #8):
 ![margin_loss]() Coming soon!
 ![reconstruction_loss]() Coming soon!
 
-- test acc
+- test accuracy (I'm running with some slight modifications to hyperparamters such as batch_size and num_epochs to start with)
 ------------
-|Epoch|49|51|
+|Epoch|xxx|xxx|
 |:----:|:----:|:--:|
-|test acc|94.69|94.71|
+|test acc|coming|coming|
 
-![test_img1](results/test_000.png)
-![test_img2](results/test_015.png)
-![test_img3](results/test_030.png)
-![test_img4](results/test_045.png)
-![test_img5](results/test_075.png)
+![test_img1]
+![test_img2]
+![test_img3]
+![test_img4]
+![test_img5]
 
 Results after fix Issues #8: 
 
