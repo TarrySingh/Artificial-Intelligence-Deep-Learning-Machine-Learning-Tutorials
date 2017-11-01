@@ -67,17 +67,28 @@ and **Squash** function that bungs all the scalar values of CNN into one big gia
                                                       self.kernel_size,
                                                       self.stride,
                                                       padding="VALID")
-                    caps_i = tf.reshape(caps_i, shape=(cfg.batch_size, -1, 1, 1))
-                    capsules.append(caps_i)
+                    caps_i = tf.reshape(caps_i, shape=(cfg.batch_size, -1, 1, 1)) # CREATE A CONV LAYER & STORE IT IN THE CAPSULE
+                    capsules.append(caps_i) # HERE THE CONV LAYERS ARE ADDED INTO THE CAPSULE LIST (NESTING HAPPENS HERE)
 
             assert capsules[0].get_shape() == [cfg.batch_size, 1152, 1, 1]
 
             # [batch_size, 1152, 8, 1]
             capsules = tf.concat(capsules, axis=2)
-            capsules = squash(capsules
+            capsules = squash(capsules) # HERE THEY ARE ALL SQUASHED TOGETHER (WITH NON-LINEARITY FXN)
 ```
+In summary
+
+The whole idea is to shrink vectors -- smaller ones to zero and larger ones to slightly less than 1. Then it is "left" (God only knows that this means -- maybe someday we will have a GodOnlyKnows function) to make good use of this non-linearity.
+
+<a href="https://www.codecogs.com/eqnedit.php?latex=v_j&space;=&space;{||s_j||^2&space;\over&space;1&space;&plus;&space;||s_j||^2}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?v_j&space;=&space;{||s_j||^2&space;\over&space;1&space;&plus;&space;||s_j||^2}" title="v_j = {||s_j||^2 \over 1 + ||s_j||^2}" /></a>
+
+<a href="https://www.codecogs.com/eqnedit.php?latex=s_j&space;\over&space;||s_j||" target="_blank"><img src="https://latex.codecogs.com/gif.latex?s_j&space;\over&space;||s_j||" title="s_j \over ||s_j||" /></a>
+
+where vj is the vector output of the capsule `j` and `sj` is its total output.
+
 - `capsNet.py` (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss.
 
+*Explanation and comments coming...*
 
 
 ## Usage
