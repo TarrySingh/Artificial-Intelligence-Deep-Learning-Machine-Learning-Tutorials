@@ -2,7 +2,7 @@
 
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=plastic)](CONTRIBUTING.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=plastic)](https://opensource.org/licenses/Apache-2.0)
-![completion](https://img.shields.io/badge/completion%20state-90%25-blue.svg?style=plastic)
+![completion](https://img.shields.io/badge/completion%20state-40%25-blue.svg?style=plastic)
 
 A Tensorflow implementation of CapsNet in Hinton's paper [Dynamic Routing Between Capsules](https://arxiv.org/abs/1710.09829)
 
@@ -86,9 +86,9 @@ The whole idea is to shrink vectors -- smaller ones to zero and larger ones to s
 
 where vj is the vector output of the capsule `j` and `sj` is its total output.
 
-- `capsNet.py` (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss.
+- `capsNet.py` (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss function.
 
-*Explanation and comments coming...*
+*More explanation and comments coming...*
 
 
 ## Usage
