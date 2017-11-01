@@ -1,4 +1,4 @@
-# CapsNet with Tensorflow (PyTorch and Keras comnig soon!)
+# CapsNet with Tensorflow (PyTorch and Keras coming soon!)
 
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=plastic)](CONTRIBUTING.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=plastic)](https://opensource.org/licenses/Apache-2.0)
@@ -6,7 +6,7 @@
 
 A Tensorflow implementation of CapsNet in Hinton's paper [Dynamic Routing Between Capsules](https://arxiv.org/abs/1710.09829)
 
-> - **Note from Zhico if you want to follow discussion on WeChat, not mine! (not Tarry's):**
+> - **Notes from Zhico [NOT MINE!] if you want to follow discussion on WeChat:**
 
 > 1. The routing algorithm has been found not implemented as the same as the one in the paper!(#8, thanks very much, it's my carelessness) Although the current version works, but not effective as the results in the paper, I've paste out some results of the 'wrong' version(It's really interesting). I'll analyze the reasons of this interesting thing
 > 2. I've been working continuously for the last few days, coding, talking, writing docs, so I would like to give myself half a day. I will be back tomorrow, and keep updating this repo
@@ -23,6 +23,38 @@ A Tensorflow implementation of CapsNet in Hinton's paper [Dynamic Routing Betwee
 - tqdm (for showing training progress info)
 - Scipy
 - Check out the *.py files if you want to play around with the hyperparameters.
+
+Adding more detailed for those who want to understand better:
+
+- utils.py (type `help(utils)` to see what it has ( where you download dataset and use `numpy`, `os`, `scipy` and do regular stuff such as 1) load MNIST data 2) Get batch data 3) save and merge the images
+- config.py (type `help(config)` to get more info) This one is the place where your *hyperparameters* and *env variables* sit
+- capsLayer.py (type `help(capsLayer)` for more info). This the Capsule Layer. This is what it takes:
+``` Capsule layer.
+    Args:
+        input: A 4-D tensor.
+        num_units: integer, the length of the output vector of a capsule.
+        with_routing: boolean, this capsule is routing with the
+                      lower-level layer capsule.
+        num_outputs: the number of capsule in this layer.
+    Returns:
+        A 4-D tensor.
+```
+and Squash function that bungs all the scalar values of CNN into one big giant vector.
+```Squash Function
+''' The routing algorithm for one capsule in the layer l+1.
+    Args:
+        input: A Tensor with [batch_size, num_caps_l=1152, length(u_i)=8, 1]
+               shape, num_caps_l meaning the number of capsule in the layer l.
+    Returns:
+        A Tensor of shape [batch_size, 1, length(v_j)=16, 1] representing the
+        vector output `v_j` of capsule j in the layer l+1
+    Notes:
+        u_i represents the vector output of capsule i in the layer l, and
+        v_j the vector output of capsule j in the layer l+1.
+ ```
+- capsNet.py (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss.
+
+
 
 ## Usage
 
