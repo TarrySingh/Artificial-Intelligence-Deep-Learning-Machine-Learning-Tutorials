@@ -31,15 +31,16 @@ Adding more detailed for those who want to understand better:
 - `capsLayer.py` (type `help(capsLayer)` for more info). This is the Capsule Layer that contains the Capsule and the Squashing function. 
 
  **Capsule** itself.
-   ` Args:
+   ``` 
+   Args:
         input: A 4-D tensor.
         num_units: integer, the length of the output vector of a capsule.
         with_routing: boolean, this capsule is routing with the
                       lower-level layer capsule.
         num_outputs: the number of capsule in this layer.
-    Returns:
+   Returns:
         A 4-D tensor.
-`
+```
 and **Squash** function that bungs all the scalar values of CNN into one big giant vector.
 ```Squash Function
 ''' The routing algorithm for one capsule in the layer l+1.
