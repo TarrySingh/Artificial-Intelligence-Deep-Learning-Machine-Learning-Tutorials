@@ -28,9 +28,10 @@ Adding more detailed for those who want to understand better:
 
 - utils.py (type `help(utils)` to see what it has ( where you download dataset and use `numpy`, `os`, `scipy` and do regular stuff such as 1) load MNIST data 2) Get batch data 3) save and merge the images
 - config.py (type `help(config)` to get more info) This one is the place where your *hyperparameters* and *env variables* sit
-- capsLayer.py (type `help(capsLayer)` for more info). This the Capsule Layer. This is what it takes:
-``` Capsule layer.
-    Args:
+- `capsLayer.py` (type `help(capsLayer)` for more info). This is the Capsule Layer that contains the Capsule and the Squashing function. 
+
+ **Capsule** itself.
+   ` Args:
         input: A 4-D tensor.
         num_units: integer, the length of the output vector of a capsule.
         with_routing: boolean, this capsule is routing with the
@@ -38,8 +39,8 @@ Adding more detailed for those who want to understand better:
         num_outputs: the number of capsule in this layer.
     Returns:
         A 4-D tensor.
-```
-and Squash function that bungs all the scalar values of CNN into one big giant vector.
+`
+and **Squash** function that bungs all the scalar values of CNN into one big giant vector.
 ```Squash Function
 ''' The routing algorithm for one capsule in the layer l+1.
     Args:
@@ -52,7 +53,28 @@ and Squash function that bungs all the scalar values of CNN into one big giant v
         u_i represents the vector output of capsule i in the layer l, and
         v_j the vector output of capsule j in the layer l+1.
  ```
-- capsNet.py (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss.
+ 
+ Do note (for the more curious ones 😀) that the bunging and squashing happens here (in lines32 ~ 48 of this function...
+ 
+ ```
+ for i in range(self.num_units):
+                # each capsule i: [batch_size, 6, 6, 32]
+                with tf.variable_scope('ConvUnit_' + str(i)):
+                    caps_i = tf.contrib.layers.conv2d(input,
+                                                      self.num_outputs,
+                                                      self.kernel_size,
+                                                      self.stride,
+                                                      padding="VALID")
+                    caps_i = tf.reshape(caps_i, shape=(cfg.batch_size, -1, 1, 1))
+                    capsules.append(caps_i)
+
+            assert capsules[0].get_shape() == [cfg.batch_size, 1152, 1, 1]
+
+            # [batch_size, 1152, 8, 1]
+            capsules = tf.concat(capsules, axis=2)
+            capsules = squash(capsules
+```
+- `capsNet.py` (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss.
 
 
 
