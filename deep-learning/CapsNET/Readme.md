@@ -55,7 +55,7 @@ and **Squash** function that bungs all the scalar values of CNN into one big gia
         v_j the vector output of capsule j in the layer l+1.
  ```
  
- Do note (for the more curious ones 😀) that the bunging and squashing happens here (in lines32 ~ 48 of this function...
+ Do note (for the more curious ones 😀) that the bunging and squashing happens here (in lines approx 32 ~ 48 of this function...)
  
  ```
  capsules = []
@@ -78,7 +78,7 @@ and **Squash** function that bungs all the scalar values of CNN into one big gia
 ```
 In summary
 
-The whole idea is to shrink vectors -- smaller ones to zero and larger ones to slightly less than 1. Then it is "left" (God only knows that this means -- maybe someday we will have a GodOnlyKnows function) to make good use of this non-linearity.
+The whole idea is to shrink vectors -- smaller ones to zero and larger ones to slightly less than 1. Then it is "left" (God only knows that this means -- maybe someday we will have to introduce the GodOnlyKnows function 😇) to make good use of this non-linearity.
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=v_j&space;=&space;{||s_j||^2&space;\over&space;1&space;&plus;&space;||s_j||^2}" target="_blank"><img src="https://latex.codecogs.com/gif.latex?v_j&space;=&space;{||s_j||^2&space;\over&space;1&space;&plus;&space;||s_j||^2}" title="v_j = {||s_j||^2 \over 1 + ||s_j||^2}" /></a>
 
@@ -86,7 +86,7 @@ The whole idea is to shrink vectors -- smaller ones to zero and larger ones to s
 
 where vj is the vector output of the capsule `j` and `sj` is its total output.
 
-- `capsNet.py` (type `help(capsNet)` to get more details). Ley functions in thsi class are model architecture and loss function.
+- `capsNet.py` (type `help(capsNet)` to get more details). Key functions in this class are model architecture and loss function.
 
 *More explanation and comments coming...*
 
