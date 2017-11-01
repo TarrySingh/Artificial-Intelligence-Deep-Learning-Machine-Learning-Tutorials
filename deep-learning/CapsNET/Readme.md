@@ -57,6 +57,7 @@ and **Squash** function that bungs all the scalar values of CNN into one big gia
  Do note (for the more curious ones 😀) that the bunging and squashing happens here (in lines32 ~ 48 of this function...
  
  ```
+ capsules = []
  for i in range(self.num_units):
                 # each capsule i: [batch_size, 6, 6, 32]
                 with tf.variable_scope('ConvUnit_' + str(i)):
