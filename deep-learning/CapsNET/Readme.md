@@ -84,7 +84,7 @@ The whole idea is to shrink vectors -- smaller ones to zero and larger ones to s
 
 <a href="https://www.codecogs.com/eqnedit.php?latex=s_j&space;\over&space;||s_j||" target="_blank"><img src="https://latex.codecogs.com/gif.latex?s_j&space;\over&space;||s_j||" title="s_j \over ||s_j||" /></a>
 
-where vj is the vector output of the capsule `j` and `sj` is its total output.
+where `vj` is the vector output of the capsule `j` and `sj` is its total output.
 
 - `capsNet.py` (type `help(capsNet)` to get more details). Key functions in this class are model architecture and loss function.
 
