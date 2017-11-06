@@ -119,23 +119,10 @@ $ python eval.py --is_training False
 ## Results
 Results coming soon in a day or two:
 
-- training loss
-![total_loss] Coming soon!
+**Initial results**
 
-![margin_loss] Coming soon!
-![reconstruction_loss] Coming soon!
+![Tensorboard](images/tensorboard.png)
 
-- test accuracy (I'm running with some slight modifications to hyperparamters such as batch_size and num_epochs to start with)
-------------
-|Epoch|xxx|xxx|
-|:----:|:----:|:--:|
-|test acc|coming|coming|
-
-![test_img1]
-![test_img2]
-![test_img3]
-![test_img4]
-![test_img5]
 
 Results after fix Issues #8: 
 
