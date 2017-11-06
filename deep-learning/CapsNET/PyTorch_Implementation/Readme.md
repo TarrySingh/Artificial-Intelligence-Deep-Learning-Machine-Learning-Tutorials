@@ -10,7 +10,7 @@ Download Torchnet (you can do it via your Jupyter notebook) as the training for 
 
 Routing Algorithm
 
-<img src="images/routing_algorithm")
+<img src="images/routing_algorithm.png">
 
 Paper written by Sara Sabour, Nicholas Frosst, and Geoffrey E. Hinton. For more information, please check out the paper [here](https://arxiv.org/abs/1710.09829).
 
