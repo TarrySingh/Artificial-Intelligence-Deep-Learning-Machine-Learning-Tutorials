@@ -18,7 +18,9 @@ Routing Algorithm
 
 ** Architechture Layer**
 
-![A three layer CapsNet][images/architecture.png)
+A 3-layer CapsNet architecture.
+
+![A three layer CapsNet](images/architecture.png)
 
 ** Decoder Layer**
 
