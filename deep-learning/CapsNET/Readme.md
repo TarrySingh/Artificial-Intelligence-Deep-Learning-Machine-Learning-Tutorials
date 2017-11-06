@@ -104,24 +104,14 @@ $ gunzip data/mnist/*.gz
 ```
 
 **Step 3.** 
-Start training with command line:
-```
-$ pip install tqdm  # install it if you haven't installed yes
-$ python train.py
-```
-
-### Evaluation
-```
-$ python eval.py --is_training False
-```
-
+Just train using the Jupyter Notebook 😀:
 
 ## Results
 Results coming soon in a day or two:
 
 **Initial results**
 
-![Tensorboard](images/tensorboard.png)
+![Tensorboard](TensorFlow_Implementation/images/tensorboard.png)
 
 
 Results after fix Issues #8: 
