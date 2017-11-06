@@ -53,7 +53,7 @@ Follow the simple instructions in this Jupyter Notebook.
 
 ## Benchmarks
 
-Highest accuracy was [**coming soon as I'm still running it**] after 100 epochs.
+Highest accuracy was [**coming soon as I'm still running it**] after 100 epochs. This image is after just 8 epochs, we're doing 100 now. We will go for 1000 later and see if it improves.
 
 ![Training progress after 8 Epochs already.](images/Visdom_Server.png)
 
