@@ -12,6 +12,18 @@ Routing Algorithm
 
 <img src="images/routing_algorithm.png">
 
+** Margin Loss for Digita Existence**
+
+<a href="https://www.codecogs.com/eqnedit.php?latex=L_c&space;=&space;T_c&space;max(0,&space;m^&plus;&space;-&space;||v_c||)^2&space;&plus;&space;\lambda&space;(1&space;-&space;T_c)&space;max(0,&space;||v_c||&space;-&space;m^-)^2" target="_blank"><img src="https://latex.codecogs.com/gif.latex?L_c&space;=&space;T_c&space;max(0,&space;m^&plus;&space;-&space;||v_c||)^2&space;&plus;&space;\lambda&space;(1&space;-&space;T_c)&space;max(0,&space;||v_c||&space;-&space;m^-)^2" title="L_c = T_c max(0, m^+ - ||v_c||)^2 + \lambda (1 - T_c) max(0, ||v_c|| - m^-)^2" /></a>
+
+** Architechture Layer**
+
+![A three layer CapsNet][images/architecture.png)
+
+** Decoder Layer**
+
+![Decoder layer](images/decoder_layer.png)
+
 Paper written by Sara Sabour, Nicholas Frosst, and Geoffrey E. Hinton. For more information, please check out the paper [here](https://arxiv.org/abs/1710.09829).
 
 __Note__: Affine-transformations for the data augmentation stage have not been implemented yet. This implementation only provides an efficient implementation for the dynamic routing procedure, example CapsNet architecture, and squashing functions mentioned in the paper.
