@@ -64,7 +64,7 @@ Default PyTorch Adam optimizer hyperparameters were used with no learning rate s
 ## TODO
 
 * Extension to other datasets apart from MNIST.
-* CIFAS10
+* CIFAR10 and other datasets
 * Images larger that the MNIST and CIFAR
 * Video files
 
@@ -81,4 +81,4 @@ Also worthwhile following a bunch of discussions here such as this: [@InnerPeace
 ## Contact
 
 I am testing a whole lot of new and upcoming AI and Data Models. Feel free to reach out to me if you need help or suggestions.
-Here is my contact detail at [LinkedIn](https://www.linkedin.com/in/tarrysingh/), [Quora](https://www.quora.com/profile/Tarry-Singh) , My Website() or simply [email](tarry.singh@gmail.com)
+Here is my contact detail at [LinkedIn](https://www.linkedin.com/in/tarrysingh/), [Quora](https://www.quora.com/profile/Tarry-Singh) , My Website(https://tarrysingh.com) or simply [email](tarry.singh@gmail.com)
