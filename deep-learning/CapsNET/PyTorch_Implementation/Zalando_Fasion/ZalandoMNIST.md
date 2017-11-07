@@ -10,7 +10,8 @@ Download Torchnet (you can do it via your Jupyter notebook) as the training for 
 
 **Routing Algorithm**
 
-<img src="images/routing_algorithm.png">
+
+<img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob//master/deep-learning/CapsNET/PyTorch_Implementation/images/routing_algorithm.png">
 
 **Margin Loss for Digita Existence**
 
@@ -20,11 +21,11 @@ Download Torchnet (you can do it via your Jupyter notebook) as the training for 
 
 A 3-layer CapsNet architecture.
 
-![A three layer CapsNet](images/architecture.png)
+<img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/deep-learning/CapsNET/PyTorch_Implementation/images/architecture.png">
 
 **Decoder Layer**
 
-![Decoder layer](images/decoder_layer.png)
+<img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/deep-learning/CapsNET/PyTorch_Implementation/images/decoder_layer.png">
 
 Paper written by Sara Sabour, Nicholas Frosst, and Geoffrey E. Hinton. For more information, please check out the paper [here](https://arxiv.org/abs/1710.09829).
 
@@ -46,10 +47,10 @@ __Note__: Affine-transformations for the data augmentation stage have not been i
 ```python
 batch_size = 128
 num_classes = 10
-num_epochs = 100
+num_epochs = 200 
 num_rout_iter = 3 (Number of routing iterations)
 ```
-I will bwe adding other hyperparameters such as learning rate and see if this helps improve the results
+I will be adding other hyperparameters such as learning rate and see if this helps improve the results.
 
 Follow the simple instructions in this Jupyter Notebook.
 
