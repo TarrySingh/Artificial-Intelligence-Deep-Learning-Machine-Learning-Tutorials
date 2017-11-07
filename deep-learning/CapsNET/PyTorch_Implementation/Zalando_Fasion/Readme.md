@@ -73,6 +73,15 @@ I will go for 2000 later [If I have time obviously!!!] if there is more request 
 
 **1000 Epochs**
 
+Trying out these changes...
+
+```python
+batch_size = 256
+num_classes = 10
+num_epochs = 1000 
+num_rout_iter = 3 (Number of routing iterations)
+```
+
 ![Training progress after 1000 Epochs.](images/xx.png) -- Coming later!!!
 
 **2000 Epochs**
