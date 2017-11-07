@@ -61,19 +61,23 @@ This image is after just 10 epochs, we're doing 200 now.
 
 Accuracy is climbing slowly but this is expected.
 
-I will go for 1000 later [If I have time obviously!!!] if there is more request or need to investigate and see if it improves.
+I will go for 2000 later [If I have time obviously!!!] if there is more request or need to investigate and see if it improves.
 
 **10 Epochs**
 
 ![Training progress after 25 Epochs.](images/10.png)
 
-**100 Epochs**
-
-![Training progress after 100 Epochs.](images/xx.png) -- Coming later!!!
-
 **200 Epochs**
 
-![Training progress after 200 Epochs.](images/xx.png) -- Coming later!!!
+![Training progress after 100 Epochs.](images/200.png) -- Coming later!!!
+
+**1000 Epochs**
+
+![Training progress after 1000 Epochs.](images/xx.png) -- Coming later!!!
+
+**2000 Epochs**
+
+![Training progress after 2000 Epochs.](images/xx.png) -- Coming later!!!
 
 Default PyTorch Adam optimizer hyperparameters were used with no learning rate scheduling. Epochs with batch size of 128 is taking me approximately  takes ~2.85 interations per minute OR approx. ~ 2.5 mins per epoch on an Ubuntu 16.04 Server with 64Gig Ram and 8 Gig GTX 1080 GPU. 
 
