@@ -1,4 +1,4 @@
-# Dynamic Routing Between Capsules with Zalando Fashin Data
+# Dynamic Routing Between Capsules with Zalando Fashion MNIST Data
 
 This ia a barebone CUDA-enabled Torch / PyTorch with Facebook's Visdom Server implementation of the CapsNet architecture in the paper "Dynamic Routing Between Capsules" by [Kenta Iwasaki](https://github.com/iwasaki-kenta) on behalf of Gram.AI.
 
