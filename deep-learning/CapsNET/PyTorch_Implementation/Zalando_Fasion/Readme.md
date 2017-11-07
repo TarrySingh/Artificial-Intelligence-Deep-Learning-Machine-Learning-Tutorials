@@ -89,7 +89,7 @@ num_rout_iter = 3 (Number of routing iterations)
 
 ![Training progress after 2000 Epochs.](images/comingsoon.jpg)
 
-Default PyTorch Adam optimizer hyperparameters were used with no learning rate scheduling. Epochs with batch size of 128 is taking me approximately  takes ~2.85 interations per minute OR approx. ~ 2.5 mins per epoch on an Ubuntu 16.04 Server with 64Gig Ram and 8 Gig GTX 1080 GPU. 
+Default PyTorch Adam optimizer hyperparameters were used with no learning rate scheduling. Epochs with batch size of 128 is taking me approximately  takes ~2.85 interations per minute OR approx. ~ 2.5 mins per epoch on an Ubuntu 16.04 Server with 64GB RAM, 8 Gig GTX 1080 GPU & (2 x 500GB) 1TB SSD Disk Space. 
 
 ## TODO
 
