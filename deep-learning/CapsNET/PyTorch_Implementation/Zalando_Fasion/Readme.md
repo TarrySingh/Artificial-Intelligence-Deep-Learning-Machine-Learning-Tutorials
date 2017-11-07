@@ -81,6 +81,7 @@ num_classes = 10
 num_epochs = 1000 
 num_rout_iter = 3 (Number of routing iterations)
 ```
+-- Note: Since I doubled the batch_size, num inter/se have doubled to ~1.4 it/s. Let's see if these changes in hyperparameters and batch_size affect the accuracy and loss.
 
 ![Training progress after 1000 Epochs.](images/xx.png) -- Coming later!!!
 
