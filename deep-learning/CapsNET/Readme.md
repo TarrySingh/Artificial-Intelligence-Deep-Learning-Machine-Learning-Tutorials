@@ -124,4 +124,4 @@ Results after fix Issues #8:
   * Use with PyTorch and Keras Later
 
 - There is [another new paper](https://openreview.net/pdf?id=HJWLfGWRb) about capsules(submitted to ICLR 2018), follow-up.
-- Also follow the original Github from [Zhico's here](https://github.com/naturomics/CapsNet-Tensorflow)
+- Also follow the original Github from [Huadong Liao's here](https://github.com/naturomics/CapsNet-Tensorflow) who is doing an amazing job in improving this.
