@@ -1,8 +1,10 @@
+# Dynamic CapsNet-Fashion-MNIST
+
 # Keras Implementation of Dynamic Routing Between Capsules of Zalando Fashion MNIST Data 
 
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=plastic)](CONTRIBUTING.md)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg?style=plastic)](https://opensource.org/licenses/Apache-2.0)
-![completion](https://img.shields.io/badge/completion%20state-10%25-blue.svg?style=plastic)
+![completion](https://img.shields.io/badge/completion%20state-100%25-blue.svg?style=plastic)
 
 This ia a barebone CUDA-enabled Keras implementation of the CapsNet architecture in the paper "Dynamic Routing Between Capsules".
 
@@ -41,19 +43,17 @@ __Note__: Affine-transformations for the data augmentation stage have not been i
 ## Requirements
 
 * Python 3 (Mine is 3.6.x distro)
-* PyTorch
-* TorchVision
-* TorchNet (Download it via your Jupyter Notebook, easy peasy :))
-* TQDM (for checking out the progress)
-* Visdom (Neat visualization of your train, acuracy and margin losses)
+* Keras 2.0.9 (latest version)
+* TensorFlow
+* Zalando Dataset
 
 ## Usage
 
 **Step 1** Adjust the "hyperparamters" in the cell block and play with the results such as number of training epochs, batch sizes, etc. inside `capsule_network.py`.
 
 ```python
-batch_size     = 100
-epochs         = 100
+batch_size     = 128
+epochs         = 200
 lam_recon      = 0.392  # 784 * 0.0005, paper uses sum of SE, here uses MSE
 num_routing    = 3      # num_routing should > 0
 shift_fraction = 0.1
@@ -61,7 +61,7 @@ debug          = 0      # debug>0 will save weights by TensorBoard
 save_dir       ='./result'
 is_training    = 1
 weights        = None
-lr             = 0.01
+lr             = 0.001
 ```
 
 Follow the simple instructions in this Jupyter Notebook.
@@ -77,7 +77,7 @@ pip install keras==2.0.9
 Create your own fashion.py file from keras if you can't import it from keras.datasets (I was having this trouble all the tome)
 ```
 
-**Step 2. Clone this repository to local. OR just copy these files to your local machine**
+**Step 2. Clone this repository to local. OR just copy these files [from CapsNet folder] to your local machine**
 ```
 git clone https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials.git
 cd CapsNet-Fashion-MNIST
@@ -87,7 +87,7 @@ cd CapsNet-Fashion-MNIST
 
 Training with default settings:
 
---> Just run the Jupyter Notebook
+--> Just run the Jupyter Notebook 😁
 
 Data preprocessing: 
 - scale pixel values to `[0,1]`; 
@@ -96,7 +96,6 @@ Data preprocessing:
 ## Benchmarks
 
 Highest accuracy was [**coming soon as I'm still running it**] after 200 epochs on request of the Zalando Researcher [@HanXiao](https://github.com/hanxiao). 
-This image is after just 10 epochs, we're doing 100 now. 
 
 ![Training progress after 1000 Epochs.](images/comingsoon.jpg)
 
@@ -105,15 +104,10 @@ This image is after just 10 epochs, we're doing 100 now.
 **Accuracy &  Losses**   
 
 ![Training progress after 1000 Epochs.](images/comingsoon.jpg)
-   
-
-**Training Speed**  
-
-About `580s / epoch` for 600 steps on a single GTX 1080 GPU.   
+ 
 
 
 **Reconstruction result**  
 
 ![Training progress after 1000 Epochs.](images/comingsoon.jpg)
 
-![](real_and_recon.png)
