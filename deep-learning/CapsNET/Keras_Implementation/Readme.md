@@ -1,5 +1,3 @@
-# Dynamic CapsNet-Fashion-MNIST
-
 # Keras Implementation of Dynamic Routing Between Capsules of Zalando Fashion MNIST Data 
 
 [![Contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=plastic)](CONTRIBUTING.md)
