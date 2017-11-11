@@ -6,7 +6,7 @@ I will be updating this tutorials site on a <b>daily basis</b> adding all releva
 <br>
 More importantly the applications of ML/DL/AI into industry areas such as Transportation, Medicine/Healthcare etc. will be something I'll watch with keen interest and would love to share the same with you.
 <br>
-Finally, it is your help I will seek to make it more useful and less boring, so please do suggest/comment/contribute!
+Finally, it is **YOUR** help I will seek to make it more useful and less boring, so please do suggest/comment/contribute!
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/AI.png">
 </p>
