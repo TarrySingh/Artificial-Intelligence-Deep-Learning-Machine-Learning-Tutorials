@@ -101,9 +101,13 @@ Highest accuracy was [**coming soon as I'm still running it**] after 200 epochs 
 
 **Accuracy &  Losses**   
 
-![Training progress after 1000 Epochs.](images/comingsoon.jpg)
- 
+**After 55 Epochs...**
 
+![Training progress after 1000 Epochs.](images/55.png)
+
+Computation Graph...
+ 
+![Training progress after 1000 Epochs.](images/comp_graph.png)
 
 **Reconstruction result**  
 
