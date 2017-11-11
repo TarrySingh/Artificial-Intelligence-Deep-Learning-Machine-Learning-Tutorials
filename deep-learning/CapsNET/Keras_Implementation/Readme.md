@@ -111,3 +111,25 @@ Highest accuracy was [**coming soon as I'm still running it**] after 200 epochs 
 
 ![Training progress after 1000 Epochs.](images/comingsoon.jpg)
 
+## TODO
+
+* Extension to other datasets apart from MNIST.
+* CIFAR10 and other datasets
+* Images larger that the MNIST and CIFAR (ImageNet etc)
+* More Complex Data Structures Such as Amazon Forests etc.
+
+## Credits & Sources
+
+Primarily referenced these two TensorFlow and Keras implementations:
+1. [Keras implementation by @XifengGuo](https://github.com/XifengGuo/CapsNet-Keras)
+2. [TensorFlow implementation by @naturomics](https://github.com/naturomics/CapsNet-Tensorflow)
+3. [Kenta Iwasaki for making this PyTorch implementation](https://github.com/iwasaki-kenta)
+
+Also worthwhile following a bunch of discussions here such as this: [@InnerPeace-Wu](https://github.com/InnerPeace-Wu) for a [discussion on the dynamic routing procedure](https://github.com/XifengGuo/CapsNet-Keras/issues/1) outlined in the paper.
+
+**NOTE**: I will be rolling all these up to the main README.md file for the CapsNets detailing about what I learned from all the three implementations of Keras, PyTorch and Tensorflow. so stay tuned!
+## Contact
+
+I am testing a whole lot of new and upcoming AI and Data Models. Feel free to reach out to me if you need help or suggestions or if you have suggestions or help to offer me as well 😇
+
+Here is my contact detail at [LinkedIn](https://www.linkedin.com/in/tarrysingh/), [Quora](https://www.quora.com/profile/Tarry-Singh) , [My Website - TarrySingh.com](https://tarrysingh.com) or simply [email](tarry.singh@gmail.com)
