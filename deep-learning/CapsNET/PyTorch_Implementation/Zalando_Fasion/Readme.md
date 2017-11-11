@@ -103,8 +103,8 @@ Default PyTorch Adam optimizer hyperparameters were used with no learning rate s
 
 * Extension to other datasets apart from MNIST.
 * CIFAR10 and other datasets
-* Images larger that the MNIST and CIFAR
-* Video files
+* Images larger that the MNIST and CIFAR (ImageNet etc)
+* More Complex Data Structures Such as Amazon Forests etc.
 
 ## Credits & Sources
 
