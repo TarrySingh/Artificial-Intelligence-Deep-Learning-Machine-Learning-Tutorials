@@ -1,3 +1,9 @@
+# Detailed Article about my understanding of CapsNets will feature soon!
+
+I’ll soon be writing about my learning and understanding of CapsNet in a detailed article. This will also feature in my upcoming book.
+
+![CapsNETs](images/capsnets1.png)
+
 # CapsNet with Tensorflow, PyTorch and Keras
 
 
