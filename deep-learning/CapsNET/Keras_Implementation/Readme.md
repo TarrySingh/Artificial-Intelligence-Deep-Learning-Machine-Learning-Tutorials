@@ -95,23 +95,22 @@ Data preprocessing:
 
 Highest accuracy was [**coming soon as I'm still running it**] after 200 epochs on request of the Zalando Researcher [@HanXiao](https://github.com/hanxiao). 
 
-![Training progress after 1000 Epochs.](images/comingsoon.jpg)
 
 ## Results
 
 **Accuracy &  Losses**   
 
-**After 55 Epochs...**
-
-![Training progress after 1000 Epochs.](images/55.png)
+![Training progress after 1000 Epochs.](images/final_200_epochs.jpg)
 
 Computation Graph...
  
 ![Training progress after 1000 Epochs.](images/comp_graph.png)
 
+**After 200 Epochs...**
+
 **Reconstruction result**  
 
-![Training progress after 1000 Epochs.](images/comingsoon.jpg)
+![Training progress after 200 Epochs.](images/output.png)
 
 ## TODO
 
