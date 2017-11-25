@@ -1,0 +1,7 @@
+dependencies:
+  - numpy
+  - scipy
+  - matplotlib>=1.5
+  - seaborn
+  - h5py
+

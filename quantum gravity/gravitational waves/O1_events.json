@@ -1,0 +1,53 @@
+{
+  "GW150914":{
+      "name":"GW150914",
+      "URL"         : "https://losc.ligo.org/s/events/GW150914/",
+      "fn_H1"       : "H-H1_LOSC_4_V1-1126259446-32.hdf5",
+      "fn_L1"       : "L-L1_LOSC_4_V1-1126259446-32.hdf5",
+      "fn_template" : "GW150914_4_template.hdf5",
+      "fs"          : 4096,
+      "tevent"      : 1126259462.44,
+      "utcevent"    : "2015-09-14T09:50:45.44",
+      "m1"          : 41.743,
+      "m2"          : 29.237,
+      "a1"          : 0.355,
+      "a2"          : -0.769,
+      "approx"      : "lalsim.SEOBNRv2",
+      "fband"       : [43.0,300.0],
+      "f_min"       : 10.0
+  },
+  "LVT151012":{
+      "name":"LVT151012",
+      "URL"         : "https://losc.ligo.org/s/events/LVT151012/",
+      "fn_H1"       : "H-H1_LOSC_4_V1-1128678884-32.hdf5",
+      "fn_L1"       : "L-L1_LOSC_4_V1-1128678884-32.hdf5",
+      "fn_template" : "LVT151012_4_template.hdf5",
+      "fs"          : 4096,
+      "tevent"      : 1128678900.44,
+      "utcevent"    : "2015-10-12T09:54:43.44",
+      "m1"          : 44.111,
+      "m2"          : 11.205,
+      "a1"          : 0.447,
+      "a2"          : -0.434,
+      "approx"      : "lalsim.SEOBNRv2",
+      "fband"       : [43.0,400.0],
+      "f_min"       : 10.0
+  },
+  "GW151226":{
+      "name":"GW151226",
+      "URL"         : "https://losc.ligo.org/s/events/GW151226/",
+      "fn_H1"       : "H-H1_LOSC_4_V1-1135136334-32.hdf5",
+      "fn_L1"       : "L-L1_LOSC_4_V1-1135136334-32.hdf5",
+      "fn_template" : "GW151226_4_template.hdf5",
+      "fs"          : 4096,
+      "tevent"      : 1135136350.65,
+      "utcevent"    : "2015-12-26T03:38:53.65",
+      "m1"          : 19.6427,
+      "m2"          : 6.7054,
+      "a1"          : 0.3998,
+      "a2"          : -0.0396,
+      "approx"      : "lalsim.SEOBNRv2",
+      "fband"       : [43.0,800.0],
+      "f_min"       : 10.0
+  }
+}
