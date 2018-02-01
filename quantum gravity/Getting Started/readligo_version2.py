@@ -1,13 +1,7 @@
 """
 readligo.py
-
-updated: January 15, 2018
-by: Agata Trovato
-what has been modified: minor corrections to make it usable with python 3 
-(tab replaced with spaces, argument of 'reshape' integer, forced the integer conversion also for slices)
-
-Version 0.3
-January 10, 2017
+Version 0.2
+April 21, 2016
 Jonah Kanner, Roy Williams, and Alan Weinstein
 
 Updates in this version:
@@ -168,11 +162,8 @@ def loaddata(filename, ifo=None, tvec=True, readstrain=True):
     """
 
     # -- Check for zero length file
-    try:
-        if os.stat(filename).st_size == 0:
-            return None, None, None
-    except:
-        return None,None,None
+    if os.stat(filename).st_size == 0:
+        return None, None, None
 
     file_ext = os.path.splitext(filename)[1]    
     if (file_ext.upper() == '.GWF'):
@@ -272,7 +263,7 @@ def dq_channel_to_seglist(channel, fs=4096):
     condition = channel > 0
     boundaries = np.where(np.diff(condition) == True)[0]
     # -- Need to +1 due to how np.diff works 
-    boundaries = boundaries + 1.0
+    boundaries = boundaries + 1
     # if the array "begins" True, we need to complete the first segment
     if condition[0]:
         boundaries = np.append(0,boundaries)
@@ -281,7 +272,7 @@ def dq_channel_to_seglist(channel, fs=4096):
         boundaries = np.append(boundaries,len(condition))
 
     # -- group the segment boundaries two by two
-    segments = boundaries.reshape( ( len(boundaries) // 2, 2 ) ) #// for python 3
+    segments = boundaries.reshape((len(boundaries)/2,2))
     # -- Account for sampling frequency and return a slice
     segment_list = [slice(start*fs, stop*fs) for (start,stop) in segments]
     
@@ -401,10 +392,10 @@ def getstrain(start, stop, ifo, filelist=None):
     # -- Trim the data
     lndx  = np.abs(start - m_start)*(1.0/dt)
     rndx = np.abs(stop - m_start)*(1.0/dt)
-
-    m_strain = m_strain[int(lndx):int(rndx)] # slice indices must be integers
+        
+    m_strain = m_strain[lndx:rndx]
     for key in m_dq.keys():
-        m_dq[key] = m_dq[key][int(lndx*dt):int(rndx*dt)]# slice indices must be integers
+        m_dq[key] = m_dq[key][lndx*dt:rndx*dt]
 
     meta['start'] = start
     meta['stop']  = stop
@@ -416,19 +407,13 @@ class SegmentList():
     def __init__(self, filename, numcolumns=3):
 
         if type(filename) is str:
-            try:
-                if numcolumns == 4:
-                    number, start, stop, duration = np.loadtxt(filename, dtype='int',unpack=True)
-                elif numcolumns == 2:
-                    start, stop = np.loadtxt(filename, dtype='int',unpack=True)
-                elif numcolumns == 3:
-                    start, stop, duration = np.loadtxt(filename, dtype='int',unpack=True)
-                if isinstance(start, int): 
-                    self.seglist = [[start, stop]]
-                else:
-                    self.seglist = zip(start, stop)
-            except:
-                self.seglist = []
+            if numcolumns == 4:
+                number, start, stop, duration = np.loadtxt(filename, dtype='int',unpack=True)
+            elif numcolumns == 2:
+                start, stop = np.loadtxt(filename, dtype='int',unpack=True)
+            elif numcolumns == 3:
+                start, stop, duration = np.loadtxt(filename, dtype='int',unpack=True)
+            self.seglist = zip(start, stop)
         elif type(filename) is list:
             self.seglist = filename
         else:
@@ -525,3 +510,5 @@ def getsegs(start, stop, ifo, flag='DATA', filelist=None):
     segList = [seg for seg in segList if seg is not None]
 
     return SegmentList(segList)
+
+
