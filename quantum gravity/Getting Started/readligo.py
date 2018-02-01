@@ -272,7 +272,7 @@ def dq_channel_to_seglist(channel, fs=4096):
     condition = channel > 0
     boundaries = np.where(np.diff(condition) == True)[0]
     # -- Need to +1 due to how np.diff works 
-    boundaries = boundaries + 1.0
+    boundaries = boundaries + 1
     # if the array "begins" True, we need to complete the first segment
     if condition[0]:
         boundaries = np.append(0,boundaries)
