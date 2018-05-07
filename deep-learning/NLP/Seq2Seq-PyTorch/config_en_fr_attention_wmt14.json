@@ -1,0 +1,43 @@
+{
+  "training": {
+    "optimizer": "adam",
+    "clip_c": 1,
+    "lrate": 0.0001
+  },
+  "management": {
+    "monitor_loss": 1000,
+    "print_samples": 20000
+  },
+  "data": {
+    "src": "/data/lisatmp4/subramas/datasets/nmt/en-fr/data/europarl-v7.fr-en.tok.true.clean.fr",
+    "trg": "/data/lisatmp4/subramas/datasets/nmt/en-fr/data/europarl-v7.fr-en.tok.true.clean.en",
+    "test_src": "/data/lisatmp4/subramas/datasets/nmt/en-fr/data/newstest2011.fr.true.tok",
+    "test_trg": "/data/lisatmp4/subramas/datasets/nmt/en-fr/data/newstest2011.en.true.tok",
+    "batch_size": 80,
+    "n_words_trg": 30000,
+    "valid_batch_size": 80,
+    "n_words_src": 30000,
+    "max_src_length": 50,
+    "max_trg_length": 50,
+    "task": "translation",
+    "save_dir": "/data/lisatmp4/subramas/models/torch_seq2seq",
+    "load_dir": false
+  },
+  "model": {
+    "dim": 1000,
+    "dim_trg": 1000,
+    "use_dropout": false,
+    "dim_word_src": 500,
+    "n_words_src": 30000,
+    "n_words": 30000,
+    "dim_word_trg": 500,
+    "n_layers_src": 2,
+    "n_layers_trg": 1,
+    "bidirectional": true,
+    "src_lang": "fr",
+    "trg_lang": "en",
+    "decode": "greedy",
+    "seq2seq": "attention",
+    "optimizer": "adam"
+  }
+}
