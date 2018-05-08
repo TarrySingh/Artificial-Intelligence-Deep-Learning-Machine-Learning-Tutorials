@@ -1,0 +1,188 @@
+executable = /lustre/home/tgebhard/tf-1.0.0_gpu/bin/python3
+
+getenv = True
+
+request_memory = 16384
+request_cpus = 2
+
+
+output = cluster_logs/GW150914_0100_0300_training.out.$(Process)
+error = cluster_logs/GW150914_0100_0300_training.err.$(Process)
+log = cluster_logs/GW150914_0100_0300_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_training.h5 --output-file=training_GW150914_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW150914_0250_0500_training.out.$(Process)
+error = cluster_logs/GW150914_0250_0500_training.err.$(Process)
+log = cluster_logs/GW150914_0250_0500_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_training.h5 --output-file=training_GW150914_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW150914_0400_0800_training.out.$(Process)
+error = cluster_logs/GW150914_0400_0800_training.err.$(Process)
+log = cluster_logs/GW150914_0400_0800_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_training.h5 --output-file=training_GW150914_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW150914_0700_1200_training.out.$(Process)
+error = cluster_logs/GW150914_0700_1200_training.err.$(Process)
+log = cluster_logs/GW150914_0700_1200_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_training.h5 --output-file=training_GW150914_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW150914_1000_1700_training.out.$(Process)
+error = cluster_logs/GW150914_1000_1700_training.err.$(Process)
+log = cluster_logs/GW150914_1000_1700_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_training.h5 --output-file=training_GW150914_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW151226_0100_0300_training.out.$(Process)
+error = cluster_logs/GW151226_0100_0300_training.err.$(Process)
+log = cluster_logs/GW151226_0100_0300_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_training.h5 --output-file=training_GW151226_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW151226_0250_0500_training.out.$(Process)
+error = cluster_logs/GW151226_0250_0500_training.err.$(Process)
+log = cluster_logs/GW151226_0250_0500_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_training.h5 --output-file=training_GW151226_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW151226_0400_0800_training.out.$(Process)
+error = cluster_logs/GW151226_0400_0800_training.err.$(Process)
+log = cluster_logs/GW151226_0400_0800_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_training.h5 --output-file=training_GW151226_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW151226_0700_1200_training.out.$(Process)
+error = cluster_logs/GW151226_0700_1200_training.err.$(Process)
+log = cluster_logs/GW151226_0700_1200_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_training.h5 --output-file=training_GW151226_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW151226_1000_1700_training.out.$(Process)
+error = cluster_logs/GW151226_1000_1700_training.err.$(Process)
+log = cluster_logs/GW151226_1000_1700_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_training.h5 --output-file=training_GW151226_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW170104_0100_0300_training.out.$(Process)
+error = cluster_logs/GW170104_0100_0300_training.err.$(Process)
+log = cluster_logs/GW170104_0100_0300_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_training.h5 --output-file=training_GW170104_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW170104_0250_0500_training.out.$(Process)
+error = cluster_logs/GW170104_0250_0500_training.err.$(Process)
+log = cluster_logs/GW170104_0250_0500_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_training.h5 --output-file=training_GW170104_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW170104_0400_0800_training.out.$(Process)
+error = cluster_logs/GW170104_0400_0800_training.err.$(Process)
+log = cluster_logs/GW170104_0400_0800_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_training.h5 --output-file=training_GW170104_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW170104_0700_1200_training.out.$(Process)
+error = cluster_logs/GW170104_0700_1200_training.err.$(Process)
+log = cluster_logs/GW170104_0700_1200_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_training.h5 --output-file=training_GW170104_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW170104_1000_1700_training.out.$(Process)
+error = cluster_logs/GW170104_1000_1700_training.err.$(Process)
+log = cluster_logs/GW170104_1000_1700_training.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_training.h5 --output-file=training_GW170104_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=training"
+queue
+
+output = cluster_logs/GW150914_0100_0300_testing.out.$(Process)
+error = cluster_logs/GW150914_0100_0300_testing.err.$(Process)
+log = cluster_logs/GW150914_0100_0300_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_testing.h5 --output-file=testing_GW150914_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW150914_0250_0500_testing.out.$(Process)
+error = cluster_logs/GW150914_0250_0500_testing.err.$(Process)
+log = cluster_logs/GW150914_0250_0500_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_testing.h5 --output-file=testing_GW150914_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW150914_0400_0800_testing.out.$(Process)
+error = cluster_logs/GW150914_0400_0800_testing.err.$(Process)
+log = cluster_logs/GW150914_0400_0800_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_testing.h5 --output-file=testing_GW150914_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW150914_0700_1200_testing.out.$(Process)
+error = cluster_logs/GW150914_0700_1200_testing.err.$(Process)
+log = cluster_logs/GW150914_0700_1200_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_testing.h5 --output-file=testing_GW150914_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW150914_1000_1700_testing.out.$(Process)
+error = cluster_logs/GW150914_1000_1700_testing.err.$(Process)
+log = cluster_logs/GW150914_1000_1700_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_testing.h5 --output-file=testing_GW150914_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW150914 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW151226_0100_0300_testing.out.$(Process)
+error = cluster_logs/GW151226_0100_0300_testing.err.$(Process)
+log = cluster_logs/GW151226_0100_0300_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_testing.h5 --output-file=testing_GW151226_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW151226_0250_0500_testing.out.$(Process)
+error = cluster_logs/GW151226_0250_0500_testing.err.$(Process)
+log = cluster_logs/GW151226_0250_0500_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_testing.h5 --output-file=testing_GW151226_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW151226_0400_0800_testing.out.$(Process)
+error = cluster_logs/GW151226_0400_0800_testing.err.$(Process)
+log = cluster_logs/GW151226_0400_0800_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_testing.h5 --output-file=testing_GW151226_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW151226_0700_1200_testing.out.$(Process)
+error = cluster_logs/GW151226_0700_1200_testing.err.$(Process)
+log = cluster_logs/GW151226_0700_1200_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_testing.h5 --output-file=testing_GW151226_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW151226_1000_1700_testing.out.$(Process)
+error = cluster_logs/GW151226_1000_1700_testing.err.$(Process)
+log = cluster_logs/GW151226_1000_1700_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_testing.h5 --output-file=testing_GW151226_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW151226 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW170104_0100_0300_testing.out.$(Process)
+error = cluster_logs/GW170104_0100_0300_testing.err.$(Process)
+log = cluster_logs/GW170104_0100_0300_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0100_0300_testing.h5 --output-file=testing_GW170104_0100_0300_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW170104_0250_0500_testing.out.$(Process)
+error = cluster_logs/GW170104_0250_0500_testing.err.$(Process)
+log = cluster_logs/GW170104_0250_0500_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0250_0500_testing.h5 --output-file=testing_GW170104_0250_0500_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW170104_0400_0800_testing.out.$(Process)
+error = cluster_logs/GW170104_0400_0800_testing.err.$(Process)
+log = cluster_logs/GW170104_0400_0800_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0400_0800_testing.h5 --output-file=testing_GW170104_0400_0800_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW170104_0700_1200_testing.out.$(Process)
+error = cluster_logs/GW170104_0700_1200_testing.err.$(Process)
+log = cluster_logs/GW170104_0700_1200_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_0700_1200_testing.h5 --output-file=testing_GW170104_0700_1200_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=testing"
+queue
+
+output = cluster_logs/GW170104_1000_1700_testing.out.$(Process)
+error = cluster_logs/GW170104_1000_1700_testing.err.$(Process)
+log = cluster_logs/GW170104_1000_1700_testing.log.$(Process)
+arguments = "generate_samples.py --n-samples=4096 --sample-length=12 --sampling-rate=4096 --max-n-injections=2 --loudness=1.0 --pad=3.0 --data-path=../data/ --waveforms-file=waveforms_3s_1000_1700_testing.h5 --output-file=testing_GW170104_1000_1700_4k_FWHM.h5 --noise-type=real --strain-file=GW170104 --sample-type=timeseries --use-type=testing"
+queue
+
