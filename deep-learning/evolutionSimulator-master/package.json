@@ -1,0 +1,24 @@
+{
+  "name": "EvolutionSimulator",
+  "version": "1.0.0",
+  "description": "- [x] Neural Network\r - [x] Genetic Algorithm\r - [x] Physics Environment",
+  "main": "sketch.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "docs": "jsdoc Models Environments NeuroEvolution -d Docs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adityathebe/evolutionSimulator.git"
+  },
+  "keywords": [],
+  "author": "Aditya Thebe <contact@adityathebe.com> (https://www.adityathebe.com)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/adityathebe/evolutionSimulator/issues"
+  },
+  "homepage": "https://github.com/adityathebe/evolutionSimulator#readme"
+}
