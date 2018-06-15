@@ -58,3 +58,7 @@ target/
 
 # Repo scratch directory
 scratch/
+.DS_Store
+deep-learning/.DS_Store
+.DS_Store
+deep-learning/.DS_Store
