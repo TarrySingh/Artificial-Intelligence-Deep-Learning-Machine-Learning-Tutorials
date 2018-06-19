@@ -1,0 +1,40 @@
+# Configuration related to a specific model.
+# For syntax see: https://github.com/toml-lang/toml#table-of-contents
+
+
+# Model specific common attributes.
+[common]
+
+  # The model to use. Depending on the model different attributes might be available.
+  model      = 'unet'
+
+  # Use CUDA for GPU acceleration.
+  cuda       = true
+
+  # Batch size for training.
+  batch_size = 2
+
+  # Image side size in pixels.
+  image_size = 512
+
+  # Directory where to save checkpoints to during training.
+  checkpoint = '/tmp/pth/'
+
+
+# Model specific optimization parameters.
+[opt]
+
+  # Total number of epochs to train for.
+  epochs     = 10
+
+  # Learning rate for the optimizer.
+  lr         = 0.001
+
+  # Momentum for the optimizer.
+  momentum   = 0.99
+
+  # Epochs at which to reduce the learning rate.
+  milestones = [3, 5, 7]
+
+  # Multiplicative factor for learning rate decay at milestones.
+  gamma      = 0.1

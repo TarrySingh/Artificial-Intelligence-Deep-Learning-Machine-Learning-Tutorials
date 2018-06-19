@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset='utf-8' />
+  <title>Robosat</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.js'></script>
+  <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.45.0/mapbox-gl.css' rel='stylesheet' />
+  <style>
+      body { margin:0; padding:0; }
+      #map { position:absolute; top:0; bottom:0; width:100%; }
+  </style>
+</head>
+<body>
+
+<style>
+body {
+    overflow: hidden;
+}
+
+body * {
+   -webkit-touch-callout: none;
+     -webkit-user-select: none;
+        -moz-user-select: none;
+         -ms-user-select: none;
+             user-select: none;
+}
+
+.map {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 100%;
+}
+</style>
+
+<script src='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.1.0/mapbox-gl-compare.js'></script>
+<link rel='stylesheet' href='https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-compare/v0.1.0/mapbox-gl-compare.css' type='text/css' />
+
+<div id='before' class='map'></div>
+<div id='after' class='map'></div>
+
+<script>
+mapboxgl.accessToken = '{{ token }}';
+
+var beforeMap = new mapboxgl.Map({
+  container: 'before',
+  center: [-84.37, 33.75],
+  zoom: 18,
+  minZoom: 5,
+  maxZoom: 20,
+  hash: true,
+  style: 'mapbox://styles/mapbox/satellite-v9'
+});
+
+var afterMap = new mapboxgl.Map({
+  container: 'after',
+  center: [-84.37, 33.75],
+  zoom: 18,
+  minZoom: 5,
+  maxZoom: 20,
+  hash: true,
+  style: 'mapbox://styles/mapbox/satellite-v9'
+});
+
+var map = new mapboxgl.Compare(beforeMap, afterMap, {});
+
+afterMap.on('load', function() {
+  afterMap.addLayer({
+    'id': 'robosat',
+    'type': 'raster',
+    'source': {
+      'type': 'raster',
+      'tiles': [ 'http://127.0.0.1:5000/{z}/{x}/{y}.png' ],
+      'tileSize': {{ size }}
+    }
+  });
+
+  afterMap.setPaintProperty('robosat', 'raster-opacity', 0.6);
+});
+</script>
+
+</body>
+</html>

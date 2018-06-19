@@ -1,0 +1,29 @@
+# Configuration related to a specific dataset.
+# For syntax see: https://github.com/toml-lang/toml#table-of-contents
+
+
+# Dataset specific common attributes.
+[common]
+
+  # The slippy map dataset's base directory.
+  dataset = '/tmp/slippy-map-dir/'
+
+  # Human representation for classes.
+  classes = ['background', 'parking']
+
+  # Color map for visualization and representing classes in masks.
+  # Note: available colors can be found in `robosat/colors.py`
+  colors  = ['denim', 'orange']
+
+
+# Dataset specific statistics computes on the training data.
+# Note: use `./rs stats -h` to compute these for new datasets.
+[stats]
+  mean = [0.457217, 0.449255, 0.434162]
+  std  = [0.248181, 0.228792, 0.208435]
+
+
+# Dataset specific class weights computes on the training data.
+# Note: use `./rs weights -h` to compute these for new datasets.
+[weights]
+  values = [1.6248, 5.762827]
