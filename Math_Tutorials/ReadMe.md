@@ -120,12 +120,6 @@ We'll keep reorganizing it and bring more cool stuff like SymPy, Numpy etc here 
 
 * [Basic Concepts of Mathematics](http://www.trillia.com/zakon1.html) - Elias Zakon
 
-## Foundations of Machine Learning
-
-* [Math of Intelligence](https://www.youtube.com/playlist?list=PL2-dafEMk2A7mu0bSksCGMJEmeddU_H4D) - Siraj Raval
-* [Deep Learning](https://www.youtube.com/watch?v=vOppzHpvTiQ&t=1s) - Siraj Raval
-
-
 ### Set Theory
 
 * [Sets, Relations, Functions](http://www.cosc.brocku.ca/~duentsch/papers/methprimer1.html) - Ivo Düntsch, Günther Gediga
