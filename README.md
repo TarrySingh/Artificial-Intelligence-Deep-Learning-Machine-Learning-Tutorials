@@ -54,10 +54,17 @@ IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demo
 
 Additional PyRo tutorials:
 
-* [pyro-examples](http://pyro.ai/examples/)
-* [pyro-examples](http://pyro.ai/examples/)
-* [pyro-examples](http://pyro.ai/examples/)
-* [pyro-examples](http://pyro.ai/examples/)
+* [pyro-examples/full examples](http://pyro.ai/examples/)
+* [pyro-examples/Variational Autoencoders](http://pyro.ai/examples/vae.html)
+* [pyro-examples/Bayesian Regression](http://pyro.ai/examples/bayesian_regression.html)
+* [pyro-examples/Deep Markov Model](http://pyro.ai/examples/dmm.html)
+* [pyro-examples/AIR(Attend Infer Repeat)](http://pyro.ai/examples/air.html)
+* [pyro-examples/Semi-Supervised VE](http://pyro.ai/examples/ss-vae.html)
+* [pyro-examples/GMM](http://pyro.ai/examples/gmm.html)
+* [pyro-examples/Gaussian Process](http://pyro.ai/examples/gp.html)
+* [pyro-examples/Bayesian Optimization](http://pyro.ai/examples/bo.html)
+* [Full Pyro Code](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/upload/master/deep-learning/UBER-pyro)
+
 
 
 ### netflix-vectorflow-tutorials
