@@ -14,6 +14,7 @@ Finally, it is **YOUR** help I will seek to make it more useful and less boring,
 ## Index
 
 * [deep-learning](#deep-learning)
+   * [UBER | Pyro](#uber-pyro-probabalistic-tutorials)
    * [Netflix | VectorFlow](#netflix-vectorflow-tutorials)
    * [PyTorch](#pytorch-tutorials)
    * [tensorflow](#tensor-flow-tutorials)
@@ -45,6 +46,18 @@ Finally, it is **YOUR** help I will seek to make it more useful and less boring,
 ## deep-learning
 
 IPython Notebook(s) and other programming tools such as Torch/Lua/D lang in demonstrating deep learning functionality.
+
+### uber-pyro-probabalistic-tutorials
+<p align="center">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/pyro.png">
+</p>
+
+Additional PyRo tutorials:
+
+* [pyro-examples](http://pyro.ai/examples/)
+* [pyro-examples](http://pyro.ai/examples/)
+* [pyro-examples](http://pyro.ai/examples/)
+* [pyro-examples](http://pyro.ai/examples/)
 
 
 ### netflix-vectorflow-tutorials
