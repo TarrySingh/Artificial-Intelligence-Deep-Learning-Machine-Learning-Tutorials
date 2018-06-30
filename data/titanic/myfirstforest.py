@@ -5,6 +5,7 @@ Revised: 15 April 2014
 please see packages.python.org/milk/randomforests.html for more
 
 """ 
+from __future__ import print_function
 import pandas as pd
 import numpy as np
 import csv as csv
@@ -81,11 +82,11 @@ train_data = train_df.values
 test_data = test_df.values
 
 
-print 'Training...'
+print('Training...')
 forest = RandomForestClassifier(n_estimators=100)
 forest = forest.fit( train_data[0::,1::], train_data[0::,0] )
 
-print 'Predicting...'
+print('Predicting...')
 output = forest.predict(test_data).astype(int)
 
 
@@ -94,4 +95,4 @@ open_file_object = csv.writer(predictions_file)
 open_file_object.writerow(["PassengerId","Survived"])
 open_file_object.writerows(zip(ids, output))
 predictions_file.close()
-print 'Done.'
+print('Done.')

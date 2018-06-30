@@ -34,6 +34,11 @@ import collections
 import tensorflow as tf
 from models.layers import layers
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 TowerResult = collections.namedtuple('TowerResult', ('inferred', 'almost',
                                                      'correct', 'grads'))
 JoinedResult = collections.namedtuple('JoinedResult', ('summary', 'train_op',

@@ -1,3 +1,4 @@
+from __future__ import print_function
 
 # coding: utf-8
 
@@ -190,9 +191,9 @@ dt = time[1] - time[0]
 
 # Let's look at the data and print out some stuff:
 
-print('time_H1: len, min, mean, max = ',     len(time_H1), time_H1.min(), time_H1.mean(), time_H1.max() )
-print('strain_H1: len, min, mean, max = ',     len(strain_H1), strain_H1.min(),strain_H1.mean(),strain_H1.max())
-print( 'strain_L1: len, min, mean, max = ',     len(strain_L1), strain_L1.min(),strain_L1.mean(),strain_L1.max())
+print(('time_H1: len, min, mean, max = ',     len(time_H1), time_H1.min(), time_H1.mean(), time_H1.max() ))
+print(('strain_H1: len, min, mean, max = ',     len(strain_H1), strain_H1.min(),strain_H1.mean(),strain_H1.max()))
+print(( 'strain_L1: len, min, mean, max = ',     len(strain_L1), strain_L1.min(),strain_L1.mean(),strain_L1.max()))
 
 #What's in chan_dict?  (See also https://losc.ligo.org/tutorials/)
 bits = chan_dict_H1['DATA']
@@ -925,33 +926,33 @@ if data_segments:
         print(keys)
         print(values)
 
-    print('Total number of non-NaNs in these data = ',np.sum(~np.isnan(strain)))
-    print('GPS start, GPS stop and length of  all data in this file = ',time[0], time[-1],len(strain))
+    print(('Total number of non-NaNs in these data = ',np.sum(~np.isnan(strain))))
+    print(('GPS start, GPS stop and length of  all data in this file = ',time[0], time[-1],len(strain)))
 
     # select the level of data quality; default is "DATA" but "CBC_CAT3" is a conservative choice:
     DQflag = 'CBC_CAT3'
     # readligo.py method for computing segments (start and stop times with continuous valid data):
     segment_list = rl.dq_channel_to_seglist(chan_dict[DQflag])
-    print('Number of segments with DQflag',DQflag,' = ',len(segment_list))
+    print(('Number of segments with DQflag',DQflag,' = ',len(segment_list)))
 
     # loop over seconds and print out start, stop and length:
     iseg = 0
     for segment in segment_list:
         time_seg = time[segment]
         seg_strain = strain[segment]
-        print('GPS start, GPS stop and length of segment',iseg,             'in this file = ',time_seg[0], time_seg[-1], len(seg_strain))
+        print(('GPS start, GPS stop and length of segment',iseg,             'in this file = ',time_seg[0], time_seg[-1], len(seg_strain)))
         iseg = iseg+1
         # here is where you would insert code to analyze the data in this segment.
 
     # now look at segments with no CBC hardware injections:
     DQflag = 'NO_CBC_HW_INJ'
     segment_list = rl.dq_channel_to_seglist(chan_dict['NO_CBC_HW_INJ'])
-    print('Number of segments with DQflag',DQflag,' = ',len(segment_list))
+    print(('Number of segments with DQflag',DQflag,' = ',len(segment_list)))
     iseg = 0
     for segment in segment_list:
         time_seg = time[segment]
         seg_strain = strain[segment]
-        print('GPS start, GPS stop and length of segment',iseg,             'in this file = ',time_seg[0], time_seg[-1], len(seg_strain))
+        print(('GPS start, GPS stop and length of segment',iseg,             'in this file = ',time_seg[0], time_seg[-1], len(seg_strain)))
         iseg = iseg+1
 
 

@@ -1,6 +1,7 @@
 """
 Simple tester for the vgg19_trainable
 """
+from __future__ import print_function
 
 import tensorflow as tf
 

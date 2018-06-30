@@ -1,8 +1,10 @@
+from __future__ import print_function
+from __future__ import absolute_import
 import os
 import scipy
 import numpy as np
 import tensorflow as tf
-from config import cfg
+from .config import cfg
 
 
 def load_mnist(path, is_training):

@@ -1,3 +1,6 @@
+from __future__ import print_function
+import datetime
+import random
 from forjar import *
 from scipy.stats import bernoulli
 
@@ -19,21 +22,21 @@ Each of these campaigns are represenative of a cohort.
 
 From here we would need to do cohort analysis, calculate ELV of user, do cost benefit analysis
 
-on matrices. 
+on matrices.
 
 
 """
 class Users(Base):
     __tablename__ = 'Users'
     id = Column(Integer, primary_key=True)
-    date  = Column(DateTime, default=datetime.datetime.utcnow)
+    date = Column(DateTime, default=datetime.datetime.utcnow)
     Campaign_ID = Column(String(40))
     Created_Date  = Column(DateTime, default=datetime.datetime.utcnow)
 
     def forge(self, session, basetime, date, **kwargs):
         self.Campaign_ID = random.choice(['FB','TW','RE','PI'])
         self.Created_Date = date
-        
+
     period = DAY
     @classmethod
     def ntimes(self, i, time):
@@ -62,7 +65,7 @@ class Referral(Base):
 
     @classmethod
     def ntimes(self, i, time):
-    	return 5*pow(1.005, i)
+        return 5*pow(1.005, i)
 
     variance = ntimes
 
@@ -88,12 +91,12 @@ class Visit(Base):
 
     @classmethod
     def ntimes(self, i, time):
-    	return 5*pow(1.005, i)
+        return 5*pow(1.005, i)
 
     variance = ntimes
 
 """
-Meals are of different types. The idea here would be that 
+Meals are of different types. The idea here would be that
 different kinds of users may like or buy different kinds of meals on the site.
 For brevity, the types will be restricted to categories.
 """
@@ -116,12 +119,12 @@ class Meal(Base):
             'vietnamese'
         ])
         self.price = random.randint(5, 15)
-        
-	period = DAY
+
+    period = DAY
     @classmethod
     def ntimes(self, i, time):
-    	return 5*pow(1.005, i)
-    
+        return 5*pow(1.005, i)
+
     variance = ntimes
 
 """
@@ -164,15 +167,15 @@ class Event(Base):
              should_gen = 1
              if should_gen >= 1:
                 self.Type = 'bought'
-         
-         print 'Campaign ' + user.Campaign_ID + ' with ' + self.Type
+
+         print('Campaign ' + user.Campaign_ID + ' with ' + self.Type)
          self.Meal_Id = get_random(Meal,session=session,basetime=basetime)
-         
+
     period = DAY
     @classmethod
     def ntimes(self, i, time):
-    	return 5*pow(1.001, i)
-    
+        return 5*pow(1.001, i)
+
     variance = ntimes
 
 

@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 
 from StringIO import StringIO
 import unittest2 as unittest
-from mr_s3_log_parser import MrS3LogParser
+from .mr_s3_log_parser import MrS3LogParser
 
 
 class MrTestsUtil:

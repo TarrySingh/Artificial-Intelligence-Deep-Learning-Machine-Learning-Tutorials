@@ -85,7 +85,7 @@ def main(_):
   # Run inference.
   predict_input_fn = _get_predict_input_fn(36, FLAGS.noise_dims)
   prediction_iterable = gan_estimator.predict(predict_input_fn)
-  predictions = [prediction_iterable.next() for _ in xrange(36)]
+  predictions = [next(prediction_iterable) for _ in xrange(36)]
 
   # Nicely tile.
   image_rows = [np.concatenate(predictions[i:i+6], axis=0) for i in

@@ -4,13 +4,14 @@ Date : 18 September 2012
 Revised: 28 March 2014
 
 """
+from __future__ import print_function
 
 
 import csv as csv
 import numpy as np
 
 csv_file_object = csv.reader(open('train.csv', 'rb')) 	# Load in the csv file
-header = csv_file_object.next() 						# Skip the fist line as it is a header
+header = next(csv_file_object) 						# Skip the fist line as it is a header
 data=[] 												# Create a variable to hold the data
 
 for row in csv_file_object: 							# Skip through each row in the csv file,
@@ -44,8 +45,8 @@ men_onboard = data[men_only_stats,1].astype(np.float)
 proportion_women_survived = np.sum(women_onboard) / np.size(women_onboard)
 proportion_men_survived = np.sum(men_onboard) / np.size(men_onboard)
 
-print 'Proportion of women who survived is %s' % proportion_women_survived
-print 'Proportion of men who survived is %s' % proportion_men_survived
+print('Proportion of women who survived is %s' % proportion_women_survived)
+print('Proportion of men who survived is %s' % proportion_men_survived)
 
 # Now that I have my indicator that women were much more likely to survive,
 # I am done with the training set.
@@ -56,7 +57,7 @@ print 'Proportion of men who survived is %s' % proportion_men_survived
 # First, read in test.csv
 test_file = open('test.csv', 'rb')
 test_file_object = csv.reader(test_file)
-header = test_file_object.next()
+header = next(test_file_object)
 
 # Also open the a new file so I can write to it. Call it something descriptive
 # Finally, loop through each row in the train file, and look in column index [3] (which is 'Sex')

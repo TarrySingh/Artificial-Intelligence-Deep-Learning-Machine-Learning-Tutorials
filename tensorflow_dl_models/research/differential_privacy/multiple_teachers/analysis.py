@@ -38,6 +38,7 @@ python analysis.py
   --max_examples=1000
   --delta=1e-6
 """
+from __future__ import print_function
 import os
 import math
 import numpy as np

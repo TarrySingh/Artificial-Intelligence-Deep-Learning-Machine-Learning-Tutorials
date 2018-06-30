@@ -24,6 +24,7 @@ $ python real_nvp_multiscale_dataset.py \
 """
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 import time
 from datetime import datetime
@@ -35,7 +36,7 @@ import tensorflow as tf
 
 from tensorflow import gfile
 
-from real_nvp_utils import (
+from .real_nvp_utils import (
     batch_norm, batch_norm_log_diff, conv_layer,
     squeeze_2x2, squeeze_2x2_ordered, standard_normal_ll,
     standard_normal_sample, unsqueeze_2x2, variable_on_cpu)

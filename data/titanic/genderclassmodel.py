@@ -5,12 +5,16 @@ Revised : 28 March 2014
 
 """
 
-
 import csv as csv
 import numpy as np
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 csv_file_object = csv.reader(open('train.csv', 'rb'))       # Load in the csv file
-header = csv_file_object.next()                             # Skip the fist line as it is a header
+header = next(csv_file_object)                             # Skip the fist line as it is a header
 data=[]                                                     # Create a variable to hold the data
 
 for row in csv_file_object:                 # Skip through each row in the csv file
@@ -72,7 +76,7 @@ survival_table[ survival_table >= 0.5 ] = 1
 # First read in test
 test_file = open('test.csv', 'rb')
 test_file_object = csv.reader(test_file)
-header = test_file_object.next()
+header = next(test_file_object)
 
 # Also open the a new file so I can write to it. 
 predictions_file = open("genderclassmodel.csv", "wb")

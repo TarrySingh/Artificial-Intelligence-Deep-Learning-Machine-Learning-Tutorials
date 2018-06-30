@@ -14,11 +14,12 @@
 # ==============================================================================
 
 """Tests for mnist_input_record."""
+from __future__ import absolute_import
 
 import numpy as np
 import tensorflow as tf
 
-import mnist_input_record
+from . import mnist_input_record
 
 MNIST_MULTI_TRAIN_FILE = 'multitrain_4shifted_mnist.tfrecords@3'
 MNIST_MULTI_TEST_FILE = 'multitest_4shifted_mnist.tfrecords@2'

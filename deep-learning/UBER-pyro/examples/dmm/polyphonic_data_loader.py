@@ -12,6 +12,7 @@ Polyphonic Music Generation and Transcription"
 however, the original source of the data seems to be the Institut fuer Algorithmen
 und Kognitive Systeme at Universitaet Karlsruhe.
 """
+from __future__ import print_function
 
 from os.path import exists, join
 

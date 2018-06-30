@@ -15,6 +15,7 @@ Result:
     
 Author: Xifeng Guo, E-mail: `guoxifeng1990@163.com`, Github: `https://github.com/XifengGuo/CapsNet-Keras`
 """
+from __future__ import print_function
 
 from keras import layers, models, optimizers
 from keras import backend as K
@@ -108,7 +109,7 @@ def train(model, data, args):
                                            height_shift_range=shift_fraction)  # shift up to 2 pixel for MNIST
         generator = train_datagen.flow(x, y, batch_size=batch_size)
         while 1:
-            x_batch, y_batch = generator.next()
+            x_batch, y_batch = next(generator)
             yield ([x_batch, y_batch], [y_batch, x_batch])
 
     # Training with data augmentation. If shift_fraction=0., also no augmentation.
@@ -132,7 +133,7 @@ def test(model, data):
     x_test, y_test = data
     y_pred, x_recon = model.predict([x_test, y_test], batch_size=100)
     print('-'*50)
-    print('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0])
+    print(('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0]))
 
     import matplotlib.pyplot as plt
     from networks.capsulenet.helper_function import combine_images

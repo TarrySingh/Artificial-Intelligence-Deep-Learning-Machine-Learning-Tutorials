@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """A program to generate ASCII trees from conll files."""
+from __future__ import print_function
 
 import collections
 import re

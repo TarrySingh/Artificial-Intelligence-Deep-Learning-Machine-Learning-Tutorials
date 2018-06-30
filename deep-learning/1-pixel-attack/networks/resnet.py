@@ -1,3 +1,4 @@
+from __future__ import print_function
 import keras
 import numpy as np
 from keras.datasets import cifar10
@@ -29,9 +30,9 @@ class ResNet:
         if load_weights:
             try:
                 self._model = load_model(self.model_filename)
-                print('Successfully loaded', self.name)
+                print(('Successfully loaded', self.name))
             except (ImportError, ValueError, OSError):
-                print('Failed to load', self.name)
+                print(('Failed to load', self.name))
     
     def count_params(self):
         return self._model.count_params()

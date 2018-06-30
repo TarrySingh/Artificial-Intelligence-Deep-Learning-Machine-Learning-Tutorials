@@ -1,3 +1,4 @@
+from __future__ import print_function
 from keras.utils import to_categorical
 import numpy as np
 
@@ -21,9 +22,9 @@ class CapsNet:
         if load_weights:
             try:
                 self._model.load_weights(self.model_filename)
-                print('Successfully loaded', self.name)
+                print(('Successfully loaded', self.name))
             except (ImportError, ValueError, OSError):
-                print('Failed to load', self.name)
+                print(('Failed to load', self.name))
 
     def count_params(self):
         return self._model.count_params()

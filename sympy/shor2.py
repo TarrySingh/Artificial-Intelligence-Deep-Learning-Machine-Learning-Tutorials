@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 """shors.py: Shor's algorithm for quantum integer factorization"""
+from __future__ import print_function
 
 import math
 import random

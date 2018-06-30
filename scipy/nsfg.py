@@ -6,12 +6,13 @@ License: GNU GPLv3 http://www.gnu.org/licenses/gpl.html
 """
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 from collections import defaultdict
 import numpy as np
 import sys
 
-import thinkstats2
+from . import thinkstats2
 
 
 def ReadFemPreg(dct_file='2002FemPreg.dct',

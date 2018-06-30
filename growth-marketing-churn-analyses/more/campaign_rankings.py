@@ -1,3 +1,4 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -29,8 +30,8 @@ transform_column(user_df,'Users_Campaign_ID',campaign_to_num.get)
 
 q = session.query(Users.Campaign_ID,Event.Type,Users.id,Event.User_Id)
 d = query_to_df(session,q)
-print d
+print(d)
 #print d.sort('Users_id')
 grouped = d.groupby(['Users_Campaign_ID','Event_Type'])
-print grouped.agg({'Event_Type' : np.count_nonzero}).sort('Event_Type')
+print(grouped.agg({'Event_Type' : np.count_nonzero}).sort('Event_Type'))
 

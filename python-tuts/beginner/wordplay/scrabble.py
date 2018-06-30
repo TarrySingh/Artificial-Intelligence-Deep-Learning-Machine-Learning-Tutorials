@@ -1,3 +1,4 @@
+from __future__ import print_function
 word_list = 'sowpods.txt'
 wordlist = open(word_list).readlines()
 # Get rid of new lines

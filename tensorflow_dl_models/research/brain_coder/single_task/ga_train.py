@@ -154,7 +154,7 @@ def run_training(config=None, tuner=None, logdir=None, trial_name=None,  # pylin
     logging.info('Max samples per rep: %d', FLAGS.max_npe)
     logging.info('Max generations per rep: %d', max_generations)
   else:
-    max_generations = sys.maxint
+    max_generations = sys.maxsize
     logging.info('Running unlimited generations.')
 
   assert FLAGS.num_workers > 0

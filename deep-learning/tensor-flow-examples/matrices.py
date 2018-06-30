@@ -1,3 +1,4 @@
+from __future__ import print_function
 import tensorflow as tf
 import numpy as np
 sess = tf.Session()
@@ -29,6 +30,6 @@ t1 = tf.convert_to_tensor(m1, dtype=tf.float32)
 t2 = tf.convert_to_tensor(m2, dtype=tf.float32)
 t3 = tf.convert_to_tensor(m3, dtype=tf.float32)
 
-print('Type t1 is:', type(t1))
-print('Type t2 is:', type(t1))
-print('Type t3 is:', type(t1))
+print(('Type t1 is:', type(t1)))
+print(('Type t2 is:', type(t1)))
+print(('Type t3 is:', type(t1)))

@@ -47,7 +47,7 @@ class LookAheadIterator(object):
 
   def _preload_next(self):
     try:
-      self._current_element = self._it.next()
+      self._current_element = next(self._it)
     except StopIteration:
       self._done = True
 

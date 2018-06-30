@@ -1,3 +1,4 @@
+from __future__ import print_function
 import random
 
 
@@ -34,17 +35,17 @@ def main():
         choice = random.choice(state_capitals.keys())
         correct_answer = state_capitals.get(choice)
 
-    print("What is the capital city of", choice, "?")
+    print(("What is the capital city of", choice, "?"))
     answer = input("# ")
     if answer.lower() == correct_answer.lower():
         print("That's Correct!\n")
         del state_capitals[choice]
     else:
         print("That's Incorrect.")
-        print("The correct answer is: ", correct_answer)
+        print(("The correct answer is: ", correct_answer))
         incorrect_answers.append(choice)
 
-    print("You missed", len(incorrect_answers), "states.\n")
+    print(("You missed", len(incorrect_answers), "states.\n"))
 
     if incorrect_answers:
         print("here's the ones that you may want to brush up on:\n")

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -42,7 +43,7 @@ We need to calculate the number of months each user stays
 df_user = df[['Meal_price','Event_date','Users_id']].groupby(['Users_id',df.Event_date.map(lambda x: (x.year,x.month)),df.Users_date.map(lambda x: (x.year,x.month))]).aggregate(np.mean)
 
 
-print df_user.reset_index()
+print(df_user.reset_index())
 
 #df['Event_date'] = pd.to_datetime(df['Event_date'])
 

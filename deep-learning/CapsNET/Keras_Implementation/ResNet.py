@@ -2,6 +2,8 @@
     Written by @raghakot
     Original repo: https://github.com/raghakot/keras-resnet
 '''
+from __future__ import print_function
+from __future__ import absolute_import
 import six
 from keras.models import Model
 from keras.layers import (
@@ -19,7 +21,7 @@ from keras.layers.merge import add
 from keras.layers.normalization import BatchNormalization
 from keras.regularizers import l2
 from keras import backend as K
-from utils.helper_function import load_cifar_10,load_cifar_100
+from .utils.helper_function import load_cifar_10,load_cifar_100
 import numpy as np
 
 
@@ -297,9 +299,9 @@ def train(epochs=150,batch_size=32,mode=1):
                 optimizer=opt,
                 metrics=['accuracy'])
 
-    print('x_train shape:', x_train.shape)
-    print(x_train.shape[0], 'train samples')
-    print(x_test.shape[0], 'test samples')
+    print(('x_train shape:', x_train.shape))
+    print((x_train.shape[0], 'train samples'))
+    print((x_test.shape[0], 'test samples'))
 
     model.summary()
     log = callbacks.CSVLogger('results/resnet-cifar-'+str(num_classes)+'-log.csv')

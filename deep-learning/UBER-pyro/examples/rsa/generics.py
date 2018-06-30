@@ -5,6 +5,7 @@ Taken from:
 [0] http://forestdb.org/models/generics.html
 [1] https://gscontras.github.io/probLang/chapters/07-generics.html
 """
+from __future__ import print_function
 
 import torch
 
@@ -138,7 +139,7 @@ def main(args):
 
     for name, listener in listeners.items():
         for elt in listener.enumerate_support():
-            print(name, elt, listener.log_prob(elt).exp().item())
+            print((name, elt, listener.log_prob(elt).exp().item()))
 
     # truth judgments
     malariaSpeaker = speaker2(0.1, carriesMalariaERP)
@@ -150,7 +151,7 @@ def main(args):
 
     for name, speaker in speakers.items():
         for elt in speaker.enumerate_support():
-            print(name, elt, speaker.log_prob(elt).exp().item())
+            print((name, elt, speaker.log_prob(elt).exp().item()))
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -38,12 +39,12 @@ This is a way of showing how to aggregate by campaign ids.
 """
 df = query_to_df(session,q)
 
-print df
+print(df)
 
 transform_column(df,'Event_Type',event_to_num.get)
 transform_column(df,'Users_Campaign_ID',campaign_to_num.get)
 transform_column(df,'Meal_Type',meal_to_num.get)
-print df
+print(df)
 """
 Prediction scores.
 

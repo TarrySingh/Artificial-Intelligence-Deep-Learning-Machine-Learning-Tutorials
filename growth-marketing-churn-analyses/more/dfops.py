@@ -1,3 +1,4 @@
+from __future__ import print_function
 from util import query_to_df,vectorize
 from churndata import *
 from sqlalchemy import *
@@ -52,7 +53,7 @@ def user_activity_in_last_k_days(threshold):
     df = df.drop('Users_Campaign_ID',axis=1)
     df['churned'] = df['visit_date'].apply(lambda x : x < days)
     df = df.reset_index()
-    print type(df)
+    print(type(df))
     return df
 
 def user_visited_in_last_k_days(threshold):
@@ -67,7 +68,7 @@ def user_visited_in_last_k_days(threshold):
     df = df.drop('Users_Campaign_ID',axis=1)
     df['churned'] = df['visit_date'].apply(lambda x : x < days)
     df = df.reset_index()
-    print type(df)
+    print(type(df))
     return df
 
 
@@ -95,7 +96,7 @@ def return_id(group):
 df['Event_date'] =  df.Event_date.apply(is_last_90_days)
 df = df.drop(['Event_id','Event_User_Id','Users_Created_Date','Event_Meal_Id'],1)
 df = df.groupby(['Users_id'])['Event_date'].aggregate(np.sum).reset_index()
-print df
+print(df)
 #groups = df.groupby(['Users_id','Event_Type','Event_date']).unique()
 #print groups
 #print groups.sort('Users_id')

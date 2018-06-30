@@ -970,7 +970,7 @@ class LMAgent(object):
         # is in the buffer.
         on_policy_weights = [0] * num_programs_from_policy
         for i, cs in enumerate(code_strings):
-          if self.experience_replay.has_key(cs):
+          if cs in self.experience_replay:
             on_policy_weights[i] = self.experience_replay.get_weight(cs)
 
       # Randomly select on-policy or off policy episodes to train on.

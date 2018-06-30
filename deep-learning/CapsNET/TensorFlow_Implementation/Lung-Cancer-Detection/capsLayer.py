@@ -3,11 +3,12 @@ License: Apache-2.0
 Author: Huadong Liao
 E-mail: naturomics.liao@gmail.com
 """
+from __future__ import absolute_import
 
 import numpy as np
 import tensorflow as tf
 
-from config import cfg
+from .config import cfg
 
 
 epsilon = 1e-9

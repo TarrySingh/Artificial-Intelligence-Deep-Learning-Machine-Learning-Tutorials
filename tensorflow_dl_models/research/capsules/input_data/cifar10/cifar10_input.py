@@ -28,6 +28,11 @@ import os
 
 import tensorflow as tf
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 
 def _read_input(filename_queue):
   """Reads a single record and converts it to a tensor.

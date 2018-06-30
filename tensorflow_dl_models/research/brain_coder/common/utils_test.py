@@ -320,9 +320,9 @@ class UtilsTest(tf.test.TestCase):
     with self.assertRaises(ValueError):
       # Keys not given.
       r.add_many([[7, 8, 9], [10]], [2.0, 2.0])
-    self.assertEqual(True, r.has_key('a'))
-    self.assertEqual(True, r.has_key('b'))
-    self.assertEqual(False, r.has_key('z'))
+    self.assertEqual(True, 'a' in r)
+    self.assertEqual(True, 'b' in r)
+    self.assertEqual(False, 'z' in r)
     self.assertEqual(1.0, r.get_weight('a'))
     self.assertEqual(0.5, r.get_weight('b'))
 

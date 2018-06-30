@@ -1,3 +1,4 @@
+from __future__ import print_function
 from keras.layers import (
     Input,
     Conv2D,
@@ -121,9 +122,9 @@ def train(epochs=50,batch_size=64,mode=1):
     model = CapsNetv1(input_shape=[32, 32, 3],
                         n_class=num_classes,
                         n_route=3)
-    print('x_train shape:', x_train.shape)
-    print(x_train.shape[0], 'train samples')
-    print(x_test.shape[0], 'test samples')
+    print(('x_train shape:', x_train.shape))
+    print((x_train.shape[0], 'train samples'))
+    print((x_test.shape[0], 'test samples'))
 
     model.summary()
     log = callbacks.CSVLogger('networks/models/results/capsule-cifar-'+str(num_classes)+'-log.csv')
@@ -172,7 +173,7 @@ def test(epoch, mode=1):
     y_pred, x_recon = model.predict([x_test, y_test], batch_size=100)
     print('-'*50)
     # Test acc: 0.7307
-    print('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0])
+    print(('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0]))
 
     img = combine_images(np.concatenate([x_test[:50],x_recon[:50]]))
     image = img*255

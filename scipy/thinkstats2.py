@@ -20,6 +20,7 @@ Cdf: represents a discrete cumulative distribution function
 Pdf: represents a continuous probability density function
 
 """
+from __future__ import absolute_import
 
 import bisect
 import copy
@@ -31,7 +32,7 @@ import re
 from collections import Counter
 from operator import itemgetter
 
-import thinkplot
+from . import thinkplot
 
 import numpy as np
 import pandas

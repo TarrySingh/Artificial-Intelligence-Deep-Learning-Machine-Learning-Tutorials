@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+from __future__ import print_function
 import argparse
 
 import numpy as np
@@ -49,7 +50,7 @@ class PixelAttacker:
         # If the prediction is what we want (misclassification or 
         # targeted classification), return True
         if (verbose):
-            print('Confidence:', confidence[target_class])
+            print(('Confidence:', confidence[target_class]))
         if ((targeted_attack and predicted_class == target_class) or
             (not targeted_attack and predicted_class != target_class)):
             return True
@@ -104,12 +105,12 @@ class PixelAttacker:
 
             for pixel_count in pixels:
                 for i,img in enumerate(img_samples):
-                    print(model.name, '- image', img, '-', i+1, '/', len(img_samples))
+                    print((model.name, '- image', img, '-', i+1, '/', len(img_samples)))
                     targets = [None] if not targeted else range(10)
                     
                     for target in targets:
                         if (targeted):
-                            print('Attacking with target', class_names[target])
+                            print(('Attacking with target', class_names[target]))
                             if (target == self.y_test[img,0]):
                                 continue
                         result = self.attack(img, model, target, pixel_count, 
@@ -161,6 +162,6 @@ if __name__ == '__main__':
 
     print(results_table[['model', 'pixels', 'image', 'true', 'predicted', 'success']])
 
-    print('Saving to', args.save)
+    print(('Saving to', args.save))
     with open(args.save, 'wb') as file:
         pickle.dump(results, file)

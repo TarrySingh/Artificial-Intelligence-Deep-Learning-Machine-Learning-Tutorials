@@ -26,6 +26,10 @@ import tensorflow as tf
 from models import model
 from models.layers import variables
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
 
 class ConvModel(model.Model):
   """A baseline multi GPU Model without capsule layers.

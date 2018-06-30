@@ -6,13 +6,14 @@ License: GNU GPLv3 http://www.gnu.org/licenses/gpl.html
 """
 
 from __future__ import print_function
+from __future__ import absolute_import
 
 import math
 import numpy as np
 
-import nsfg
-import thinkstats2
-import thinkplot
+from . import nsfg
+from . import thinkstats2
+from . import thinkplot
 
 
 def MakeFrames():

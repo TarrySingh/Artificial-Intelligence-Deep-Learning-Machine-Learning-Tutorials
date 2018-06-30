@@ -24,6 +24,11 @@ from models import model
 from models.layers import layers
 from models.layers import variables
 
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
+
 
 class CapsuleModel(model.Model):
   """A multi GPU Model with capsule layers.

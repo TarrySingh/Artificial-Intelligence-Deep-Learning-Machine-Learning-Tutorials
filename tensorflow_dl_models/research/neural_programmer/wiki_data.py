@@ -271,12 +271,12 @@ class WikiQuestionGenerator(object):
           word = "score"
       if (is_number(word)):
         word = float(word)
-      if (not (self.annotated_word_reject.has_key(word))):
+      if (not (word in self.annotated_word_reject)):
         if (is_number(word) or is_date(word) or self.is_money(word)):
           sentence.append(word)
         else:
           word = full_normalize(word)
-          if (not (self.annotated_word_reject.has_key(word)) and
+          if (not (word in self.annotated_word_reject) and
               bool(re.search("[a-z0-9]", word, re.IGNORECASE))):
             m = re.search(",", word)
             sentence.append(word.replace(",", ""))
@@ -425,7 +425,7 @@ class WikiQuestionGenerator(object):
       lines = f.readlines()
       for line in lines:
         line = line.strip()
-        if (not (self.annotated_examples.has_key(line.split("\t")[0]))):
+        if (not (line.split("\t")[0] in self.annotated_examples)):
           continue
         if (len(line.split("\t")) == 4):
           line = line + "\t" * (5 - len(line.split("\t")))
@@ -433,7 +433,7 @@ class WikiQuestionGenerator(object):
             ice_bad_questions += 1
         (example_id, ans_index, ans_raw, process_answer,
          matched_cells) = line.split("\t")
-        if (ice.has_key(example_id)):
+        if (example_id in ice):
           ice[example_id].append(line.split("\t"))
         else:
           ice[example_id] = [line.split("\t")]

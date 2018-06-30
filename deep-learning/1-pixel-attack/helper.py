@@ -1,3 +1,4 @@
+from __future__ import print_function
 # CIFAR - 10
 
 import pickle
@@ -173,7 +174,7 @@ def evaluate_models(models, x_test, y_test):
     correct_imgs = []
     network_stats = []
     for model in models:
-        print('Evaluating', model.name)
+        print(('Evaluating', model.name))
         
         predictions = model.predict(x_test)
         

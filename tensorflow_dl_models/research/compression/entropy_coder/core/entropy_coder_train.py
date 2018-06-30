@@ -14,6 +14,7 @@
 # ==============================================================================
 
 """Train an entropy coder model."""
+from __future__ import print_function
 
 import time
 

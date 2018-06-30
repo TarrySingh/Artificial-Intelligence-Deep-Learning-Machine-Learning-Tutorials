@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import absolute_import
 from keras.layers import (
     Input,
     Conv2D,
@@ -14,7 +16,7 @@ from models.capsule_layers import CapsuleLayer, PrimaryCapsule, Length,Mask
 from keras.layers.normalization import BatchNormalization
 import keras.backend as K
 from keras import optimizers
-from utils.helper_function import load_cifar_10,load_cifar_100
+from .utils.helper_function import load_cifar_10,load_cifar_100
 from models.capsulenet import CapsNet as CapsNetv1
 import numpy as np
 
@@ -120,9 +122,9 @@ def train(epochs=200,batch_size=64,mode=1):
     model = CapsNetv1(input_shape=[32, 32, 3],
                         n_class=num_classes,
                         n_route=3)
-    print('x_train shape:', x_train.shape)
-    print(x_train.shape[0], 'train samples')
-    print(x_test.shape[0], 'test samples')
+    print(('x_train shape:', x_train.shape))
+    print((x_train.shape[0], 'train samples'))
+    print((x_test.shape[0], 'test samples'))
 
     model.summary()
     log = callbacks.CSVLogger('results/capsule-cifar-'+str(num_classes)+'-log.csv')
@@ -138,7 +140,7 @@ def train(epochs=200,batch_size=64,mode=1):
                   loss=[margin_loss, 'mse'],
                   loss_weights=[1., 0.1],
                   metrics={'output_recon':'accuracy','output':'accuracy'})
-    from utils.helper_function import data_generator
+    from .utils.helper_function import data_generator
 
     generator = data_generator(x_train,y_train,batch_size)
     model.fit_generator(generator,
@@ -152,7 +154,7 @@ def train(epochs=200,batch_size=64,mode=1):
 def test(epoch, mode=1):
     import matplotlib.pyplot as plt
     from PIL import Image
-    from utils.helper_function import combine_images
+    from .utils.helper_function import combine_images
 
     if mode == 1:
         num_classes =10
@@ -169,7 +171,7 @@ def test(epoch, mode=1):
     # model.load_weights('weights/capsule-weights-{:02d}.h5'.format(epoch))    
     y_pred, x_recon = model.predict([x_test, y_test], batch_size=100)
     print('-'*50)
-    print('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0])
+    print(('Test acc:', np.sum(np.argmax(y_pred, 1) == np.argmax(y_test, 1))/y_test.shape[0]))
 
     img = combine_images(np.concatenate([x_test[:50],x_recon[:50]]))
     image = img*255

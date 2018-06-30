@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import numpy.random as random
 import matplotlib.pyplot as plt
@@ -48,7 +49,7 @@ class QuantumRegister(object):
                     selected &= (self.isset(state, i) == qubits[i])
             if selected:
                 probability += np.absolute(self.qubits[i])**2
-            print(state, selected, probability)
+            print((state, selected, probability))
         return probability
 
     # QUANTUM GATES

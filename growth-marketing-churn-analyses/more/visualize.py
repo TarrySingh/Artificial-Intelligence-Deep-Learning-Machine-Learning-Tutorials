@@ -1,3 +1,4 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 from sqlalchemy import sessionmaker
@@ -46,4 +47,4 @@ plt.grid(True)
 plt.show()
 
 
-print x
+print(x)

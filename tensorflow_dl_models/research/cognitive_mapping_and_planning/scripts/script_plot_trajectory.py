@@ -24,6 +24,7 @@ to plot the view points.
       --imset test --alsologtostderr --base_dir output --out_dir vis
 
 """
+from __future__ import print_function
 import os, sys, numpy as np, copy
 import matplotlib
 matplotlib.use("Agg")

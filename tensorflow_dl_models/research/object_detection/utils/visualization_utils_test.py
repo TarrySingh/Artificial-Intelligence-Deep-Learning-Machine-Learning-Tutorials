@@ -19,6 +19,7 @@ Testing with visualization in the following colab:
 https://drive.google.com/a/google.com/file/d/0B5HnKS_hMsNARERpU3MtU3I5RFE/view?usp=sharing
 
 """
+from __future__ import print_function
 
 import os
 

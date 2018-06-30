@@ -1,5 +1,6 @@
 #!/u/subramas/miniconda2/bin/python
 """Main script to run things"""
+from __future__ import print_function
 import sys
 
 sys.path.append('/u/subramas/Research/nmt-pytorch/')
@@ -18,6 +19,11 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.autograd import Variable
+
+try:
+    xrange          # Python 2
+except NameError:
+    xrange = range  # Python 3
 
 parser = argparse.ArgumentParser()
 parser.add_argument(
@@ -50,7 +56,7 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 
-print 'Reading data ...'
+print('Reading data ...')
 
 src, trg = read_nmt_data(
     src=config['data']['src'],

@@ -17,6 +17,7 @@
 PYTHONPATH='.' PYOPENGL_PLATFORM=egl python scripts/script_env_vis.py \
   --dataset_name sbpd --building_name area3
 """
+from __future__ import print_function
 import sys
 import numpy as np
 import matplotlib

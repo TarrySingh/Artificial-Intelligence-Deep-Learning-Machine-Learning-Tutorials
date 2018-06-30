@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Utilities for generating program synthesis and evaluation data."""
+from __future__ import print_function
 
 import contextlib
 import sys

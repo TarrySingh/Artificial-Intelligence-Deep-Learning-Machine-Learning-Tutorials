@@ -1,7 +1,8 @@
+from __future__ import absolute_import
 import tensorflow as tf
-from config import cfg
-from utils import get_batch_data
-from capsLayer import CapsLayer
+from .config import cfg
+from .utils import get_batch_data
+from .capsLayer import CapsLayer
 
 
 epsilon = 1e-9

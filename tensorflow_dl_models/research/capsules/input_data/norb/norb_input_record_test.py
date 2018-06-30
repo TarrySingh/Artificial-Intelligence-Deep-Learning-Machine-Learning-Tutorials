@@ -14,13 +14,14 @@
 # ==============================================================================
 
 """Tests for norb_input_record."""
+from __future__ import absolute_import
 import os
 
 import numpy as np
 import tensorflow as tf
 
 
-import norb_input_record
+from . import norb_input_record
 
 FLAGS = tf.flags.FLAGS
 DATA_DIR = '../testdata/norb/'

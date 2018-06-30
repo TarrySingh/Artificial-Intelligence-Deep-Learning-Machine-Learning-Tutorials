@@ -1,3 +1,4 @@
+from __future__ import print_function
 ########################################################
 # Full exercise kit on http://www.practicepython.org
 #
@@ -436,11 +437,11 @@ arg3 = sys.argv[3]
 
 def maxfunction(a, b, c):
     if (a > b) and (a > c):
-        print('Max value is :', a)
+        print(('Max value is :', a))
     elif (b > a) and (b > c):
-        print('Max value is :', b)
+        print(('Max value is :', b))
     elif (c > a) and (c > b):
-        print('Max value is :', c)
+        print(('Max value is :', c))
 
 
 maxfunction(arg1, arg2, arg3)

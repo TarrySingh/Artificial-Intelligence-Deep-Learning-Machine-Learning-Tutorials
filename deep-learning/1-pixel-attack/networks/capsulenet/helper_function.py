@@ -95,5 +95,5 @@ def data_generator(x,y,batch_size):
     datagen.fit(x_train)
     generator = datagen.flow(x_train,y_train,batch_size=batch_size)
     while True:
-        x,y  = generator.next()
+        x,y  = next(generator)
         yield ([x,y],[y,x])

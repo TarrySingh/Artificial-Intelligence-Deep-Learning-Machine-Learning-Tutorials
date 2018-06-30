@@ -3,6 +3,7 @@ Interpreting hyperbole with RSA models of pragmatics.
 
 Taken from: https://gscontras.github.io/probLang/chapters/03-nonliteral.html
 """
+from __future__ import print_function
 
 import torch
 

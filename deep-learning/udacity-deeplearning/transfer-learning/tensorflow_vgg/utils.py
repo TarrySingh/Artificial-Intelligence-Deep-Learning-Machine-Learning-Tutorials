@@ -1,3 +1,4 @@
+from __future__ import print_function
 import skimage
 import skimage.io
 import skimage.transform

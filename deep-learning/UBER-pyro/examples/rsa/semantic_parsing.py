@@ -3,6 +3,7 @@ Combining models of RSA pragmatics and CCG-based compositional semantics.
 
 Taken from: http://dippl.org/examples/zSemanticPragmaticMashup.html
 """
+from __future__ import print_function
 
 import torch
 

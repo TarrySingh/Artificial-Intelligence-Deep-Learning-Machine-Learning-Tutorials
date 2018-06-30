@@ -7,6 +7,7 @@ Date: 07/17/2015
 Last update: 10/07/2016
 
 """
+from __future__ import print_function
 
 import numpy as np
 from scipy.linalg import solve
