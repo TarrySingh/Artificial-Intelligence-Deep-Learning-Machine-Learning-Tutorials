@@ -1,0 +1,7 @@
+AutoRegressiveNN
+----------------
+
+.. automodule:: pyro.nn.auto_reg_nn
+    :members:
+    :undoc-members:
+    :show-inheritance:
