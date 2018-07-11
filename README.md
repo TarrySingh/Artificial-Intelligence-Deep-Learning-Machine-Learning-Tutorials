@@ -63,7 +63,7 @@ Additional PyRo tutorials:
 * [pyro-examples/GMM](http://pyro.ai/examples/gmm.html)
 * [pyro-examples/Gaussian Process](http://pyro.ai/examples/gp.html)
 * [pyro-examples/Bayesian Optimization](http://pyro.ai/examples/bo.html)
-* [Full Pyro Code](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/upload/master/deep-learning/UBER-pyro)
+* [Full Pyro Code](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/master/deep-learning/UBER-pyro)
 
 
 
