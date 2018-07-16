@@ -1,0 +1,24 @@
+{
+    "data": {
+        "filename": "data/bitcoin.csv",
+        "filename_clean": "data/clean_data.h5",
+        "filter_columns": [
+            "Open",
+            "Close",
+            "Volume_(BTC)",
+            "Volume_(Currency)"
+        ],
+        "batch_size": 100,
+        "train_test_split": 0.8,
+        "x_window_size": 150,
+        "y_window_size": 1,
+        "y_predict_column": "Close"
+    },
+    "model": {
+        "epochs": 2,
+        "loss_function": "mse",
+        "optimiser_function": "Nadam",
+        "filename_model": "data/model_saved.h5",
+        "filename_predictions": "data/model_predictions.h5"
+    }
+}
