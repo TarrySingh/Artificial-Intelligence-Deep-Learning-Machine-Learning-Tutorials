@@ -54,7 +54,7 @@ A curated list of awesome mathematics resources.
     * [Numerical Analysis](#numerical-analysis)
     * [Signal processing](#signal-processing)
     * [Mathematics for Computer Science](#mathematics-for-computer-science)
-    * [Ramanujan's Notes](#ramanujan-notes)
+    * [Ramanujan Notes](#ramanujan-notes)
 * [License](#license)
 
 <!-- END_TOC -->
@@ -387,9 +387,9 @@ A curated list of awesome mathematics resources.
 
  * [Mathematics for Computer Science](https://people.csail.mit.edu/meyer/mcs.pdf) - Eric Lehman, F. Thomson Leighton, Albert R. Meyer
 
-## Ramanujan's Notes
+## Ramanujan Notes
 
- * [An overview of Ramanujan Notebooks](https://faculty.math.illinois.edu/~berndt/articles/aachen.pdf)
+ * [Ramanujan Notes](https://faculty.math.illinois.edu/~berndt/articles/aachen.pdf)
 
 # License
 
