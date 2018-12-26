@@ -1,0 +1,173 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2007-2008 Johannes Luber
+ Copyright (c) 2005-2007 Kunle Odutola
+ Copyright (c) 2005 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+/** Template subgroup to add template rewrite output
+ *  If debugging, then you'll also get STDbg.stg loaded.
+ */
+group ST;
+
+@outputFile.imports() ::= <<
+<@super.imports()>
+using Antlr.StringTemplate;
+using Antlr.StringTemplate.Language;
+<if(!backtracking)>
+using Hashtable = System.Collections.Hashtable;
+<endif>
+
+>>
+
+/** Add this to each rule's return value struct */
+@returnScope.ruleReturnMembers() ::= <<
+private StringTemplate st;
+public StringTemplate ST    { get { return st; } set { st = value; } }
+public override object Template 		{ get { return st; } }
+public override string ToString() 		{ return (st == null) ? null : st.ToString(); }
+>>
+
+@genericParser.members() ::= <<
+<@super.members()>
+protected StringTemplateGroup templateLib =
+  new StringTemplateGroup("<name>Templates", typeof(AngleBracketTemplateLexer));
+
+public StringTemplateGroup TemplateLib
+{
+ 	get { return this.templateLib; }
+ 	set { this.templateLib = value; }
+}
+
+/// \<summary> Allows convenient multi-value initialization:
+///  "new STAttrMap().Add(...).Add(...)"
+/// \</summary>
+protected class STAttrMap : Hashtable
+{
+  public STAttrMap Add(string attrName, object value) 
+  {
+    base.Add(attrName, value);
+    return this;
+  }
+  public STAttrMap Add(string attrName, int value) 
+  {
+    base.Add(attrName, value);
+    return this;
+  }
+}
+>>
+
+/** x+=rule when output=template */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label+".Template",...)>
+>>
+
+rewriteTemplate(alts) ::= <<
+
+// TEMPLATE REWRITE
+<if(backtracking)>
+if ( <actions.(actionScope).synpredgate> )
+{
+  <alts:rewriteTemplateAlt(); separator="else ">
+  <if(rewriteMode)><replaceTextInLine()><endif>
+}
+<else>
+<alts:rewriteTemplateAlt(); separator="else ">
+<if(rewriteMode)><replaceTextInLine()><endif>
+<endif>
+>>
+
+replaceTextInLine() ::= <<
+<if(TREE_PARSER)>
+((TokenRewriteStream)input.TokenStream).Replace(
+  input.TreeAdaptor.GetTokenStartIndex(retval.Start),
+  input.TreeAdaptor.GetTokenStopIndex(retval.Start),
+  retval.ST);
+<else>
+((TokenRewriteStream)input).Replace(
+  ((IToken)retval.Start).TokenIndex,
+  input.LT(-1).TokenIndex,
+  retval.ST);
+<endif>
+>>
+
+rewriteTemplateAlt() ::= <<
+// <it.description>
+<if(it.pred)>
+if (<it.pred>) {
+    retval.ST = <it.alt>;
+}<\n>
+<else>
+{
+    retval.ST = <it.alt>;
+}<\n>
+<endif>
+>>
+
+rewriteEmptyTemplate(alts) ::= <<
+null;
+>>
+
+/** Invoke a template with a set of attribute name/value pairs.
+ *  Set the value of the rule's template *after* having set
+ *  the attributes because the rule's template might be used as
+ *  an attribute to build a bigger template; you get a self-embedded
+ *  template.
+ */
+rewriteExternalTemplate(name,args) ::= <<
+templateLib.GetInstanceOf("<name>"<if(args)>,
+  new STAttrMap()<args:{a | .Add("<a.name>", <a.value>)}>
+  <endif>)
+>>
+
+/** expr is a string expression that says what template to load */
+rewriteIndirectTemplate(expr,args) ::= <<
+templateLib.GetInstanceOf(<expr><if(args)>,
+  new STAttrMap()<args:{a | .Add("<a.name>", <a.value>)}>
+  <endif>)
+>>
+
+/** Invoke an inline template with a set of attribute name/value pairs */
+rewriteInlineTemplate(args, template) ::= <<
+new StringTemplate(templateLib, "<template>"<if(args)>,
+  new STAttrMap()<args:{a | .Add("<a.name>", <a.value>)}>
+  <endif>)
+>>
+
+/** plain -> {foo} action */
+rewriteAction(action) ::= <<
+<action>
+>>
+
+/** An action has %st.attrName=expr; or %{st}.attrName=expr; */
+actionSetAttribute(st,attrName,expr) ::= <<
+(<st>).SetAttribute("<attrName>",<expr>);
+>>
+
+/** Translate %{stringExpr} */
+actionStringConstructor(stringExpr) ::= <<
+new StringTemplate(templateLib,<stringExpr>)
+>>

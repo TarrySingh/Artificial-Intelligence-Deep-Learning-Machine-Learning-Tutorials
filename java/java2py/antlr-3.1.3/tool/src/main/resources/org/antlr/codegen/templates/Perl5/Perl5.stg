@@ -1,0 +1,1369 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2006 Terence Parr
+ Copyright (c) 2007-2008 Ronald Blaschke
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+group Perl5 implements ANTLRCore;
+
+/** The overall file structure of a recognizer; stores methods for rules
+ *  and cyclic DFAs plus support code.
+ */
+outputFile(LEXER,PARSER,TREE_PARSER, actionScope, actions,
+           docComment, recognizer,
+           name, tokens, tokenNames, rules, cyclicDFAs,
+	   bitsets, buildTemplate, buildAST, rewriteMode, profile,
+	   backtracking, synpreds, memoize, numRules,
+	   fileName, ANTLRVersion, generatedTimestamp, trace,
+	   scopes, superClass, literals) ::=
+<<
+# $ANTLR <ANTLRVersion> <fileName> <generatedTimestamp>
+<actions.(actionScope).header>
+
+<@imports>
+<if(TREE_PARSER)>
+<endif>
+<if(backtracking)>
+<endif>
+<@end>
+
+<docComment>
+<recognizer>
+>>
+
+lexer(grammar, name, tokens, scopes, rules, numRules, labelType="Token",
+      filterMode, superClass="ANTLR::Runtime::Lexer")  ::= <<
+package <name>;
+use ANTLR::Runtime::Class;
+
+use Carp;
+use English qw( -no_match_vars ) ;
+use Readonly;
+use Switch;
+
+use ANTLR::Runtime::BaseRecognizer;
+use ANTLR::Runtime::DFA;
+use ANTLR::Runtime::NoViableAltException;
+
+extends 'ANTLR::Runtime::Lexer';
+
+use constant {
+    HIDDEN => ANTLR::Runtime::BaseRecognizer->HIDDEN
+};
+
+use constant {
+    <tokens:{ <it.name> => <it.type>, }; separator="\n">
+};
+<scopes:{<if(it.isDynamicGlobalScope)><globalAttributeScope(scope=it)><endif>}>
+<actions.lexer.members>
+
+sub BUILD {
+    my ($self, $arg_ref) = @_;
+
+    $self->init_dfas();
+}
+
+sub get_grammar_file_name {
+    return "<fileName>";
+}
+
+<if(filterMode)>
+<filteringNextToken()>
+<endif>
+<rules; separator="\n\n">
+
+<synpreds:{p | <lexerSynpred(p)>}>
+
+<cyclicDFAs:{dfa | has 'dfa<dfa.decisionNumber>';}; separator="\n">
+
+sub init_dfas {
+    my ($self) = @_;
+
+    <cyclicDFAs:{dfa |
+    $self->dfa<dfa.decisionNumber>(<name>::DFA<dfa.decisionNumber>->new({ recognizer => $self }));
+    }; separator="\n">
+
+    return;
+}
+
+<cyclicDFAs:cyclicDFA()> <! dump tables for all DFA !>
+
+1;
+
+>>
+
+perlTypeInitMap ::= [
+	"$":"undef",
+	"@":"()",
+	"%":"()",
+	default:"undef"
+]
+
+/** A override of Lexer.nextToken() that backtracks over mTokens() looking
+ *  for matches.  No error can be generated upon error; just rewind, consume
+ *  a token and then try again.  backtracking needs to be set as well.
+ *  Make rule memoization happen only at levels above 1 as we start mTokens
+ *  at backtracking==1.
+ */
+filteringNextToken() ::= <<
+public Token nextToken() {
+    while (true) {
+        if ( input.LA(1)==CharStream.EOF ) {
+            return Token.EOF_TOKEN;
+        }
+        token = null;
+	channel = Token.DEFAULT_CHANNEL;
+        tokenStartCharIndex = input.index();
+        tokenStartCharPositionInLine = input.getCharPositionInLine();
+        tokenStartLine = input.getLine();
+	text = null;
+        try {
+            int m = input.mark();
+            backtracking=1; <! means we won't throw slow exception !>
+            failed=false;
+            mTokens();
+            backtracking=0;
+            <! mTokens backtracks with synpred at backtracking==2
+               and we set the synpredgate to allow actions at level 1. !>
+            if ( failed ) {
+                input.rewind(m);
+                input.consume(); <! advance one char and try again !>
+            }
+            else {
+                emit();
+                return token;
+            }
+        }
+        catch (RecognitionException re) {
+            // shouldn't happen in backtracking mode, but...
+            reportError(re);
+            recover(re);
+        }
+    }
+}
+
+public void memoize(IntStream input,
+		int ruleIndex,
+		int ruleStartIndex)
+{
+if ( backtracking>1 ) super.memoize(input, ruleIndex, ruleStartIndex);
+}
+
+public boolean alreadyParsedRule(IntStream input, int ruleIndex) {
+if ( backtracking>1 ) return super.alreadyParsedRule(input, ruleIndex);
+return false;
+}
+>>
+
+actionGate() ::= "$self->state->backtracking==0"
+
+filteringActionGate() ::= "backtracking==1"
+
+/** How to generate a parser */
+genericParser(grammar, name, scopes, tokens, tokenNames, rules, numRules,
+              bitsets, inputStreamType, superClass, filterMode,
+              ASTLabelType="Object", labelType, members) ::= <<
+package <name>;
+use ANTLR::Runtime::Class;
+
+use English qw( -no_match_vars ) ;
+use Readonly;
+use Switch;
+use Carp;
+use ANTLR::Runtime::BitSet;
+
+extends '<@superClassName><superClass><@end>';
+
+Readonly my $token_names => [
+    "\<invalid>", "\<EOR>", "\<DOWN>", "\<UP>", <tokenNames; separator=", ">
+];
+
+use constant {
+<tokens:{ <it.name> => <it.type>, }; separator="\n">
+};
+
+<bitsets:bitset(name={FOLLOW_<it.name>_in_<it.inName><it.tokenIndex>},
+                    words64=it.bits)>
+
+<scopes:{<if(it.isDynamicGlobalScope)><globalAttributeScope(scope=it)><endif>}>
+<@members>
+<! WARNING. bug in ST: this is cut-n-paste into Dbg.stg !>
+
+sub BUILD {
+    my ($self, $arg_ref) = @_;
+
+<if(backtracking)>
+    $self->state->rule_memo({});<\n>
+<endif>
+}
+<@end>
+
+sub get_token_names {
+    return $token_names;
+}
+
+sub get_grammar_file_name {
+    return "<fileName>";
+}
+
+<members>
+
+<rules; separator="\n\n">
+
+<synpreds:{p | <synpred(p)>}>
+
+<cyclicDFAs:{dfa | dfa<dfa.decisionNumber> = __PACKAGE__::DFA<dfa.decisionNumber>->new($self);}; separator="\n">
+<cyclicDFAs:cyclicDFA()> <! dump tables for all DFA !>
+
+
+
+1;
+>>
+
+parser(grammar, name, scopes, tokens, tokenNames, rules, numRules, bitsets, ASTLabelType, superClass="ANTLR::Runtime::Parser", labelType="ANTLR::Runtime::Token", members={<actions.parser.members>}) ::= <<
+<genericParser(inputStreamType="ANTLR::Runtime::TokenStream", ...)>
+>>
+
+/** How to generate a tree parser; same as parser except the input
+ *  stream is a different type.
+ */
+treeParser(grammar, name, scopes, tokens, tokenNames, globalAction, rules, numRules, bitsets, labelType={<ASTLabelType>}, ASTLabelType="Object", superClass="ANTLR::Runtime::TreeParser", members={<actions.treeparser.members>}, filterMode) ::= <<
+<genericParser(inputStreamType="TreeNodeStream", ...)>
+>>
+
+/** A simpler version of a rule template that is specific to the imaginary
+ *  rules created for syntactic predicates.  As they never have return values
+ *  nor parameters etc..., just give simplest possible method.  Don't do
+ *  any of the normal memoization stuff in here either; it's a waste.
+ *  As predicates cannot be inlined into the invoking rule, they need to
+ *  be in a rule by themselves.
+ */
+synpredRule(ruleName, ruleDescriptor, block, description, nakedBlock) ::=
+<<
+# $ANTLR start <ruleName>
+sub <ruleName>_fragment {
+# <ruleDescriptor.parameterScope:parameterScope(scope=it)>
+
+<if(trace)>
+    $self->traceIn("<ruleName>_fragment", <ruleDescriptor.index>);
+    eval {
+        <block>
+    };
+    $self->traceOut("<ruleName>_fragment", <ruleDescriptor.index>);
+    if ($EVAL_ERROR) {
+        croak $EVAL_ERROR;
+    }
+<else>
+    <block>
+<endif>
+}
+# $ANTLR end <ruleName>
+>>
+
+synpred(name) ::= <<
+public final boolean <name>() {
+    backtracking++;
+    <@start()>
+    int start = input.mark();
+    try {
+        <name>_fragment(); // can never throw exception
+    } catch (RecognitionException re) {
+        System.err.println("impossible: "+re);
+    }
+    boolean success = !failed;
+    input.rewind(start);
+    <@stop()>
+    backtracking--;
+    failed=false;
+    return success;
+}<\n>
+>>
+
+lexerSynpred(name) ::= <<
+<synpred(name)>
+>>
+
+ruleMemoization(name) ::= <<
+<if(memoize)>
+if ( backtracking>0 && alreadyParsedRule(input, <ruleDescriptor.index>) ) { return <ruleReturnValue()>; }
+<endif>
+>>
+
+/** How to test for failure and return from rule */
+checkRuleBacktrackFailure() ::= <<
+<if(backtracking)>
+if ($self->state->failed) {
+    return <ruleReturnValue()>;
+}
+<endif>
+>>
+
+/** This rule has failed, exit indicating failure during backtrack */
+ruleBacktrackFailure() ::= <<
+<if(backtracking)>if (backtracking>0) {failed=true; return <ruleReturnValue()>;}<endif>
+>>
+
+/** How to generate code for a rule.  This includes any return type
+ *  data aggregates required for multiple return values.
+ */
+rule(ruleName,ruleDescriptor,block,emptyRule,description,exceptions,finally,memoize) ::= <<
+<ruleAttributeScope(scope=ruleDescriptor.ruleScope)>
+<returnScope(scope=ruleDescriptor.returnScope)>
+
+# $ANTLR start <ruleName>
+# <fileName>:<description>
+sub <ruleName>() {
+    my ($self, <ruleDescriptor.parameterScope:parameterScope(scope=it)>) = @_;
+    <if(trace)>$self->traceIn("<ruleName>", <ruleDescriptor.index>);<endif>
+    <ruleScopeSetUp()>
+    <ruleDeclarations()>
+    <ruleLabelDefs()>
+    <ruleDescriptor.actions.init>
+    <@preamble()>
+    eval {
+        <ruleMemoization(name=ruleName)>
+        <block>
+        <ruleCleanUp()>
+        <(ruleDescriptor.actions.after):execAction()>
+    };
+<if(exceptions)>
+    <exceptions:{e|<catch(decl=e.decl,action=e.action)><\n>}>
+<else>
+<if(!emptyRule)>
+<if(actions.(actionScope).rulecatch)>
+    <actions.(actionScope).rulecatch>
+<else>
+    my $exception = $EVAL_ERROR;
+    if (ref $exception && $exception->isa('ANTLR::Runtime::RecognitionException')) {
+        $self->report_error($exception);
+        $self->recover($self->input, $exception);
+        $exception = undef;
+    }<\n>
+<endif>
+<endif>
+<endif>
+    <if(trace)>$self->traceOut("<ruleName>", <ruleDescriptor.index>);<endif>
+    <memoize()>
+    <ruleScopeCleanUp()>
+    <finally>
+    if ($exception) {
+        croak $exception;
+        #$exception->rethrow();
+    }
+    <@postamble()>
+    return <ruleReturnValue()>;
+}
+# $ANTLR end <ruleName>
+>>
+
+catch(decl,action) ::= <<
+catch (<e.decl>) {
+    <e.action>
+}
+>>
+
+ruleDeclarations() ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+my $retval = <returnType()>->new();
+$retval->set_start($self->input->LT(1));<\n>
+<else>
+<ruleDescriptor.returnScope.attributes:{ a |
+my $<a.name> = <if(a.initValue)><a.initValue><else><initValue(a.type)><endif>;
+}>
+<endif>
+<if(memoize)>
+my $<ruleDescriptor.name>_start_index = $self->input->index();
+<endif>
+>>
+
+ruleScopeSetUp() ::= <<
+<ruleDescriptor.useScopes:{<it>_stack.push(new <it>_scope());}; separator="\n">
+<ruleDescriptor.ruleScope:{<it.name>_stack.push(new <it.name>_scope());}; separator="\n">
+>>
+
+ruleScopeCleanUp() ::= <<
+<ruleDescriptor.useScopes:{<it>_stack.pop();}; separator="\n">
+<ruleDescriptor.ruleScope:{<it.name>_stack.pop();}; separator="\n">
+>>
+
+ruleLabelDefs() ::= <<
+<[ruleDescriptor.tokenLabels,ruleDescriptor.tokenListLabels]
+    :{my $<it.label.text> = undef;}; separator="\n"
+>
+<[ruleDescriptor.tokenListLabels,ruleDescriptor.ruleListLabels]
+    :{List list_<it.label.text>=null;}; separator="\n"
+>
+<ruleDescriptor.ruleLabels:ruleLabelDef(label=it); separator="\n">
+<ruleDescriptor.ruleListLabels:{ll|RuleReturnScope <ll.label.text> = null;}; separator="\n">
+>>
+
+lexerRuleLabelDefs() ::= <<
+<[ruleDescriptor.tokenLabels,
+  ruleDescriptor.tokenListLabels,
+  ruleDescriptor.ruleLabels]
+    :{<labelType> <it.label.text>=null;}; separator="\n"
+>
+<ruleDescriptor.charLabels:{my $<it.label.text>;}; separator="\n">
+<[ruleDescriptor.tokenListLabels,
+  ruleDescriptor.ruleListLabels,
+  ruleDescriptor.ruleListLabels]
+    :{List list_<it.label.text>=null;}; separator="\n"
+>
+>>
+
+ruleReturnValue() ::= <<
+<if(!ruleDescriptor.isSynPred)>
+<if(ruleDescriptor.hasReturnValue)>
+<if(ruleDescriptor.hasSingleReturnValue)>
+$<ruleDescriptor.singleValueReturnName>
+<else>
+$retval
+<endif>
+<endif>
+<endif>
+>>
+
+ruleCleanUp() ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+<if(!TREE_PARSER)>
+$retval->set_stop($self->input->LT(-1));<\n>
+<endif>
+<endif>
+>>
+
+memoize() ::= <<
+<if(memoize)>
+<if(backtracking)>
+if ( backtracking>0 ) { memoize(input, <ruleDescriptor.index>, <ruleDescriptor.name>_StartIndex); }
+<endif>
+<endif>
+>>
+
+/** How to generate a rule in the lexer; naked blocks are used for
+ *  fragment rules.
+ */
+lexerRule(ruleName,nakedBlock,ruleDescriptor,block,memoize) ::= <<
+# $ANTLR start <ruleName>
+sub m_<ruleName> {
+# <ruleDescriptor.parameterScope:parameterScope(scope=it)>
+    my ($self) = @_;
+    <if(trace)>traceIn("<ruleName>", <ruleDescriptor.index>);<endif>
+    <ruleDeclarations()>
+    eval {
+<if(nakedBlock)>
+        <ruleMemoization(name=ruleName)>
+        <lexerRuleLabelDefs()>
+        <ruleDescriptor.actions.init>
+        <block><\n>
+<else>
+        my $_type = <ruleName>;
+        my $_channel = $self->DEFAULT_TOKEN_CHANNEL;
+        <ruleMemoization(name=ruleName)>
+        <lexerRuleLabelDefs()>
+        <ruleDescriptor.actions.init>
+        <block>
+        <ruleCleanUp()>
+        $self->state->type($_type);
+        $self->state->channel($_channel);
+        <(ruleDescriptor.actions.after):execAction()>
+<endif>
+    };
+    <if(trace)>traceOut("<ruleName>", <ruleDescriptor.index>);<endif>
+    <memoize()>
+
+    if ($EVAL_ERROR) {
+        croak $EVAL_ERROR;
+    }
+}
+# $ANTLR end <ruleName>
+>>
+
+/** How to generate code for the implicitly-defined lexer grammar rule
+ *  that chooses between lexer rules.
+ */
+tokensRule(ruleName,nakedBlock,args,block,ruleDescriptor) ::= <<
+sub m_tokens {
+    my ($self) = @_;
+    <block><\n>
+}
+>>
+
+// S U B R U L E S
+
+/** A (...) subrule with multiple alternatives */
+block(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,maxK,maxAlt,description) ::= <<
+# <fileName>:<description>
+my $alt<decisionNumber> = <maxAlt>;
+<decls>
+<@predecision()>
+<decision>
+<@postdecision()>
+<@prebranch()>
+switch ($alt<decisionNumber>) {
+    <alts:altSwitchCase()>
+}
+<@postbranch()>
+>>
+
+/** A rule block with multiple alternatives */
+ruleBlock(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,maxK,maxAlt,description) ::= <<
+# <fileName>:<description>
+my $alt<decisionNumber> = <maxAlt>;
+<decls>
+<@predecision()>
+<decision>
+<@postdecision()>
+switch ($alt<decisionNumber>) {
+    <alts:altSwitchCase()>
+}
+>>
+
+ruleBlockSingleAlt(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,description) ::= <<
+# <fileName>:<description>
+<decls>
+<@prealt()>
+<alts>
+<@postalt()>
+>>
+
+/** A special case of a (...) subrule with a single alternative */
+blockSingleAlt(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,description) ::= <<
+# <fileName>:<description>
+<decls>
+<@prealt()>
+<alts>
+<@postalt()>
+>>
+
+/** A (..)+ block with 1 or more alternatives */
+positiveClosureBlock(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,maxK,maxAlt,description) ::= <<
+# <fileName>:<description>
+my $cnt<decisionNumber> = 0;
+<decls>
+<@preloop()>
+LOOP<decisionNumber>:
+while (1) {
+    my $alt<decisionNumber> = <maxAlt>;
+    <@predecision()>
+    <decision>
+    <@postdecision()>
+    switch ($alt<decisionNumber>) {
+	    <alts:altSwitchCase()>
+	    else {
+	        if ( $cnt<decisionNumber> >= 1 ) { last LOOP<decisionNumber> }
+	        <ruleBacktrackFailure()>
+            my $eee =
+                ANTLR::Runtime::EarlyExitException->new(<decisionNumber>, $self->input);
+            <@earlyExitException()>
+            croak $eee;
+        }
+    }
+    ++$cnt<decisionNumber>;
+}
+<@postloop()>
+>>
+
+positiveClosureBlockSingleAlt ::= positiveClosureBlock
+
+/** A (..)* block with 1 or more alternatives */
+closureBlock(alts,decls,decision,enclosingBlockLevel,blockLevel,decisionNumber,maxK,maxAlt,description) ::= <<
+# <fileName>:<description>
+<decls>
+<@preloop()>
+LOOP<decisionNumber>:
+while (1) {
+    my $alt<decisionNumber> = <maxAlt>;
+    <@predecision()>
+    <decision>
+    <@postdecision()>
+    switch ($alt<decisionNumber>) {
+	    <alts:altSwitchCase()>
+	    else { last LOOP<decisionNumber> }
+    }
+}
+<@postloop()>
+>>
+
+closureBlockSingleAlt ::= closureBlock
+
+/** Optional blocks (x)? are translated to (x|) by before code generation
+ *  so we can just use the normal block template
+ */
+optionalBlock ::= block
+
+optionalBlockSingleAlt ::= block
+
+/** A case in a switch that jumps to an alternative given the alternative
+ *  number.  A DFA predicts the alternative and then a simple switch
+ *  does the jump to the code that actually matches that alternative.
+ */
+altSwitchCase() ::= <<
+case <i> {
+    <@prealt()>
+    <it>
+}<\n>
+>>
+
+/** An alternative is just a list of elements; at outermost level */
+alt(elements,altNum,description,autoAST,outerAlt,treeLevel,rew) ::= <<
+# <fileName>:<description>
+{
+<@declarations()>
+<elements:element()>
+<rew>
+<@cleanup()>
+}
+>>
+
+/** What to emit when there is no rewrite.  For auto build
+ *  mode, does nothing.
+ */
+noRewrite(rewriteBlockLevel, treeLevel) ::= ""
+
+// E L E M E N T S
+
+/** Dump the elements one per line */
+element() ::= <<
+<@prematch()>
+<it.el><\n>
+>>
+
+/** match a token optionally with a label in front */
+tokenRef(token,label,elementIndex,hetero) ::= <<
+<if(label)>$<label> =<endif>$self->match($self->input, <token>, $FOLLOW_<token>_in_<ruleName><elementIndex>);
+<checkRuleBacktrackFailure()>
+>>
+
+/** ids+=ID */
+tokenRefAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+listLabel(label,elem) ::= <<
+if (list_<label>==null) list_<label>=new ArrayList();
+list_<label>.add(<elem>);<\n>
+>>
+
+/** match a character */
+charRef(char,label) ::= <<
+<if(label)>
+<label> = $self->input->LA(1);<\n>
+<endif>
+$self->match(<char>); <checkRuleBacktrackFailure()>
+>>
+
+/** match a character range */
+charRangeRef(a,b,label) ::= <<
+<if(label)>
+<label> = $self->input->LA(1);<\n>
+<endif>
+$self->match_range(<a>,<b>); <checkRuleBacktrackFailure()>
+>>
+
+/** For now, sets are interval tests and must be tested inline */
+matchSet(s,label,elementIndex,postmatchCode="") ::= <<
+<if(label)>
+<if(LEXER)>
+<label>= $self->input->LA(1);<\n>
+<else>
+<label>=(<labelType>)input.LT(1);<\n>
+<endif>
+<endif>
+if ( <s> ) {
+    $self->input->consume();
+    <postmatchCode>
+<if(!LEXER)>
+    $self->state->error_recovery(0);
+<endif>
+    <if(backtracking)>failed=false;<endif>
+}
+else {
+    <ruleBacktrackFailure()>
+    my $mse =
+        ANTLR::Runtime::MismatchedSetException->new(undef, $self->input);
+    <@mismatchedSetException()>
+<if(LEXER)>
+    $self->recover($mse);
+    $mse->throw();
+<else>
+    $mse->throw();
+    <! use following code to make it recover inline; remove throw mse;
+    $self->recoverFromMismatchedSet($self->input, $mse, $FOLLOW_set_in_<ruleName><elementIndex>);
+    !>
+<endif>
+}<\n>
+>>
+
+matchRuleBlockSet ::= matchSet
+
+matchSetAndListLabel(s,label,elementIndex,postmatchCode) ::= <<
+<matchSet(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** Match a string literal */
+lexerStringRef(string,label) ::= <<
+<if(label)>
+int <label>Start = getCharIndex();
+$self->match(<string>); <checkRuleBacktrackFailure()>
+<labelType> <label> = new CommonToken(input, Token.INVALID_TOKEN_TYPE, Token.DEFAULT_CHANNEL, <label>Start, getCharIndex()-1);
+<else>
+$self->match(<string>); <checkRuleBacktrackFailure()><\n>
+<endif>
+>>
+
+wildcard(label,elementIndex) ::= <<
+<if(label)>
+<label>=(<labelType>)input.LT(1);<\n>
+<endif>
+matchAny(input); <checkRuleBacktrackFailure()>
+>>
+
+wildcardAndListLabel(label,elementIndex) ::= <<
+<wildcard(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** Match . wildcard in lexer */
+wildcardChar(label, elementIndex) ::= <<
+<if(label)>
+<label> = $self->input->LA(1);<\n>
+<endif>
+matchAny(); <checkRuleBacktrackFailure()>
+>>
+
+wildcardCharListLabel(label, elementIndex) ::= <<
+<wildcardChar(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** Match a rule reference by invoking it possibly with arguments
+ *  and a return value or values.
+ */
+ruleRef(rule,label,elementIndex,args,scope) ::= <<
+$self->push_follow($FOLLOW_<rule.name>_in_<ruleName><elementIndex>);
+<if(label)>
+$<label> = $self-><rule.name>(<args; separator=", ">);<\n>
+<else>
+$self-><rule.name>(<args; separator=", ">);<\n>
+<endif>
+$self->state->_fsp($self->state->_fsp - 1);
+<checkRuleBacktrackFailure()>
+>>
+
+/** ids+=r */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** A lexer rule reference.
+ *
+ *  The 'rule' argument was the target rule name, but now
+ *  is type Rule, whose toString is same: the rule name.
+ *  Now though you can access full rule descriptor stuff.
+ */
+lexerRuleRef(rule,label,args,elementIndex,scope) ::= <<
+<if(label)>
+int <label>Start<elementIndex> = getCharIndex();
+$self->m_<rule>(<args; separator=", ">); <checkRuleBacktrackFailure()>
+<label> = new CommonToken(input, Token.INVALID_TOKEN_TYPE, Token.DEFAULT_CHANNEL, <label>Start<elementIndex>, getCharIndex()-1);
+<else>
+$self->m_<rule.name>(<args; separator=", ">); <checkRuleBacktrackFailure()>
+<endif>
+>>
+
+/** i+=INT in lexer */
+lexerRuleRefAndListLabel(rule,label,args,elementIndex,scope) ::= <<
+<lexerRuleRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** EOF in the lexer */
+lexerMatchEOF(label,elementIndex) ::= <<
+<if(label)>
+int <label>Start<elementIndex> = getCharIndex();
+match(EOF); <checkRuleBacktrackFailure()>
+<labelType> <label> = new CommonToken(input, EOF, Token.DEFAULT_CHANNEL, <label>Start<elementIndex>, getCharIndex()-1);
+<else>
+match(EOF); <checkRuleBacktrackFailure()>
+<endif>
+>>
+
+/** match ^(root children) in tree parser */
+tree(root, actionsAfterRoot, children, nullableChildList,
+     enclosingTreeLevel, treeLevel) ::= <<
+<root:element()>
+<actionsAfterRoot:element()>
+<if(nullableChildList)>
+if ( input.LA(1)==Token.DOWN ) {
+    match(input, Token.DOWN, null); <checkRuleBacktrackFailure()>
+    <children:element()>
+    match(input, Token.UP, null); <checkRuleBacktrackFailure()>
+}
+<else>
+match(input, Token.DOWN, null); <checkRuleBacktrackFailure()>
+<children:element()>
+match(input, Token.UP, null); <checkRuleBacktrackFailure()>
+<endif>
+>>
+
+/** Every predicate is used as a validating predicate (even when it is
+ *  also hoisted into a prediction expression).
+ */
+validateSemanticPredicate(pred,description) ::= <<
+if ( !(<evalPredicate(...)>) ) {
+    <ruleBacktrackFailure()>
+    throw new FailedPredicateException(input, "<ruleName>", "<description>");
+}
+>>
+
+// F i x e d  D F A  (if-then-else)
+
+dfaState(k,edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+my $LA<decisionNumber>_<stateNumber> = $self->input->LA(<k>);<\n>
+<edges; separator="\nels">
+else {
+<if(eotPredictsAlt)>
+    $alt<decisionNumber> = <eotPredictsAlt>;
+<else>
+    <ruleBacktrackFailure()>
+    my $nvae =
+        ANTLR::Runtime::NoViableAltException->new({
+            grammar_decision_description => "<description>",
+            decision_number => <decisionNumber>,
+            state_number => <stateNumber>,
+            input => $self->input,
+        });<\n>
+    <@noViableAltException()>
+    croak $nvae;<\n>
+<endif>
+}
+>>
+
+/** Same as a normal DFA state except that we don't examine lookahead
+ *  for the bypass alternative.  It delays error detection but this
+ *  is faster, smaller, and more what people expect.  For (X)? people
+ *  expect "if ( LA(1)==X ) match(X);" and that's it.
+ */
+dfaOptionalBlockState(k,edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+my $LA<decisionNumber>_<stateNumber> = $self->input->LA(<k>);<\n>
+<edges; separator="\nels">
+>>
+
+/** A DFA state that is actually the loopback decision of a closure
+ *  loop.  If end-of-token (EOT) predicts any of the targets then it
+ *  should act like a default clause (i.e., no error can be generated).
+ *  This is used only in the lexer so that for ('a')* on the end of a rule
+ *  anything other than 'a' predicts exiting.
+ */
+dfaLoopbackState(k,edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+my $LA<decisionNumber>_<stateNumber> = $self->input->LA(<k>);<\n>
+<edges; separator="\nels"><\n>
+<if(eotPredictsAlt)>
+<if(!edges)>
+$alt<decisionNumber> = <eotPredictsAlt>; <! if no edges, don't gen ELSE !>
+<else>
+else {
+    $alt<decisionNumber> = <eotPredictsAlt>;
+}<\n>
+<endif>
+<endif>
+>>
+
+/** An accept state indicates a unique alternative has been predicted */
+dfaAcceptState(alt) ::= "$alt<decisionNumber> = <alt>;"
+
+/** A simple edge with an expression.  If the expression is satisfied,
+ *  enter to the target state.  To handle gated productions, we may
+ *  have to evaluate some predicates for this edge.
+ */
+dfaEdge(labelExpr, targetState, predicates) ::= <<
+if ( (<labelExpr>) <if(predicates)>&& (<predicates>)<endif>) {
+    <targetState>
+}
+>>
+
+// F i x e d  D F A  (switch case)
+
+/** A DFA state where a SWITCH may be generated.  The code generator
+ *  decides if this is possible: CodeGenerator.canGenerateSwitch().
+ */
+dfaStateSwitch(k,edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+switch ( $self->input->LA(<k>) ) {
+    <edges; separator="\n">
+    else {
+    <if(eotPredictsAlt)>
+        $alt<decisionNumber> = <eotPredictsAlt>;
+    <else>
+        <ruleBacktrackFailure()>
+        my $nvae =
+            ANTLR::Runtime::NoViableAltException->new({
+                grammar_decision_description => "<description>",
+                decision_number => <decisionNumber>,
+                state_number => <stateNumber>,
+                input => $self->input,
+            });<\n>
+        <@noViableAltException()>
+        croak $nvae;<\n>
+    <endif>
+    }
+}<\n>
+>>
+
+dfaOptionalBlockStateSwitch(k,edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+switch ( $self->input->LA(<k>) ) {
+    <edges; separator="\n">
+}<\n>
+>>
+
+dfaLoopbackStateSwitch(k, edges,eotPredictsAlt,description,stateNumber,semPredState) ::= <<
+switch ( $self->input->LA(<k>) ) {
+<edges; separator="\n"><\n>
+<if(eotPredictsAlt)>
+else { $alt<decisionNumber> = <eotPredictsAlt> }<\n>
+<endif>
+}<\n>
+>>
+
+dfaEdgeSwitch(labels, targetState) ::= <<
+case [<labels:{ <it> }; separator=", ">] { <targetState> }
+>>
+
+// C y c l i c  D F A
+
+/** The code to initiate execution of a cyclic DFA; this is used
+ *  in the rule to predict an alt just like the fixed DFA case.
+ *  The <name> attribute is inherited via the parser, lexer, ...
+ */
+dfaDecision(decisionNumber,description) ::= <<
+$alt<decisionNumber> = $self->dfa<decisionNumber>->predict($self->input);
+>>
+
+/* Dump DFA tables as run-length-encoded Strings of octal values.
+ * Can't use hex as compiler translates them before compilation.
+ * These strings are split into multiple, concatenated strings.
+ * Java puts them back together at compile time thankfully.
+ * Java cannot handle large static arrays, so we're stuck with this
+ * encode/decode approach.  See analysis and runtime DFA for
+ * the encoding methods.
+ */
+cyclicDFA(dfa) ::= <<
+Readonly my $DFA<dfa.decisionNumber>_eot => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedEOT; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_eof => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedEOF; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_min => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedMin; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_max => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedMax; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_accept => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedAccept; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_special => ANTLR::Runtime::DFA->unpack_rle([ <dfa.javaCompressedSpecial; separator=", "> ]);
+Readonly my $DFA<dfa.decisionNumber>_transition => [ <dfa.javaCompressedTransition:{s|ANTLR::Runtime::DFA->unpack_rle([ <s; separator=", "> ])}; separator=", "> ];
+
+{
+package <name>::DFA<dfa.decisionNumber>;
+use ANTLR::Runtime::Class;
+
+use strict;
+use warnings;
+
+extends 'ANTLR::Runtime::DFA';
+
+sub BUILD {
+    my $self = shift;
+    my $param_ref = __PACKAGE__->unpack_params(@_, {
+        spec => [
+            {
+                name => 'recognizer',
+                isa  => 'ANTLR::Runtime::BaseRecognizer'
+            },
+        ]
+    });
+
+    $self->recognizer($param_ref->{recognizer});
+    $self->decision_number(<dfa.decisionNumber>);
+    $self->eot($DFA<dfa.decisionNumber>_eot);
+    $self->eof($DFA<dfa.decisionNumber>_eof);
+    $self->min($DFA<dfa.decisionNumber>_min);
+    $self->max($DFA<dfa.decisionNumber>_max);
+    $self->accept($DFA<dfa.decisionNumber>_accept);
+    $self->special($DFA<dfa.decisionNumber>_special);
+    $self->transition($DFA<dfa.decisionNumber>_transition);
+}
+
+sub get_description {
+    return "<dfa.description>";
+}
+
+<@errorMethod()>
+
+<if(dfa.specialStateSTs)>
+sub special_state_transition {
+    my ($self, $param_ref) = unpack_params(@_, {
+        spec => [
+            {
+                name => 's',
+                type => SCALAR,
+            },
+            {
+                name => 'input',
+                isa  => 'ANTLR::Runtime::IntStream',
+            }
+        ]
+    });
+    my $s = $param_ref->{s};
+    my $input = $param_ref->{input};
+
+    switch ($s) {
+        <dfa.specialStateSTs:{state |
+        case <i0> \{ <! compressed special state numbers 0..n-1 !>
+            <state>}; separator="\n">
+        }
+    }
+
+<if(backtracking)>
+    if ($self->state->backtracking > 0) {
+        $self->state->failed = 1;
+        return -1;
+    }<\n>
+<endif>
+
+    my $nvae =
+        ANTLR::Runtime::NoViableAltException->new({
+            grammar_decision_description => $self->get_description(),
+            decision_number => <dfa.decisionNumber>,
+            state_number => $s,
+            input => $input,
+        });<\n>
+    $self->error($nvae);
+    $nvae->throw();
+    }<\n>
+<endif>
+}<\n>
+>>
+
+/** A state in a cyclic DFA; it's a special state and part of a big switch on
+ *  state.
+ */
+cyclicDFAState(decisionNumber,stateNumber,edges,needErrorClause,semPredState) ::= <<
+my $input = $self->input;
+my $LA<decisionNumber>_<stateNumber> = $input->LA(1);<\n>
+<if(semPredState)> <! get next lookahead symbol to test edges, then rewind !>
+my $index<decisionNumber>_<stateNumber> = $input->index();
+$input->rewind();<\n>
+<endif>
+s = -1;
+<edges; separator="\nels">
+<if(semPredState)> <! return input cursor to state before we rewound !>
+input.seek(index<decisionNumber>_<stateNumber>);<\n>
+<endif>
+if ( s>=0 ) return s;
+break;
+>>
+
+/** Just like a fixed DFA edge, test the lookahead and indicate what
+ *  state to jump to next if successful.
+ */
+cyclicDFAEdge(labelExpr, targetStateNumber, edgeNumber, predicates) ::= <<
+if ( (<labelExpr>) <if(predicates)>&& (<predicates>)<endif>) {s = <targetStateNumber>;}<\n>
+>>
+
+/** An edge pointing at end-of-token; essentially matches any char;
+ *  always jump to the target.
+ */
+eotDFAEdge(targetStateNumber,edgeNumber, predicates) ::= <<
+s = <targetStateNumber>;<\n>
+>>
+
+
+// D F A  E X P R E S S I O N S
+
+andPredicates(left,right) ::= "(<left> && <right>)"
+
+orPredicates(operands) ::= "(<first(operands)><rest(operands):{o | ||<o>}>)"
+
+notPredicate(pred) ::= "!(<evalPredicate(...)>)"
+
+evalPredicate(pred,description) ::= "<pred>"
+
+evalSynPredicate(pred,description) ::= "<pred>()"
+
+lookaheadTest(atom,k,atomAsInt) ::= "$LA<decisionNumber>_<stateNumber> eq <atom>"
+
+/** Sometimes a lookahead test cannot assume that LA(k) is in a temp variable
+ *  somewhere.  Must ask for the lookahead directly.
+ */
+isolatedLookaheadTest(atom,k,atomAsInt) ::= "$self->input->LA(<k>) eq <atom>"
+
+lookaheadRangeTest(lower,upper,k,rangeNumber,lowerAsInt,upperAsInt) ::= <<
+($LA<decisionNumber>_<stateNumber> ge <lower> && $LA<decisionNumber>_<stateNumber> le <upper>)
+>>
+
+isolatedLookaheadRangeTest(lower,upper,k,rangeNumber,lowerAsInt,upperAsInt) ::= "($self->input->LA(<k>) ge <lower> && $self->input->LA(<k>) le <upper>)"
+
+setTest(ranges) ::= "<ranges; separator=\" || \">"
+
+// A T T R I B U T E S
+
+globalAttributeScope(scope) ::= <<
+<if(scope.attributes)>
+protected static class <scope.name>_scope {
+    <scope.attributes:{<it.decl>;}; separator="\n">
+}
+protected Stack <scope.name>_stack = new Stack();<\n>
+<endif>
+>>
+
+ruleAttributeScope(scope) ::= <<
+<if(scope.attributes)>
+protected static class <scope.name>_scope {
+    <scope.attributes:{<it.decl>;}; separator="\n">
+}
+protected Stack <scope.name>_stack = new Stack();<\n>
+<endif>
+>>
+
+returnType() ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+<ruleDescriptor.name>_return
+<else>
+<if(ruleDescriptor.hasSingleReturnValue)>
+<ruleDescriptor.singleValueReturnType>
+<else>
+void
+<endif>
+<endif>
+>>
+
+/** Generate the Java type associated with a single or multiple return
+ *  values.
+ */
+ruleLabelType(referencedRule) ::= <<
+<if(referencedRule.hasMultipleReturnValues)>
+<referencedRule.name>_return
+<else>
+<if(referencedRule.hasSingleReturnValue)>
+<referencedRule.singleValueReturnType>
+<else>
+void
+<endif>
+<endif>
+>>
+
+/** Using a type to init value map, try to init a type; if not in table
+ *  must be an object, default value is "undef".
+ */
+initValue(typeName) ::= <<
+<if(typeName)>
+<perlTypeInitMap.(typeName)>
+<else>
+undef
+<endif>
+>>
+
+/** Define a rule label including default value */
+ruleLabelDef(label) ::= <<
+my $<label.label.text> = <initValue(typeName=ruleLabelType(referencedRule=label.referencedRule))>;<\n>
+>>
+
+/** Define a return struct for a rule if the code needs to access its
+ *  start/stop tokens, tree stuff, attributes, ...  Leave a hole for
+ *  subgroups to stick in members.
+ */
+returnScope(scope) ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+{
+    package <returnType()>;
+    use ANTLR::Runtime::Class;
+
+    extends 'ANTLR::Runtime::<if(TREE_PARSER)>Tree<else>Parser<endif>RuleReturnScope';
+
+    <scope.attributes:{public <it.decl>;}; separator="\n">
+    <@ruleReturnMembers()>
+}
+<endif>
+>>
+
+parameterScope(scope) ::= <<
+<scope.attributes:{$<it.name>}; separator=", ">
+>>
+
+parameterAttributeRef(attr) ::= "$<attr.name>"
+parameterSetAttributeRef(attr,expr) ::= "$<attr.name> =<expr>;"
+
+scopeAttributeRef(scope,attr,index,negIndex) ::= <<
+<if(negIndex)>
+((<scope>_scope)<scope>_stack.elementAt(<scope>_stack.size()-<negIndex>-1)).<attr.name>
+<else>
+<if(index)>
+((<scope>_scope)<scope>_stack.elementAt(<index>)).<attr.name>
+<else>
+((<scope>_scope)<scope>_stack.peek()).<attr.name>
+<endif>
+<endif>
+>>
+
+scopeSetAttributeRef(scope,attr,expr,index,negIndex) ::= <<
+<if(negIndex)>
+((<scope>_scope)<scope>_stack.elementAt(<scope>_stack.size()-<negIndex>-1)).<attr.name> =<expr>;
+<else>
+<if(index)>
+((<scope>_scope)<scope>_stack.elementAt(<index>)).<attr.name> =<expr>;
+<else>
+((<scope>_scope)<scope>_stack.peek()).<attr.name> =<expr>;
+<endif>
+<endif>
+>>
+
+/** $x is either global scope or x is rule with dynamic scope; refers
+ *  to stack itself not top of stack.  This is useful for predicates
+ *  like {$function.size()>0 && $function::name.equals("foo")}?
+ */
+isolatedDynamicScopeRef(scope) ::= "<scope>_stack"
+
+/** reference an attribute of rule; might only have single return value */
+ruleLabelRef(referencedRule,scope,attr) ::= <<
+<if(referencedRule.hasMultipleReturnValues)>
+$<scope>.<attr.name>
+<else>
+$<scope>
+<endif>
+>>
+
+returnAttributeRef(ruleDescriptor,attr) ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+retval.<attr.name>
+<else>
+$<attr.name>
+<endif>
+>>
+
+returnSetAttributeRef(ruleDescriptor,attr,expr) ::= <<
+<if(ruleDescriptor.hasMultipleReturnValues)>
+retval.<attr.name> =<expr>;
+<else>
+$<attr.name> =<expr>;
+<endif>
+>>
+
+/** How to translate $tokenLabel */
+tokenLabelRef(label) ::= "$<label>"
+
+/** ids+=ID {$ids} or e+=expr {$e} */
+listLabelRef(label) ::= "list_<label>"
+
+
+// not sure the next are the right approach
+
+tokenLabelPropertyRef_text(scope,attr) ::= "$<scope>->get_text()"
+tokenLabelPropertyRef_type(scope,attr) ::= "<scope>.getType()"
+tokenLabelPropertyRef_line(scope,attr) ::= "<scope>.getLine()"
+tokenLabelPropertyRef_pos(scope,attr) ::= "<scope>.getCharPositionInLine()"
+tokenLabelPropertyRef_channel(scope,attr) ::= "<scope>.getChannel()"
+tokenLabelPropertyRef_index(scope,attr) ::= "<scope>.getTokenIndex()"
+tokenLabelPropertyRef_tree(scope,attr) ::= "<scope>_tree"
+
+ruleLabelPropertyRef_start(scope,attr) ::= "((<labelType>)<scope>.start)"
+ruleLabelPropertyRef_stop(scope,attr) ::= "((<labelType>)<scope>.stop)"
+ruleLabelPropertyRef_tree(scope,attr) ::= "((<ASTLabelType>)<scope>.tree)"
+ruleLabelPropertyRef_text(scope,attr) ::= <<
+<if(TREE_PARSER)>
+input.getTokenStream().toString(
+  input.getTreeAdaptor().getTokenStartIndex(<scope>.start),
+  input.getTreeAdaptor().getTokenStopIndex(<scope>.start))
+<else>
+substr($self->input, $<scope>->start, $<scope>->stop)
+<endif>
+>>
+
+ruleLabelPropertyRef_st(scope,attr) ::= "<scope>.st"
+
+/** Isolated $RULE ref ok in lexer as it's a Token */
+lexerRuleLabel(label) ::= "$<label>"
+
+lexerRuleLabelPropertyRef_type(scope,attr) ::= "<scope>.getType()"
+lexerRuleLabelPropertyRef_line(scope,attr) ::= "<scope>.getLine()"
+lexerRuleLabelPropertyRef_pos(scope,attr) ::= "<scope>.getCharPositionInLine()"
+lexerRuleLabelPropertyRef_channel(scope,attr) ::= "<scope>.getChannel()"
+lexerRuleLabelPropertyRef_index(scope,attr) ::= "<scope>.getTokenIndex()"
+lexerRuleLabelPropertyRef_text(scope,attr) ::= "<scope>.getText()"
+
+// Somebody may ref $template or $tree or $stop within a rule:
+rulePropertyRef_start(scope,attr) ::= "((<labelType>)retval.start)"
+rulePropertyRef_stop(scope,attr) ::= "((<labelType>)retval.stop)"
+rulePropertyRef_tree(scope,attr) ::= "((<ASTLabelType>)retval.tree)"
+rulePropertyRef_text(scope,attr) ::= <<
+<if(TREE_PARSER)>
+input.getTokenStream().toString(
+  input.getTreeAdaptor().getTokenStartIndex(retval.start),
+  input.getTreeAdaptor().getTokenStopIndex(retval.start))
+<else>
+input.toString(retval.start,input.LT(-1))
+<endif>
+>>
+rulePropertyRef_st(scope,attr) ::= "retval.st"
+
+lexerRulePropertyRef_text(scope,attr) ::= "getText()"
+lexerRulePropertyRef_type(scope,attr) ::= "$_type"
+lexerRulePropertyRef_line(scope,attr) ::= "tokenStartLine"
+lexerRulePropertyRef_pos(scope,attr) ::= "tokenStartCharPositionInLine"
+lexerRulePropertyRef_index(scope,attr) ::= "-1" // undefined token index in lexer
+lexerRulePropertyRef_channel(scope,attr) ::= "$_channel"
+lexerRulePropertyRef_start(scope,attr) ::= "tokenStartCharIndex"
+lexerRulePropertyRef_stop(scope,attr) ::= "(getCharIndex()-1)"
+lexerRulePropertyRef_self(scope,attr) ::= "$self"
+
+// setting $st and $tree is allowed in local rule. everything else
+// is flagged as error
+ruleSetPropertyRef_tree(scope,attr,expr) ::= "retval.tree =<expr>;"
+ruleSetPropertyRef_st(scope,attr,expr) ::= "retval.st =<expr>;"
+
+
+/** How to execute an action */
+execAction(action) ::= <<
+<if(backtracking)>
+<if(actions.(actionScope).synpredgate)>
+if ( <actions.(actionScope).synpredgate> ) {
+  <action>
+}
+<else>
+if ( backtracking==0 ) {
+  <action>
+}
+<endif>
+<else>
+<action>
+<endif>
+>>
+
+// M I S C (properties, etc...)
+
+bitset(name, words64) ::= <<
+Readonly my $<name> => ANTLR::Runtime::BitSet->new({ words64 => [ <words64:{'<it>'};separator=", "> ] });<\n>
+>>
+
+codeFileExtension() ::= ".pm"
+
+true() ::= "1"
+false() ::= "0"

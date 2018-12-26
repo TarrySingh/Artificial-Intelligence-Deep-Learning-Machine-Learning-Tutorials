@@ -1,0 +1,175 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t052import</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+
+<script type="text/javascript" src="t052importS1.js"></script>
+<script type="text/javascript" src="t052importM1_t052importS1.js"></script>
+<script type="text/javascript" src="t052importM1Lexer.js"></script>
+<script type="text/javascript" src="t052importM1Parser.js"></script>
+
+<script type="text/javascript" src="t052importS2.js"></script>
+<script type="text/javascript" src="t052importM2_t052importS2.js"></script>
+<script type="text/javascript" src="t052importM2Lexer.js"></script>
+<script type="text/javascript" src="t052importM2Parser.js"></script>
+
+<script type="text/javascript" src="t052importS3.js"></script>
+<script type="text/javascript" src="t052importM3_t052importS3.js"></script>
+<script type="text/javascript" src="t052importM3Lexer.js"></script>
+<script type="text/javascript" src="t052importM3Parser.js"></script>
+
+<script type="text/javascript" src="t052importS4.js"></script>
+<script type="text/javascript" src="t052importT4.js"></script>
+<script type="text/javascript" src="t052importM4_t052importS4.js"></script>
+<script type="text/javascript" src="t052importM4_t052importT4.js"></script>
+<script type="text/javascript" src="t052importM4Lexer.js"></script>
+<script type="text/javascript" src="t052importM4Parser.js"></script>
+
+<script type="text/javascript" src="t052importS5.js"></script>
+<script type="text/javascript" src="t052importT5.js"></script>
+<script type="text/javascript" src="t052importM5_t052importS5.js"></script>
+<script type="text/javascript" src="t052importM5_t052importT5.js"></script>
+<script type="text/javascript" src="t052importM5Lexer.js"></script>
+<script type="text/javascript" src="t052importM5Parser.js"></script>
+
+<script type="text/javascript" src="t052importS6.js"></script>
+<script type="text/javascript" src="t052importM6_t052importS6.js"></script>
+<script type="text/javascript" src="t052importM6Lexer.js"></script>
+<script type="text/javascript" src="t052importM6Parser.js"></script>
+
+<script type="text/javascript" src="t052importS7.js"></script>
+<script type="text/javascript" src="t052importM7_t052importS7.js"></script>
+<script type="text/javascript" src="t052importM7.js"></script>
+
+<script type="text/javascript" src="t052importS8.js"></script>
+<script type="text/javascript" src="t052importM8_t052importS8.js"></script>
+<script type="text/javascript" src="t052importM8.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    // Parser Tests
+
+    function execLexer(lexerCls, xinput) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new (EnhancedParser(lexerCls))(cstream),
+            token;
+
+        while (true) {
+            token = lexer.nextToken();
+            if (!token || token.getType()===org.antlr.runtime.Token.EOF) {
+                break;
+            }
+            lexer.buf += token.getText();
+        }
+
+        return lexer.buf; 
+    }
+
+    function execParser(lexerCls, parserCls, grammarEntry, xinput) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new (EnhancedParser(lexerCls))(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new (EnhancedParser(parserCls))(tstream);
+        var r = parser[grammarEntry]();
+
+        return parser.buf; 
+    }
+
+    function EnhancedParser(base) {
+        var T = function() {
+            T.superclass.constructor.apply(this, arguments);
+            this.traces = [];
+            this.buf = "";
+        };
+
+        org.antlr.lang.extend(T, base, {
+            capture: function(t) {
+                this.buf += t;
+            },
+            traceIn: function(ruleName, ruleIndex) {
+                this.traces.push(">"+ruleName);
+            },
+            traceOut: function(ruleName, ruleIndex) {
+                this.traces.push("<"+ruleName);
+            },
+            reportError: function(input, re) {
+                throw re;
+            }
+        });
+
+        return T;
+    }
+
+    function testDelegatorInvokesDelegateRule() {
+        var found = execParser(t052importM1Lexer,
+                t052importM1Parser,
+                "s",
+                "b");
+        assertEquals("S.a", found);
+    }
+
+    function testDelegatorInvokesDelegateRuleWithArgs() {
+        var found = execParser(t052importM2Lexer,
+                t052importM2Parser,
+                "s",
+                "b");
+        assertEquals("S.a1000", found);
+    }
+
+    function testDelegatorAccessesDelegateMembers() {
+        var found = execParser(t052importM3Lexer,
+                t052importM3Parser,
+                "s",
+                "b");
+        assertEquals("foo", found);
+    }
+
+    function testDelegatorInvokesFirstVersionOfDelegateRule() {
+        var found = execParser(t052importM4Lexer,
+                t052importM4Parser,
+                "s",
+                "b");
+        assertEquals("S.a", found);
+    }
+
+    function testDelegatesSeeSameTokenType() {
+        var found = execParser(t052importM5Lexer,
+                t052importM5Parser,
+                "s",
+                "aa");
+        assertEquals("S.x T.y", found);
+    }
+
+    function testDelegatorRuleOverridesDelegate() {
+        var found = execParser(t052importM6Lexer,
+                t052importM6Parser,
+                "a",
+                "c");
+        assertEquals("S.a", found);
+    }
+
+    // Lexer Tests
+
+    function testLexerDelegatorInvokesDelegateRule() {
+        var found = execLexer(t052importM7, "abc");
+        assertEquals("S.A abc", found);
+    }
+
+    function testLexerDelegatorRuleOverridesDelegate() {
+        var found = execLexer(t052importM8, "a");
+        assertEquals("M.A a", found);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t052import</h1>
+</body>
+</html>

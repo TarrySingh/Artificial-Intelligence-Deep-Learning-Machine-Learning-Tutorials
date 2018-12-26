@@ -1,0 +1,184 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{19B965DE-5100-4064-A580-159644F6980E}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Antlr3.Runtime.Test</RootNamespace>
+    <AssemblyName>Antlr3.Runtime.Test</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Xml.Linq">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data.DataSetExtensions">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
+    <Reference Include="vjslib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Antlr3.Runtime.Debug\Antlr3.Runtime.Debug.csproj">
+      <Project>{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}</Project>
+      <Name>Antlr3.Runtime.Debug</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antlr3.Runtime.JavaExtensions\Antlr3.Runtime.JavaExtensions.csproj">
+      <Project>{A7EEC557-EB14-451C-9616-B7A61F4ECE69}</Project>
+      <Name>Antlr3.Runtime.JavaExtensions</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Antlr3.Runtime\Antlr3.Runtime.csproj">
+      <Project>{8FDC0A87-9005-4D5A-AB75-E55CEB575559}</Project>
+      <Name>Antlr3.Runtime</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr3 Include="JavaCompat\Expr.g3">
+      <OutputFiles>JavaCompat\ExprLexer.cs;JavaCompat\ExprParser.cs;JavaCompat\Expr.tokens</OutputFiles>
+    </Antlr3>
+    <Compile Include="JavaCompat\ExprLexer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Expr.g3</DependentUpon>
+    </Compile>
+    <Compile Include="JavaCompat\ExprParser.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Expr.g3</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr3 Include="BuildOptions\DebugGrammar.g3">
+      <GrammarOptions>-debug</GrammarOptions>
+      <OutputFiles>BuildOptions\DebugGrammarLexer.cs;BuildOptions\DebugGrammarParser.cs;BuildOptions\DebugGrammar.tokens</OutputFiles>
+    </Antlr3>
+    <Compile Include="BuildOptions\DebugGrammarLexer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>DebugGrammar.g3</DependentUpon>
+    </Compile>
+    <Compile Include="BuildOptions\DebugGrammarLexerHelper.cs">
+      <DependentUpon>DebugGrammar.g3</DependentUpon>
+    </Compile>
+    <Compile Include="BuildOptions\DebugGrammarParser.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>DebugGrammar.g3</DependentUpon>
+    </Compile>
+    <Compile Include="BuildOptions\DebugGrammarParserHelper.cs">
+      <DependentUpon>DebugGrammar.g3</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr3 Include="BuildOptions\DebugTreeGrammar.g3">
+      <GrammarOptions>-debug</GrammarOptions>
+      <OutputFiles>BuildOptions\DebugTreeGrammar.cs;BuildOptions\DebugTreeGrammar.tokens</OutputFiles>
+    </Antlr3>
+    <Compile Include="BuildOptions\DebugTreeGrammar.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>DebugTreeGrammar.g3</DependentUpon>
+    </Compile>
+    <Compile Include="BuildOptions\DebugTreeGrammarHelper.cs">
+      <DependentUpon>DebugTreeGrammar.g3</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr3 Include="BuildOptions\ProfileGrammar.g3">
+      <GrammarOptions>-profile</GrammarOptions>
+      <OutputFiles>BuildOptions\ProfileGrammarLexer.cs;BuildOptions\ProfileGrammarParser.cs;BuildOptions\ProfileGrammar.tokens</OutputFiles>
+    </Antlr3>
+    <None Include="BuildOptions\ProfileGrammarLexer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ProfileGrammar.g3</DependentUpon>
+    </None>
+    <None Include="BuildOptions\ProfileGrammarLexerHelper.cs">
+      <DependentUpon>ProfileGrammar.g3</DependentUpon>
+    </None>
+    <None Include="BuildOptions\ProfileGrammarParser.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ProfileGrammar.g3</DependentUpon>
+    </None>
+    <None Include="BuildOptions\ProfileGrammarParserHelper.cs">
+      <DependentUpon>ProfileGrammar.g3</DependentUpon>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Antlr3 Include="BuildOptions\ProfileTreeGrammar.g3">
+      <GrammarOptions>-profile</GrammarOptions>
+      <OutputFiles>BuildOptions\ProfileTreeGrammar.cs;BuildOptions\ProfileTreeGrammar.tokens</OutputFiles>
+    </Antlr3>
+    <None Include="BuildOptions\ProfileTreeGrammar.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>ProfileTreeGrammar.g3</DependentUpon>
+    </None>
+    <None Include="BuildOptions\ProfileTreeGrammarHelper.cs">
+      <DependentUpon>ProfileTreeGrammar.g3</DependentUpon>
+    </None>
+  </ItemGroup>
+  <PropertyGroup>
+    <UseHostCompilerIfAvailable>False</UseHostCompilerIfAvailable>
+  </PropertyGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <Antlr3ToolPath>$(MSBuildProjectDirectory)\..\..\..\..\..\..\antlrcs\main\bin\Bootstrap</Antlr3ToolPath>
+    <CoreCompileDependsOn>$(CoreCompileDependsOn);GenerateAntlrCode</CoreCompileDependsOn>
+    <CoreCleanDependsOn>$(CoreCleanDependsOn);CleanAntlrCode</CoreCleanDependsOn>
+  </PropertyGroup>
+  <Target Name="GenerateAntlrCode" Inputs="@(Antlr3)" Outputs="%(OutputFiles)">
+    <Message Importance="normal" Text="Antlr: Transforming '@(Antlr3)' to '%(Antlr3.OutputFiles)'" />
+    <!--<Exec Command="java -cp %22$(Antlr3ToolPath)\antlr3.jar;$(Antlr3ToolPath)\antlr-2.7.7.jar;$(Antlr3ToolPath)\stringtemplate-3.1b1.jar%22 org.antlr.Tool -lib %22%(RootDir)%(Directory).%22 -message-format vs2005 @(Antlr3)" Outputs="%(OutputFiles)" />-->
+    <Exec Command="%22$(Antlr3ToolPath)\Antlr3.exe%22 -Xconversiontimeout 60000 -lib %22%(RootDir)%(Directory).%22 -message-format vs2005 %(Antlr3.GrammarOptions) @(Antlr3)" Outputs="%(OutputFiles)" />
+  </Target>
+  <Target Name="CleanAntlrCode">
+    <ItemGroup>
+      <_CleanAntlrFileWrites Include="@(Antlr3->'%(RelativeDir)%(Filename).tokens')" />
+    </ItemGroup>
+    <Message Importance="normal" Text="Antlr: Deleting output files '@(_CleanAntlrFileWrites)'" />
+    <!--<Delete Files="@(_CleanAntlrFileWrites)" />-->
+  </Target>
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

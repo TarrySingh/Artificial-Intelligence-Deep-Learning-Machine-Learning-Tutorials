@@ -1,0 +1,240 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+ http://www.temporal-wave.com
+ http://www.linkedin.com/in/jimidle
+
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+/** Template overrides to add debugging to normal C output;
+ *  If ASTs are built, then you'll also get ASTDbg.stg loaded.
+ */
+group Dbg;
+
+@genericParser.members() ::= <<
+<if(grammar.grammarIsRoot)>
+const char * 
+ruleNames[] =
+	{
+		"invalidRule", <grammar.allImportedRules:{rST | "<rST.name>"}; wrap="\n		", separator=", ">
+	};<\n>
+<endif>
+<if(grammar.grammarIsRoot)> <! grammar imports other grammar(s) !>
+static ANTLR3_UINT32 ruleLevel = 0;
+static ANTLR3_UINT32 getRuleLevel() 
+{ 
+	return ruleLevel; 
+}
+static void incRuleLevel() 
+{ 
+	ruleLevel++; 
+}
+static void decRuleLevel() 
+{ 
+	ruleLevel--; 
+}
+<else> <! imported grammar !>
+static ANTLR3_UINT32 
+getRuleLevel() 
+{ 
+	return <grammar.delegators:{g| <g:delegateName()>}>->getRuleLevel(); 
+}
+static void incRuleLevel() 
+{ 
+	<grammar.delegators:{g| <g:delegateName()>}>->incRuleLevel(); 
+}
+static void 
+decRuleLevel() 
+{ 
+	<grammar.delegators:{g| <g:delegateName()>}>.decRuleLevel(); 
+}
+<endif>
+<if(profile)>
+// Profiling not yet implemented for C target
+//
+<endif>
+<if(grammar.grammarIsRoot)> 
+<ctorForPredefinedListener()>
+<else>
+<ctorForDelegateGrammar()>
+<endif>
+
+static ANTLR3_BOOLEAN 
+evalPredicate(p<name> ctx, ANTLR3_BOOLEAN result, const char * predicate) 
+{
+    DBG->semanticPredicate(DBG, result, predicate);
+    return result;
+}<\n>
+>>
+
+@genericParser.debugStuff() ::= <<
+<if(grammar.grammarIsRoot)> 
+<createListenerAndHandshake()>
+<endif>
+>>
+
+ctorForProfilingRootGrammar() ::= <<
+>>
+
+/** Basically we don't want to set any dbg listeners as root will have it. */
+ctorForDelegateGrammar() ::= <<
+
+>>
+
+ctorForPredefinedListener() ::= <<
+
+>>
+
+createListenerAndHandshake() ::= <<
+{
+	// DEBUG MODE code
+	//
+	pANTLR3_DEBUG_EVENT_LISTENER	 proxy;
+	proxy = antlr3DebugListenerNew();
+	proxy->grammarFileName = INPUT->tokenSource->strFactory->newStr8(INPUT->tokenSource->strFactory, (pANTLR3_UINT8)ctx->getGrammarFileName());
+	
+<if(TREE_PARSER)>
+	proxy->adaptor = ADAPTOR;
+<endif>
+	PARSER->setDebugListener(PARSER, proxy);
+
+	// Try to connect to the debugger (waits forever for a connection)
+	//	
+	proxy->handshake(proxy);
+	
+	// End DEBUG MODE code
+	//
+}
+>>
+
+
+@rule.preamble() ::= <<
+DBG->enterRule(DBG, getGrammarFileName(), (const char *)"<ruleName>");
+if ( getRuleLevel()==0 ) 
+{
+	DBG->commence(DBG);
+}
+incRuleLevel();
+DBG->location(DBG, <ruleDescriptor.tree.line>, <ruleDescriptor.tree.column>);<\n>
+>>
+
+@rule.postamble() ::= <<
+DBG->location(DBG, <ruleDescriptor.EORNode.line>, <ruleDescriptor.EORNode.column>);<\n>
+DBG->exitRule(DBG, getGrammarFileName(), (const char *)"<ruleName>");
+decRuleLevel();
+if ( getRuleLevel()==0 ) 
+{
+	DBG->terminate(DBG);
+}
+<\n>
+>>
+
+@synpred.start() ::= "DBG->beginBacktrack(DBG, BACKTRACKING);"
+
+@synpred.stop() ::= "DBG->endBacktrack(DBG, BACKTRACKING, success);"
+
+// Common debug event triggers used by region overrides below
+
+enterSubRule() ::=
+    "DBG->enterSubRule(DBG, <decisionNumber>);<\n>"
+
+exitSubRule() ::=
+    "DBG->exitSubRule(DBG, <decisionNumber>);<\n>"
+
+enterDecision() ::=
+    "DBG->enterDecision(DBG, <decisionNumber>);<\n>"
+
+exitDecision() ::=
+    "DBG->exitDecision(DBG, <decisionNumber>);<\n>"
+
+enterAlt(n) ::= "DBG->enterAlt(DBG, <n>);<\n>"
+
+// Region overrides that tell various constructs to add debugging triggers
+
+@block.predecision() ::= "<enterSubRule()><enterDecision()>"
+
+@block.postdecision() ::= "<exitDecision()>"
+
+@block.postbranch() ::= "<exitSubRule()>"
+
+@ruleBlock.predecision() ::= "<enterDecision()>"
+
+@ruleBlock.postdecision() ::= "<exitDecision()>"
+
+@ruleBlockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@blockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@positiveClosureBlock.preloop() ::= "<enterSubRule()>"
+
+@positiveClosureBlock.postloop() ::= "<exitSubRule()>"
+
+@positiveClosureBlock.predecision() ::= "<enterDecision()>"
+
+@positiveClosureBlock.postdecision() ::= "<exitDecision()>"
+
+@positiveClosureBlock.earlyExitException() ::=
+    "DBG->recognitionException(DBG, EXCEPTION);<\n>"
+
+@closureBlock.preloop() ::= "<enterSubRule()>"
+
+@closureBlock.postloop() ::= "<exitSubRule()>"
+
+@closureBlock.predecision() ::= "<enterDecision()>"
+
+@closureBlock.postdecision() ::= "<exitDecision()>"
+
+@altSwitchCase.prealt() ::= "<enterAlt(n=i)>"
+
+@element.prematch() ::=
+    "DBG->location(DBG, <it.line>, <it.pos>);"
+
+@matchSet.mismatchedSetException() ::=
+    "DBG->recognitionException(DBG, EXCEPTION);"
+
+@newNVException.noViableAltException() ::= "DBG->recognitionException(DBG, EXCEPTION);"
+
+dfaDecision(decisionNumber,description) ::= <<
+alt<decisionNumber> = cdfa<decisionNumber>.predict(ctx, RECOGNIZER, ISTREAM, &cdfa<decisionNumber>);
+if  (HASEXCEPTION())
+{
+	DBG->recognitionException(DBG, EXCEPTION);
+    goto rule<ruleDescriptor.name>Ex;
+}
+<checkRuleBacktrackFailure()>
+>>
+
+@cyclicDFA.errorMethod() ::= <<
+//static void 
+//dfaError(p<name> ctx) 
+//{
+//    DBG->recognitionException(DBG, EXCEPTION);
+//}
+>>
+
+/** Force predicate validation to trigger an event */
+evalPredicate(pred,description) ::= <<
+evalPredicate(ctx, <pred>, (const char *)"<description>")
+>>

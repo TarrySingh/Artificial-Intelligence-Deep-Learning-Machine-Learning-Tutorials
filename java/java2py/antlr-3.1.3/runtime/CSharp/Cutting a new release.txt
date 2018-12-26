@@ -1,0 +1,43 @@
+=====================================================================
+NOTE: The following top-level directory names:
+        - build
+        - bin
+        - docs
+      are *reserved* for use by the build system. The 'nant clean' 
+      command will remove directories with any of these names 
+      without warning!!
+=====================================================================
+
+To cut a new release, I need to do the following:
+
+a) Change the version numbers in
+
+	all.antlr3.runtime.net.build
+	README.TXT
+	Sources/Antlr3.Runtime/default.build
+	Sources/Antlr3.Runtime/AssemblyInfo.cs
+	Sources/Antlr3.Runtime/Antlr.Runtime/Constants.cs
+	Sources/Antlr3.Utility/default.build
+	Sources/Antlr3.Utility/AssemblyInfo.cs
+	Sources/Antlr3.Runtime.Tests/default.build
+
+b) Update the contents	of
+
+	README.TXT
+	CHANGES.TXT
+
+c) Clean the build output directories:
+
+		nant clean
+		
+d) Build the release assemblies (for .NET v1.1 and .NET v2.0)
+
+		nant release -t:net-1.1
+		nant release -t:net-2.0
+
+e) Build the release distro archives (for .NET v1.1 and .NET v2.0)
+
+		nant dist
+
+
+      

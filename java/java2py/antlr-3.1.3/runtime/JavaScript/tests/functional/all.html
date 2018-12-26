@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>Test Suites</title>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function lexerSuite() {
+        var lexer_suite = new top.jsUnitTestSuite();
+        lexer_suite.addTestPage("../functional/t001lexer.html");
+        lexer_suite.addTestPage("../functional/t002lexer.html");
+        lexer_suite.addTestPage("../functional/t003lexer.html");
+        lexer_suite.addTestPage("../functional/t004lexer.html");
+        lexer_suite.addTestPage("../functional/t005lexer.html");
+        lexer_suite.addTestPage("../functional/t006lexer.html");
+        lexer_suite.addTestPage("../functional/t007lexer.html");
+        lexer_suite.addTestPage("../functional/t008lexer.html");
+        lexer_suite.addTestPage("../functional/t009lexer.html");
+        lexer_suite.addTestPage("../functional/t010lexer.html");
+        lexer_suite.addTestPage("../functional/t011lexer.html");
+        lexer_suite.addTestPage("../functional/t012lexerXML.html");
+        lexer_suite.addTestPage("../functional/t019lexer.html");
+        lexer_suite.addTestPage("../functional/t020fuzzy.html");
+        lexer_suite.addTestPage("../functional/t025lexerRulePropertyRef.html");
+        lexer_suite.addTestPage("../functional/t027eof.html");
+        lexer_suite.addTestPage("../functional/t038lexerRuleLabel.html");
+        lexer_suite.addTestPage("../functional/t040bug80.html");
+        lexer_suite.addTestPage("../functional/t046rewrite.html");
+        lexer_suite.addTestPage("../functional/t048rewrite.html");
+        return lexer_suite;
+    }
+
+    function parserSuite() {
+        var parser_suite = new top.jsUnitTestSuite();
+        parser_suite.addTestPage("../functional/t013parser.html");
+        parser_suite.addTestPage("../functional/t014parser.html");
+        parser_suite.addTestPage("../functional/t015calc.html");
+        parser_suite.addTestPage("../functional/t016actions.html");
+        parser_suite.addTestPage("../functional/t017parser.html");
+        parser_suite.addTestPage("../functional/t018llstar.html");
+        parser_suite.addTestPage("../functional/t024finally.html");
+        parser_suite.addTestPage("../functional/t026actions.html");
+        parser_suite.addTestPage("../functional/t032subrulePredict.html");
+        parser_suite.addTestPage("../functional/t033backtracking.html");
+        parser_suite.addTestPage("../functional/t045dfabug.html");
+        parser_suite.addTestPage("../functional/t034tokenLabelPropertyRef.html");
+        parser_suite.addTestPage("../functional/t035ruleLabelPropertyRef.html");
+        parser_suite.addTestPage("../functional/t036multipleReturnValues.html");
+        parser_suite.addTestPage("../functional/t037rulePropertyRef.html");
+        parser_suite.addTestPage("../functional/t039labels.html");
+        parser_suite.addTestPage("../functional/t041parameters.html");
+        parser_suite.addTestPage("../functional/t044trace.html");
+        return parser_suite;
+    }
+
+    function treeParserSuite() {
+        var tree_parser_suite = new top.jsUnitTestSuite();
+        tree_parser_suite.addTestPage("../functional/t047treeparser.html");
+        tree_parser_suite.addTestPage("../functional/t049treeparser.html");
+        return tree_parser_suite;
+    }
+
+
+    function sempredSuite() {
+        var sempred_suite = new top.jsUnitTestSuite();
+        sempred_suite.addTestPage("../functional/t021hoist.html");
+        sempred_suite.addTestPage("../functional/t030specialStates.html");
+        sempred_suite.addTestPage("../functional/t031emptyAlt.html");
+        return sempred_suite;
+    }
+
+    function synpredSuite() {
+        var synpred_suite = new top.jsUnitTestSuite();
+        synpred_suite.addTestPage("../functional/t029synpredgate.html");
+        synpred_suite.addTestPage("../functional/t043synpred.html");
+        return synpred_suite;
+    }
+
+
+    function scopeSuite() {
+        var scope_suite = new top.jsUnitTestSuite();
+        scope_suite.addTestPage("../functional/t022scopes.html");
+        scope_suite.addTestPage("../functional/t023scopes.html");
+        return scope_suite;
+    }
+
+     function astSuite() {
+        var ast_suite = new top.jsUnitTestSuite();
+        ast_suite.addTestPage("../functional/t042ast.html");
+        return ast_suite;
+    }
+
+    function threepoint1Suite() {
+        var ast_suite = new top.jsUnitTestSuite();
+        ast_suite.addTestPage("../functional/t051treeRewriteAST.html");
+        ast_suite.addTestPage("../functional/t052import.html");
+        return ast_suite;
+    }
+
+    function suite() {
+        var all = new top.jsUnitTestSuite();
+        all.addTestSuite(lexerSuite());
+        all.addTestSuite(parserSuite());
+        all.addTestSuite(sempredSuite());
+        all.addTestSuite(synpredSuite());
+        all.addTestSuite(scopeSuite());
+        all.addTestSuite(astSuite());
+        all.addTestSuite(treeParserSuite());
+        all.addTestSuite(threepoint1Suite());
+        return all;
+    }
+</script>
+
+</head>
+<body>
+    <h1>Test Suites</h1>
+</body>
+</html>

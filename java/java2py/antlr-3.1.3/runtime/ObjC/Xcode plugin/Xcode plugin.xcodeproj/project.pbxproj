@@ -1,0 +1,552 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 42;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		8D5B49B0048680CD000E48DA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
+		8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */; };
+		F71CBB2C0ACEED1900088951 /* DevToolsCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F71CBB2B0ACEED1900088951 /* DevToolsCore.framework */; };
+		F71CBB6A0ACEF5E800088951 /* ANTLRCompilerSpecification.m in Sources */ = {isa = PBXBuildFile; fileRef = F71CBB690ACEF5E800088951 /* ANTLRCompilerSpecification.m */; };
+		F71CBB790ACF2D4600088951 /* antlr.pblangspec in Resources */ = {isa = PBXBuildFile; fileRef = F71CBB780ACF2D4600088951 /* antlr.pblangspec */; };
+		F71CBB7D0ACF2DAE00088951 /* antlr.pbfilespec in Resources */ = {isa = PBXBuildFile; fileRef = F71CBB7C0ACF2DAE00088951 /* antlr.pbfilespec */; };
+		F71CBB880ACF2EDC00088951 /* org.antlr.Tool.strings in Resources */ = {isa = PBXBuildFile; fileRef = F71CBB870ACF2EDC00088951 /* org.antlr.Tool.strings */; };
+		F738D0E30B07AADD001813C4 /* GrammarFilterLexer.m in Sources */ = {isa = PBXBuildFile; fileRef = F7AC63940AD0172A00BD7A06 /* GrammarFilterLexer.m */; };
+		F738D0E40B07AADE001813C4 /* GrammarFilterLexer.h in Copy Embedded Frameworks */ = {isa = PBXBuildFile; fileRef = F7AC63930AD0172A00BD7A06 /* GrammarFilterLexer.h */; };
+		F770F43E0AD310A9003EF8FB /* DevToolsSupport.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F770F43D0AD310A9003EF8FB /* DevToolsSupport.framework */; };
+		F794E92C0ACF38D900E06CD7 /* antlr.xcbuildrules in Resources */ = {isa = PBXBuildFile; fileRef = F71CBB800ACF2E2900088951 /* antlr.xcbuildrules */; };
+		F794E92D0ACF38DA00E06CD7 /* antlr.pbcompspec in Resources */ = {isa = PBXBuildFile; fileRef = F71CBB750ACF286100088951 /* antlr.pbcompspec */; };
+		F7FBB9A60AD00B9D00497048 /* ANTLR.framework in Copy Embedded Frameworks */ = {isa = PBXBuildFile; fileRef = F7FBB9510AD00A9400497048 /* ANTLR.framework */; };
+		F7FBBA700AD00FD100497048 /* ANTLRXCPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = F7FBBA6E0AD00FD100497048 /* ANTLRXCPlugin.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		F7FBB9500AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8DC2EF5B0486A6940098B216;
+			remoteInfo = ANTLR;
+		};
+		F7FBB9520AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F70BB380098E5AFF0054FEF8;
+			remoteInfo = Test;
+		};
+		F7FBB9540AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F7037EA00A05AFB60070435D;
+			remoteInfo = "lexertest-simple";
+		};
+		F7FBB9560AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F79D56600A0E23A400EA3CEE;
+			remoteInfo = fuzzy;
+		};
+		F7FBB9580AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F700E8640A5FA31D005D0757;
+			remoteInfo = combined;
+		};
+		F7FBB95A0AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F700ECD70A5FE186005D0757;
+			remoteInfo = "LL-star";
+		};
+		F7FBB95C0AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F7DD05EE0A7B15E1006A006C;
+			remoteInfo = hoistedPredicates;
+		};
+		F7FBB95E0AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F7DD07440A7B6618006A006C;
+			remoteInfo = scopes;
+		};
+		F7FBB9600AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F7278F840A881AFA00575EAE;
+			remoteInfo = returnscopes;
+		};
+		F7FBB9620AD00A9400497048 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F72C5E690AB7E4C900282574;
+			remoteInfo = "simplec tree";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F7FBB9660AD00AC800497048 /* Copy Embedded Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				F7FBB9A60AD00B9D00497048 /* ANTLR.framework in Copy Embedded Frameworks */,
+				F738D0E40B07AADE001813C4 /* GrammarFilterLexer.h in Copy Embedded Frameworks */,
+			);
+			name = "Copy Embedded Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		089C1672FE841209C02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
+		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		089C167FFE841241C02AAC07 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
+		1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
+		32DBCF630370AF2F00C91783 /* Xcode plugin_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "Xcode plugin_Prefix.pch"; sourceTree = "<group>"; };
+		8D5B49B6048680CD000E48DA /* ANTLR.pbplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ANTLR.pbplugin; sourceTree = BUILT_PRODUCTS_DIR; };
+		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = Info.plist; sourceTree = "<group>"; };
+		F71CBB2B0ACEED1900088951 /* DevToolsCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DevToolsCore.framework; path = /System/Library/PrivateFrameworks/DevToolsCore.framework; sourceTree = "<absolute>"; };
+		F71CBB400ACEEE2300088951 /* BuildSystemInterfaces.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BuildSystemInterfaces.h; sourceTree = "<group>"; };
+		F71CBB430ACEEF2500088951 /* DependencyGraph.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DependencyGraph.h; sourceTree = "<group>"; };
+		F71CBB480ACEF14C00088951 /* Specifications.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Specifications.h; sourceTree = "<group>"; };
+		F71CBB680ACEF5E800088951 /* ANTLRCompilerSpecification.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ANTLRCompilerSpecification.h; sourceTree = "<group>"; };
+		F71CBB690ACEF5E800088951 /* ANTLRCompilerSpecification.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ANTLRCompilerSpecification.m; sourceTree = "<group>"; };
+		F71CBB750ACF286100088951 /* antlr.pbcompspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = antlr.pbcompspec; sourceTree = "<group>"; };
+		F71CBB780ACF2D4600088951 /* antlr.pblangspec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.pblangspec; path = antlr.pblangspec; sourceTree = "<group>"; };
+		F71CBB7C0ACF2DAE00088951 /* antlr.pbfilespec */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.pbfilespec; path = antlr.pbfilespec; sourceTree = "<group>"; };
+		F71CBB800ACF2E2900088951 /* antlr.xcbuildrules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = antlr.xcbuildrules; sourceTree = "<group>"; };
+		F71CBB830ACF2EAE00088951 /* English */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/org.antlr.Tool.strings; sourceTree = "<group>"; };
+		F770F3D50AD187CC003EF8FB /* OutputParser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OutputParser.h; sourceTree = "<group>"; };
+		F770F43D0AD310A9003EF8FB /* DevToolsSupport.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DevToolsSupport.framework; path = /System/Library/PrivateFrameworks/DevToolsSupport.framework; sourceTree = "<absolute>"; };
+		F7AC63580AD0112000BD7A06 /* GrammarFilter.g */ = {isa = PBXFileReference; explicitFileType = sourcecode.antlr3; fileEncoding = 4; path = GrammarFilter.g; sourceTree = "<group>"; };
+		F7AC63920AD0172A00BD7A06 /* GrammarFilter.tokens */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = GrammarFilter.tokens; sourceTree = "<group>"; };
+		F7AC63930AD0172A00BD7A06 /* GrammarFilterLexer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GrammarFilterLexer.h; sourceTree = "<group>"; };
+		F7AC63940AD0172A00BD7A06 /* GrammarFilterLexer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GrammarFilterLexer.m; sourceTree = "<group>"; };
+		F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = ANTLR.xcodeproj; path = ../Framework/ANTLR.xcodeproj; sourceTree = SOURCE_ROOT; };
+		F7FBBA6D0AD00FD100497048 /* ANTLRXCPlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ANTLRXCPlugin.h; sourceTree = "<group>"; };
+		F7FBBA6E0AD00FD100497048 /* ANTLRXCPlugin.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = ANTLRXCPlugin.m; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		8D5B49B3048680CD000E48DA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */,
+				F71CBB2C0ACEED1900088951 /* DevToolsCore.framework in Frameworks */,
+				F770F43E0AD310A9003EF8FB /* DevToolsSupport.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		089C166AFE841209C02AAC07 /* Xcode plugin */ = {
+			isa = PBXGroup;
+			children = (
+				F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */,
+				F71CBB2E0ACEEDA000088951 /* Xcode Plugin API */,
+				08FB77AFFE84173DC02AAC07 /* Classes */,
+				32C88E010371C26100C91783 /* Other Sources */,
+				089C167CFE841241C02AAC07 /* Resources */,
+				089C1671FE841209C02AAC07 /* Frameworks and Libraries */,
+				19C28FB8FE9D52D311CA2CBB /* Products */,
+			);
+			name = "Xcode plugin";
+			sourceTree = "<group>";
+		};
+		089C1671FE841209C02AAC07 /* Frameworks and Libraries */ = {
+			isa = PBXGroup;
+			children = (
+				1058C7ACFEA557BF11CA2CBB /* Linked Frameworks */,
+				1058C7AEFEA557BF11CA2CBB /* Other Frameworks */,
+			);
+			name = "Frameworks and Libraries";
+			sourceTree = "<group>";
+		};
+		089C167CFE841241C02AAC07 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8D5B49B7048680CD000E48DA /* Info.plist */,
+				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
+				F71CBB750ACF286100088951 /* antlr.pbcompspec */,
+				F71CBB780ACF2D4600088951 /* antlr.pblangspec */,
+				F71CBB7C0ACF2DAE00088951 /* antlr.pbfilespec */,
+				F71CBB800ACF2E2900088951 /* antlr.xcbuildrules */,
+				F71CBB870ACF2EDC00088951 /* org.antlr.Tool.strings */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		08FB77AFFE84173DC02AAC07 /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				F7AC63540AD010C400BD7A06 /* Grammar Inspection */,
+				F71CBB680ACEF5E800088951 /* ANTLRCompilerSpecification.h */,
+				F71CBB690ACEF5E800088951 /* ANTLRCompilerSpecification.m */,
+				F7FBBA6D0AD00FD100497048 /* ANTLRXCPlugin.h */,
+				F7FBBA6E0AD00FD100497048 /* ANTLRXCPlugin.m */,
+			);
+			name = Classes;
+			sourceTree = "<group>";
+		};
+		1058C7ACFEA557BF11CA2CBB /* Linked Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */,
+			);
+			name = "Linked Frameworks";
+			sourceTree = "<group>";
+		};
+		1058C7AEFEA557BF11CA2CBB /* Other Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F770F43D0AD310A9003EF8FB /* DevToolsSupport.framework */,
+				F71CBB2B0ACEED1900088951 /* DevToolsCore.framework */,
+				089C167FFE841241C02AAC07 /* AppKit.framework */,
+				089C1672FE841209C02AAC07 /* Foundation.framework */,
+			);
+			name = "Other Frameworks";
+			sourceTree = "<group>";
+		};
+		19C28FB8FE9D52D311CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D5B49B6048680CD000E48DA /* ANTLR.pbplugin */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		32C88E010371C26100C91783 /* Other Sources */ = {
+			isa = PBXGroup;
+			children = (
+				32DBCF630370AF2F00C91783 /* Xcode plugin_Prefix.pch */,
+			);
+			name = "Other Sources";
+			sourceTree = "<group>";
+		};
+		F71CBB2E0ACEEDA000088951 /* Xcode Plugin API */ = {
+			isa = PBXGroup;
+			children = (
+				F71CBB400ACEEE2300088951 /* BuildSystemInterfaces.h */,
+				F71CBB430ACEEF2500088951 /* DependencyGraph.h */,
+				F71CBB480ACEF14C00088951 /* Specifications.h */,
+				F770F3D50AD187CC003EF8FB /* OutputParser.h */,
+			);
+			name = "Xcode Plugin API";
+			sourceTree = "<group>";
+		};
+		F7AC63540AD010C400BD7A06 /* Grammar Inspection */ = {
+			isa = PBXGroup;
+			children = (
+				F7AC63920AD0172A00BD7A06 /* GrammarFilter.tokens */,
+				F7AC63930AD0172A00BD7A06 /* GrammarFilterLexer.h */,
+				F7AC63940AD0172A00BD7A06 /* GrammarFilterLexer.m */,
+				F7AC63580AD0112000BD7A06 /* GrammarFilter.g */,
+			);
+			name = "Grammar Inspection";
+			sourceTree = "<group>";
+		};
+		F7FBB93A0AD00A9400497048 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				F7FBB9510AD00A9400497048 /* ANTLR.framework */,
+				F7FBB9530AD00A9400497048 /* Test.octest */,
+				F7FBB9550AD00A9400497048 /* lexertest-simple */,
+				F7FBB9570AD00A9400497048 /* fuzzy */,
+				F7FBB9590AD00A9400497048 /* combined */,
+				F7FBB95B0AD00A9400497048 /* LL-star */,
+				F7FBB95D0AD00A9400497048 /* hoistedPredicates */,
+				F7FBB95F0AD00A9400497048 /* scopes */,
+				F7FBB9610AD00A9400497048 /* returnscopes */,
+				F7FBB9630AD00A9400497048 /* simplectree */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		8D5B49AC048680CD000E48DA /* ANTLR Xcode plugin */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "ANTLR Xcode plugin" */;
+			buildPhases = (
+				8D5B49AF048680CD000E48DA /* Resources */,
+				F7FBB9660AD00AC800497048 /* Copy Embedded Frameworks */,
+				8D5B49B1048680CD000E48DA /* Sources */,
+				8D5B49B3048680CD000E48DA /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "ANTLR Xcode plugin";
+			productInstallPath = "$(HOME)/Library/Bundles";
+			productName = "Xcode plugin";
+			productReference = 8D5B49B6048680CD000E48DA /* ANTLR.pbplugin */;
+			productType = "com.apple.product-type.bundle";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		089C1669FE841209C02AAC07 /* Project object */ = {
+			isa = PBXProject;
+			buildConfigurationList = 1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Xcode plugin" */;
+			hasScannedForEncodings = 1;
+			mainGroup = 089C166AFE841209C02AAC07 /* Xcode plugin */;
+			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = F7FBB93A0AD00A9400497048 /* Products */;
+					ProjectRef = F7FBB9390AD00A9400497048 /* ANTLR.xcodeproj */;
+				},
+			);
+			targets = (
+				8D5B49AC048680CD000E48DA /* ANTLR Xcode plugin */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		F7FBB9510AD00A9400497048 /* ANTLR.framework */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.framework;
+			path = ANTLR.framework;
+			remoteRef = F7FBB9500AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9530AD00A9400497048 /* Test.octest */ = {
+			isa = PBXReferenceProxy;
+			fileType = wrapper.cfbundle;
+			path = Test.octest;
+			remoteRef = F7FBB9520AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9550AD00A9400497048 /* lexertest-simple */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "lexertest-simple";
+			remoteRef = F7FBB9540AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9570AD00A9400497048 /* fuzzy */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = fuzzy;
+			remoteRef = F7FBB9560AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9590AD00A9400497048 /* combined */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = combined;
+			remoteRef = F7FBB9580AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB95B0AD00A9400497048 /* LL-star */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = "LL-star";
+			remoteRef = F7FBB95A0AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB95D0AD00A9400497048 /* hoistedPredicates */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = hoistedPredicates;
+			remoteRef = F7FBB95C0AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB95F0AD00A9400497048 /* scopes */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = scopes;
+			remoteRef = F7FBB95E0AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9610AD00A9400497048 /* returnscopes */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = returnscopes;
+			remoteRef = F7FBB9600AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		F7FBB9630AD00A9400497048 /* simplectree */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			path = simplectree;
+			remoteRef = F7FBB9620AD00A9400497048 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
+
+/* Begin PBXResourcesBuildPhase section */
+		8D5B49AF048680CD000E48DA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8D5B49B0048680CD000E48DA /* InfoPlist.strings in Resources */,
+				F71CBB790ACF2D4600088951 /* antlr.pblangspec in Resources */,
+				F71CBB7D0ACF2DAE00088951 /* antlr.pbfilespec in Resources */,
+				F71CBB880ACF2EDC00088951 /* org.antlr.Tool.strings in Resources */,
+				F794E92C0ACF38D900E06CD7 /* antlr.xcbuildrules in Resources */,
+				F794E92D0ACF38DA00E06CD7 /* antlr.pbcompspec in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		8D5B49B1048680CD000E48DA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F71CBB6A0ACEF5E800088951 /* ANTLRCompilerSpecification.m in Sources */,
+				F7FBBA700AD00FD100497048 /* ANTLRXCPlugin.m in Sources */,
+				F738D0E30B07AADD001813C4 /* GrammarFilterLexer.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		089C167DFE841241C02AAC07 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				089C167EFE841241C02AAC07 /* English */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		F71CBB870ACF2EDC00088951 /* org.antlr.Tool.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				F71CBB830ACF2EAE00088951 /* English */,
+			);
+			name = org.antlr.Tool.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		1DEB913B08733D840010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ANTLR_EXTRA_JAVA_ARGS = "/Users/kroepke/Projects/idea/antlr3/classes:/Users/kroepke/Projects/idea/stringtemplate/classes:/usr/local/lib/antlr.jar";
+				ANTLR_FORCE_OUT_DIR = "$(PROJECT_DIR)";
+				ANTLR_LIB_DIR = "$(PROJECT_DIR)";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = stabs;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_1)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_2)",
+				);
+				FRAMEWORK_SEARCH_PATHS_QUOTED_1 = "\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"";
+				FRAMEWORK_SEARCH_PATHS_QUOTED_2 = "\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Xcode plugin_Prefix.pch";
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(HOME)/Library/Bundles";
+				OTHER_LDFLAGS = (
+					"-undefined",
+					dynamic_lookup,
+				);
+				PRODUCT_NAME = ANTLR;
+				WRAPPER_EXTENSION = pbplugin;
+				ZERO_LINK = NO;
+			};
+			name = Debug;
+		};
+		1DEB913C08733D840010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ANTLR_EXTRA_JAVA_ARGS = "/Users/kroepke/Projects/idea/antlr3/classes:/Users/kroepke/Projects/idea/stringtemplate/classes:/usr/local/lib/antlr.jar";
+				ARCHS = (
+					ppc,
+					i386,
+				);
+				DEBUG_INFORMATION_FORMAT = stabs;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_1)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_2)",
+				);
+				FRAMEWORK_SEARCH_PATHS_QUOTED_1 = "\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"";
+				FRAMEWORK_SEARCH_PATHS_QUOTED_2 = "\"$(SYSTEM_LIBRARY_DIR)/PrivateFrameworks\"";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREFIX_HEADER = "Xcode plugin_Prefix.pch";
+				INFOPLIST_FILE = Info.plist;
+				INSTALL_PATH = "$(HOME)/Library/Bundles";
+				PRODUCT_NAME = ANTLR;
+				WRAPPER_EXTENSION = pbplugin;
+				ZERO_LINK = NO;
+			};
+			name = Release;
+		};
+		1DEB913F08733D840010E9CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
+			};
+			name = Debug;
+		};
+		1DEB914008733D840010E9CD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				PREBINDING = NO;
+				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1DEB913A08733D840010E9CD /* Build configuration list for PBXNativeTarget "ANTLR Xcode plugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB913B08733D840010E9CD /* Debug */,
+				1DEB913C08733D840010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		1DEB913E08733D840010E9CD /* Build configuration list for PBXProject "Xcode plugin" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1DEB913F08733D840010E9CD /* Debug */,
+				1DEB914008733D840010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 089C1669FE841209C02AAC07 /* Project object */;
+}

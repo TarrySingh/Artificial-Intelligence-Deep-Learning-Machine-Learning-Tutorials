@@ -1,0 +1,259 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2006 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+/** Template overrides to add debugging to normal Java output;
+ *  If ASTs are built, then you'll also get ASTDbg.stg loaded.
+ */
+group Dbg;
+
+@outputFile.imports() ::= <<
+<@super.imports()>
+import org.antlr.runtime.debug.*;
+import java.io.IOException;
+>>
+
+@genericParser.members() ::= <<
+<if(grammar.grammarIsRoot)>
+public static final String[] ruleNames = new String[] {
+    "invalidRule", <grammar.allImportedRules:{rST | "<rST.name>"}; wrap="\n    ", separator=", ">
+};<\n>
+<endif>
+<if(grammar.grammarIsRoot)> <! grammar imports other grammar(s) !>
+    public int ruleLevel = 0;
+    public int getRuleLevel() { return ruleLevel; }
+    public void incRuleLevel() { ruleLevel++; }
+    public void decRuleLevel() { ruleLevel--; }
+<if(profile)>
+    <ctorForProfilingRootGrammar()>
+<else>
+    <ctorForRootGrammar()>
+<endif>
+<ctorForPredefinedListener()>
+<else> <! imported grammar !>
+    public int getRuleLevel() { return <grammar.delegators:{g| <g:delegateName()>}>.getRuleLevel(); }
+    public void incRuleLevel() { <grammar.delegators:{g| <g:delegateName()>}>.incRuleLevel(); }
+    public void decRuleLevel() { <grammar.delegators:{g| <g:delegateName()>}>.decRuleLevel(); }
+    <ctorForDelegateGrammar()>
+<endif>
+<if(profile)>
+public boolean alreadyParsedRule(IntStream input, int ruleIndex) {
+    ((Profiler)dbg).examineRuleMemoization(input, ruleIndex, <grammar.composite.rootGrammar.recognizerName>.ruleNames[ruleIndex]);
+    return super.alreadyParsedRule(input, ruleIndex);
+}<\n>
+public void memoize(IntStream input,
+                    int ruleIndex,
+                    int ruleStartIndex)
+{
+    ((Profiler)dbg).memoize(input, ruleIndex, ruleStartIndex, <grammar.composite.rootGrammar.recognizerName>.ruleNames[ruleIndex]);
+    super.memoize(input, ruleIndex, ruleStartIndex);
+}<\n>
+<endif>
+protected boolean evalPredicate(boolean result, String predicate) {
+    dbg.semanticPredicate(result, predicate);
+    return result;
+}<\n>
+>>
+
+ctorForRootGrammar() ::= <<
+<! bug: can't use <@super.members()> cut-n-paste instead !>
+<! Same except we add port number and profile stuff if root grammar !>
+public <name>(<inputStreamType> input) {
+    this(input, DebugEventSocketProxy.DEFAULT_DEBUGGER_PORT, new RecognizerSharedState());
+}
+public <name>(<inputStreamType> input, int port, RecognizerSharedState state) {
+    super(input, state);
+    <parserCtorBody()>
+    <createListenerAndHandshake()>
+    <grammar.directDelegates:{g|<g:delegateName()> = new <g.recognizerName>(input, dbg, this.state, this<grammar.delegators:{g|, <g:delegateName()>}>);}; separator="\n">
+    <@finally()>
+}<\n>
+>>
+
+ctorForProfilingRootGrammar() ::= <<
+<! bug: can't use <@super.members()> cut-n-paste instead !>
+public <name>(<inputStreamType> input) {
+    this(input, new Profiler(null), new RecognizerSharedState());
+}
+public <name>(<inputStreamType> input, DebugEventListener dbg, RecognizerSharedState state) {
+    super(input, dbg, state);
+    Profiler p = (Profiler)dbg;
+    p.setParser(this);
+    <parserCtorBody()>
+    <grammar.directDelegates:
+     {g|<g:delegateName()> = new <g.recognizerName>(input, dbg, this.state, this<grammar.delegators:{g|, <g:delegateName()>}>);}; separator="\n">
+    <@finally()>
+}
+<\n>
+>>
+
+/** Basically we don't want to set any dbg listeners are root will have it. */
+ctorForDelegateGrammar() ::= <<
+public <name>(<inputStreamType> input, DebugEventListener dbg, RecognizerSharedState state<grammar.delegators:{g|, <g.recognizerName> <g:delegateName()>}>) {
+    super(input, dbg, state);
+    <parserCtorBody()>
+    <grammar.directDelegates:
+     {g|<g:delegateName()> = new <g.recognizerName>(input, this, this.state<grammar.delegators:{g|, <g:delegateName()>}>);}; separator="\n">
+}<\n>
+>>
+
+ctorForPredefinedListener() ::= <<
+public <name>(<inputStreamType> input, DebugEventListener dbg) {
+    <@superClassRef>super(input, dbg, new RecognizerSharedState());<@end>
+<if(profile)>
+    Profiler p = (Profiler)dbg;
+    p.setParser(this);
+<endif>
+    <parserCtorBody()>
+    <grammar.directDelegates:{g|<g:delegateName()> = new <g.recognizerName>(input, dbg, this.state, this<grammar.delegators:{g|, <g:delegateName()>}>);}; separator="\n">
+    <@finally()>
+}<\n>
+>>
+
+createListenerAndHandshake() ::= <<
+<if(TREE_PARSER)>
+DebugEventSocketProxy proxy =
+    new DebugEventSocketProxy(this, port, input.getTreeAdaptor());<\n>
+<else>
+DebugEventSocketProxy proxy =
+    new DebugEventSocketProxy(this, port, null);<\n>
+<endif>
+setDebugListener(proxy);
+try {
+    proxy.handshake();
+}
+catch (IOException ioe) {
+    reportError(ioe);
+}
+>>
+
+@genericParser.superClassName() ::= "Debug<@super.superClassName()>"
+
+@rule.preamble() ::= <<
+try { dbg.enterRule(getGrammarFileName(), "<ruleName>");
+if ( getRuleLevel()==0 ) {dbg.commence();}
+incRuleLevel();
+dbg.location(<ruleDescriptor.tree.line>, <ruleDescriptor.tree.column>);<\n>
+>>
+
+@rule.postamble() ::= <<
+dbg.location(<ruleDescriptor.EORNode.line>, <ruleDescriptor.EORNode.column>);<\n>
+}
+finally {
+    dbg.exitRule(getGrammarFileName(), "<ruleName>");
+    decRuleLevel();
+    if ( getRuleLevel()==0 ) {dbg.terminate();}
+}<\n>
+>>
+
+@synpred.start() ::= "dbg.beginBacktrack(state.backtracking);"
+
+@synpred.stop() ::= "dbg.endBacktrack(state.backtracking, success);"
+
+// Common debug event triggers used by region overrides below
+
+enterSubRule() ::=
+    "try { dbg.enterSubRule(<decisionNumber>);<\n>"
+
+exitSubRule() ::=
+    "} finally {dbg.exitSubRule(<decisionNumber>);}<\n>"
+
+enterDecision() ::=
+    "try { dbg.enterDecision(<decisionNumber>);<\n>"
+
+exitDecision() ::=
+    "} finally {dbg.exitDecision(<decisionNumber>);}<\n>"
+
+enterAlt(n) ::= "dbg.enterAlt(<n>);<\n>"
+
+// Region overrides that tell various constructs to add debugging triggers
+
+@block.predecision() ::= "<enterSubRule()><enterDecision()>"
+
+@block.postdecision() ::= "<exitDecision()>"
+
+@block.postbranch() ::= "<exitSubRule()>"
+
+@ruleBlock.predecision() ::= "<enterDecision()>"
+
+@ruleBlock.postdecision() ::= "<exitDecision()>"
+
+@ruleBlockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@blockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@positiveClosureBlock.preloop() ::= "<enterSubRule()>"
+
+@positiveClosureBlock.postloop() ::= "<exitSubRule()>"
+
+@positiveClosureBlock.predecision() ::= "<enterDecision()>"
+
+@positiveClosureBlock.postdecision() ::= "<exitDecision()>"
+
+@positiveClosureBlock.earlyExitException() ::=
+    "dbg.recognitionException(eee);<\n>"
+
+@closureBlock.preloop() ::= "<enterSubRule()>"
+
+@closureBlock.postloop() ::= "<exitSubRule()>"
+
+@closureBlock.predecision() ::= "<enterDecision()>"
+
+@closureBlock.postdecision() ::= "<exitDecision()>"
+
+@altSwitchCase.prealt() ::= "<enterAlt(n=i)>"
+
+@element.prematch() ::=
+    "dbg.location(<it.line>,<it.pos>);"
+
+@matchSet.mismatchedSetException() ::=
+    "dbg.recognitionException(mse);"
+
+@dfaState.noViableAltException() ::= "dbg.recognitionException(nvae);"
+
+@dfaStateSwitch.noViableAltException() ::= "dbg.recognitionException(nvae);"
+
+dfaDecision(decisionNumber,description) ::= <<
+try {
+    isCyclicDecision = true;
+    <super.dfaDecision(...)>
+}
+catch (NoViableAltException nvae) {
+    dbg.recognitionException(nvae);
+    throw nvae;
+}
+>>
+
+@cyclicDFA.errorMethod() ::= <<
+public void error(NoViableAltException nvae) {
+    dbg.recognitionException(nvae);
+}
+>>
+
+/** Force predicate validation to trigger an event */
+evalPredicate(pred,description) ::= <<
+evalPredicate(<pred>,"<description>")
+>>

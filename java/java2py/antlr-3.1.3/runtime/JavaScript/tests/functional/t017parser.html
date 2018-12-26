@@ -1,0 +1,68 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t017parser</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t017parserLexer.js"></script>
+<script type="text/javascript" src="t017parserParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    TestParser = function() {
+        TestParser.superclass.constructor.apply(this, arguments);
+        this.reportedErrors = [];
+    };
+    org.antlr.lang.extend(TestParser, t017parserParser, {
+        emitErrorMessage: function(msg) {
+            this.reportedErrors.push(msg);
+        }
+    });
+
+    function testValid() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("int foo;"),
+            lexer = new t017parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TestParser(tstream);
+
+        parser.program();
+        assertEquals(parser.reportedErrors.length, 0);
+    }
+
+    function testMalformedInput1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("int foo() { 1+2 }");
+            lexer = new t017parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TestParser(tstream);
+
+        parser.program();
+        assertEquals(parser.reportedErrors.length, 1);
+        assertEquals(parser.reportedErrors[0].indexOf("line 1:16"), 0);
+    }
+
+    function testMalformedInput2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("int foo() { 1+; 1+2 }"),
+            lexer = new t017parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TestParser(tstream);
+
+        parser.program();
+        assertEquals(parser.reportedErrors.length, 2);
+        assertEquals(parser.reportedErrors[0].indexOf("line 1:14"), 0);
+        assertEquals(parser.reportedErrors[1].indexOf("line 1:20"), 0);
+    }
+
+
+</script>
+
+</head>
+<body>
+    <h1>t017parser</h1>
+</body>
+</html>

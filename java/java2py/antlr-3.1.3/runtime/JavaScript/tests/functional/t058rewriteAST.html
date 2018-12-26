@@ -1,0 +1,732 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t058rewriteAST</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+
+<script type="text/javascript" src="t058rewriteAST1Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST1Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST2Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST2Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST3Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST3Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST4Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST4Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST5Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST5Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST6Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST6Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST7Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST7Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST8Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST8Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST9Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST9Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST10Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST10Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST11Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST11Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST12Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST12Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST13Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST13Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST14Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST14Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST15Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST15Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST16Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST16Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST17Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST17Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST18Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST18Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST19Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST19Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST20Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST20Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST21Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST21Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST22Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST22Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST23Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST23Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST24Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST24Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST25Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST25Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST26Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST26Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST27Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST27Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST28Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST28Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST29Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST29Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST30Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST30Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST31Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST31Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST32Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST32Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST33Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST33Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST34Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST34Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST35Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST35Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST36Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST36Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST37Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST37Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST38Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST38Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST39Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST39Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST40Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST40Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST41Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST41Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST42Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST42Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST43Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST43Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST44Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST44Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST45Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST45Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST46Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST46Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST47Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST47Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST48Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST48Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST49Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST49Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST50Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST50Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST51Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST51Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST52Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST52Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST53Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST53Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST54Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST54Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST55Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST55Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST56Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST56Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST57Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST57Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST58Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST58Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST59Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST59Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST60Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST60Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST61Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST61Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST62Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST62Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST63Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST63Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST64Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST64Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST65Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST65Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST66Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST66Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST67Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST67Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST68Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST68Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST69Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST69Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST70Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST70Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST71Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST71Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST72Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST72Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST73Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST73Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST74Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST74Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST75Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST75Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST76Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST76Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST77Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST77Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST78Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST78Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST79Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST79Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST80Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST80Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST81Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST81Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST82Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST82Parser.js"></script>
+<script type="text/javascript" src="t058rewriteAST83Lexer.js"></script>
+<script type="text/javascript" src="t058rewriteAST83Parser.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    // Parser Tests
+
+    function execParser(lexerCls, parserCls, grammarEntry, xinput, expectErrors) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new (EnhancedParser(lexerCls))(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new (EnhancedParser(parserCls))(tstream);
+        var r = parser[grammarEntry]();
+
+        if (!expectErrors) {
+            throw parser._errors[0];
+            assertEquals(parser._errors.length, 0);
+        }
+
+        var result = "";
+        if (r) {
+            if (r.result) {
+                result += r.result
+            }
+            if (r.getTree()) {
+                result += r.getTree().toStringTree();
+            }
+        }
+
+        if (!expectErrors) {
+            return result;
+        } else {
+            return [result, parser._errors];
+        }
+    }
+
+    function EnhancedParser(base) {
+        var T = function() {
+            T.superclass.constructor.apply(this, arguments);
+            this.traces = [];
+            this.buf = "";
+            this._errors = [];
+        };
+
+        org.antlr.lang.extend(T, base, {
+            capture: function(t) {
+                this.buf += t;
+            },
+            traceIn: function(ruleName, ruleIndex) {
+                this.traces.push(">"+ruleName);
+            },
+            traceOut: function(ruleName, ruleIndex) {
+                this.traces.push("<"+ruleName);
+            },
+            emitErrorMessage: function(msg) {
+                this._errors.push(msg);
+            }
+        });
+
+        return T;
+    }
+
+function testDelete() {
+    var found = execParser(t058rewriteAST1Lexer, t058rewriteAST1Parser, "a", "abc 34");
+    assertEquals("", found);
+}
+
+function testSingleToken() {
+    var found = execParser(t058rewriteAST2Lexer, t058rewriteAST2Parser, "a", "abc");
+    assertEquals("abc", found);
+}
+
+function testSingleTokenToNewNode() {
+    var found = execParser(t058rewriteAST3Lexer, t058rewriteAST3Parser, "a", "abc");
+    assertEquals("x", found);
+}
+
+function testSingleTokenToNewNodeRoot() {
+    var found = execParser(t058rewriteAST4Lexer, t058rewriteAST4Parser, "a", "abc");
+    assertEquals("(x INT)", found);
+}
+
+function testSingleTokenToNewNode2() {
+    // Allow creation of new nodes w/o args.
+    var found = execParser(t058rewriteAST5Lexer, t058rewriteAST5Parser, "a", "abc");
+    assertEquals("ID", found);
+}
+
+function testSingleCharLiteral() {
+    var found = execParser(t058rewriteAST6Lexer, t058rewriteAST6Parser, "a", "c");
+    assertEquals("c", found);
+}
+
+function testSingleStringLiteral() {
+    var found = execParser(t058rewriteAST7Lexer, t058rewriteAST7Parser, "a", "ick");
+    assertEquals("ick", found);
+}
+
+function testSingleRule() {
+    var found = execParser(t058rewriteAST8Lexer, t058rewriteAST8Parser, "a", "abc");
+    assertEquals("abc", found);
+}
+
+function testReorderTokens() {
+    var found = execParser(t058rewriteAST9Lexer, t058rewriteAST9Parser, "a", "abc 34");
+    assertEquals("34 abc", found);
+}
+
+function testReorderTokenAndRule() {
+    var found = execParser(t058rewriteAST10Lexer, t058rewriteAST10Parser, "a", "abc 34");
+    assertEquals("34 abc", found);
+}
+
+function testTokenTree() {
+    var found = execParser(t058rewriteAST11Lexer, t058rewriteAST11Parser, "a", "abc 34");
+    assertEquals("(34 abc)", found);
+}
+
+function testTokenTreeAfterOtherStuff() {
+    var found = execParser(t058rewriteAST12Lexer, t058rewriteAST12Parser, "a", "void abc 34");
+    assertEquals("void (34 abc)", found);
+}
+
+function testNestedTokenTreeWithOuterLoop() {
+    // verify that ID and INT both iterate over outer index variable
+    var found = execParser(t058rewriteAST13Lexer, t058rewriteAST13Parser, "a", "a 1 b 2");
+    assertEquals("(DUH a (DUH 1)) (DUH b (DUH 2))", found);
+}
+
+function testOptionalSingleToken() {
+    var found = execParser(t058rewriteAST14Lexer, t058rewriteAST14Parser, "a", "abc");
+    assertEquals("abc", found);
+}
+
+function testClosureSingleToken() {
+    var found = execParser(t058rewriteAST15Lexer, t058rewriteAST15Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testPositiveClosureSingleToken() {
+    var found = execParser(t058rewriteAST16Lexer, t058rewriteAST16Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptionalSingleRule() {
+    var found = execParser(t058rewriteAST17Lexer, t058rewriteAST17Parser, "a", "abc");
+    assertEquals("abc", found);
+}
+
+function testClosureSingleRule() {
+    var found = execParser(t058rewriteAST18Lexer, t058rewriteAST18Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testClosureOfLabel() {
+    var found = execParser(t058rewriteAST19Lexer, t058rewriteAST19Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptionalLabelNoListLabel() {
+    var found = execParser(t058rewriteAST20Lexer, t058rewriteAST20Parser, "a", "a");
+    assertEquals("a", found);
+}
+
+function testPositiveClosureSingleRule() {
+    var found = execParser(t058rewriteAST21Lexer, t058rewriteAST21Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testSinglePredicateT() {
+    var found = execParser(t058rewriteAST22Lexer, t058rewriteAST22Parser, "a", "abc");
+    assertEquals("abc", found);
+}
+
+function testSinglePredicateF() {
+    var found = execParser(t058rewriteAST23Lexer, t058rewriteAST23Parser, "a", "abc");
+    assertEquals("", found);
+}
+
+function testMultiplePredicate() {
+    var found = execParser(t058rewriteAST24Lexer, t058rewriteAST24Parser, "a", "a 2");
+    assertEquals("2", found);
+}
+
+function testMultiplePredicateTrees() {
+    var found = execParser(t058rewriteAST25Lexer, t058rewriteAST25Parser, "a", "a 2");
+    assertEquals("(2 a)", found);
+}
+
+function testSimpleTree() {
+    var found = execParser(t058rewriteAST26Lexer, t058rewriteAST26Parser, "a", "-34");
+    assertEquals("(- 34)", found);
+}
+
+function testSimpleTree2() {
+    var found = execParser(t058rewriteAST27Lexer, t058rewriteAST27Parser, "a", "+ 34");
+    assertEquals("(34 +)", found);
+}
+
+function testNestedTrees() {
+    var found = execParser(t058rewriteAST28Lexer, t058rewriteAST28Parser, "a", "var a:int; b:float;");
+    assertEquals("(var (: a int) (: b float))", found);
+}
+
+function testImaginaryTokenCopy() {
+    var found = execParser(t058rewriteAST29Lexer, t058rewriteAST29Parser, "a", "a,b,c");
+    assertEquals("(VAR a) (VAR b) (VAR c)", found);
+}
+
+function testTokenUnreferencedOnLeftButDefined() {
+    var found = execParser(t058rewriteAST30Lexer, t058rewriteAST30Parser, "a", "a");
+    assertEquals("ID", found);
+}
+
+function testImaginaryTokenCopySetText() {
+    var found = execParser(t058rewriteAST31Lexer, t058rewriteAST31Parser, "a", "a,b,c");
+    assertEquals("(var a) (var b) (var c)", found);
+}
+
+function testImaginaryTokenNoCopyFromToken() {
+    var found = execParser(t058rewriteAST32Lexer, t058rewriteAST32Parser, "a", "{a b c}");
+    assertEquals("({ a b c)", found);
+}
+
+function testImaginaryTokenNoCopyFromTokenSetText() {
+    var found = execParser(t058rewriteAST33Lexer, t058rewriteAST33Parser, "a", "{a b c}");
+    assertEquals("(block a b c)", found);
+}
+
+function testMixedRewriteAndAutoAST() {
+    var found = execParser(t058rewriteAST34Lexer, t058rewriteAST34Parser, "a", "a 1 2");
+    assertEquals("(2 1 a)", found);
+}
+
+function testSubruleWithRewrite() {
+    var found = execParser(t058rewriteAST35Lexer, t058rewriteAST35Parser, "a", "a 1 2 3");
+    assertEquals("1 a 2 3", found);
+}
+
+function testSubruleWithRewrite2() {
+    var found = execParser(t058rewriteAST36Lexer, t058rewriteAST36Parser, "a", "int a; int b=3;");
+    assertEquals("(TYPE int a) (TYPE int b 3)", found);
+}
+
+function testNestedRewriteShutsOffAutoAST() {
+    var found = execParser(t058rewriteAST37Lexer, t058rewriteAST37Parser, "a", "a b c d; 42");
+    assertEquals("d 42", found);
+}
+
+function testRewriteActions() {
+    var found = execParser(t058rewriteAST38Lexer, t058rewriteAST38Parser, "a", "3");
+    assertEquals("(9 3)", found);
+}
+
+function testRewriteActions2() {
+    var found = execParser(t058rewriteAST39Lexer, t058rewriteAST39Parser, "a", "3");
+    assertEquals("9 3", found);
+}
+
+function testRefToOldValue() {
+    var found = execParser(t058rewriteAST40Lexer, t058rewriteAST40Parser, "a", "3+4+5");
+    assertEquals("(+ (+ 3 4) 5)", found);
+}
+
+function testCopySemanticsForRules() {
+    var found = execParser(t058rewriteAST41Lexer, t058rewriteAST41Parser, "a", "3");
+    assertEquals("(3 3)", found);
+}
+
+function testCopySemanticsForRules2() {
+    // copy type as a root for each invocation of (...)+ in rewrite
+    var found = execParser(t058rewriteAST42Lexer, t058rewriteAST42Parser, "a", "int a,b,c;");
+    assertEquals("(int a) (int b) (int c)", found);
+}
+
+function testCopySemanticsForRules3() {
+    // copy type *and* modifier even though it's optional
+    // for each invocation of (...)+ in rewrite
+    var found = execParser(t058rewriteAST43Lexer, t058rewriteAST43Parser, "a", "public int a,b,c;");
+    assertEquals("(int public a) (int public b) (int public c)", found);
+}
+
+function testCopySemanticsForRules3Double() {
+    // copy type *and* modifier even though it's optional
+    // for each invocation of (...)+ in rewrite
+    var found = execParser(t058rewriteAST44Lexer, t058rewriteAST44Parser, "a", "public int a,b,c;");
+    assertEquals("(int public a) (int public b) (int public c) (int public a) (int public b) (int public c)", found);
+}
+
+function testCopySemanticsForRules4() {
+    // copy type *and* modifier even though it's optional
+    // for each invocation of (...)+ in rewrite
+    var found = execParser(t058rewriteAST45Lexer, t058rewriteAST45Parser, "a", "public int a,b,c;");
+    assertEquals("(int (MOD public) a) (int (MOD public) b) (int (MOD public) c)", found);
+}
+
+function testCopySemanticsLists() {
+    var found = execParser(t058rewriteAST46Lexer, t058rewriteAST46Parser, "a", "a,b,c;");
+    assertEquals("a b c a b c", found);
+}
+
+function testCopyRuleLabel() {
+    var found = execParser(t058rewriteAST47Lexer, t058rewriteAST47Parser, "a", "a");
+    assertEquals("a a", found);
+}
+
+function testCopyRuleLabel2() {
+    var found = execParser(t058rewriteAST48Lexer, t058rewriteAST48Parser, "a", "a");
+    assertEquals("(a a)", found);
+}
+
+function testQueueingOfTokens() {
+    var found = execParser(t058rewriteAST49Lexer, t058rewriteAST49Parser, "a", "int a,b,c;");
+    assertEquals("(int a b c)", found);
+}
+
+function testCopyOfTokens() {
+    var found = execParser(t058rewriteAST50Lexer, t058rewriteAST50Parser, "a", "int a;");
+    assertEquals("int a int a", found);
+}
+
+function testTokenCopyInLoop() {
+    var found = execParser(t058rewriteAST51Lexer, t058rewriteAST51Parser, "a", "int a,b,c;");
+    assertEquals("(int a) (int b) (int c)", found);
+}
+
+function testTokenCopyInLoopAgainstTwoOthers() {
+    // must smear 'int' copies across as root of multiple trees
+    var found = execParser(t058rewriteAST52Lexer, t058rewriteAST52Parser, "a", "int a:1,b:2,c:3;");
+    assertEquals("(int a 1) (int b 2) (int c 3)", found);
+}
+
+function testListRefdOneAtATime() {
+    var found = execParser(t058rewriteAST53Lexer, t058rewriteAST53Parser, "a", "a b c");
+    assertEquals("a b c", found);
+}
+
+function testSplitListWithLabels() {
+    var found = execParser(t058rewriteAST54Lexer, t058rewriteAST54Parser, "a", "a b c");
+    assertEquals("a VAR b c", found);
+}
+
+function testComplicatedMelange() {
+    var found = execParser(t058rewriteAST55Lexer, t058rewriteAST55Parser, "a", "a a b b b c c c d");
+    assertEquals("a a b b b c c c d", found);
+}
+
+function testRuleLabel() {
+    var found = execParser(t058rewriteAST56Lexer, t058rewriteAST56Parser, "a", "a");
+    assertEquals("a", found);
+}
+
+function testAmbiguousRule() {
+    var found = execParser(t058rewriteAST57Lexer, t058rewriteAST57Parser,
+            "a", "abc 34");
+    assertEquals("34", found);
+}
+
+function testRuleListLabel() {
+    var found = execParser(t058rewriteAST58Lexer, t058rewriteAST58Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testRuleListLabel2() {
+    var found = execParser(t058rewriteAST59Lexer, t058rewriteAST59Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptional() {
+    var found = execParser(t058rewriteAST60Lexer, t058rewriteAST60Parser, "a", "a");
+    assertEquals("a", found);
+}
+
+function testOptional2() {
+    var found = execParser(t058rewriteAST61Lexer, t058rewriteAST61Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptional3() {
+    var found = execParser(t058rewriteAST62Lexer, t058rewriteAST62Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptional4() {
+    var found = execParser(t058rewriteAST63Lexer, t058rewriteAST63Parser, "a", "a b");
+    assertEquals("a b", found);
+}
+
+function testOptional5() {
+    var found = execParser(t058rewriteAST64Lexer, t058rewriteAST64Parser, "a", "a");
+    assertEquals("a", found);
+}
+
+function testArbitraryExprType() {
+    var found = execParser(t058rewriteAST65Lexer, t058rewriteAST65Parser, "a", "a b");
+    assertEquals("", found);
+}
+
+function testSet() {
+    var found = execParser(t058rewriteAST66Lexer, t058rewriteAST66Parser, "a", "2 a 34 de");
+    assertEquals("2 34 a de", found);
+}
+
+function testSet2() {
+    var found = execParser(t058rewriteAST67Lexer, t058rewriteAST67Parser, "a", "2");
+    assertEquals("2", found);
+}
+
+/*
+ * @fails - the grammar shouldn't be valid, but is
+ *
+function testSetWithLabel() {
+    var found = execParser(t058rewriteAST68Lexer, t058rewriteAST68Parser, "a", "2");
+    assertEquals("2", found);
+}
+*/
+
+function testRewriteAction() {
+    var found = execParser(t058rewriteAST69Lexer, t058rewriteAST69Parser, "r", "25");
+    assertEquals("25.0", found);
+}
+
+function testOptionalSubruleWithoutRealElements() {
+    // copy type *and* modifier even though it's optional
+    // for each invocation of (...)+ in rewrite
+    var found = execParser(t058rewriteAST70Lexer, t058rewriteAST70Parser, "modulo", "modulo abc (x y)");
+    assertEquals("(modulo abc (PARMS x y))", found);
+}
+
+//// C A R D I N A L I T Y  I S S U E S
+
+function testCardinality() {
+    try {
+        execParser(t058rewriteAST71Lexer, t058rewriteAST71Parser, "a", "a b 3 4 5");
+        fail();
+    } catch(e) {
+        assertEquals(e.getMessage(), "token ID");
+    }
+}
+
+
+function testCardinality2() {
+    try {
+        execParser(t058rewriteAST72Lexer, t058rewriteAST72Parser, "a", "a b");
+        fail();
+    } catch(e) {
+        assertEquals(e.getMessage(), "token ID");
+    }
+}
+
+function testCardinality3() {
+    try {
+        execParser(t058rewriteAST73Lexer, t058rewriteAST73Parser, "a", "3");
+        fail();
+    } catch(e) {
+        assertEquals(e.getMessage(), "token ID");
+    }
+}
+
+function testLoopCardinality() {
+    try {
+        execParser(t058rewriteAST74Lexer, t058rewriteAST74Parser, "a", "3");
+        fail();
+    } catch(e) {
+        assert(e instanceof org.antlr.runtime.tree.RewriteEarlyExitException);
+    }
+}
+
+function testWildcard() {
+    var found = execParser(t058rewriteAST75Lexer, t058rewriteAST75Parser, "a", "abc 34");
+    assertEquals("34\n", found);
+}
+
+// E R R O R S
+
+function testExtraTokenInSimpleDecl() {
+    var retval = execParser(t058rewriteAST76Lexer, t058rewriteAST76Parser, "decl", "int 34 x=1;",
+            true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 1:4 extraneous input '34' expecting ID"],
+            errors);
+    assertEquals("(EXPR int x 1)", found) // tree gets correct x and 1 tokens
+}
+
+
+function testMissingIDInSimpleDecl() {
+    var retval = execParser(t058rewriteAST77Lexer, t058rewriteAST77Parser, "decl", "int =1;",
+            true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 1:4 missing ID at '='"], errors);
+    assertEquals("(EXPR int <missing ID> 1)", found) // tree gets invented ID token
+}
+
+function testMissingSetInSimpleDecl() {
+    var retval = execParser(t058rewriteAST78Lexer, t058rewriteAST78Parser, "decl", "x=1;",
+            true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 1:0 mismatched input 'x' expecting set null"],
+            errors);
+    assertEquals("(EXPR <error: x> x 1)", found) // tree gets invented ID token
+}
+
+function testMissingTokenGivesErrorNode() {
+    var retval = execParser(t058rewriteAST79Lexer, t058rewriteAST79Parser, "a", "abc",
+            true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 0:-1 missing INT at '<EOF>'"], errors);
+    // doesn't do in-line recovery for sets (yet?);
+    assertEquals("abc <missing INT>", found);
+}
+
+function testExtraTokenGivesErrorNode() {
+    var retval = execParser(t058rewriteAST80Lexer, t058rewriteAST80Parser, "a", "abc ick 34",
+            true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 1:4 extraneous input 'ick' expecting INT"],
+            errors);
+    assertEquals("abc 34", found);
+}
+
+function testMissingFirstTokenGivesErrorNode() {
+    var retval = execParser(t058rewriteAST81Lexer, t058rewriteAST81Parser, "a", "34", true);
+    var found = retval[0], errors = retval[1];
+    assertArrayEquals(["line 1:0 missing ID at '34'"], errors);
+    assertEquals("<missing ID> 34", found);
+}
+
+function testMissingFirstTokenGivesErrorNode2() {
+    var retval = execParser(t058rewriteAST82Lexer, t058rewriteAST82Parser, "a", "34", true);
+    var found = retval[0], errors = retval[1];
+    // finds an error at the first token, 34, and re-syncs.
+    // re-synchronizing does not consume a token because 34 follows
+    // ref to rule b (start of c). It then matches 34 in c.
+    assertArrayEquals(["line 1:0 mismatched input '34' expecting ID"], errors);
+    assertEquals("<mismatched token: [@0,0:1='34',<5>,1:0], resync=34> 34", found);
+}
+
+function testNoViableAltGivesErrorNode() {
+    var retval = execParser(t058rewriteAST83Lexer, t058rewriteAST83Parser, "a", "*", true);
+    var found = retval[0], errors = retval[1];
+    // finds an error at the first token, 34, and re-syncs.
+    // re-synchronizing does not consume a token because 34 follows
+    // ref to rule b (start of c). It then matches 34 in c.
+    assertArrayEquals(["line 1:0 no viable alternative at input '*'"],
+            errors);
+    assertEquals("<unexpected: [@0,0:0='*',<6>,1:0], resync=*>",
+            found);
+}
+</script>
+
+</head>
+<body>
+    <h1>t058rewriteAST</h1>
+</body>
+</html>
+

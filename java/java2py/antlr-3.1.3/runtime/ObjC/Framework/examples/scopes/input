@@ -1,0 +1,12 @@
+int i;
+int j;
+method foo() {
+  int i;
+  int k;
+  i=3;
+  {
+    int j;
+    int k;
+    k = 4;
+  }
+}

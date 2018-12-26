@@ -1,0 +1,35 @@
+/// \page runtime Navigating the C Runtime Documentation
+///
+/// If you are familiar with Doxygen generated documentation, then the layout of the files, typedefs
+/// and so on will be familiar to you. However there is also additional structure applied that helps
+/// the programmer to see how the runtime is made up.
+///
+/// \section modules Modules
+///
+/// Under the Modules menu tree you will find the entry API Classes. This section is further 
+/// divided into typedefs and structs and the standard runtime supplied interface implementation
+/// methods.
+///
+/// The typedefs are the types that you declare in your code and which are returned by the 
+/// 'constructors' such as antlr3AsciiFileStreamNew(). The underlying structures document
+/// the data elements of the type and what a function pointer installed in any particular
+/// slot should do.
+///
+/// The default implementations are the static methods within the default implementation file
+/// for a 'class', which are installed by the runtime when a default instance of one the 
+/// typedefs (classes) is created. 
+///
+/// When navigating the source code, find the typedef you want to consult and inspect the documentation
+/// for its function pointers, then look at the documentation for the default methods that implement
+/// that 'method'. 
+///
+/// For example, under "API Typedefs and Structs" you will find "Base Recognizer Definition", which tells
+/// you all the methods that belong to this interface. Under "API Implementation Functions", you will
+/// find "Base Recognizer Implementation", which documents the actual functions that are installed
+/// to implement the class methods.
+///
+/// From here, the documentation should be obvious. If it is not, then you could try reading
+/// the actual source code, but please don;t email the author directly, but use the ANTLR Interest
+/// email group, which you should probably have signed up for if you have read this far into the 
+/// C runtime documentation.
+///

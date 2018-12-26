@@ -1,0 +1,53 @@
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "C", "Cvs2005.vcproj", "{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 2
+		SccProjectName0 = Perforce\u0020Project
+		SccLocalPath0 = ..\\..
+		SccProvider0 = MSSCCI:Perforce\u0020SCM
+		SccProjectFilePathRelativizedFromConnection0 = runtime\\C\\
+		SccProjectUniqueName1 = Cvs2005.vcproj
+		SccLocalPath1 = ..\\..
+		SccProjectFilePathRelativizedFromConnection1 = runtime\\C\\
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		DebugDLL|Win32 = DebugDLL|Win32
+		DebugDLL|x64 = DebugDLL|x64
+		Deployment|Win32 = Deployment|Win32
+		Deployment|x64 = Deployment|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+		ReleaseDLL|Win32 = ReleaseDLL|Win32
+		ReleaseDLL|x64 = ReleaseDLL|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Debug|Win32.Build.0 = Debug|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Debug|x64.ActiveCfg = Debug|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Debug|x64.Build.0 = Debug|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.DebugDLL|Win32.ActiveCfg = DebugDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.DebugDLL|Win32.Build.0 = DebugDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.DebugDLL|x64.ActiveCfg = DebugDLL|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.DebugDLL|x64.Build.0 = DebugDLL|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Deployment|Win32.ActiveCfg = DebugDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Deployment|Win32.Build.0 = DebugDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Deployment|x64.ActiveCfg = DebugDLL|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Deployment|x64.Build.0 = DebugDLL|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Release|Win32.ActiveCfg = Release|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Release|Win32.Build.0 = Release|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Release|x64.ActiveCfg = Release|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.Release|x64.Build.0 = Release|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.ReleaseDLL|Win32.ActiveCfg = ReleaseDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.ReleaseDLL|Win32.Build.0 = ReleaseDLL|Win32
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.ReleaseDLL|x64.ActiveCfg = ReleaseDLL|x64
+		{0F0FE03A-78F3-4B34-9DCE-0CDFF1FB5C40}.ReleaseDLL|x64.Build.0 = ReleaseDLL|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

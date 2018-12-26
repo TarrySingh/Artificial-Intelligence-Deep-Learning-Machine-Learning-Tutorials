@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<flexLibProperties version="1">
+<includeClasses>
+<classEntry path="org.antlr.runtime.BitSet"/>
+<classEntry path="org.antlr.runtime.tree.CommonErrorNode"/>
+<classEntry path="org.antlr.runtime.tree.CommonTreeAdaptor"/>
+<classEntry path="org.antlr.runtime.tree.BaseTree"/>
+<classEntry path="org.antlr.runtime.MismatchedSetException"/>
+<classEntry path="org.antlr.runtime.RecognitionException"/>
+<classEntry path="org.antlr.runtime.NoViableAltException"/>
+<classEntry path="org.antlr.runtime.Parser"/>
+<classEntry path="org.antlr.runtime.tree.RewriteRuleNodeStream"/>
+<classEntry path="org.antlr.runtime.TokenRewriteStream"/>
+<classEntry path="org.antlr.runtime.Lexer"/>
+<classEntry path="org.antlr.runtime.FailedPredicateException"/>
+<classEntry path="org.antlr.runtime.CharStream"/>
+<classEntry path="org.antlr.runtime.TokenConstants"/>
+<classEntry path="org.antlr.runtime.MismatchedTokenException"/>
+<classEntry path="org.antlr.runtime.tree.RewriteEarlyExitException"/>
+<classEntry path="org.antlr.runtime.MismatchedNotSetException"/>
+<classEntry path="org.antlr.runtime.tree.TreeAdaptor"/>
+<classEntry path="org.antlr.runtime.ParserRuleReturnScope"/>
+<classEntry path="org.antlr.runtime.RuleReturnScope"/>
+<classEntry path="org.antlr.runtime.tree.RewriteCardinalityException"/>
+<classEntry path="org.antlr.runtime.BaseRecognizer"/>
+<classEntry path="org.antlr.runtime.RecognizerSharedState"/>
+<classEntry path="org.antlr.runtime.tree.TreeConstants"/>
+<classEntry path="org.antlr.runtime.CharStreamConstants"/>
+<classEntry path="org.antlr.runtime.TokenSource"/>
+<classEntry path="org.antlr.runtime.tree.CommonTree"/>
+<classEntry path="org.antlr.runtime.MismatchedTreeNodeException"/>
+<classEntry path="org.antlr.runtime.tree.RewriteRuleSubtreeStream"/>
+<classEntry path="org.antlr.runtime.tree.TreeRuleReturnScope"/>
+<classEntry path="org.antlr.runtime.CommonToken"/>
+<classEntry path="org.antlr.runtime.CommonTokenStream"/>
+<classEntry path="org.antlr.runtime.tree.RewriteRuleTokenStream"/>
+<classEntry path="org.antlr.runtime.EarlyExitException"/>
+<classEntry path="org.antlr.runtime.CharStreamState"/>
+<classEntry path="org.antlr.runtime.tree.CommonTreeNodeStream"/>
+<classEntry path="org.antlr.runtime.tree.RewriteRuleElementStream"/>
+<classEntry path="org.antlr.runtime.ANTLRFileStream"/>
+<classEntry path="org.antlr.runtime.tree.TreeNodeStream"/>
+<classEntry path="org.antlr.runtime.tree.TreeParser"/>
+<classEntry path="org.antlr.runtime.tree.BaseTreeAdaptor"/>
+<classEntry path="org.antlr.runtime.IntStream"/>
+<classEntry path="org.antlr.runtime.tree.Tree"/>
+<classEntry path="org.antlr.runtime.MissingTokenException"/>
+<classEntry path="org.antlr.runtime.UnwantedTokenException"/>
+<classEntry path="org.antlr.runtime.ANTLRStringStream"/>
+<classEntry path="org.antlr.runtime.tree.RewriteEmptyStreamException"/>
+<classEntry path="org.antlr.runtime.DFA"/>
+<classEntry path="org.antlr.runtime.Token"/>
+<classEntry path="org.antlr.runtime.MismatchedRangeException"/>
+<classEntry path="org.antlr.runtime.TokenStream"/>
+</includeClasses>
+<includeResources/>
+<namespaceManifests/>
+</flexLibProperties>

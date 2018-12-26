@@ -1,0 +1,22 @@
+lexer grammar Combined;
+options {
+  language=ObjC;
+
+}
+
+// $ANTLR src "Combined.g" 14
+ID  :   ('a'..'z'|'A'..'Z'|'_') ('a'..'z'|'A'..'Z'|'0'..'9'|'_')*
+    ;
+
+// $ANTLR src "Combined.g" 17
+INT :   ('0'..'9')+
+    ;
+
+// $ANTLR src "Combined.g" 20
+WS  :   (   ' '
+        |   '\t'
+        |   '\r'
+        |   '\n'
+        )+
+        { $channel=99; }
+    ;    

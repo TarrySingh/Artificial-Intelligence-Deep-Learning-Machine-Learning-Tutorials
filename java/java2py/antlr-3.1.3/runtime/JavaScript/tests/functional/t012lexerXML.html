@@ -1,0 +1,187 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t012lexerXML</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t012lexerXML.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function TLexer() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TLexer, t012lexerXML, {
+        reportError: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    function testValid() {
+        var xinput = [
+                "<?xml version='1.0'?>",
+                "<!DOCTYPE component [",
+                "<!ELEMENT component (PCDATA|sub)*>",
+                "<!ATTLIST component",
+                "          attr CDATA #IMPLIED",
+                "          attr2 CDATA #IMPLIED",
+                ">",
+                "<!ELMENT sub EMPTY>",
+                "",
+                "]>",
+                "<component attr=\"val'ue\" attr2='val\"ue'>",
+                "<!-- This is a comment -->",
+                "Text",
+                "<![CDATA[huhu]]>",
+                "öäüß",
+                "&amp;",
+                "&lt;",
+                "<?xtal cursor='11'?>",
+                "<sub/>",
+                "<sub></sub>",
+                "</component>"
+            ].join("\n"),
+            xoutput = [
+                "XML declaration",
+                "Attr: version='1.0'",
+                "ROOTELEMENT: component",
+                "INTERNAL DTD: [",
+                "<!ELEMENT component (PCDATA|sub)*>",
+                "<!ATTLIST component",
+                "          attr CDATA #IMPLIED",
+                "          attr2 CDATA #IMPLIED",
+                ">",
+                "<!ELMENT sub EMPTY>",
+                "",
+                "]",
+                "Start Tag: component",
+                "Attr: attr=\"val'ue\"",
+                "Attr: attr2='val\"ue'",
+                "PCDATA: \"",
+                "\"",
+                "Comment: \"<!-- This is a comment -->\"",
+                "PCDATA: \"",
+                "Text",
+                "\"",
+                "CDATA: \"<![CDATA[huhu]]>\"",
+                "PCDATA: \"",
+                "öäüß",
+                "&amp;",
+                "&lt;",
+                "\"",
+                "PI: xtal",
+                "Attr: cursor='11'",
+                "PCDATA: \"",
+                "\"",
+                "Empty Element: sub",
+                "PCDATA: \"",
+                "\"",
+                "Start Tag: sub",
+                "End Tag: sub",
+                "PCDATA: \"",
+                "\"",
+                "End Tag: component"
+            ].join("\n"),
+            stream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new TLexer(stream),
+            token;
+
+        while (true) {
+            token = lexer.nextToken();
+            if (token.type == org.antlr.runtime.Token.EOF) {
+                break;
+            }
+        }
+
+        assertEquals(xoutput, lexer.lout.join("\n"));
+    }
+
+    function testMalformedInput1() {
+        var input = [
+            "<?xml version='1.0'?>",
+            "<document d>",
+            "</document>"
+        ].join("\n"),
+        stream = new org.antlr.runtime.ANTLRStringStream(input),
+        lexer = new TLexer(stream),
+        token;
+
+        try {
+            while (true) {
+                token = lexer.nextToken();
+                if (token.type == org.antlr.runtime.Token.EOF) {
+                    break;
+                }
+            }
+            fail("block should have thrown an nvae");
+        } catch(exc) {
+            assert(exc instanceof org.antlr.runtime.NoViableAltException);
+            assertEquals(exc.getUnexpectedType(), ">");
+            assertEquals(exc.charPositionInLine, 11);
+            assertEquals(exc.line, 2);
+        }
+    }
+
+    function testMalformedInput2() {
+        var input = [
+            "<?tml version='1.0'?>",
+            "<document>",
+            "</document>"
+        ].join("\n"),
+        stream = new org.antlr.runtime.ANTLRStringStream(input),
+        lexer = new TLexer(stream),
+        token;
+
+        try {
+            while (true) {
+                token = lexer.nextToken();
+                if (token.type == org.antlr.runtime.Token.EOF) {
+                    break;
+                }
+            }
+            fail("block should have thrown an nvae");
+        } catch(exc) {
+            assert(exc instanceof org.antlr.runtime.MismatchedSetException);
+            assertEquals(exc.getUnexpectedType(), "t");
+            assertEquals(exc.charPositionInLine, 2);
+            assertEquals(exc.line, 1);
+        }
+    }
+
+    function testMalformedInput3() {
+        var input = [
+        "<?xml version='1.0'?>",
+        "<docu ment attr=\"foo\">",
+        "</document>"
+        ].join("\n"),
+        stream = new org.antlr.runtime.ANTLRStringStream(input),
+        lexer = new TLexer(stream),
+        token;
+
+        try {
+            while (true) {
+                token = lexer.nextToken();
+                if (token.type == org.antlr.runtime.Token.EOF) {
+                    break;
+                }
+            }
+            fail("block should have thrown an nvae");
+        } catch(exc) {
+            assert(exc instanceof org.antlr.runtime.NoViableAltException);
+            assertEquals(exc.getUnexpectedType(), "a");
+            assertEquals(exc.charPositionInLine, 11);
+            assertEquals(exc.line, 2);
+        }
+    }
+</script>
+</head>
+<body>
+    <h1>t012lexerXML</h1>
+</body>
+</html>

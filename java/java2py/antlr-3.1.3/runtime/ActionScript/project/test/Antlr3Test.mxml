@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application xmlns:mx="http://www.adobe.com/2006/mxml" layout="vertical" creationComplete="onCreationComplete()">
+
+	<mx:Script>
+            <![CDATA[
+                    import org.antlr.runtime.test.AllTests;
+                    import flexunit.junit.JUnitTestRunner;
+
+                    
+                    [Bindable]
+                    private var runner : JUnitTestRunner;
+                    
+                    private function onCreationComplete() : void
+                    {
+                       status.text = "Please wait running test suite...";
+                       
+                            runner = new JUnitTestRunner();
+                            runner.run( new AllTests(), onTestComplete );
+                    }
+                    
+                    private function onTestComplete() : void
+                    {
+                       status.text = "Finished running test suite.";
+                       
+                            fscommand( "quit" );
+                    }
+                    
+            ]]>
+   </mx:Script>
+        
+    <mx:Label id="status" />
+	
+</mx:Application>

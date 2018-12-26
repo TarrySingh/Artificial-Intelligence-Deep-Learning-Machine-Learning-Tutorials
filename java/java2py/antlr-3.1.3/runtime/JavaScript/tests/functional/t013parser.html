@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t013parser</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t013parserLexer.js"></script>
+<script type="text/javascript" src="t013parserParser.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foobar"),
+            lexer = new t013parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t013parserParser(tstream);
+
+        parser.document();
+        assertEquals(parser.reportedErrors.length, 0);
+        assertEquals(parser.identifiers.length, 1);
+    }
+
+    function testMalformedInput1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(""),
+            lexer = new t013parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t013parserParser(tstream);
+
+        try {
+            parser.document();
+            fail("should have failed on empty input");
+        } catch(e) {
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t013parser</h1>
+</body>

@@ -1,0 +1,72 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t025lexerRulePropertyRef</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t025lexerRulePropertyRef.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid1() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("foobar _Ab98 \n A12sdf"),
+            lexer = new t025lexerRulePropertyRef(stream),
+            token;
+
+        while (true) {
+            token = lexer.nextToken();
+            if (token.getType()===org.antlr.runtime.Token.EOF) {
+                break;
+            }
+        }
+
+        assertEquals(lexer.properties.length, 3);
+
+        var p1 = [
+            "foobar",
+            lexer.IDENTIFIER,
+            1,
+            0,
+            -1,
+            org.antlr.runtime.Token.DEFAULT_CHANNEL,
+            0,
+            5
+        ];
+        assertArrayEquals(lexer.properties[0], p1);
+
+        var p2 = [
+            "_Ab98",
+            lexer.IDENTIFIER,
+            1,
+            7,
+            -1,
+            org.antlr.runtime.Token.DEFAULT_CHANNEL,
+            7,
+            11
+        ];
+        assertArrayEquals(lexer.properties[1], p2);
+
+        var p3 = [
+            "A12sdf",
+            lexer.IDENTIFIER,
+            2,
+            1,
+            -1,
+            org.antlr.runtime.Token.DEFAULT_CHANNEL,
+            15,
+            20
+        ];
+        assertArrayEquals(lexer.properties[2], p3);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t025lexerRulePropertyRef</h1>
+</body>
+</html>

@@ -1,0 +1,182 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t049treeparser</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t049treeparseraLexer.js"></script>
+<script type="text/javascript" src="t049treeparseraParser.js"></script>
+<script type="text/javascript" src="t049treeparseraWalker.js"></script>
+<script type="text/javascript" src="t049treeparserbLexer.js"></script>
+<script type="text/javascript" src="t049treeparserbParser.js"></script>
+<script type="text/javascript" src="t049treeparserbWalker.js"></script>
+<script type="text/javascript" src="t049treeparsercLexer.js"></script>
+<script type="text/javascript" src="t049treeparsercParser.js"></script>
+<script type="text/javascript" src="t049treeparsercWalker.js"></script>
+<script type="text/javascript" src="t049treeparserdLexer.js"></script>
+<script type="text/javascript" src="t049treeparserdParser.js"></script>
+<script type="text/javascript" src="t049treeparserdWalker.js"></script>
+<script type="text/javascript" src="t049treeparsereLexer.js"></script>
+<script type="text/javascript" src="t049treeparsereParser.js"></script>
+<script type="text/javascript" src="t049treeparsereWalker.js"></script>
+<script type="text/javascript" src="t049treeparserfLexer.js"></script>
+<script type="text/javascript" src="t049treeparserfParser.js"></script>
+<script type="text/javascript" src="t049treeparserfWalker.js"></script>
+<script type="text/javascript" src="t049treeparsergLexer.js"></script>
+<script type="text/javascript" src="t049treeparsergParser.js"></script>
+<script type="text/javascript" src="t049treeparsergWalker.js"></script>
+<script type="text/javascript" src="t049treeparserhLexer.js"></script>
+<script type="text/javascript" src="t049treeparserhParser.js"></script>
+<script type="text/javascript" src="t049treeparserhWalker.js"></script>
+<script type="text/javascript" src="t049treeparseriLexer.js"></script>
+<script type="text/javascript" src="t049treeparseriParser.js"></script>
+<script type="text/javascript" src="t049treeparseriWalker.js"></script>
+
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function execTreeParser(lexerCls, parserCls, grammarEntry, walkerCls, treeEntry, xinput)
+    {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new lexerCls(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new parserCls(tstream);
+        var r = parser[grammarEntry]();
+
+        var nodes = new org.antlr.runtime.tree.CommonTreeNodeStream(r.getTree());
+        nodes.setTokenStream(tstream);
+        var walker = new (walkerClass(walkerCls))(nodes);
+        walker[treeEntry]();
+
+        return walker._output;
+    }
+
+    function walkerClass(base) {
+        var TWalker = function() {
+            TWalker.superclass.constructor.apply(this, arguments);
+            this._output = "";
+            this.traces = [];
+        };
+
+        org.antlr.lang.extend(TWalker, base, {
+            capture: function(t) {
+                this._output += t;
+            },
+            traceIn: function(ruleName, ruleIndex) {
+                this.traces.push(">"+ruleName);
+            },
+            traceOut: function(ruleName, ruleIndex) {
+                this.traces.push("<"+ruleName);
+            },
+            recover: function(input, re) {
+                throw re;
+            }
+        });
+
+        return TWalker;
+    }
+
+    function testFlatList() {
+        var found = execTreeParser(t049treeparseraLexer,
+                t049treeparseraParser,
+                "a",
+                t049treeparseraWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "abc, 34");
+    }
+
+    function testSimpleTree() {
+        var found = execTreeParser(t049treeparserbLexer,
+                t049treeparserbParser,
+                "a",
+                t049treeparserbWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "abc, 34");
+    }
+
+    function testFlatVsTreeDecision() {
+        var found = execTreeParser(t049treeparsercLexer,
+                t049treeparsercParser,
+                "a",
+                t049treeparsercWalker,
+                "a",
+                "a 1 b 2");
+        assertEquals(found, "^(a 1)b 2\n");
+    }
+
+    function testFlatVsTreeDecision2() {
+        var found = execTreeParser(t049treeparserdLexer,
+                t049treeparserdParser,
+                "a",
+                t049treeparserdWalker,
+                "a",
+                "a 1 2 3 b 4 5");
+        assertEquals(found, "^(a 3)b 5\n");
+    }
+
+    function testCyclicDFALookahead() {
+        var found = execTreeParser(t049treeparsereLexer,
+                t049treeparsereParser,
+                "a",
+                t049treeparsereWalker,
+                "a",
+                "a 1 2 3.");
+        console.log(found, "alt 1");
+    }
+
+    function testNullableChildList() {
+        var found = execTreeParser(t049treeparserfLexer,
+                t049treeparserfParser,
+                "a",
+                t049treeparserfWalker,
+                "a",
+                "abc");
+        assertEquals(found, "abc");
+    }
+
+    function testNullableChildList2() {
+        var found = execTreeParser(t049treeparsergLexer,
+                t049treeparsergParser,
+                "a",
+                t049treeparsergWalker,
+                "a",
+                "abc 3;");
+        assertEquals(found, "abc");
+    }
+
+    function testNullableChildList3() {
+        var found = execTreeParser(t049treeparserhLexer,
+                t049treeparserhParser,
+                "a",
+                t049treeparserhWalker,
+                "a",
+                "abc 3 def;");
+        assertEquals(found, "abc, def");
+    }
+
+    function testActionsAfterRoot() {
+        var found = execTreeParser(t049treeparseriLexer,
+                t049treeparseriParser,
+                "a",
+                t049treeparseriWalker,
+                "a",
+                "abc;");
+        assertEquals(found, "abc, 2");
+    }
+
+
+</script>
+
+</head>
+<body>
+    <h1>t049treeparser</h1>
+</body>
+</html>

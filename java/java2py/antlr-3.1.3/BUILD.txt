@@ -1,0 +1,422 @@
+ [The "BSD licence"]
+ Copyright (c) 2005-2008 Terence Parr
+ Maven Plugin - Copyright (c) 2009      Jim Idle
+
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+============================================================================
+
+This file contains the build instructions for the ANTLR toolset as
+of version 3.1.3 and beyond.
+
+The ANTLR toolset must be built using the Maven build system as
+this build system updates the version numbers and controls the
+whole build process. However, if you just want the latest build
+and do not care to learn anything about Maven, then visit:
+
+   http://antlr.org/hudson
+
+And download the current complete jar from the Tool_Daily
+Hudson project (just follow the links for last successful build).
+At the time of writing, the link for the last successful
+snapshot build is:
+
+   http://antlr.org/hudson/job/ANTLR_Tool_Daily/lastSuccessfulBuild/org.antlr$antlr/
+
+If you are looking for the latest released version of ANTLR, then
+visit the downloads page on the main antlr.org website.
+
+These instructions are mainly for the ANTLR development team,
+though you are free to build ANTLR yourself of course.
+
+Source code Structure
+-----------------------
+
+The main development branch of ANTLR is stored within the Perforce SCM at:
+
+   //depot/code/antlr/main/...
+
+release branches are stored in Perforce like so:
+
+   //depot/code/antlr/release-3.1.3/...
+
+In this top level directory, you will find a master build file for Maven called pom.xml and
+you will also note that there are a number of subdirectories:
+
+ tool                  - The ANTLR tool itself
+ runtime/Java          - The ANTLR Java runtime
+ runtime/X             - The runtime for language target X
+ gunit                 - The grammar test tool
+ antlr3-maven-plugin   - The plugin tool for Maven that allows Maven projects to process
+                         ANTLR grammars.
+
+Each of these sub-directories also contains a file pom.xml that controls the build of each
+sub-component (or module in Maven parlance).
+
+Build Parameters
+-----------------
+
+Alongside each pom.xml (other than for the antlr3-maven-plugin), you will see that there
+is a file called antlr.config. This file is called a filter and should contain a set of key/value
+pairs in the same manner as Java properties files:
+
+antlr.something="Some config thang!"
+
+When the build of any component happens, any values in the antlr.config for the master
+build file and any values in the antlr.config file for each component are made available
+to the build. This is mainly used by the resource processor, which will filter any file it
+finds under: src/main/resources/** and replace any references such as ${antlr.something}
+with the actual value at the time of the build.
+
+Building
+--------
+
+Building ANTLR is trivial, assuming that you have loaded Maven version 2.0.9 or
+better on to your build system and installed it as explained here:
+
+http://maven.apache.org/download.html
+
+If you are unfamiliar with Maven (and even if you are), the best resource for learning
+about it is The Definitive Guide:
+
+http://www.sonatype.com/books/maven-book/reference/public-book.html
+
+The instructions here assume that Maven is installed and working correctly.
+
+If this is the first time you have built the ANTLR toolset, you will possibly
+need to install the master pom in your local repository (however the build
+may be able to locate this in the ANTLR snapshot or release repository). If you try
+to build sub-modules on their own (as in run the mvn command in the sub directory
+for that tool, such as runtime/Java), and you receive a message that
+maven cannot find the master pom, then execute this in the main (or release) 
+directory:
+
+mvn -N install
+
+This command will install the master build pom in your local maven repository
+(it's ~/.m2 on UNIX) and individual builds of sub-modules will now work correctly.
+
+To build then, simply cd into the master build directory (e.g. $P4ROOT//code/antlr/main)
+and type:
+
+mvn -Dmaven.test.skip=true
+
+Assuming that everything is correctly installed and synchronized, then ANTLR will build
+and skip any unit tests in the modules (the ANTLR tool tests can take a long time).
+
+This command will build each of the tools in the correct order and will create the jar
+artifacts of all the components in your local development Maven repository (which
+takes precedence over remote repositories by default). At the end of the build you
+should see:
+
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary:
+[INFO] ------------------------------------------------------------------------
+[INFO] ANTLR Master build control POM ........................ SUCCESS [1.373s]
+[INFO] Antlr 3 Runtime ....................................... SUCCESS [0.879s]
+[INFO] ANTLR Grammar Tool .................................... SUCCESS [5.431s]
+[INFO] Maven plugin for ANTLR V3 ............................. SUCCESS [1.277s]
+[INFO] ANTLR gUnit ........................................... SUCCESS [1.566s]
+[INFO] ------------------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESSFUL
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 11 seconds
+
+However, unless you are using Maven exclusively in your projects, you will most
+likely want to build the ANTLR Uber Jar, which is an executable jar containing
+all the components that ANTLR needs to build and run parsers (note that at
+runtime, you need only the runtime components you use, such as the Java
+runtime and say stringtemplate).
+
+Because the Uber jar is not something we want to deploy to Maven repositories
+it is built with a special invocation of Maven:
+
+mvn -Dmaven.test.skip=true package assembly:assembly
+
+Note that Maven will appear to build everything twice, which is a quirk of how
+it calculates the dependencies and makes sure it has everything packaged up
+so it can build the uber-jar assembly.
+
+Somewhere in the build output (towards the end), you will find a line like this:
+
+[INFO] Building jar: /home/jimi/antlrsrc/code/antlr/main/target/antlr-master-3.1.3-SNAPSHOT-completejar.jar
+
+This is the executable jar that you need and you can either copy it somewhere or,
+like me, you can create this script (assuming UNIX) somewhere in your PATH:
+
+#! /bin/bash
+java -jar ~/antlrsrc/code/antlr/main/target/antlr-master-3.1.3-SNAPSHOT-completejar.jar $*
+
+Version Numbering
+-------------------
+
+The first and Golden rule is that any pom files stored under the main branch of the toolset
+should never be modified to contain a release version number. They should always contain
+a.b.c-SNAPSHOT (e.g. 3.1.3-SNAPSHOT). Only release branches should have their
+pom version numbers set to a release version. You can release as many SNAPSHOTS
+as you like, but only one release version. However, release versions may be updated
+with a patch level: 3.1.3-1, 3.1.3-2 and so on.
+
+Fortunately, Maven helps us with the version numbering in a number of ways. Firstly,
+the pom.xml files for the various modules do not specify a version of the
+artifacts themselves. They pick up their version number from the master build pom.
+However, there is a catch, because they need to know what version of the parent pom
+they inherit from and so they DO mention the version number. However, this does
+prevent accidentally releasing different versions of sub-modules than the master pom
+describes.
+
+Fortunately once again, Maven has a neat way of helping us with change the version.
+All you need do is check out all the pom.xml files from perforce, then modify the
+<version>a.b.c-SNAPSHOT</version> in the master pom. When the version number
+is correct in the master pom, you make sure your working directory is the location
+of the master pom and type:
+
+mvn versions:update-child-modules
+
+This command will then update the child pom.xml files to reflect the version number
+defined in the master pom.xml.
+
+There is unfortunately one last catch here though and that is that the antlr3-maven-plugin
+is not able to use the parent pom. The reason for this is subtle but makes sense as
+doing so would create a circular dependency between the ANTLR tool (which uses the
+plugin to build its own grammar files), and the plugin (which uses the tool to build
+grammar files).
+
+This catch-22 situation means that the pom.xml file in the antlr3-maven-plugin directory
+MUST be updated manually (or we must write a script to do this).
+
+Deploying
+----------
+Deploying the tools at the current version is relatively easy, but to deploy to the
+ANTLR repositories (snapshot or release) you must have been granted access
+to the antlr.org server and supplied an ssh key. Few people will have this access of
+course.
+
+Assuming that you have ssh access to antlr.org, then you will need to do the following
+before deployment will authorize and work correctly (UNIX assumed here):
+
+$ eval `ssh-agent`
+Agent PID nnnnn
+$ ssh-add
+Enter passphrase for /home/you/.ssh/id_rsa:
+Identity added....
+
+Next, because we do not publish access information for antlr.org, you will need
+to configure the repository server names locally. You do this by creating (or
+adding to) the file:
+
+~/.m2/settings.xml
+
+Which should look like this:
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    User-specific configuration for maven. Includes things that should not
+    be distributed with the pom.xml file, such as developer identity, along with
+    local settings, like proxy information. The default location for the
+    settings file is ~/.m2/settings.xml
+-->
+<settings xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+    <servers>
+        <server>
+            <id>antlr-snapshot</id>
+            <username>mavensync</username>
+            <passphrase>passphrase for your private key</passphrase>
+            <privateKey>/home/youruserlogin/.ssh/id_rsa</privateKey>
+        </server>
+        <server>
+            <id>antlr-repo</id>
+            <username>mavensync</username>
+            <passphrase>passphrase for your private key</passphrase>
+            <privateKey>/home/youruserlogin/.ssh/id_rsa</privateKey>
+        </server>
+    </servers>
+</settings>
+
+When this configuration is in place, you will be able to deploy the components,
+either individually or from the master directory:
+
+mvn -Dmaven.test.skip=true deploy
+
+You will then see lots of information about checking existing version information
+and so on, and the components will be deployed.
+
+Note that so long as the artifacts are versioned with a.b.c-SNAPSHOT then
+deployment will always be to the development snapshot directory. When the
+artifacts are versioned with a release version then deployment will be to the
+antlr.org release repository, which will then be mirrored around the world. It
+is important not to deploy a release until you have built and tested it to your
+satisfaction.
+
+Release Checklist
+------------------
+
+Here is the procedure to use to make a release of ANTLR. Note that we should
+really use the mvn release:release command, but the perforce plugin for Maven is
+not commercial quality and I want to rewrite it.
+
+For this checklist, let's assume that the current development version of ANTLR
+is 3.1.3-SNAPSHOT. This means that it will probably (but not necessarily)
+become release version 3.1.3 and that the development version will bump
+to 3.1.4-SNAPSHOT.
+
+0) Run a build of the main branch and check that it is builds and passes as many
+   tests as you want it to.
+
+1) First make a branch from main into the target release directory. Then submit
+   this to perforce. You could change versions numbers before submitting, but
+   doing that in separate stages will keep things sane;
+
+--- Use main development branch from here ---
+
+2) Before we deploy the release, we want to update the versions of the development
+   branch, so we don't deploy what is now the new release as an older snapshot (this
+   is not super important, but procedure is good right?).
+
+   Check out all the pom.xml files (and if you are using any antlr.config parameters
+   that must change, then do that too).
+
+3) Edit the master pom.xml in the main directory and change the version from
+   3.1.3-SNAPSHOT to 3.1.4-SNAPSHOT.
+
+4) Edit the pom.xml file for antlr3-maven-plugin under the main directory and
+   change the version from 3.1.3-SNAPSHOT to 3.1.4-SNAPSHOT.
+
+5) Now (from the main directory), run the command:
+
+         mvn versions:update-child-modules
+
+      You should see:
+
+         [INFO] [versions:update-child-modules]
+         [INFO] Module: gunit
+         [INFO]   Parent is org.antlr:antlr-master:3.1.4-SNAPSHOT
+         [INFO] Module: runtime/Java
+         [INFO]   Parent is org.antlr:antlr-master:3.1.4-SNAPSHOT
+         [INFO] Module: tool
+         [INFO]   Parent is org.antlr:antlr-master:3.1.4-SNAPSHOT
+
+6) Run a build of the main branch:
+
+         mvn -Dmaven.test.skip=true
+
+       All should be good.
+
+7) Submit the pom changes of the main branch to perforce.
+
+8) Deploy the new snapshot as a placeholder for the next release. It
+   will go to the snapshot repository of course:
+
+	  mvn -N deploy
+          mvn -Dmaven.test.skip=true deploy
+
+9) You are now finished with the main development branch and change
+   working directories to the release branch you made earlier.
+
+--- Use release branch from here ---
+
+10) Check out all the pom.xml files in the release branch (and if you are
+    using any antlr.config parameters that must change, then do that too).
+
+11) Edit the master pom.xml in the release-3.1.3 directory and change the version from
+    3.1.3-SNAPSHOT to 3.1.3.
+
+12) Edit the pom.xml file for antlr3-maven-plugin under the release-3.1.3 directory and
+    change the version from 3.1.3-SNAPSHOT to 3.1.3.
+
+13)  Now (from the release-3.1.3 directory), run the command:
+
+           mvn versions:update-child-modules
+
+        You should see:
+
+	[INFO] [versions:update-child-modules]
+	[INFO] Module: gunit
+	[INFO]   Parent was org.antlr:antlr-master:3.1.3-SNAPSHOT,
+	       now org.antlr:antlr-master:3.1.3
+	[INFO] Module: runtime/Java
+	[INFO]   Parent was org.antlr:antlr-master:3.1.3-SNAPSHOT,
+	       now org.antlr:antlr-master:3.1.3
+	[INFO] Module: tool
+	[INFO]   Parent was org.antlr:antlr-master:3.1.3-SNAPSHOT,
+	       now org.antlr:antlr-master:3.1.3
+
+14)  Run a build of the release-3.1.3 branch:
+
+           mvn   # Note I am letting unit tests run here!
+
+        All should be good, or as good as it gets ;-)
+
+15)  Submit the pom changes of the release-3.1.3 branch to perforce.
+
+16)  Deploy the new release (this is it guys, make sure you are happy):
+
+	  mvn -N deploy
+          mvn -Dmaven.test.skip=true deploy
+
+        Note that we must skip the tests as Maven will not let you deploy releases
+        that fail any junit tests.
+
+17)  Reward anyone around you with good beer.
+
+
+Miscellany
+-----------
+
+It was a little tricky to get all the interdependencies correct because ANTLR builds
+itself using itself and the maven plugin references the ANTLR Tool as well. Hence
+the maven tool is not a child project of the master pom.xml file, even though it is
+built by it.
+
+An observant person will not that when the assembly:assembly phase is run, that
+it invokes the build of the ANTLR tool using the version of the Maven plugin that
+it has just built, and this results in the plugin using the version of ANTLR tool that
+it has just built. This is safe because everything will already be up to date and so
+we package up the version of the tool that we expect, but the Maven plugin we
+deploy will use the correct version of ANTLR, even though there is technically
+a circular dependency.
+
+The master pom.xml does give us a way to cause the build of the ANTLR tool
+to use itself to build itself. This is because in dependencyManagement in the
+master pom.xml, we can reference the current version of the Tool and the
+Maven plugin, even though in the pom.xml for the tool itself refers to the previous
+version of the plugin.
+
+What happens is that if we first cd into the tool and maven directories and build ANTLR, it will
+build itself with the prior version and this will deploy locally (.m2). We can then
+clean build from the master pom and when ANTLR asks for the prior version of the tool,
+the master pom.xml will override it and build with the interim versions we just built manually.
+
+However, strictly speaking, we need a third build where we rebuild the tool again with
+the version of the tool that was built with itself and not deploy the version that was
+built buy the version of itself that was built by a prior version of itself. I decided that this
+was not particularly useful and complicates things too much. Building with a prior
+version of the tool is fine and if there was ever a need to, we could release twice
+in quick succession.
+
+
+Jim Idle - March 2009
+

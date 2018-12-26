@@ -1,0 +1,253 @@
+/** Templates for building ASTs during tree parsing.
+ *
+ *  Deal with many combinations.  Dimensions are:
+ *  Auto build or rewrite
+ *    no label, label, list label  (label/no-label handled together)
+ *    child, root
+ *    token, set, rule, wildcard
+ *
+ *  Each combination has its own template except that label/no label
+ *  is combined into tokenRef, ruleRef, ...
+ */
+group ASTTreeParser;
+
+/** Add a variable to track last element matched */
+ruleDeclarations() ::= <<
+<super.ruleDeclarations()>
+var _first_0 = null;
+var _last = null;<\n>
+>>
+
+/** What to emit when there is no rewrite rule.  For auto build
+ *  mode, does nothing.
+ */
+noRewrite(rewriteBlockLevel, treeLevel) ::= <<
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<if(rewriteMode)>
+retval.tree = _first_0;
+if ( this.adaptor.getParent(retval.tree) && this.adaptor.isNil( this.adaptor.getParent(retval.tree) ) )
+    retval.tree = this.adaptor.getParent(retval.tree);
+<endif>
+<if(backtracking)>}<endif>
+>>
+
+/** match ^(root children) in tree parser; override here to
+ *  add tree construction actions.
+ */
+tree(root, actionsAfterRoot, children, nullableChildList,
+     enclosingTreeLevel, treeLevel) ::= <<
+_last = this.input.LT(1);
+{
+var _save_last_<treeLevel> = _last;
+var _first_<treeLevel> = null;
+<if(!rewriteMode)>
+var root_<treeLevel> = this.adaptor.nil();
+<endif>
+<root:element()>
+<if(rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> )<endif>
+<if(root.el.rule)>
+if ( !_first_<enclosingTreeLevel> ) _first_<enclosingTreeLevel> = <root.el.label>.tree;
+<else>
+if ( !_first_<enclosingTreeLevel> ) _first_<enclosingTreeLevel> = <root.el.label>;
+<endif>
+<endif>
+<actionsAfterRoot:element()>
+<if(nullableChildList)>
+if ( this.input.LA(1)==org.antlr.runtime.Token.DOWN ) {
+    this.match(this.input, org.antlr.runtime.Token.DOWN, null); <checkRuleBacktrackFailure()>
+    <children:element()>
+    this.match(this.input, org.antlr.runtime.Token.UP, null); <checkRuleBacktrackFailure()>
+}
+<else>
+this.match(this.input, org.antlr.runtime.Token.DOWN, null); <checkRuleBacktrackFailure()>
+<children:element()>
+this.match(this.input, org.antlr.runtime.Token.UP, null); <checkRuleBacktrackFailure()>
+<endif>
+<if(!rewriteMode)>
+this.adaptor.addChild(root_<enclosingTreeLevel>, root_<treeLevel>);
+<endif>
+_last = _save_last_<treeLevel>;
+}<\n>
+>>
+
+// TOKEN AST STUFF
+
+/** ID! and output=AST (same as plain tokenRef) 'cept add
+ *  setting of _last
+ */
+tokenRefBang(token,label,elementIndex) ::= <<
+_last = this.input.LT(1);
+<super.tokenRef(...)>
+>>
+
+/** ID auto construct */
+tokenRef(token,label,elementIndex,hetero) ::= <<
+_last = this.input.LT(1);
+<super.tokenRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<if(hetero)>
+<label>_tree = new <hetero>(<label>);
+<else>
+<label>_tree = this.adaptor.dupNode(<label>);
+<endif><\n>
+this.adaptor.addChild(root_<treeLevel>, <label>_tree);
+<if(backtracking)>}<endif>
+<else> <! rewrite mode !>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> )<endif>
+if ( !_first_<treeLevel> ) _first_<treeLevel> = <label>;
+<endif>
+>>
+
+/** label+=TOKEN auto construct */
+tokenRefAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** ^(ID ...) auto construct */
+tokenRefRuleRoot(token,label,elementIndex,hetero) ::= <<
+_last = this.input.LT(1);
+<super.tokenRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<if(hetero)>
+<label>_tree = new <hetero>(<label>);
+<else>
+<label>_tree = this.adaptor.dupNode(<label>);
+<endif><\n>
+root_<treeLevel> = this.adaptor.becomeRoot(<label>_tree, root_<treeLevel>);
+<if(backtracking)>}<endif>
+<endif>
+>>
+
+/** Match ^(label+=TOKEN ...) auto construct */
+tokenRefRuleRootAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefRuleRoot(...)>
+<listLabel(elem=label,...)>
+>>
+
+// SET AST
+
+matchSet(s,label,hetero,elementIndex,postmatchCode) ::= <<
+_last = this.input.LT(1);
+<super.matchSet(..., postmatchCode={
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<if(hetero)>
+<label>_tree = new <hetero>(<label>);
+<else>
+<label>_tree = this.adaptor.dupNode(<label>);
+<endif><\n>
+this.adaptor.addChild(root_<treeLevel>, <label>_tree);
+<if(backtracking)>}<endif>
+<endif>
+}
+)>
+>>
+
+matchRuleBlockSet(s,label,hetero,elementIndex,postmatchCode,treeLevel="0") ::= <<
+<matchSet(...)>
+<noRewrite()> <! set return tree !>
+>>
+
+matchSetBang(s,label,elementIndex,postmatchCode) ::= <<
+_last = this.input.LT(1);
+<super.matchSet(...)>
+>>
+
+matchSetRuleRoot(s,label,hetero,elementIndex,debug) ::= <<
+<super.matchSet(..., postmatchCode={
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<if(hetero)>
+<label>_tree = new <hetero>(<label>);
+<else>
+<label>_tree = this.adaptor.dupNode(<label>);
+<endif><\n>
+root_<treeLevel> = this.adaptor.becomeRoot(<label>_tree, root_<treeLevel>);
+<if(backtracking)>}<endif>
+<endif>
+}
+)>
+>>
+
+// RULE REF AST
+
+/** rule auto construct */
+ruleRef(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>
+<if(!rewriteMode)>
+this.adaptor.addChild(root_<treeLevel>, <label>.getTree());
+<else> <! rewrite mode !>
+if ( !_first_<treeLevel> ) _first_<treeLevel> = <label>.tree;
+<endif>
+>>
+
+/** x+=rule auto construct */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label+".getTree()",...)>
+>>
+
+/** ^(rule ...) auto construct */
+ruleRefRuleRoot(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>root_<treeLevel> = this.adaptor.becomeRoot(<label>.getTree(), root_<treeLevel>);
+<endif>
+>>
+
+/** ^(x+=rule ...) auto construct */
+ruleRefRuleRootAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<listLabel(elem=label+".getTree()",...)>
+>>
+
+/** rule when output=AST and tracking for rewrite */
+ruleRefTrack(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRefTrack(...)>
+>>
+
+/** x+=rule when output=AST and tracking for rewrite */
+ruleRefTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRefTrackAndListLabel(...)>
+>>
+
+/** ^(rule ...) rewrite */
+ruleRefRuleRootTrack(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRefRootTrack(...)>
+>>
+
+/** ^(x+=rule ...) rewrite */
+ruleRefRuleRootTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+_last = this.input.LT(1);
+<super.ruleRefRuleRootTrackAndListLabel(...)>
+>>
+
+/** Streams for token refs are tree nodes now; override to
+ *  change nextToken to nextNode.
+ */
+createRewriteNodeFromElement(token,hetero,scope) ::= <<
+<if(hetero)>
+new <hetero>(stream_<token>.nextNode())
+<else>
+stream_<token>.nextNode()
+<endif>
+>>
+
+ruleCleanUp() ::= <<
+<super.ruleCleanUp()>
+<if(!rewriteMode)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<\n><endif>
+retval.tree = this.adaptor.rulePostProcessing(root_0);
+<if(backtracking)>}<endif>
+<endif>
+>>

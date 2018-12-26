@@ -1,0 +1,16 @@
+This directory contains examples for the Perl 5 code generation target.
+
+First you need to compile ANTLR, running "ant" in the top level directory.
+
+Then you need to build the Perl module.
+
+    perl Makefile.PL
+    make
+
+After that you need to compile the grammar using ANTLR, for example by using
+the antlr.bat I've added.
+
+    cd examples\expr
+    ..\..\antlr Expr.g
+
+Finally you can run the example programs.

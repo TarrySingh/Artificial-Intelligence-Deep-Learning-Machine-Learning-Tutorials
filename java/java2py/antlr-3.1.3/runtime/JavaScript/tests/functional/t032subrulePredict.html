@@ -1,0 +1,57 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t032subrulePredict</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t032subrulePredictLexer.js"></script>
+<script type="text/javascript" src="t032subrulePredictParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TParser = function() {
+        this.cond = true;
+        TParser.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TParser, t032subrulePredictParser, {
+        emitErrorMessage: function() { /* don't report errors */ },
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("BEGIN A END"),
+            lexer = new t032subrulePredictLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.a();
+    }
+
+    /* @todo DFA doesn't catch EOF transition correctly.  Looks like an analysis
+     * bug in the ANTLR Tool.
+    function [remove]testValid2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(" A"),
+            lexer = new t032subrulePredictLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.b();
+    }
+    */
+</script>
+
+</head>
+<body>
+    <h1>t032subrulePredict</h1>
+</body>
+</html>

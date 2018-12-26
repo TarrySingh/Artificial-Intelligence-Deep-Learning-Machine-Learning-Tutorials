@@ -1,0 +1,184 @@
+// [The "BSD licence"]
+// Copyright (c) 2006 Kay Roepke
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+(
+	{
+		Identifier = org.antlr.Tool;
+		Class = ANTLRCompilerSpecification;
+		Name = "ANTLR";
+		Description = "ANTLR v3 grammar compiler";
+		Version = "Default";
+		Vendor = "The ANTLR Project";
+		Languages = (antlr3);
+		FileTypes = (sourcecode.antlr3);
+		ExecPath = "/usr/bin/java";
+        CommandOutputParser = XCGccCommandOutputParser;
+		OptionsForCommandLine = (
+			ANTLR_EXTRA_JAVA_ARGS, ANTLR_FORCE_OUT_DIR, ANTLR_LIB_DIR, ANTLR_VERBOSE, ANTLR_NFA_DOT, ANTLR_DFA_DOT, ANTLR_DEBUG, ANTLR_TRACE, ANTLR_REPORT, 
+			ANTLR_X_GRTREE, ANTLR_X_DFA, ANTLR_X_NOPRUNE, ANTLR_X_NOCOLLAPSE, ANTLR_X_DBGCONVERSION, ANTLR_X_NFA_MULTITHREADED, ANTLR_X_DFAVERBOSE,
+			ANTLR_X_WATCHCONVERSION, ANTLR_X_DEBUG_ST
+		);
+		Options = {
+			ANTLR_EXTRA_JAVA_ARGS = {
+				Type = stringlist;
+				DefaultValue = "";
+				CommonOption = YES;
+			};
+			ANTLR_FORCE_OUT_DIR = {
+				Type = path;
+				DefaultValue = "$(DERIVED_FILE_DIR)";
+				AvoidEmptyValue = YES;
+				CommandLineArgs = (-fo, "$(value)");
+				CommonOption = YES;
+			};
+/*			ANTLR_OUT_DIR = {
+				Type = stringlist;
+				DefaultValue = "$(DERIVED_FILE_DIR)";
+				AvoidEmptyValue = YES;
+				CommandLineArgs = (-o, "$(value)");
+				CommonOption = YES;
+			};
+*/			ANTLR_LIB_DIR = {
+				Type = path;
+				DefaultValue = "$(DERIVED_FILE_DIR)";
+				AvoidEmptyValue = YES;
+				CommandLineArgs = (-lib, "$(value)");
+				CommonOption = YES;
+			};
+			ANTLR_VERBOSE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-verbose); };
+				CommonOption = YES;
+			};
+			ANTLR_NFA_DOT = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-nfa); };
+				CommonOption = YES;
+			};
+			ANTLR_DFA_DOT = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-dfa); };
+				CommonOption = YES;
+			};
+			ANTLR_DEBUG = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-debug); };
+				CommonOption = YES;
+			};
+			ANTLR_TRACE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-trace); };
+				CommonOption = YES;
+			};
+			ANTLR_REPORT = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-report); };
+				CommonOption = YES;
+			};
+			ANTLR_X_GRTREE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xgrtree); };
+				CommonOption = YES;
+			};
+/*			ANTLR_X_DFA = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xdfa); };
+				CommonOption = YES;
+			};
+			ANTLR_X_NOPRUNE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xnoprune); };
+				CommonOption = YES;
+			};
+			ANTLR_X_NOCOLLAPSE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xnocollapse); };
+				CommonOption = YES;
+			};
+			ANTLR_X_DBGCONVERSION = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xdbgconversion); };
+				CommonOption = YES;
+			};
+			ANTLR_X_NFA_MULTITHREADED = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xmultithreaded); };
+				CommonOption = YES;
+			};
+			ANTLR_X_DFAVERBOSE = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xdfaverbose); };
+				CommonOption = YES;
+			};
+			ANTLR_X_WATCHCONVERSION = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-Xwatchconversion); };
+				CommonOption = YES;
+			};
+*/
+			ANTLR_X_DEBUG_ST = {
+				Type = bool;
+				DefaultValue = NO;
+				CommandLineArgs = { NO = (); YES = (-XdbgST); };
+				CommonOption = YES;
+			};
+		};
+		OptionCategories = (
+			{	Name = "Code Generation";
+				IconName = "PBX-option-build";
+				Options = (ANTLR_DEBUG, ANTLR_TRACE, ANTLR_X_DEBUG_ST);
+			},
+			{	Name = "Search Paths";
+				IconName = "PBX-option-build";
+				Options = (ANTLR_FORCE_OUT_DIR, ANTLR_LIB_DIR);
+			},
+			{	Name = "ANTLR Libaries";
+				IconName = "PBX-option-build";
+				Options = (ANTLR_EXTRA_JAVA_ARGS);
+			},
+			{   Name = Information;
+				IconName = "PBX-option-build";
+				Options = (
+					ANTLR_VERBOSE, ANTLR_NFA_DOT, ANTLR_DFA_DOT, ANTLR_REPORT, ANTLR_X_GRTREE
+				);
+			},
+		);
+	}
+)

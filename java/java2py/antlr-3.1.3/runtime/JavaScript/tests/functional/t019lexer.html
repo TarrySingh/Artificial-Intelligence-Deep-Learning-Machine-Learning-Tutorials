@@ -1,0 +1,43 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t019lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t019lexer.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid() {
+        var xinput = [
+                "import org.antlr.runtime.*;",
+                "",
+                "public class Main {",
+                "	public static void main(String[] args) throws Exception {",
+                "	    for (int i=0; i<args.length; i++) {",
+                "		CharStream input = new ANTLRFileStream(args[i]);",
+                "		FuzzyJava lex = new FuzzyJava(input);",
+                "		TokenStream tokens = new CommonTokenStream(lex);",
+                "		tokens.toString();",
+                "		//System.out.println(tokens);",
+                "	    }",
+                "	}",
+                "}"
+            ].join("\n");
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new t019lexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer);
+        assertEquals(tstream.getTokens().length, 38);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t019lexer</h1>
+</body>
+</html>

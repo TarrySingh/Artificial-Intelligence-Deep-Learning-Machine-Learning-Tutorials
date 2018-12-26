@@ -1,0 +1,307 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2008 Erik van Bilsen
+ Copyright (c) 2007-2008 Johannes Luber
+ Copyright (c) 2005-2007 Kunle Odutola
+ Copyright (c) 2005-2006 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/** Templates for building ASTs during tree parsing.
+ *
+ *  Deal with many combinations.  Dimensions are:
+ *  Auto build or rewrite
+ *    no label, label, list label  (label/no-label handled together)
+ *    child, root
+ *    token, set, rule, wildcard
+ *
+ *  Each combination has its own template except that label/no label
+ *  is combined into tokenRef, ruleRef, ...
+ */
+group ASTTreeParser;
+
+/** Add a variable to track last element matched */
+ruleDeclarations() ::= <<
+<super.ruleDeclarations()>
+_First[0] := nil;
+_Last := nil;<\n>
+>>
+
+ruleDeclarationVars() ::= <<
+<super.ruleDeclarationVars()>
+_First, _Save_Last: array [0..63] of I<ASTLabelType>;
+_Last: I<ASTLabelType>;
+>>
+
+/** What to emit when there is no rewrite rule.  For auto build
+ *  mode, does nothing.
+ */
+noRewrite(rewriteBlockLevel, treeLevel) ::= <<
+<if(backtracking)>if (State.Backtracking = 0) then
+begin<endif>
+<if(rewriteMode)>
+RetVal.Tree := _First[0] as I<ASTLabelType>;
+if (Adaptor.GetParent(RetVal.Tree) \<\> nil) and (Adaptor.IsNil(Adaptor.GetParent(RetVal.Tree))) then 
+  RetVal.Tree := Adaptor.GetParent(RetVal.Tree) as I<ASTLabelType>;
+<endif>
+<if(backtracking)>end;<endif>
+>>
+
+/** match ^(root children) in tree parser; override here to
+ *  add tree construction actions.
+ */
+tree(root, actionsAfterRoot, children, nullableChildList,
+     enclosingTreeLevel, treeLevel) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+begin
+  _Save_Last[<treeLevel>] := _Last;
+  _First[<treeLevel>] := nil;
+<if(!rewriteMode)>
+  Root[<treeLevel>] := Adaptor.GetNilNode as I<ASTLabelType>;<\n>
+<endif>
+  <root:element()>
+<if(rewriteMode)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>
+<if(root.el.rule)>
+  if (_First[<enclosingTreeLevel>] = nil) then _First[<enclosingTreeLevel>] := <root.el.label>.Tree;
+<else>
+  if (_First[<enclosingTreeLevel>] = nil) then _First[<enclosingTreeLevel>] := <root.el.label>;
+<endif>
+<endif>
+  <actionsAfterRoot:element()>
+<if(nullableChildList)>
+  if (Input.LA(1) = TToken.DOWN) then
+  begin
+    Match(Input, TToken.DOWN, nil); <checkRuleBacktrackFailure()>
+    <children:element()>
+    Match(Input, TToken.UP, nil); <checkRuleBacktrackFailure()>
+  end;
+<else>
+  Match(Input, TToken.DOWN, nil); <checkRuleBacktrackFailure()>
+  <children:element()>
+  Match(Input, TToken.UP, nil); <checkRuleBacktrackFailure()>
+<endif>
+<if(!rewriteMode)>
+  Adaptor.AddChild(Root[<enclosingTreeLevel>], Root[<treeLevel>]);
+<endif>
+  _Last := _Save_Last[<treeLevel>];
+end;<\n>
+>>
+
+// TOKEN AST STUFF
+
+/** ID! and output=AST (same as plain tokenRef) 'cept add
+ *  setting of _last
+ */
+tokenRefBang(token,label,elementIndex) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.tokenRef(...)>
+>>
+
+/** ID auto construct */
+tokenRef(token,label,elementIndex,hetero) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.tokenRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>
+if (State.Backtracking = 0) then
+begin<\n>
+<endif>
+<if(hetero)>
+<label>_tree := T<hetero>.Create(<label>);
+<else>
+	<label>_tree := Adaptor.DupNode(<label>) as I<ASTLabelType>;
+<endif><\n>
+	Adaptor.AddChild(Root[<treeLevel>], <label>_tree);
+<if(backtracking)>
+end;
+<endif>
+<else> <! rewrite mode !>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>
+if (_First[<treeLevel>] = nil) then _First[<treeLevel>] := <label>;
+<endif>
+>>
+
+/** label+=TOKEN auto construct */
+tokenRefAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** ^(ID ...) auto construct */
+tokenRefRuleRoot(token,label,elementIndex,hetero) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.tokenRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>
+if (State.Backtracking = 0) then
+begin
+<endif>
+<if(hetero)>
+<label>_tree := T<hetero>.Create(<label>);
+<else>
+	<label>_tree := Adaptor.DupNode(<label>) as I<ASTLabelType>;
+<endif><\n>
+	Root[<treeLevel>] := Adaptor.BecomeRoot(<label>_tree, Root[<treeLevel>]) as I<ASTLabelType>;
+<if(backtracking)>
+end;
+<endif>
+<endif>
+>>
+
+/** Match ^(label+=TOKEN ...) auto construct */
+tokenRefRuleRootAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefRuleRoot(...)>
+<listLabel(elem=label,...)>
+>>
+
+// SET AST
+
+matchSet(s,label,hetero,elementIndex,postmatchCode) ::= <<
+_Llast := Input.LT(1) as I<ASTLabelType>;
+<super.matchSet(..., postmatchCode={
+<if(!rewriteMode)>
+<if(backtracking)>if (State.Backtracking = 0) then begin <endif>
+<if(hetero)>
+<label>_tree := T<hetero>.Create(<label>);
+<else>
+<label>_tree := Adaptor.DupNode(<label>) as I<ASTLabelType>;
+<endif><\n>
+Adaptor.AddChild(Root[<treeLevel>], <label>_tree);
+<if(backtracking)>end;<endif>
+<endif>
+}
+)>
+>>
+
+matchRuleBlockSet(s,label,hetero,elementIndex,postmatchCode,treeLevel="0") ::= <<
+<matchSet(...)>
+<noRewrite()> <! set return tree !>
+>>
+
+matchSetBang(s,label,elementIndex,postmatchCode) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.matchSet(...)>
+>>
+
+matchSetRuleRoot(s,label,hetero,elementIndex,debug) ::= <<
+<super.matchSet(..., postmatchCode={
+<if(!rewriteMode)>
+<if(backtracking)>if (State.Backtracking = 0) then begin <endif>
+<if(hetero)>
+<label>_tree := T<hetero>.Create(<label>);
+<else>
+<label>_tree := Adaptor.DupNode(<label>) as I<ASTLabelType>;
+<endif><\n>
+Root[<treeLevel>] := Adaptor.BecomeRoot(<label>_tree, Root[<treeLevel>]) as I<ASTLabelType>;
+<if(backtracking)>end;<endif>
+<endif>
+}
+)>
+>>
+
+// RULE REF AST
+
+/** rule auto construct */
+ruleRef(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRef(...)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>
+<if(!rewriteMode)>
+Adaptor.AddChild(Root[<treeLevel>], <label>.Tree);
+<else> <! rewrite mode !>
+if (_First[<treeLevel>] = nil) then _First[<treeLevel>] := <label>.Tree;
+<endif>
+>>
+
+/** x+=rule auto construct */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label+".Tree",...)>
+>>
+
+/** ^(rule ...) auto construct */
+ruleRefRuleRoot(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRef(...)>
+<if(!rewriteMode)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>Root[<treeLevel>] := Adaptor.BecomeRoot(<label>.Tree, Root[<treeLevel>]) as I<ASTLabelType>;
+<endif>
+>>
+
+/** ^(x+=rule ...) auto construct */
+ruleRefRuleRootAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<listLabel(elem=label+".Tree",...)>
+>>
+
+/** rule when output=AST and tracking for rewrite */
+ruleRefTrack(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRefTrack(...)>
+>>
+
+/** x+=rule when output=AST and tracking for rewrite */
+ruleRefTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRefTrackAndListLabel(...)>
+>>
+
+/** ^(rule ...) rewrite */
+ruleRefRuleRootTrack(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRefRootTrack(...)>
+>>
+
+/** ^(x+=rule ...) rewrite */
+ruleRefRuleRootTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+_Last := Input.LT(1) as I<ASTLabelType>;
+<super.ruleRefRuleRootTrackAndListLabel(...)>
+>>
+
+/** Streams for token refs are tree nodes now; override to
+ *  change nextToken to nextNode.
+ */
+createRewriteNodeFromElement(token,hetero,scope) ::= <<
+<if(hetero)>
+T<hetero>.Create((Locals['Stream_<token>'] as IRewriteRuleElementStream).NextNode)
+<else>
+(Locals['Stream_<token>'] as IRewriteRuleElementStream).NextNode
+<endif>
+>>
+
+ruleCleanUp() ::= <<
+<super.ruleCleanUp()>
+<if(!rewriteMode)>
+<if(backtracking)>
+if (State.Backtracking = 0) then
+begin<\n>
+<endif>
+RetVal.Tree := Adaptor.RulePostProcessing(Root[0]) as I<ASTLabelType>;
+<if(backtracking)>
+end;
+<endif>
+<endif>
+>>

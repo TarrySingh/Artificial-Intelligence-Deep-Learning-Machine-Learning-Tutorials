@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t002lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t002lexer.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function TLexer() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TLexer, t002lexer, {
+        reportError: function(e) {
+            throw e;
+        }
+    });
+
+    function testValid() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("01"),
+            lexer = new TLexer(stream),
+            token;
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.ZERO);
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.ONE);
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.EOF);
+    }
+
+    function testMalformedInput() {
+        var stream = new org.antlr.runtime.ANTLRStringStream('2'),
+            lexer = new TLexer(stream),
+            token;
+
+        try {
+            token = lexer.nextToken();
+            fail("nextToken should have thrown error on invalid input");
+        } catch (e) {
+            assertEquals(e.getUnexpectedType(), '2');
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t002lexer</h1>
+</body>
+</html>

@@ -1,0 +1,110 @@
+/*
+ * [The "BSD licence"]
+ * Copyright (c) 2005-2008 Terence Parr
+ * All rights reserved.
+ *
+ * Conversion to C#:
+ * Copyright (c) 2008-2009 Sam Harwell, Pixel Mine, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+grammar Expr;
+
+/*
+	I had to make the following changes to the basic Expr grammar to make it work with the CSharp3 target in "Java compatibility mode".
+	For reference, see http://www.antlr.org/wiki/display/ANTLR3/Expression+evaluator.
+
+	Add an options section to set the language to CSharp3.
+
+	In the @header section, add:
+		// 'member' is obsolete
+		#pragma warning disable 612
+		using Antlr.Runtime.JavaExtensions;
+
+	In the @header section, replace:
+			import java.util.HashMap;
+		with:
+			using HashMap = System.Collections.Generic.Dictionary<object,object>;
+
+	Change all instances of "System.out" with "JSystem.@out".
+
+	Change all instances of "System.err" with "JSystem.err".
+	
+	Change all instances of "skip()" with "Skip()".
+ */
+
+options
+{
+	language=CSharp3;
+}
+
+@header {
+// 'member' is obsolete
+#pragma warning disable 612
+
+using Antlr.Runtime.JavaExtensions;
+using HashMap = System.Collections.Generic.Dictionary<object,object>;
+using Integer = java.lang.Integer;
+}
+
+@members {
+/** Map variable name to Integer object holding value */
+HashMap memory = new HashMap();
+}
+
+prog:   stat+ ;
+
+stat:   expr NEWLINE {JSystem.@out.println($expr.value);}
+    |   ID '=' expr NEWLINE
+        {memory.put($ID.text, new Integer($expr.value));}
+    |   NEWLINE
+    ;
+
+expr returns [int value]
+    :   e=multExpr {$value = $e.value;}
+        (   '+' e=multExpr {$value += $e.value;}
+        |   '-' e=multExpr {$value -= $e.value;}
+        )*
+    ;
+
+multExpr returns [int value]
+    :   e=atom {$value = $e.value;} ('*' e=atom {$value *= $e.value;})*
+    ; 
+
+atom returns [int value]
+    :   INT {$value = Integer.parseInt($INT.text);}
+    |   ID
+        {
+        Integer v = (Integer)memory.get($ID.text);
+        if ( v!=null ) $value = v.intValue();
+        else JSystem.err.println("undefined variable "+$ID.text);
+        }
+    |   '(' expr ')' {$value = $expr.value;}
+    ;
+
+ID  :   ('a'..'z'|'A'..'Z')+ ;
+INT :   '0'..'9'+ ;
+NEWLINE:'\r'? '\n' ;
+WS  :   (' '|'\t')+ {Skip();} ;

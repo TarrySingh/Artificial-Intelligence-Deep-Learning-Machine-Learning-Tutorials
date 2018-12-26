@@ -1,0 +1,26 @@
+lexer grammar SymbolTable;
+options {
+  language=ObjC;
+
+}
+
+T7 : 'method' ;
+T8 : '(' ;
+T9 : ')' ;
+T10 : '{' ;
+T11 : '}' ;
+T12 : '=' ;
+T13 : ';' ;
+T14 : 'int' ;
+
+// $ANTLR src "SymbolTable.g" 66
+ID  :   ('a'..'z')+
+    ;
+
+// $ANTLR src "SymbolTable.g" 69
+INT :   ('0'..'9')+
+    ;
+
+// $ANTLR src "SymbolTable.g" 72
+WS  :   (' '|'\n'|'\r')+ {$channel=99;}
+    ;

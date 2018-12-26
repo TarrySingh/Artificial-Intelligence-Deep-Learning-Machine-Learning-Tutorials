@@ -1,0 +1,132 @@
+<?xml version="1.0"?>
+<project name="ANTLR C# Runtime Library" default="build">
+    <tstamp/>
+	<property name="base.dir" value="${path::get-full-path( project::get-base-directory() )}" />
+
+	<include buildfile="../../antlr3.runtime.net.common.inc" />
+
+	<property name="antlr3.runtime.test" value="true" unless="${property::exists('antlr3.runtime.test')}" />
+	<property name="enabletest" value="ALLOWTEST" unless="${property::exists('enabletest')}" />
+
+	<property name="name" value="Antlr3.Runtime" />
+	<property name="test.name" value="${name}.Tests" />
+	
+	<property name="assembly.name" value="${name}.dll" />
+	<property name="test.assembly.name" value="${test.name}.exe" />
+	
+	<property name="src.dir" value="${base.dir}/" />
+	<property name="test.src.dir" value="${base.dir}/../Antlr3.Runtime.Tests" />
+
+    <property name="debug" value="true" unless="${property::exists('debug')}" />
+
+    <echo message="Building project: '${name}' version ${version} ==> '${assembly.name}'"/>
+
+    <target name="build" depends="init, compile, test" description="compiles the source code">
+    </target>
+
+	<target name="init" depends="clean, copy_build_dependencies">
+        <mkdir dir="${build.working.dir}/tests" />
+	</target>
+
+	<target name="copy_build_dependencies">
+		<!-- Copy Antlr3.Runtime.Tests dependencies -->
+		<copy todir="${build.working.dir}" overwrite="true">
+			<fileset basedir="${sharedlibrary.dir}/MbUnit">
+				<include name="MbUnit.Framework.dll" />
+				<include name="QuickGraph.Algorithms.dll" />
+				<include name="QuickGraph.dll" />
+			</fileset>
+		</copy>
+		<copy todir="${build.working.dir}" overwrite="true">
+			<fileset basedir="${sharedlibrary.dir}/StringTemplate.NET/${target.clr}">
+				<include name="StringTemplate.dll" />
+				<include name="antlr.runtime.dll" />
+			</fileset>
+		</copy>
+	</target>
+
+    <target name="clean">
+	</target>
+
+    <target name="clean.vsnet" description="cleans up VS.NET build artifacts and output">
+		<!-- delete VS.NET project artifacts directory -->
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/bin'" />
+		<delete dir="${base.dir}/bin" failonerror="false" />
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/obj'" />
+		<delete dir="${base.dir}/obj" failonerror="false" />
+
+		<!-- delete VS.NET project artifacts directory for Tests projects-->
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/../Antlr3.Runtime.Tests/bin'" />
+		<delete dir="${base.dir}/../Antlr3.Runtime.Tests/bin" failonerror="false" />
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/../Antlr3.Runtime.Tests/obj'" />
+		<delete dir="${base.dir}/../Antlr3.Runtime.Tests/obj" failonerror="false" />
+    </target>
+
+	<target name="test" depends="tests.run" if="${antlr3.runtime.test}">
+	</target>
+
+	<target name="tests.run" depends="tests.compile">
+		<loadtasks assembly="${sharedlibrary.dir}/MbUnit/MbUnit.Tasks.dll" />
+		<mbunit
+        	report-types="Html"
+         	report-filename-format="antlr3-runtime-report-{0}-{1}"
+         	report-output-directory="${build.working.dir}"
+         	halt-on-failure="true"
+         >
+		    <assemblies>
+		    	<include name="${build.working.dir}/${test.assembly.name}" /> 
+			</assemblies>
+		</mbunit>
+	</target>
+
+	<target name="compile" depends="init">
+		<csc 
+			define="${strong_name};${dotnet_define}"
+			target="library" 
+			debug="${debug}"
+			optimize="${optimize}"
+			output="${build.working.dir}/${assembly.name}" 
+			doc="${build.working.dir}/${name}.xml">
+			
+			<nowarn>
+				<warning number="1591" />
+				<warning number="1572" />
+			</nowarn>
+			
+			<sources basedir="${src.dir}" defaultexcludes="true">
+				<include name="**/*.cs" />
+				<exclude name="**/*.Designer.cs" 
+					if="${framework::get-target-framework()=='net-1.1' or framework::get-target-framework()=='mono-1.0'}" 
+				/>
+			</sources>
+
+			<references>
+				<!-- <include name="${build.working.dir}/antlr.runtime.dll" /> -->
+			</references>
+		</csc>
+	</target>
+
+	<target name="tests.compile" depends="init">
+		<csc 
+			define="${dotnet_define}"
+			target="exe" 
+			debug="${debug}" 
+			output="${build.working.dir}/${test.assembly.name}">
+			
+			<sources basedir="${test.src.dir}" defaultexcludes="true">
+				<include name="**/*.cs" />
+				<exclude name="**/*.Designer.cs" 
+					if="${framework::get-target-framework()=='net-1.1' or framework::get-target-framework()=='mono-1.0'}" 
+				/>
+			</sources>
+
+			<references>
+				<include name="${build.working.dir}/${assembly.name}" />
+				<include name="${build.working.dir}/MbUnit.Framework.dll" />
+				<include name="${build.working.dir}/QuickGraph.Algorithms.dll" />
+				<include name="${build.working.dir}/QuickGraph.dll" />
+			</references>
+		</csc>
+	</target>
+	
+</project>

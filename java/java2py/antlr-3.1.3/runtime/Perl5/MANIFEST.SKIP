@@ -1,0 +1,10 @@
+# project files
+\.kpf$
+
+^Makefile$
+^pm_to_blib$
+^blib/
+
+# temporary and backup files
+~$
+\.bak$

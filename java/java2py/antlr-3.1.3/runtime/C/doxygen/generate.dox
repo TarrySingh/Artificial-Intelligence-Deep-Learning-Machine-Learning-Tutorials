@@ -1,0 +1,57 @@
+/// \page generate Generating Code for the C Target
+///
+/// \section generate Generating C
+///
+/// Before discussing how we compile or call the generated C code, we need to know how to invoke the C code generator. 
+/// This is achieved within the grammar file itself, using the language option:
+///
+/// \verbatim
+options {	language = C;}
+\endverbatim
+///
+/// The code generator consists of a single .java file within the standard ANTLR tool jar, and a code generation template, 
+/// used by the StringTemplate engine, which drives code generation for all language targets. In fact you can make copies of the C.stg 
+/// and AST.stg templates and make changes to them (though you are encouraged not to, as it is better to provide bug fixes or 
+/// enhancements which we are happy to receive requests for and will do out best to incorporate.
+///
+/// If you are working in the Windows environment, with Visual Studio 2005 or later, you may wish to utilize the custom rulefile 
+/// provided in the C source code distribution under the <code>./vs2005</code> directory for this purpose. If you are using a pre-built 
+/// library then you can also download this rule file directly from the FishEye source code browser for ANTLR3.
+/// 
+/// In order to use the rulefile, you must adopt the following suffixes for your grammar files, though they are otherwise optional:
+///
+/// <table>
+/// 
+/// <tr>
+/// <th> Suffix </th>
+/// <th> Grammar should contain... </th>
+/// </tr>
+/// <tr>
+/// <td> .g3l </td>
+/// <td> A lexer grammar specification only. </td>
+/// </tr>
+/// <tr>
+/// <td> .g3p </td>
+/// <td> A parser grammar specification only. </td>
+/// </tr>
+/// <tr>
+/// <td> .g3pl </td>
+/// <td> A combined lexer and parser specification. </td>
+/// </tr>
+/// <tr>
+/// <td> .g3t </td>
+/// <td> A tree grammar specification. </td>
+/// </tr>
+/// 
+/// </table>
+/// 
+/// You may also wish to use these suffixes if you are building your projects using Makefiles, as this makes the output deterministic. 
+/// However in this case a much better solution is probably to utilize the -depend option of the Antlr tool, which should tell your 
+/// Makefile what the grammar files generates, irrespective of its suffix. ANTLR does not care about the actual suffix you use for 
+/// your grammar file, so building for multiple platforms is relatively easy.
+///
+/// <b>NOTE:</b> Your grammar source, regardless of suffix must be named the same as the grammar statement within it. Grammar xyz
+/// must be contained within a file called xyz.<i>anything</i>
+///
+/// 
+

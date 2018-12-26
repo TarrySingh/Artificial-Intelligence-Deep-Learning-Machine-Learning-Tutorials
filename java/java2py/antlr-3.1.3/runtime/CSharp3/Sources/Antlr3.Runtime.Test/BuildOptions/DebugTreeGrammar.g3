@@ -1,0 +1,88 @@
+/*
+ * [The "BSD licence"]
+ * Copyright (c) 2005-2008 Terence Parr
+ * All rights reserved.
+ *
+ * Conversion to C#:
+ * Copyright (c) 2008-2009 Sam Harwell, Pixel Mine, Inc.
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. The name of the author may not be used to endorse or promote products
+ *    derived from this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ * OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ * IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ * NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+tree grammar DebugTreeGrammar;
+
+options
+{
+	language=CSharp3;
+	tokenVocab=DebugGrammar;
+	ASTLabelType=CommonTree;
+}
+
+// START:members
+@header
+{
+//import java.util.Map;
+//import java.util.HashMap;
+using BigInteger = java.math.BigInteger;
+using Console = System.Console;
+}
+// END:members
+
+// START:rules
+prog:   stat*
+    ;
+
+stat:   expr                       { string result = $expr.value.ToString();
+                                     Console.Out.WriteLine($expr.value + " (about " + result[0] + "*10^" + (result.Length-1) + ")");
+                                   }
+    |   ^('=' ID expr)             { globalMemory[$ID.text] = $expr.value; }
+    |   ^(FUNC .+)	               // ignore FUNCs - we added them to functionDefinitions already in parser.
+    ;
+
+expr returns [BigInteger value]
+    :   ^('+' a=expr b=expr)       { $value = $a.value.add($b.value); }
+    |   ^('-' a=expr b=expr)       { $value = $a.value.subtract($b.value); }
+    |   ^('*' a=expr b=expr)       { $value = $a.value.multiply($b.value); }
+    |   ^('/' a=expr b=expr)       { $value = $a.value.divide($b.value); }
+    |   ^('%' a=expr b=expr)       { $value = $a.value.remainder($b.value); }
+    |   ID                         { $value = getValue($ID.text); }
+    |   INT                        { $value = new BigInteger($INT.text); }
+    |   call                       { $value = $call.value; }
+    ;
+
+call returns [BigInteger value]
+    :   ^(CALL ID expr)            { BigInteger p = $expr.value;
+                                     CommonTree funcRoot = findFunction($ID.text, p);
+                                     if (funcRoot == null) {
+                                         Console.Error.WriteLine("No match found for " + $ID.text + "(" + p + ")");
+                                     } else {
+                                         // Here we set up the local evaluator to run over the
+                                         // function definition with the parameter value.
+                                         // This re-reads a sub-AST of our input AST!
+                                         DebugTreeGrammar e = new DebugTreeGrammar(funcRoot, functionDefinitions, globalMemory, p);
+                                         $value = e.expr();
+                                     }
+                                   }
+    ;
+// END:rules

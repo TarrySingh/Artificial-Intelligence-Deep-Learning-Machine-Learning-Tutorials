@@ -1,0 +1,38 @@
+2007-11-03  Benjamin Niemann  <pink@odahoda.de>
+
+	* PythonTarget.java, dfa.py, exceptions.py, recognizer.py, streams.py:
+	ANTLRStringStream.LA() now returns the character's ordinal and
+	generated lexers operate on integers. Also made various performance
+	tunings.
+
+2007-10-07  Benjamin Niemann  <pink@odahoda.de>
+
+	* main.py, Python.stg (outputFile): Added simple __main__ section to
+	generated code, so (simple) grammars can be executed as standalone
+	script.
+
+	* tree.py (RecognitionException.extractInformationFromTreeNodeStream),
+	exceptions.py (CommonTree): Small bugfixes.
+
+2007-09-30  Benjamin Niemann  <pink@odahoda.de>
+
+	* recognizers.py (TokenSource): Added iterator interface to TokenSource
+	class - and thus to Lexer.
+
+2007-06-27  Benjamin Niemann  <pink@odahoda.de>
+
+	* Python.stg (genericParser, parser, treeParser): Use correct @init
+	action block for tree parsers.
+
+2007-05-24  Benjamin Niemann  <pink@odahoda.de>
+
+	* Python.stg (rule): Added support for @decorate {...} action for
+	parser rules to add decorators to the rule method.
+
+2007-05-18  Benjamin Niemann  <pink@odahoda.de>
+
+	* Python.stg (isolatedLookaheadRangeTest, lookaheadRangeTest): 
+	Minor improvement of generated code (use '<lower> <= <LA> <= <upper>'
+	instead of '<LA> >= <lower> and <LA> <= <upper>').
+	
+

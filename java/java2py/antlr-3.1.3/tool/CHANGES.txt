@@ -1,0 +1,3169 @@
+ANTLR 3.1.3 Release
+March 17, 2009
+
+Terence Parr, parrt at cs usfca edu
+ANTLR project lead and supreme dictator for life
+University of San Francisco
+
+CHANGES
+
+March 17, 2009
+
+* improved ANTLRv3.g to handle <...> element options
+
+March 15, 2009
+
+* Fixed ANTLR-389. Strip didn't ignore options in subrules; also seemed
+  to demand stdin.
+
+March 15, 2009
+
+* ANTLR always sorts incoming grammar list by dependency.  For example,
+  If W.g depends on tokens from P.g then P.g is done first even if
+  W.g mentioned first on command line.  It does not ignore any files you
+  specify the commandline.  If you do *.g and that includes some
+  imported grammars, it will run antlr on them.
+
+* -make option prevents ANTLR from running on P.g if P older than
+  generated files.
+
+* Added org.antlr.tool.GrammarSpelunker to build a faster dependency
+  checker (what grammars depend on etc...).  Totally independent of any
+  ANTLR code; easy to pull into other tools.
+
+* Added org.antlr.misc.Graph, a general graph with nodes
+  containing an Object payload. It knows how to do a topological sort
+  on the nodes.
+
+March 10, 2009
+
+* Added associativity token option to support upcoming special expression
+  parsing. Added rule option strategy=precedence also
+
+March 1, 2009
+
+* Changed ANTLRWorks debug port from 49153 to 49100.  Apparently we change the port in
+  ANTLRWorks to 49100 in 1.2 but forgot to do so in the ANTLR targets.
+
+START CHANGES FOR TREE FILTER MODE (pulled from dev branch)
+
+This feature will be announced in 3.2, but I am integrating from my development branch now into the mainline so target developers have a chance to implement. We might release 3.1.3 bug fix release before 3.2.
+
+* CommonTreeNodeStream -> BufferedTreeNodeStream.  Now,
+  CommonTreeNodeStream is completely unbuffered unless you are
+  backtracking.  No longer making a list of all nodes before tree parsing.
+
+* Added tree grammar filter=true mode.  
+
+  Altered templates:
+	Java.stg: added filterMode to genericParser and treeParser.
+	This required a change to ANTLRCore.sti
+	Defined a default parameter in treeParser to set the superclass
+	to TreeFilter for tree grammar with filter=true. It sets
+	superclass to TreeRewriter if filter=true and output=AST.
+  Other them that, I only had to change ANTLR itself a little bit.
+  Made filter mode valid for tree grammars and have it automatically set
+  the necessary elements: @synpredgate, backtrack=true, rewrite=true
+  (if output=AST).  Added error message for detecting conflicting
+  options.
+
+* Added misc.FastQueue and TestFastQueue:
+  A queue that can dequeue and get(i) in O(1) and grow arbitrarily large.
+  A linked list is fast at dequeue but slow at get(i).  An array is
+  the reverse.  This is O(1) for both operations.
+
+* Added tree.TreeIterator, a generator that walks a doubly linked tree.
+  The nodes must know what index they are. It's an Iterator but
+  remove() is not supported. Returns navigation nodes always:
+  UP, DOWN, EOF.
+
+* Added misc.LookaheadStream: A lookahead queue that knows how
+  to mark/release locations in the buffer for backtracking purposes.
+  I hope to use for both tree nodes and tokens.  Just implement
+  nextElement() to say how to get next node or token.
+
+END CHANGES FOR TREE FILTER MODE
+
+February 18, 2009
+
+* Added org.antlr.tool.Strip (reads from file arg or stdin, emits to stdout)
+  to strip actions from a grammar.
+
+February 4, 2009
+
+* Added CommonTree.setUnknownTokenBoundaries().  Sometimes we build trees
+  in a grammar and some of the token boundaries are not set properly.
+  This only matters if you want to print out the original text associated
+  with a subtree.  Check this out rule:
+
+	postfixExpression
+	    :   primary ('.'^ ID)*
+	    ;
+
+  For a.b.c, we get a '.' that does not have the token boundaries set.
+  ANTLR only sets token boundaries for subtrees returned from a rule.
+  SO, the overall '.' operator has the token boundaries set from 'a'
+  to 'c' tokens, but the lower '.' subtree does not get the boundaries
+  set (they are -1,-1).  Calling setUnknownTokenBoundaries() on
+  the returned tree sets the boundaries appropriately according to the
+  children's token boundaries.
+
+January 22, 2009
+
+* fixed to be listeners.add(listener); in addListener() of DebugEventHub.java
+
+January 20, 2009
+
+* Removed runtime method: mismatch in BaseRecognizer and TreeParser.  Seems
+  to be unused.  Had to override method recoverFromMismatchedToken() in
+  TreeParser to get rid of single token insertion and deletion for
+  tree parsing because it makes no sense with all of the up-and-down nodes.
+
+* Changed JIRA port number from 8888 to no port spec (aka port 80) and all
+  refs to it in this file.
+
+* Changed BaseTree to Tree typecase in getChild and toStringTree() and
+  deleteChild() to make more generic.
+
+December 16, 2008
+
+* Added -verbose cmd-line option and turned off standard header
+  and list of read files.  Silent now without -verbose.
+
+November 24, 2008
+
+* null-ptr protected getParent and a few others.
+
+* Added new ctor to CommonTreeNodeStream for walking subtrees.  Avoids
+  having to make new serialized stream as it can reuse overall node stream
+  buffer.
+
+November 20, 2008
+
+* Updated BaseTest to isolate tests better.
+
+November 17, 2008
+
+* BaseTreeAdaptor.getType() was hosed; always gave 0.  Thanks to Sam Harwell.
+
+November 8, 2008
+
+* Added methods to BaseRecognizer:
+  public void setBacktrackingLevel(int n) { state.backtracking = n; }
+  /** Return whether or not a backtracking attempt failed. */
+  public boolean failed() { return state.failed; }
+
+November 5, 2008
+
+* Tweaked traceIn/Out to say "fail/succeeded"
+
+* Bug in code gen for tree grammar wildcard list label x+=.
+
+* Use of backtrack=true anywhere in grammar causes backtracking sensitive
+  code to be generated.  Actions are gated etc...  Previously, that only
+  happened when a syntactic predicate appeared in a DFA.  But, we need
+  to gate actions when backtracking option is set even if no decision
+  is generated to support filtering of trees.
+
+October 25, 2008
+
+* Fixed debug event socket protocol to allow spaces in filenames.
+
+* Added TreeVisitor and TreeVisitorAction to org.antlr.runtime.tree.
+
+October 22, 2008
+
+* Added inContext() to TreeParser.  Very useful for predicating
+  tree grammar productions according to context (their parent list).
+  Added new TestTreeContext unit tests (15).
+
+    /** Check if current node in input has a context.  Context means sequence
+     *  of nodes towards root of tree.  For example, you might say context
+     *  is "MULT" which means my parent must be MULT.  "CLASS VARDEF" says
+     *  current node must be child of a VARDEF and whose parent is a CLASS node.
+     *  You can use "..." to mean zero-or-more nodes.  "METHOD ... VARDEF"
+     *  means my parent is VARDEF and somewhere above that is a METHOD node.
+     *  The first node in the context is not necessarily the root.  The context
+     *  matcher stops matching and returns true when it runs out of context.
+     *  There is no way to force the first node to be the root. 
+     */
+    public boolean inContext(String context) {...}
+
+* Added 3 methods to Tree interface [BREAKS BACKWARD COMPATIBILITY]
+
+    /** Is there is a node above with token type ttype? */
+    public boolean hasAncestor(int ttype);
+
+    /** Walk upwards and get first ancestor with this token type. */
+    public Tree getAncestor(int ttype);
+
+    /** Return a list of all ancestors of this node.  The first node of
+     *  list is the root and the last is the parent of this node.
+     */
+    public List getAncestors();
+
+October 21, 2008
+
+* Updated unit tests to be correct for \uFFFE->\uFFFF change
+
+* Made . in tree grammar look like ^(. .*) to analysis, though ^(. foo)
+  is illegal (can't have . at root). Wildcard is subtree or node.
+  Fixed bugs:
+    http://www.antlr.org/browse/ANTLR-248
+    http://www.antlr.org/browse/ANTLR-344
+
+October 1, 2008 -- ANTLR v3.1.1
+
+September 8, 2008
+
+* Labels on tokens, rules carry into synpreds now so semantic predicates work.
+  This didn't work since labels were stripped in the synpred and they weren't
+  defined in the generated method.
+
+  a : x=A z=a {$x.text.equals($z.text)}? A
+    | y=A a A A 
+    ;
+
+September 3, 2008
+
+* Made a REV static variable in Tool so that we can change the rev for
+  daily builds.
+
+* Made \uFFFF a valid character. Token types are 32-bit clean using -1
+  not 0x0000FFFF as -1 so it should be okay.  Label.java:
+    public static final int MIN_CHAR_VALUE = '\u0000';
+    public static final int MAX_CHAR_VALUE = '\uFFFF';
+
+August 30, 2008
+
+* Changed messages in en.stg so that TOKEN_NONDETERMINISM correctly
+  indicates when actions hid semantic predicates.
+
+August 15, 2008
+
+* Tweaked build properties and build.xml
+
+August 13, 2008
+
+* Fixed ANTLR-314; 3.1 introduced a problem with list labels +=
+
+August 12, 2008 -- ANTLR v3.1
+
+* Added JavaScript target
+
+August 7, 2008
+
+* an NFA target of EOF predicate transition in DFA cause an exception in
+  getPredicatesPerNonDeterministicAlt().
+
+* Kay Roepke found a nasty bug when debugging AST-constructing
+  composite recognizers.  If the input state was null to the constructor,
+  super class constructor created a new parser state object.
+  Later, though we passed the argument state not this.state
+  to the delegate constructors, forcing them to share a different
+  state objects!  Changed state to this.state in Dbg.stg constructors.
+
+* Ack. messed up debug/AST.  Have to set proxy's tree adaptor; it's
+  a circular ref.  Just an ASTDbg.stg change.
+
+August 4, 2008
+
+* superClass works now for lexers
+
+* Made Grammar.defineNamedAction propogate header actions down to all
+  delegates if root grammar; regardless of lexer/parser scope.
+
+* Rejiggered AST templates to propogate changes to tree adaptor
+  for delegate grammars. Fixes ANTLR-302
+
+August 4, 2008
+
+* FOLLOW set computations altered constant FOLLOW bit sets.
+
+* Added (...) are all predicate evaluations.
+
+* Extra init code for tree parser nonrewrite mode removed.
+
+* Added empty child list check in becomeRoot
+
+August 3, 2008
+
+* Was using RuleReturnScope not Rulename_return for list labels in tree
+  parser.
+
+* Didn't set _last in tree parser for rule ref track stuff (rewrite=true)
+
+August 2, 2008
+ 
+* Benjamin found another rewrite engine bug.
+
+July 30, 2008
+
+* CommonTreeNodeStream / CommonTokenStream did not reset properly.
+
+July 29, 2008
+
+* Fixed another bug in TokenRewriteStream; didn't like inserts after end.
+
+July 28, 2008
+
+* Fixed bug in TokenRewriteStream.toString(start,stop); it ignored
+  parameters. ;)
+
+July 17, 2008
+
+* allow qualified type names in hetero <...> options like T<a.b.c.Node>
+
+July 5, 2008
+
+* treeLevel not set for setBlock alts; added unit test
+
+July 3, 2008
+
+* Fixed ANTLR-267. parse tree added nodes during backtracking and
+  cyclic DFAs.  tracks hidden tokens too now. Added toInputString() to
+  get text back including hidden tokens.  Shows <epsilon> for rules
+  that match nothing.
+
+June 26, 2008
+
+* Added gParent ptr that points to immediate parent grammar. E.g.,
+    // delegators
+    public MParser gM; 
+    public M_S gS;
+    public M_S gParent = gS; // NEW
+
+* Grammar imports didn't set all the delegate pointers...lots of imported
+  grammars would cause a null ptr exception.  Fixes ANTLR-292.
+
+June 25, 2008
+
+* List labels in tree construction didn't always track the tree; sometimes
+  had a rule result structure.
+
+June 4, 2008
+
+* Improved unit testing so that each test suite executes and builds grammars
+  in a separate temporary directory. This means they can execute concurrently.
+  Also seem to be a problem with my class path during execution. Moved
+  tmpdir for ahead of standard CLASSPATH.
+
+* By virtue of an improvement to StringTemplate, output newlines 
+  in generated files should be normalized to whatever your host uses.
+
+June 3, 2008
+
+* Restrict legality of grammar options; for example you cannot use output option
+  in lexer anymore.
+
+June 2, 2008
+
+* Throw illegal arg exception upon invalid TokenRewriteStream ops. Rewrote
+  core of engine.  Slightly different operation.  Added many more unit tests.
+
+3.1b1 - May 20, 2008
+
+May 11, 2008
+
+* rewrite=true, output=AST for tree grammar was not working.  Altered trees were not
+  propagated back up the rule reference chain.  Required a number of mods to
+  ASTTreeParser.stg.  Added unit tests.
+
+May 10, 2008
+
+* [BACKWARD INCOMPATIBLE if you override match()]
+  I had turned off single token insertion and deletion because I could not figure
+  out how to work with trees and actions. Figure that out and so I turned it back on.
+  match() returns Object matched now (parser, tree parser) so we can set labels
+  on token refs properly after single token ins/del error recovery.  Allows actions
+  and tree construction to proceed normally even though we recover in the middle of
+  an alternative.  Added methods for conjuring up missing symbols: getMissingSymbol().
+
+* refactored BaseRecognizer error handling routines
+
+* Single token error recovery was not properly taking into consideration EOF.
+
+* ANTLR no longer tries to recover in tree parsers inline using single node deletion or insertion; throw exception.  Trees should be well formed as they are not created by users.
+
+* Added empty constructors to the exception classes that did not have them so that ANTLRWorks can create the exceptions.
+
+* Made debug tree adaptor deal with tokens conjured up during error recovery.
+
+* Removed extra location() debug element that was emitted.
+
+May 8, 2008
+
+* ANTLR didn't update line/col to DFA map for AW.
+
+May 6-7, 2008
+
+* Insufficiently covered (with semantic predicates) alt warnings are now emitted before
+  nondeterminisms so it's clear the nondeterminism is a result of insufficient preds.
+
+* Improved insufficiently covered alt warnings from:
+    warning(203): T.g:2:3: The following alternatives are insufficiently covered with predicates: 1
+  to:
+    warning(203): T.g:2:3: Input B is insufficiently covered with predicates at loca
+tions: alt 1: line 3:15, alt 2: line 2:9
+
+* Improved nondeterminism warning to have:
+  Semantic predicates were present but were hidden by actions.
+parser grammar U;
+a : (A B)? ;
+b : X a {p1}? A B | Y a {a1} {p2}? A B | Z a ;
+
+To create the prediction DFA for the optional sub rule in 'a', ANTLR must find all references to 'a' to determine what can follow. A B can follow 'a' in the first two alts rule 'b'.   To resolve the conflict between matching A B immediately in the sub rule and exiting rule 'a' to match it in 'b', ANTLR looks for predicates. In this case, there are two predicates that indicate the semantic context in which the surrounding alternatives are valid. The problem is that one of the predicates is hidden by an action. It took me 1.5 days, but I've finally have gotten ANTLR to properly track the insufficiently covered alternatives. Further, I have gotten it to tell you precisely where the uncovered predicates are even if they are simply hidden by actions. I have also updated all of the nondeterminism warnings so that it tells you if there was a predicate but one hidden by an action (this could be a separate condition from insufficiently covered predicates). here are your messages from ANTLR:
+
+ANTLR Parser Generator  Version 3.1b1 (??)  1989-2007
+warning(203): U.g:2:5: Input such as "A B" is insufficiently covered with predicates at locations: alt 2: line 3:38 at B
+Semantic predicates were present but were hidden by actions.
+warning(200): U.g:2:5: Decision can match input such as "A B" using multiple alternatives: 1, 2
+As a result, alternative(s) 2 were disabled for that input
+Semantic predicates were present but were hidden by actions.
+
+* Fixed issue where 
+r41
+   : (INT -> INT) ( ('+' i=INT) -> ^($i $r41) )* ';'
+   ;
+still warned about $r41 being ambig.
+
+* actions are now added to the NFA.
+
+* Fixed ANTLR-222.  ANTLR now ignores preds after actions.
+
+May 5, 2008
+
+* Fixed ANTLR-235 by backing out a change from 12-31-07.
+
+* Fixed ANTLR-249; I include semantic context again in closure busy signal.
+
+May 3, 2008
+
+* Fixed ANTLR-208.  Looks in library or in -o output path.  antlr -o foo T.g U.g where U needs T.tokens won't work unless we look in foo too.  fixed.
+
+* Refactored assign.types.g to move methods to a class called AssignTokenTypesBehavior.
+
+* Fixed ANTLR-207.  Lexers importing vocabs didn't see ';'=4 type aliases in .tokens.
+
+* Fixed ANTLR-228.  Couldn't use wildcard in alts with AST rewrites.
+
+May 2, 2008
+
+* Fixed ANTLR-230; can use \' now in action.
+
+* Scope attributes no longer have a stack depth check on front.  If you ref $r::a when r has not invoked you, then you get an exception not a default value.  Back to the way 3.0.1 worked.
+
+* $channel was a global variable in 3.0.1 unlike $type which did not affect an invoking lexer rule.  Now it's local too.  Only $type and $channel are ever set with regularity.  Setting those should not affect an invoking lexer rule as in the following should work:
+
+  X : ID WS? '=' ID ;  // result is X on normal channel
+  WS : ' '+ {$channel = HIDDEN; } ;
+
+  STRING : '"' (ESC|.)* '"' ;  // result is STRING not ESC
+
+  FLOAT : INT '.' INT? ; // should be FLOAT
+  INT : Digit+ ;
+  fragment
+  Digit : '0'..'9' ;
+
+* Fixed bug in interpreter regarding (...)* loops
+
+May 1, 2008
+
+* Fixed ANTLR-202.  These now give warnings about ambig ref to $a.
+    a : ID a -> $a | INT ;
+  and
+    a : A a {$a.text} | B ;
+
+April 30, 2008
+
+* Fixed ANTLR-237. updated -depend to know about imported grammars.
+$ java org.antlr.Tool -depend -lib foo T.g
+  ANTLR Parser Generator  Version 3.1b1 (??)  1989-2007
+  T.g: foo/Java.g
+  TParser.java : T.g
+  T.tokens : T.g
+  TLexer.java : T.g
+  T_Java : T.g
+
+April 29, 2008
+
+* Fixed ANTLR-217; scope A,B,C; didn't work
+
+* Fixed ANTLR-224; ! or ^ on item in alt with rewrite gave exception
+
+* Added token options to terminals: ID<node=V; foo="Big bob"> etc...
+  node is default so you can do ID<V> for hetero tree types. most common.
+
+April 17, 2008
+
+* Use default msg if unknown recog type in getErrorMessage():
+	String msg = e.getMessage();
+
+April 14, 2008
+
+* %x.y = foo; was not working in @members section
+
+March 29, 2008
+
+* Import couldn't handle A imports B imports C.
+
+March 27, 2008
+
+* Added get/setInputStream to Token interface and affected classes.
+
+February 26, 2008
+
+* made fillBuffer public in CommonTreeNodeStream so we can add trees
+  to stream for interactive interpreters.
+
+February 14, 2008
+
+* Fixed a bug in the code generation where tree level 0 was used
+  no matter what to rewrite trees in tree grammars. added unit test
+
+* Fixed ANTLR-221. exceptions were generated when using
+  AST construction operators and no output=AST option.
+
+February 13, 2008
+
+* Improved error msgs for unreachable alts and tokens.
+
+February 11-12, 2008
+
+* Fixed ANTLR-219.
+  It looks like the AST construction code for sets was totally messed up.
+  This was for not only the new tree parser AST construction, but also
+  the regular tree construction for parsers. I had to introduce templates
+  in the ASTTreeParser.stg file to deal with this. added unit tests:
+  TestTreeGrammarRewriteAST.testSetMatchNoRewrite(),
+  testSetMatchNoRewriteLevel2(), testSetMatchNoRewriteLevel2Root().
+  Had to add template matchRuleBlockSet()
+  to differentiate between a regular set in one that is an entire rule.
+  If it is an entire rule, it has to set the return value, retval.tree.
+
+* Fixed ANTLR-220.
+  Made TreeAdaptor dupNode and dupTree events emit debugging events
+  so AW could see tree node duplications.
+
+February 4, 2008
+
+* BACKWARD INCOMPATIBILITY
+  Added getSourceName to IntStream and TokenSource interfaces and also the
+  BaseRecognizer.  Have to know where char come from for error messages.
+  Widespread change, but a trivial one. 
+
+January 17, 2008
+
+* Interpreter throws FailedPredicateException now when it sees a predicate;
+  before it was silently failing.  I'll make it work one of these days. ;)
+
+January 12, 2008
+
+* Copy ctor not copying start and stop for common token. Fixes ANTLR-212
+
+* Removed single token insertion and deletion for tokens, sets.
+  Required a change to the code generation for matchSet() template
+  and a tweak inside the BaseRecognizer.  To engage this again is easy,
+  just override mismatch() to call mismatchRecover(). I changed it to simply
+  throw an exception.
+
+* Added syntaxError recognizer state var so you can easily tell if
+  a recognizer failed.  Added getNumberOfSyntaxErrors() to recognizers.
+
+* Added doc for the error node stuff:
+  http://www.antlr.org/wiki/display/ANTLR3/Tree+construction
+
+* Fixed ANTLR-193
+
+* Added recognizer methods to answer questions about current mismatched
+  token error.  Useful now since i don't automatically recover inline
+  to such errors (I throw exception):
+	mismatchIsUnwantedToken(IntStream input, int ttype) 
+	mismatchIsMissingToken(IntStream input, BitSet follow)
+
+* Added UnwantedTokenException and MissingTokenException to make
+  match() problems more precise in case you want to catch differently.
+  Updated getErrorMessage() to be more precise.  Says:
+
+	line 2:9 missing EQ at '0'
+
+  now instead of
+
+	line 2:9 mismatched input '0' expecting EQ
+
+  Input "x=9 9;" gives
+
+	line 3:8 extraneous input '9' expecting ';'
+
+  When very confused, "x=9 for;", you still get old mismatched message:
+
+	line 3:8 extraneous input 'for' expecting ';'
+	line 3:11 mismatched input ';' expecting '('
+
+* Added unit tests to TestAutoAST and copied to TestRewriteAST with
+  suitable rewrites to ensure basic error node insertion works.
+
+January 11, 2008
+
+* Adding errorNode to TreeAdaptor and various debug
+  events/listeners.  Had to add new class runtime.tree.CommonErrorNode
+  to hold all the goodies: input stream, start/stop objects.
+
+* Tweaked CommonTree.getType() to return INVALID_TOKEN_TYPE
+  instead of literal 0 (same thing at moment though).
+
+* Updated ANTLRWorks to show error nodes in tree as much as I could; Jean
+  will get to rest of it.
+
+January 9-10, 2008
+
+* Continued work on debugging/profiling composite grammars.
+
+* Updated debug protocol for debugging composite grammars.  enter/exit
+  rule needs grammar to know when to flip display in AW.
+
+* Fixed ANTLR-209.  ANTLR consumed 2 not 1 char to recover in lexer.
+
+* Added two faqs instead of making changes to antlr runtime about
+  lexer error handling:
+  http://www.antlr.org/wiki/pages/viewpage.action?pageId=5341230
+  http://www.antlr.org/wiki/pages/viewpage.action?pageId=5341217
+
+January 1-8, 2008
+
+* Making debugging/profiling work with composite grammars.
+
+* Updated ANTLRWorks so it works still for noncomposite grammars.
+
+* two new examples: import and composite-java (the java example grammar
+  broken up into multiple pieces using import).
+
+* Worked on composite grammars.  Had to refactor a lot of code to make
+  ANTLR deal with one meta grammar made up of multiple grammars.  I 
+  thought I had it sort of working back in August.  Yes, but barely. Lots
+  of work to do it seemed.  Lots of clean up work.  Many new unit tests
+  in TestCompositeGrammars.  Had to add new error messages warning about
+  conflicting tokens inherited from multiple grammars etc...
+
+    TOKEN_ALIAS_CONFLICT(arg,arg2) ::=
+      "cannot alias <arg>; string already assigned to <arg2>"
+    TOKEN_ALIAS_REASSIGNMENT(arg,arg2) ::=
+      "cannot alias <arg>; token name already assigned to <arg2>"
+    TOKEN_VOCAB_IN_DELEGATE(arg,arg2) ::=
+      "tokenVocab option ignored in imported grammar <arg>"
+    INVALID_IMPORT(arg,arg2) ::=
+      "<arg.grammarTypeString> grammar <arg.name> cannot import <arg2.grammarTypeString> grammar <arg2.name>"
+    IMPORTED_TOKENS_RULE_EMPTY(arg,arg2) ::=
+      "no lexer rules contributed to <arg> from imported grammar <arg2>"
+    IMPORT_NAME_CLASH(arg,arg2) ::=
+      "combined grammar <arg.name> and imported <arg2.grammarTypeString> grammar <arg2.name> both generate <arg2.recognizerName>; import ignored"
+
+  This stuff got really really complicated.  Syntactic predicate names even
+  had to be scoped per grammar so they don't conflict.
+
+* When using subrules like (atom->atom) to set result tree, it was not
+  properly setting result (early enough).  Future code got null for
+  $rule.tree.
+
+December 31, 2007
+
+* Added the start of a semantic predicate computation for LL(1) to
+  solve a problem with slow grammar analysis even with k=1 due to
+  predicates.  Then I realized the problem with that grammar was
+  elsewhere.  Semantic context really shouldn't be used when
+  preventing closure recomputation (May 2008 I discovered I was
+  wrong--you do need it).  The predicates became huge even though the
+  reduced value would be no different.  The analyzer seems faster now
+  that I am not testing predicate values all the time.  Further it may
+  terminate sooner just due to reduced closure recursion.
+
+* Moved FIRST/FOLLOW computations to a separate class LL1Analyzer to
+  tidy up.
+
+* ANTLR lexer allowed octal escapes, but they didn't work. ;)  Rather than
+  fix, I'm removing.  Use '\uxxxx' to get even 8 bit char values: \u00xx.
+
+December 29, 2007
+
+* Fixed ANTLR-206. I wasn't avoiding analyzing decisions in
+  left-recursive rules.
+
+* Had to add hetero arg to all tokenRef*() templates.  Added _last
+  local var to track last child so we can do replaceChildren() during
+  AST rewrite mode for tree grammars.  Should be useful later for .text
+  property.  Ack, hetero arg is on lots of templates. :(  Moved
+  ruleCleanUp() template into ASTTreeParser and ASTParser groups.
+
+* added noRewrite() template (to Java.stg) so we can insert code during
+  rewrite mode to return original tree if no rewrite.  Might be useful
+  for token rewrites later.  For templates too?
+
+* Had to add if !rewriteMode around tree construction in tree parser
+  templates.
+
+* Harald Muller pointed out that we need to use <initValue(attr.type)>
+  in our tests for null token/rule property references. For int types
+  we need 0 not null. (p!=null?p.line:0).  Changed scopeAttributeRef,
+  ruleLabelRef.  Also changed the known typed attributes like 
+  lexerRuleLabelPropertyRef_line to yield 0 upon null rule ref to
+  be consistent with case when we don't know the type.  Fixes ANTLR-195.
+  Added testTypeOfGuardedAttributeRefIsCorrect test and reset expected
+  output for 13 tests that now "fail".
+
+December 28, 2007
+
+* added polydiff example (Java target)
+
+* added "int" property for token and lexer rule refs.  super convenient. E.g.,
+  a : b=INT {int x = $b.int;} ;
+
+December 27, 2007
+
+* Changed -Xnoinlinedfa to -Xmaxinlinedfastates m where m is
+  maximum number of states a DFA can have before ANTLR avoids
+  inlining it.  Instead, you get a table-based DFA.  This
+  affectively avoids some acyclic DFA that still have many states
+  with multiple incident edges.  The combinatorial explosion smacks
+  of infinite loop.  Fixes ANTLR-130.
+
+* [...] are allowed in args now but ] must be escaped as \]. E.g.,
+  a[String[\] ick, int i] : ... ;
+  And calling a rule: foo[x[i\], 34]
+  Fixes ANTLR-140.
+
+* Fixed ANTLR-105.  Target.getTargetStringLiteralFromANTLRStringLiteral()
+  escaped " that were already escaped.
+
+* target's can now specify how to encode int as char escape.  Moved
+  DFA.encodeIntAsCharEscape to Target.
+
+* Bug in runtime.DFA.  If a special state (one with predicate) failed, it
+  tried to continue (causing out of range exception due to state = -1)
+  instead of reporting error.
+
+* If -dfa with combined grammar T.g, builds T.dec-*.dot and TLexer.dec-*.dot
+
+* Fix ANTLR-165.
+  Generate TParser.java and TLexer.java from T.g if combined, else
+  use T.java as output regardless of type.
+  BACKWARD INCOMPATIBILITY since file names change.
+  I changed the examples-v3/java to be consistent.  Required XML.g ->
+  XMLLexer.java and fuzzy/Main.java change.
+
+* Fix ANTLR-169.  Deletes tmp lexer grammar file.
+
+December 25, 2007
+
+* Fixed ANTLR-111.  More unit tests in TestAttributes.
+
+December 25, 2007
+
+* Dangling states ("decision cannot distinguish between alternatives
+  for at least one input sequence") is now an error not a warning.
+
+* Added sample input sequence that leads to dangling DFA state, one
+  that cannot reach an accept state.  ANTLR ran into a case where
+  the same input sequence reaches multiple locations in the NFA
+  (and so not nondeterministic), but analysis ran out of further
+  NFA states to look for more input.  Commonly at EOF target states.
+  Now says:
+
+  error(202): CS.g:248:95: the decision cannot distinguish between alternative(s) 1,2 for input such as "DOT IDENTIFIER EOF"
+
+  Also fixed bug where dangling states did not resolve to stop states.
+
+* Fixed ANTLR-123
+
+December 17-21, 2007
+
+* k=1 doesn't prevent backtracking anymore as in
+  (options {k=1;}:'else' statement)?
+  if backtrack=true for overall grammar.  Set to false in subrule.
+
+* Optimized the analysis engine for LL(1).  Doesn't attempt LL(*) unless
+  LL(1) fails.  If not LL(1) but autobacktracking but no other kind of
+  predicate, it also avoids LL(*).  This is only important for really
+  big 4000 line grammars etc...
+
+* Lots of code clean up
+
+December 16, 2007
+
+* Yet more Kay pair programming.  Saved yet more RAM; 15% by
+  wacking NFA configurations etc in each DFA state after DFA construction.
+
+* Overall we drop from 2m49s to 1m11s for a huge 4000 line TSQL grammar
+  with k=*.  Only needs -Xconversiontimeout 2000 now not
+  -Xconversiontimeout 5000 too.  With k=1, it's 1m30s down to 40s.
+
+December 15, 2007
+
+* Working with Kay Roepke, we got about 15% speed improvement in
+  overall ANTLR exec time.  Memory footprint seems to be about 50%
+  smaller.
+
+December 13-14, 2007
+
+* I abort entire DFA construction now when I see recursion in > 1 alt.
+  Decision is non-LL(*) even if some pieces are LL(*).  Safer to bail
+  out and try with fixed k.  If user set fixed k then it continues because
+  analysis will eventually terminate for sure.  If a pred is encountered
+  and k=* and it's non-LL(*), it aborts and retries at k=1 but does NOT
+  emit an error.
+
+* Decided that recursion overflow while computing a lookahead DFA is
+  serious enough that I should bail out of entire DFA computation.
+  Previously analysis tried to keep going and made the rules about
+  how analysis worked more complicated.  Better to simply abort when
+  decision can't be computed with current max stack (-Xm option).
+  User can adjust or add predicate etc...  This is now an error
+  not a warning.
+
+* Recursion overflow and unreachable alt is now a fatal error; no code gen.
+  The decision will literally not work.
+
+* Cleaned up how DFA construction/analysis aborts due to non-LL(*) and
+  overflow etc...  Throws exceptions now, which cleans up a bunch of IF
+  checks etc...  Very nice now. Exceptions:
+	analysis/AnalysisRecursionOverflowException.java
+	analysis/AnalysisTimeoutException.java
+	analysis/NonLLStarDecisionException.java
+
+* ErrorManager.grammarWarning() counted them as errors not warnings.
+
+* Unreachable alt warnings are now errors.
+
+* The upshot of these changes is that I fixed ANTLR-178 and did
+  lots of refactoring of code handling analysis failure.
+
+December 11, 2007
+
+* Could not deal with spaces, oddly enough in arg lists:
+	grammar Bad;
+	a : A b["foo", $A.text] ;
+	b[String x, String y] : C ;
+
+October 28, 2007
+
+* Made ANTLR emit a better error message when it cannot write the
+  implicit lexer file from a combined grammar. Used to say "cannot open
+  file", now says "cannot write file" and gives backtrace.
+
+September 15, 2007
+
+add getCharStream to Lexer.
+
+September 10, 2007
+
+* Added {{...}} forced action executed even during backtracking.
+
+September 9, 2007
+
+* r='string' in lexer got a duplicate label definition.
+
+August 21, 2007
+
+* $scope::variable refs now check for empty stack so that expr == null if
+  $scope has an empty stack. Works for $scope[...]::variable too.  Nice!
+
+August 20, 2007
+
+* Added reset() to CommonTreeNodeStream, token stream too
+
+* Made refs to rule/token properties use ?: to avoid null ptr exception.
+  $label.st now is label!=null?label.st:null.  Updated TestAttributes.
+  This is useful not only for optional rule/token refs, but also during
+  error recovery.  If ID is not matched, $ID.text won't cause a null ptr.
+
+August 20, 2007
+*	Fixed ANTLR-177: hashCode/equals not consistent for label
+	Fixed bug where Rule was compared to string; introduced from dev branch
+
+August 15, 2007 -- Got rough draft of the grammar import working.
+                   Submit to dev and then integrate into mainline.
+
+	All file changes/additions:
+	
+	README.txt	# edit
+	CHANGES.txt	# add
+	  Factored out the changes from the readme.
+
+	runtime/Java/src/org/antlr/runtime/BaseRecognizer.java	# edit
+	runtime/Java/src/org/antlr/runtime/DFA.java	# edit
+	runtime/Java/src/org/antlr/runtime/Lexer.java	# edit
+	runtime/Java/src/org/antlr/runtime/Parser.java	# edit
+	runtime/Java/src/org/antlr/runtime/debug/DebugParser.java	# edit
+	runtime/Java/src/org/antlr/runtime/tree/TreeParser.java	# edit
+	  Factored state fields into RecognizerSharedState
+	  object. You will see a lot of things like
+            state.errorRecovery = false;
+	runtime/Java/src/org/antlr/runtime/RecognizerSharedState.java	# add
+          Shares all recognizer state variables including lexer even though
+	  these are superfluous to parsers and tree parsers.  There
+	  was a casting issue that I could not resolve.
+
+	src/org/antlr/Tool.java	# edit
+	  Broke a part Grammar.setGrammarContent() into
+	  parseAndBuildAST() and analyzeGrammar() to make the grammar
+	  import work. I needed to be able to look at the trees for
+	  imported grammars before analyzing them and building DFA. Added
+	  use of the CompositeGrammar object and handling of multiple
+	  delegate grammars. Changed decision DFA DOT file names to
+	  include the grammar name.
+
+	src/org/antlr/analysis/DFA.java	# edit
+	  Just tweaked to use generics, updated a comment.
+
+	src/org/antlr/analysis/DecisionProbe.java	# edit
+	  Just tweaked to use generics.
+
+	src/org/antlr/analysis/NFA.java	# edit
+	  NFA now span multiple grammars and so I moved the NFAs state
+	  tracking to the composite grammar object.
+
+	src/org/antlr/analysis/NFAState.java	# edit
+	  Added some null checking and made a field public.
+
+	src/org/antlr/analysis/NFAToDFAConverter.java	# edit
+	  Changed a method call to directly access a field.
+
+	src/org/antlr/analysis/RuleClosureTransition.java	# edit
+	  Instead of using a rule index, which does not span multiple
+	  grammars, the transition object now attracts a pointer to
+	  the actual Rule definition object.
+
+	src/org/antlr/analysis/SemanticContext.java	# edit
+	  Tweaked to use a field instead of a method
+
+	src/org/antlr/codegen/ActionTranslator.g	# edit
+	src/org/antlr/codegen/ActionTranslatorLexer.java	# edit
+	  Tweaked to use new runtime and they changed method name.
+
+	src/org/antlr/codegen/CodeGenerator.java	# edit
+	  Tweaked comments.
+
+	src/org/antlr/codegen/codegen.g	# edit
+	  Added import grammar syntax and altered rule atom to pass a
+	  scope around so that grammar.rule works.  Caution this
+	  feature is used internally by ANTLR and is not meant to be
+	  used by users at this point.
+
+	src/org/antlr/codegen/templates/ANTLRCore.sti	# edit
+	  Added scope to all ruleref template interfaces.
+
+	src/org/antlr/codegen/templates/Java/Java.stg	# edit
+	  Grammars can now import other grammars, which I implemented
+	  using a delegation pointer to the other grammar(s). So if
+	  grammar A imports grammars B and C, then the generated
+	  recognizer for A must have delegation pointers to BParser
+	  and CParser objects. These are now fields:
+
+	    // delegates
+	    <grammar.delegates:
+	     {g|public <g.name>Lexer <g:delegateName()>;}; separator="\n">
+
+          Also, B and C must have back pointers to the delegator so
+          that they can refer to rules that have been overridden.
+          This is a mechanism akin to static inheritance:
+
+	    // delegators
+	    <grammar.delegators:
+	     {g|public <g.name>Lexer <g:delegateName()>;}; separator="\n">
+
+	  This file also has a lot of changes so that state variables
+	  now are state.backtracking instead of the implied
+	  this.backtracking.
+
+	  The file also refers to grammar.delegatedRules attribute
+	  which is the list of Rule objects for which you must
+	  generate manual delegation.  This amounts to a stub whereby
+	  rule foo's method foo() simply calls X.foo() if foo is not
+	  defined inside the delegator.
+
+	  You will notice that the ruleref templates now take a scope
+	  so that I can have implicit rule Tokens referred to
+	  delegate.Tokens rule in a delegate grammar.  This is the way
+	  I do lexer grammar imports.
+
+	  I added a template called delegateName which uses the
+	  grammar name to compute a delegate name if the user does not
+	  specify a label in the import statement such as:
+
+	  import x=X;
+
+	  Oh, note that rule reference templates all receive a Rule
+	  object now instead of the simple rule name as the 'rule'
+	  attribute.  You will see me doing <rule.name> instead of
+	  <name> now.
+
+	src/org/antlr/codegen/templates/Java/Dbg.stg	# edit
+	  Changes mirroring the constructor and field stuff from
+	  Java.stg. Part of this is a cut and paste because of a bug
+	  in ST.
+
+	src/org/antlr/codegen/templates/Java/AST.stg	# edit
+	src/org/antlr/codegen/templates/Java/ASTParser.stg	# edit
+	src/org/antlr/codegen/templates/Java/ASTTreeParser.stg	# edit
+	  Just added the scope attribute.
+
+	src/org/antlr/test/BaseTest.java	# edit
+	  Added functionality to support testing composite grammars.
+	    execLexer()
+
+	src/org/antlr/test/TestAttributes.java	# edit
+	  Tweak to deal with shared recognizer state.
+
+	src/org/antlr/test/TestCompositeGrammars.java	# add
+	  Start of my unit tests.
+
+	src/org/antlr/tool/CompositeGrammar.java	# add
+	src/org/antlr/tool/CompositeGrammarTree.java	# add
+	  Tracks main grammar and all delegate grammars. Tracks unique
+	  NFA state numbers and unique token types. This keeps a tree
+	  of grammars computed from the import/delegation chain. When
+	  you want to look up a rule, it starts at the root of the
+	  tree and does a pre-order search to find the rule.
+
+	src/org/antlr/tool/ActionAnalysis.g	# edit
+	src/org/antlr/tool/ActionAnalysisLexer.java	# edit
+
+	src/org/antlr/tool/AttributeScope.java	# edit
+	  Updated to use generics in one place.
+
+	src/org/antlr/tool/DOTGenerator.java	# edit
+	  Updated to indicate when nonlocal rules are referenced.
+
+	src/org/antlr/tool/ErrorManager.java	# edit
+	  Added some error messages for import grammars; I need more.
+
+	src/org/antlr/tool/FASerializer.java	# edit
+	  Tweaked to use a field not method.
+
+	src/org/antlr/tool/Grammar.java	# edit
+	  This is where most of the meat is for the grammar import
+	  stuff as you can imagine.  I factored out the token type
+	  tracking into the CompositeGrammar object. I added code to
+	  the addArtificialMatchTokensRule method so that it includes
+	  references to all delegate lexer Tokens rules. Altered the
+	  rule lookup stuff so that it knows about delegate grammars.
+
+	src/org/antlr/tool/GrammarAST.java	# edit
+	src/org/antlr/tool/GrammarAnalysisAbortedMessage.java	# edit
+	src/org/antlr/tool/GrammarReport.java	# edit
+	src/org/antlr/tool/NonRegularDecisionMessage.java	# edit
+	  Made enclosing rule visible as field.
+
+	src/org/antlr/tool/GrammarSanity.java	# edit
+	  General cleanup and addition of generics.
+
+	src/org/antlr/tool/Interpreter.java	# edit
+	  Reference fields instead of methods.
+
+	src/org/antlr/tool/NFAFactory.java	# edit
+	  General cleanup and use of Rule object instead of rule
+	  index.
+
+	src/org/antlr/tool/NameSpaceChecker.java	# edit
+	  A little bit of cleanup and changes to use either the local
+	  or globally visible rule. Added code to check that scopes
+	  are valid on scoped rule references. again this is an
+	  internal feature, not to be used by users.
+
+	src/org/antlr/tool/RandomPhrase.java	# edit
+	  Tweaked.
+
+	src/org/antlr/tool/Rule.java	# edit
+	  Added field imported. Removed some unused methods by
+	  commenting them out. Made toString() more expressive.
+
+	src/org/antlr/tool/antlr.g	# edit
+	src/org/antlr/tool/antlr.print.g	# edit
+	src/org/antlr/tool/assign.types.g	# edit
+	src/org/antlr/tool/buildnfa.g	# edit
+	src/org/antlr/tool/define.g	# edit
+	  Added syntax for import statement.  assign.types.g is the
+	  grammar that invokes Grammar.importGrammar().
+
+	src/org/antlr/tool/templates/messages/languages/en.stg	# edit
+	  Added error messages.
+
+	Added
+
+	CHANGES.txt
+	runtime/Java/src/org/antlr/runtime/RecognizerSharedState.java
+	src/org/antlr/test/TestCompositeGrammars.java
+	src/org/antlr/tool/CompositeGrammar.java
+	src/org/antlr/tool/CompositeGrammarTree.java
+
+3.0.1 - August 13, 2007
+
+[See target pages on the wiki for more information on the non-Java targets]
+
+August 7, 2007
+
+* added escaping of double quotes in DOTTreeGenerator
+
+July 22, 2007
+
+* fixed dynamic scope implementation in lexers. They were not creating new scope
+  entries on the stack.  Unsupported feature!
+
+July 30, 2007
+
+* float return values were initalized to 0.0 not 0.0f in java.
+
+July 28, 2007
+
+* Sam Ellis points out an init var bug in ANTLRReaderStream.
+
+July 27, 2007 (done in dev branch)
+
+* Moved token type index stuff from CommonTreeNodeStream to TreeWizard
+
+* Added getChildren to BaseTree.
+
+* Added heterogeneous tree functionality; rewrite for parser/tree parser
+  and auto AST constr. for parser.
+
+	org/antlr/runtime/tree/RewriteRuleElementStream.java
+	org/antlr/runtime/tree/RewriteRuleNodeStream.java
+	org/antlr/runtime/tree/RewriteRuleTokenStream.java
+		Renamed method next() and re-factor things to have more
+		specific methods: nextToken, nextNode, nextTree.
+
+	codegen/codegen.g
+		Updated to include new <NodeType> AST structure for
+		token references.  Pushed hereto attribute into
+		all tokenRef* templates.
+	codegen/templates/Java/AST.stg
+		Factored out a few templates:
+			createImaginaryNode(tokenType,hetero,args)
+			createRewriteNodeFromElement(token,hetero,args)
+		Converted a lot of stream next() calls to more specific
+			nextToken, nextNode, nextTree per above.
+	codegen/templates/Java/ASTParser.stg
+		Added createNodeFromToken template and re-factored creation
+		sites to use that template.  Added hetero attribute.
+	codegen/templates/Java/ASTTreeParser.stg
+		Added createRewriteNodeFromElement template and re-factored.
+
+	test/TestHeteroAST.java
+		New file. Unit tests to test new hetero tree construction.
+	test/TestRewriteAST.java
+		Fixed test.  Nil single-node trees no longer return nil;
+		They return null.
+
+	tool/ErrorManager.java
+	tool/templates/messages/languages/en.stg
+		Added error message:
+		HETERO_ILLEGAL_IN_REWRITE_ALT(arg) ::=
+		  "alts with rewrites can't use heterogeneous types left of ->"
+
+	tool/antlr.g
+	tool/antlr.print.g
+	tool/assign.types.g
+	tool/buildnfa.g
+	tool/define.g
+		Added syntax for <NodeType> to token references.
+		Altered AST structure rippled through different phases.
+
+July 24, 2007
+
+* Deleted DoubleLinkTree.java; CommonTree does that now.
+
+July 23, 2007
+
+* template group outputFile; changed rewrite arg to rewriteMode.
+
+* added rewrite mode for tree parser build AST.
+
+July 22, 2007
+
+* Kay fixed dynamic scope implementation in lexers. They were not
+  creating new scope entries on the stack.  This is an UNSUPPORTED feature.
+
+* added getParent and getChildIndex to TreeAdaptor.  Added
+  implementation to CommonTree.  It's just too useful having those
+  parent and child indexes available for rewriting etc...  I tried 2x
+  to make an implementation of tree rewriting w/o this and the
+  constraints just made it too expensive and complicated.  Have to
+  update adaptors to set parent, child index values.  Updated Tree
+  interface and BaseTree also.  Should only affect target developers
+  not users.  Well, unless they impl Tree.
+
+* dupNode (via ctor) of CommonTree didn't copy start/stop token indexes.
+
+TARGET DEVELOPERS WARNING -- AST.stg split with some functionality
+                             going into ASTParser.stg then I added
+                             ASTTreeParser.stg.  CodeGenerator
+                             assumes new subgroups exist.
+
+July 20, 2007
+
+* Added AST construction for tree parsers including -> rewrite rules.
+  Rewrite mode (rewrite=true) alters the tree in place rather than
+  constructing a whole new tree.  Implementation notes:
+
+  org/antlr/runtime/tree/Tree.java
+	Add methods for parent and child index functionality.
+	Also added freshenParentAndChildIndexes() which you can use
+	to ensure that all double linking is set up right after you
+	manipulate the tree manually.  The setChild preteens etc. do
+	the proper thing so you shouldn't need this.
+	Added replaceChildren() to support tree rewrite mode in tree parsers
+  org/antlr/runtime/tree/BaseTree.java
+	Updated to set parent and child index stuff.  Added replaceChildren
+	method etc...  It still only has a list of children as sole field
+     	but calls methods that subclasses can choose to implement such as
+	CommonTree.
+  org/antlr/runtime/tree/CommonTree.java
+	Added parent and childIndex fields to doubly link.
+  org/antlr/runtime/tree/TreeAdaptor.java
+	Added methods for new parent and child index functionality.
+	Also added method for rewrite mode in tree parsers:
+	replaceChildren(Object parent, int startChildIndex,
+                        int stopChildIndex, Object t);
+	Added setChild and deleteChild methods
+  org/antlr/runtime/tree/BaseTreeAdaptor.java
+	Moved dupTree here from BaseTree.
+	Updated rulePostProcessing to deal with parent and child index.
+	Added setChild and deleteChild implementations
+  org/antlr/runtime/tree/CommonTreeAdaptor.java
+	Added methods to deal with the parent and child index for a node.
+
+  org/antlr/runtime/tree/CommonTreeNodeStream.java
+	Removed token type index and method fillReverseIndex etc...
+	Probably will move into the tree wizard in the future.
+	Changed call/seek stack implementation to use IntArray
+	Added replaceChildren interface.
+  org/antlr/runtime/tree/TreeNodeStream.java
+	Added replaceChildren.
+  org/antlr/runtime/tree/UnBufferedTreeNodeStream.java
+	Added replaceChildren method but no implementation
+
+  codegen/templates/ANTLRCore.sti
+	Changed rewrite to a better name: rewriteMode
+	Added tree level argument to alt, tree so that auto AST
+        construction can occur while recognizing in tree parsers.
+
+  codegen/templates/Java/AST.stg
+	Split template group: added two subclasses to handle different
+	functionality for normal parsing and tree parsing + AST
+	construction.  Tree parsers default behavior is to dup tree
+	not construct another.  Added ASTParser.stg and
+	ASTTreeParser.stg to handle auto AST construction during
+	recognition for the two different parser types.  I just copied
+	the token, rule, set, wildcard templates to the subclasses.
+	The rewrite templates are still in AST.stg. I factored out the
+	node creation so that the same rewrite templates can be used
+	for both parsing and tree parsing.
+
+  codegen/templates/Java/ASTParser.stg
+	The templates needed to build trees with auto construction
+	during parsing.
+  codegen/templates/Java/ASTTreeParser.stg
+	The templates needed to build trees with auto construction
+	during tree parsing.
+  codegen/templates/Java/Java.stg
+	genericParser now has rewriteElementType (Note or Token) so
+	that the rewrite streams know what kind of elements are inside
+	during rewrite rule tree construction.
+  codegen/templates/Java/ST.stg
+	rewrite attribute name change to rewriteMode
+
+  org/antlr/runtime/debug/DebugTreeAdaptor.java
+  org/antlr/runtime/debug/DebugTreeNodeStream.java
+	Updated to handle new interfaces
+
+  test/BaseTest.java
+	Added test rig update to handle AST construction by tree parsers.
+	All tree construction runs automatically test sanity of parent
+	and child indexes.
+  test/TestTreeGrammarRewriteAST.java
+  test/TestTreeNodeStream.java
+  test/TestTrees.java
+	new file; tests the new parent and child index stuff in trees.
+
+July 19, 2007
+
+* implemented new unique ID; GC was causing non unique hash codes.  Debugging
+  tree grammars was messing up.
+
+* got tree rewrites working in tree grammars.  It builds a completely new
+  tree from old tree; i.e., you get two trees in memory.  W/o a rewrite
+  rule, the input for that rule is duplicated and returned. -> w/o elements
+  to the right means don't return anything; i.e., delete.  Ooops...way
+  harder than I thought.  Real implementation notes above.
+
+INCOMPATIBILITY WARNING -- templates have changed; must regen output from
+                           grammars.  Runtime libraries have also changed.
+                           Debug event listener interface has changed also.
+
+July 17, 2007
+
+* Added line/charposition to node socket events and event dump so
+  we have more info during tree parsing.  Only works if your
+  tree adaptor returns a value Token object from getToken(treenode)
+  with line/col set.  Refactored consumeNode/LN to use deserializeNode().
+
+* Fixed mismatched tree node exceptions; for imaginary nodes, it said
+  "missing null".  Now prints the token type we found.
+
+* Cleaned up exception stuff. MismatchedTreeNodeException was setting
+  line/col, but only RecognitionException should do that.
+
+* If imaginary token gets a mismatch, there is no line info.  Search
+  backwards in stream if input node stream supports to find last
+  node with good line/col info. E.g.,
+
+ANTLRv3Tree.g: node from after line 156:72 mismatched tree node: EOA expecting <UP>
+
+  which used to be:
+
+ANTLRv3Tree.g: node from line 0:0 mismatched tree node: null expecting <UP>
+
+* mismatched tree node exceptions were not sent to the debug event stream.
+  Due to a type being slightly different on recoverFromMismatchedToken()
+  in DebugTreeParser.  Was calling BaseRecognizer version not subclass.
+  Now we get:
+
+  9459:   Recognition exception MismatchedTreeNodeException(0!=0)
+
+* List labels were not allowed as root nodes in tree rewrites like
+  ^($listlabel ...).  Had to add a template to AST.stg:
+
+  /** Gen ^($label ...) where label+=... */
+  rewriteTokenListLabelRefRoot ::= rewriteTokenLabelRefRoot
+
+
+July 16, 2007
+
+* fixed nextNode in RewriteRuleSubtreeStream was dup'ing too much,
+  screwing up debug event stream.  Also there was a bug in how
+  the rewrite tree stream stuff decided to dup nodes.
+
+* fixed bug in LT for tree parsing; text was not transmitted properly;
+  only single words worked.
+
+* made decision for rule put line/col on colon not first token of first alt.
+
+* remote ProxyToken now emits token index for easier debugging when looking
+  at AW's event stream.  For example, the @5 here is the token index:
+
+  31	Consume hidden [ /<64>,channel=99,30:7, @5]
+
+* same is true for consume nodes now:
+
+  25586	Consume node [')'/, <44>, 4712040,@1749]	25
+
+  When debugging tree parsers, it helps to track errors when you know
+  what corresponding input symbol created this tree node.
+
+* Changed debug events associated with trees quite a bit.  Passes nodes around
+  now rather than text, type, unique IDs etc...  Mostly affects internal stuff.
+  Target developers will have some work in their runtime to do to match
+  this change. :(  BUT, there is only a slight tweak in the Dbg.stg
+  and ASTDbg.stg templates.
+  Interface just didn't make sense as is.  If you turn on debugging, and
+  want to track a node creation, you want the node pointer not its ID,
+  text, etc...
+  Added ProxyTree for passing across socket.  Has line/charpos and tokenIndex
+
+July 15, 2007
+
+* added null ptr protection in CommonTreeAdaptor.
+
+July 14, 2007
+
+* null child in TreeAdaptor does nothing now.  Changed interface and
+  implementation.  Changed DebugTreeAdaptor to not fire events on null add
+  as well.
+
+July 12, 2007
+
+* added get method for the line/col to DFA map in Grammar.java
+
+July 7, 2007
+
+* fixed wrong order of test for exceptions in Lexer.getErrorMessage()
+
+June 28, 2007
+
+* Added ability to set the port number in the constructor for the debug parser.
+
+June 5, 2007
+
+* Changed (hidden) option -verbose to -Xnfastates; this just prints out the NFA states along each nondeterministic path for nondeterminism warnings.
+
+May 18, 2007
+
+* there were some dependencies with org.antlr.* that I removed from
+  org.antlr.runtime.*
+
+3.0 final - May 17, 2007
+
+May 14, 2007
+
+* Auto backtracking didn't work with ! and ^ suffixes on first element
+  of an alt.
+
+* Auto backtracking didn't work with an action as first element.
+
+May 10, 2007
+
+* turn off the warning about no local messages:
+ no such locale file org/antlr/tool/templates/messages/languages/ru.stg retrying with English locale
+
+May 5, 2007
+
+* moving org.antlr.runtime to runtime/Java/src/org/... Other target
+  source / libs are under runtime/targetname.
+
+May 4, 2007
+
+* You could not use arguments on a token reference that was a route in a
+  tree rewrite rule like -> ^(ID[args] ...).
+
+May 3, 2007
+
+* Fixed ANTLR-82.  Actions after the root were considered part of
+  an optional child.  They were not always executed.  Required a change
+  to the ANTLRCore.sti interface for tree() template.
+
+May 2, 2007
+
+* Fixed ANTLR-117. Wasn't building decisions properly for subrules in
+  syntactic predicates.
+
+April 22, 2007
+
+* Made build.xml ref all jars in antlr lib.  Thanks to Miguel Ping.
+
+* Fixed ANTLR-11
+
+* Now labels on ranges and such in lexer work properly.
+
+* ActionAnalysisLexer was in wrong package.
+
+April 21, 2007
+
+* Pushing a huge update that fixes:
+	http://www.antlr.org/browse/ANTLR-112
+	http://www.antlr.org/browse/ANTLR-110
+	http://www.antlr.org/browse/ANTLR-109
+	http://www.antlr.org/browse/ANTLR-103
+	http://www.antlr.org/browse/ANTLR-97
+	http://www.antlr.org/browse/ANTLR-113
+	http://www.antlr.org/browse/ANTLR-66
+	http://www.antlr.org/browse/ANTLR-98
+	http://www.antlr.org/browse/ANTLR-24
+	http://www.antlr.org/browse/ANTLR-114
+	http://www.antlr.org/browse/ANTLR-5
+	http://www.antlr.org/browse/ANTLR-6
+
+  Basically, I gutted the way AST rewrites work.  MUCH better.
+
+* Fixed lots of little label issues in the lexer.  Couldn't do x+=ID
+  in lexer, for example.  Fixed ANTLR-114, ANTLR-112
+
+* Isolated EOT transition in lexer generated dangling else clause.
+  Fixed ANTLR-113.
+
+April 17, 2007
+
+* Fixed a major problem with gated semantic predicates.  Added more
+  unit tests.
+
+* Fixed bug in cyclic DFA with syntactic predicates.  Wasn't rewinding
+  properly.  Further, mark() in token stream did not fill buffer so
+  when you rewound back to last marker index was -1 not 0.  At same time
+  I fixed ANTLR-103.  Syn preds evaluated only once now.
+
+* Altered code gen file writing so it writes directly to a file
+  instead of building a big string and then writing that out.  Should
+  be faster and much less memory intensive.
+
+* Fixed so antlr writes files to correct location again.  See:
+
+http://www.antlr.org/wiki/pages/viewpage.action?pageId=1862
+
+3.0b7 - April 12, 2007
+
+April 10, 2007
+
+* Allows -> {...} actions now when building ASTs.  Fixed ANTLR-14.
+
+* Allows ! on sets and wildcard now during output=AST option. Fixed ANTLR-17.
+
+* Fixed ANTLR-92 bug.  Couldn't use sets with -> tree construction.
+
+* No lexer rule for a token type is now a warning.
+
+* Fixed set labels in lexer; ANTLR-60 bug
+
+* Fixed problem with duplicate state variable definitions in switch-case
+
+April 9, 2007
+
+* Gated predicates didn't work properly in cyclic DFA.
+
+April 7, 2007
+
+* Couldn't have more than one set per rule it seems.  Fixed.
+
+April 3, 2007
+
+* Fix a problem in my unused label optimization.  Added new
+  pass over actions to examine them.
+
+* RuleReturnScope has method back:
+  /** Has a value potentially if output=template; Don't use StringTemplate
+   *  type as it then causes a dependency with ST lib.
+   */
+  public Object getTemplate() { return null; }
+
+March 30, 2007
+
+* Fixed ANTLR-8.  Labels to rules w/o return values caused compile errors.
+
+* Fixed ANTLR-89; semantic predicates in lexer sometimes
+  caused exception in code gen.
+
+* Fixed ANTLR-36; remove runtime dependency with ST
+
+March 29, 2007
+
+* Over last few days, I've gutted how ANTLR handles sets of chars or
+  tokens.  I cleaned up a lot of stuff in the grammars and added lots
+  of unit tests.
+
+March 26, 2007
+
+* CommonTreeNodeStream didn't push correctly; couldn't handle very
+  deeply nested trees.
+
+* Fixed bug that E : 'a' 'b' ; made E be seen as an alias of 'a'.
+
+March 22, 2007
+
+* Working with Egor Ushakov from Sun Optimization / NetBeans team I
+  made all the Java lexer transition tables static w/o screwing up
+  ability to reference semantic predicates etc...  Only changed Java.stg
+
+* cached text string in CommonToken.getText(); saves on repeated calls;
+  Java mode.
+
+* made all generated methods final; saves a few percent speed according to
+  Egor Ushakov (Java only).
+
+* removed most assignments from each lexer rule and even the Lexer.emit()
+  call!  All done in nextToken now.  Saves on code gen size and a wee bit of
+  execution speed probably.  Variables became fields: type, channel, line,
+  etc... Now emit() needs no args even.  Again, Egor helped on this.
+
+March 17, 2007
+
+* Jonathan DeKlotz updated C# templates to be 3.0b6 current
+
+March 14, 2007
+
+* Manually-specified (...)=> force backtracking eval of that predicate.
+  backtracking=true mode does not however.  Added unit test.
+
+March 14, 2007
+
+* Fixed bug in lexer where ~T didn't compute the set from rule T.
+
+* Added -Xnoinlinedfa make all DFA with tables; no inline prediction with IFs
+
+* Fixed http://www.antlr.org/browse/ANTLR-80.
+  Sem pred states didn't define lookahead vars.
+
+* Fixed http://www.antlr.org/browse/ANTLR-91.
+  When forcing some acyclic DFA to be state tables, they broke.
+  Forcing all DFA to be state tables should give same results.
+
+March 12, 2007
+
+* setTokenSource in CommonTokenStream didn't clear tokens list.
+  setCharStream calls reset in Lexer.
+
+* Altered -depend.  No longer printing grammar files for multiple input
+  files with -depend.  Doesn't show T__.g temp file anymore. Added
+  TLexer.tokens.  Added .h files if defined.
+
+February 11, 2007
+
+* Added -depend command-line option that, instead of processing files,
+  it shows you what files the input grammar(s) depend on and what files
+  they generate. For combined grammar T.g:
+
+  $ java org.antlr.Tool -depend T.g
+
+  You get:
+
+  TParser.java : T.g
+  T.tokens : T.g
+  T__.g : T.g
+
+  Now, assuming U.g is a tree grammar ref'd T's tokens:
+
+  $ java org.antlr.Tool -depend T.g U.g
+
+  TParser.java : T.g
+  T.tokens : T.g
+  T__.g : T.g
+  U.g: T.tokens
+  U.java : U.g
+  U.tokens : U.g
+
+  Handles spaces by escaping them.  Pays attention to -o, -fo and -lib.
+  Dir 'x y' is a valid dir in current dir.
+
+  $ java org.antlr.Tool -depend -lib /usr/local/lib -o 'x y' T.g U.g
+  x\ y/TParser.java : T.g
+  x\ y/T.tokens : T.g
+  x\ y/T__.g : T.g
+  U.g: /usr/local/lib/T.tokens
+  x\ y/U.java : U.g
+  x\ y/U.tokens : U.g
+
+  You have API access via org.antlr.tool.BuildDependencyGenerator class:
+  getGeneratedFileList(), getDependenciesFileList().  You can also access
+  the output template: getDependencies().  The file
+  org/antlr/tool/templates/depend.stg contains the template.  You can
+  modify as you want.  File objects go in so you can play with path etc...
+
+February 10, 2007
+
+* no more .gl files generated.  All .g all the time.
+
+* changed @finally to be @after and added a finally clause to the
+  exception stuff.  I also removed the superfluous "exception"
+  keyword.  Here's what the new syntax looks like:
+
+  a
+  @after { System.out.println("ick"); }
+    : 'a'
+    ;        
+    catch[RecognitionException e] { System.out.println("foo"); }
+    catch[IOException e] { System.out.println("io"); }
+    finally { System.out.println("foobar"); }
+
+  @after executes after bookkeeping to set $rule.stop, $rule.tree but
+  before scopes pop and any memoization happens.  Dynamic scopes and
+  memoization are still in generated finally block because they must
+  exec even if error in rule.  The @after action and tree setting
+  stuff can technically be skipped upon syntax error in rule.  [Later
+  we might add something to finally to stick an ERROR token in the
+  tree and set the return value.]  Sequence goes: set $stop, $tree (if
+  any), @after (if any), pop scopes (if any), memoize (if needed),
+  grammar finally clause.  Last 3 are in generated code's finally
+  clause.
+
+3.0b6 - January 31, 2007
+
+January 30, 2007
+
+* Fixed bug in IntervalSet.and: it returned the same empty set all the time
+  rather than new empty set.  Code altered the same empty set.
+
+* Made analysis terminate faster upon a decision that takes too long;
+  it seemed to keep doing work for a while.  Refactored some names
+  and updated comments.  Also made it terminate when it realizes it's
+  non-LL(*) due to recursion.  just added terminate conditions to loop
+  in convert().
+
+* Sometimes fatal non-LL(*) messages didn't appear; instead you got
+  "antlr couldn't analyze", which is actually untrue.  I had the
+  order of some prints wrong in the DecisionProbe.
+
+* The code generator incorrectly detected when it could use a fixed,
+  acyclic inline DFA (i.e., using an IF).  Upon non-LL(*) decisions
+  with predicates, analysis made cyclic DFA.  But this stops
+  the computation detecting whether they are cyclic.  I just added
+  a protection in front of the acyclic DFA generator to avoid if
+  non-LL(*).  Updated comments.
+
+January 23, 2007
+
+* Made tree node streams use adaptor to create navigation nodes.
+  Thanks to Emond Papegaaij.
+
+January 22, 2007
+
+* Added lexer rule properties: start, stop
+
+January 1, 2007
+
+* analysis failsafe is back on; if a decision takes too long, it bails out
+  and uses k=1
+
+January 1, 2007
+
+* += labels for rules only work for output option; previously elements
+  of list were the return value structs, but are now either the tree or
+  StringTemplate return value.  You can label different rules now
+  x+=a x+=b.
+
+December 30, 2006
+
+* Allow \" to work correctly in "..." template.
+
+December 28, 2006
+
+* errors that are now warnings: missing AST label type in trees.
+  Also "no start rule detected" is warning.
+
+* tree grammars also can do rewrite=true for output=template.
+  Only works for alts with single node or tree as alt elements.
+  If you are going to use $text in a tree grammar or do rewrite=true
+  for templates, you must use in your main:
+
+  nodes.setTokenStream(tokens);
+
+* You get a warning for tree grammars that do rewrite=true and
+  output=template and have -> for alts that are not simple nodes
+  or simple trees.  new unit tests in TestRewriteTemplates at end.
+
+December 27, 2006
+
+* Error message appears when you use -> in tree grammar with
+  output=template and rewrite=true for alt that is not simple
+  node or tree ref.
+
+* no more $stop attribute for tree parsers; meaningless/useless.
+  Removed from TreeRuleReturnScope also.
+
+* rule text attribute in tree parser must pull from token buffer.
+  Makes no sense otherwise.  added getTokenStream to TreeNodeStream
+  so rule $text attr works.  CommonTreeNodeStream etc... now let
+  you set the token stream so you can access later from tree parser.
+  $text is not well-defined for rules like
+
+     slist : stat+ ;
+
+  because stat is not a single node nor rooted with a single node.
+  $slist.text will get only first stat.  I need to add a warning about
+  this...
+
+* Fixed http://www.antlr.org/browse/ANTLR-76 for Java.
+  Enhanced TokenRewriteStream so it accepts any object; converts
+  to string at last second.  Allows you to rewrite with StringTemplate
+  templates now :)
+
+* added rewrite option that makes -> template rewrites do replace ops for
+  TokenRewriteStream input stream.  In output=template and rewrite=true mode
+  same as before 'cept that the parser does
+
+    ((TokenRewriteStream)input).replace(
+	      ((Token)retval.start).getTokenIndex(),
+	      input.LT(-1).getTokenIndex(),
+	      retval.st);
+
+  after each rewrite so that the input stream is altered.  Later refs to
+  $text will have rewrites.  Here's a sample test program for grammar Rew.
+
+        FileReader groupFileR = new FileReader("Rew.stg");
+        StringTemplateGroup templates = new StringTemplateGroup(groupFileR);
+        ANTLRInputStream input = new ANTLRInputStream(System.in);
+        RewLexer lexer = new RewLexer(input);
+        TokenRewriteStream tokens = new TokenRewriteStream(lexer);
+        RewParser parser = new RewParser(tokens);
+        parser.setTemplateLib(templates);
+        parser.program();
+        System.out.println(tokens.toString());
+        groupFileR.close();
+
+December 26, 2006
+
+* BaseTree.dupTree didn't dup recursively.
+
+December 24, 2006
+
+* Cleaned up some comments and removed field treeNode
+  from MismatchedTreeNodeException class.  It is "node" in
+  RecognitionException.
+
+* Changed type from Object to BitSet for expecting fields in
+  MismatchedSetException and MismatchedNotSetException
+
+* Cleaned up error printing in lexers and the messages that it creates.
+
+* Added this to TreeAdaptor:
+	/** Return the token object from which this node was created.
+	 *  Currently used only for printing an error message.
+	 *  The error display routine in BaseRecognizer needs to
+	 *  display where the input the error occurred. If your
+	 *  tree of limitation does not store information that can
+	 *  lead you to the token, you can create a token filled with
+	 *  the appropriate information and pass that back.  See
+	 *  BaseRecognizer.getErrorMessage().
+	 */
+	public Token getToken(Object t);
+
+December 23, 2006
+
+* made BaseRecognizer.displayRecognitionError nonstatic so people can
+  override it. Not sure why it was static before.
+
+* Removed state/decision message that comes out of no 
+  viable alternative exceptions, as that was too much.
+  removed the decision number from the early exit exception
+  also.  During development, you can simply override
+  displayRecognitionError from BaseRecognizer to add the stuff
+  back in if you want.
+
+* made output go to an output method you can override: emitErrorMessage()
+
+* general cleanup of the error emitting code in BaseRecognizer.  Lots
+  more stuff you can override: getErrorHeader, getTokenErrorDisplay,
+  emitErrorMessage, getErrorMessage.
+
+December 22, 2006
+
+* Altered Tree.Parser.matchAny() so that it skips entire trees if
+  node has children otherwise skips one node.  Now this works to
+  skip entire body of function if single-rooted subtree:
+  ^(FUNC name=ID arg=ID .)
+
+* Added "reverse index" from node to stream index.  Override
+  fillReverseIndex() in CommonTreeNodeStream if you want to change.
+  Use getNodeIndex(node) to find stream index for a specific tree node.
+  See getNodeIndex(), reverseIndex(Set tokenTypes),
+  reverseIndex(int tokenType), fillReverseIndex().  The indexing
+  costs time and memory to fill, but pulling stuff out will be lots
+  faster as it can jump from a node ptr straight to a stream index.
+
+* Added TreeNodeStream.get(index) to make it easier for interpreters to
+  jump around in tree node stream.
+
+* New CommonTreeNodeStream buffers all nodes in stream for fast jumping
+  around.  It now has push/pop methods to invoke other locations in
+  the stream for building interpreters.
+
+* Moved CommonTreeNodeStream to UnBufferedTreeNodeStream and removed
+  Iterator implementation.  moved toNodesOnlyString() to TestTreeNodeStream
+
+* [BREAKS ANY TREE IMPLEMENTATION]
+  made CommonTreeNodeStream work with any tree node type.  TreeAdaptor
+  now implements isNil so must add; trivial, but does break back
+  compatibility.
+
+December 17, 2006
+
+* Added traceIn/Out methods to recognizers so that you can override them;
+  previously they were in-line print statements. The message has also
+  been slightly improved.
+
+* Factored BuildParseTree into debug package; cleaned stuff up. Fixed
+  unit tests.
+
+December 15, 2006
+
+* [BREAKS ANY TREE IMPLEMENTATION]
+  org.antlr.runtime.tree.Tree; needed to add get/set for token start/stop
+  index so CommonTreeAdaptor can assume Tree interface not CommonTree
+  implementation.  Otherwise, no way to create your own nodes that satisfy
+  Tree because CommonTreeAdaptor was doing 
+
+	public int getTokenStartIndex(Object t) {
+		return ((CommonTree)t).startIndex;
+	}
+
+  Added to Tree:
+
+	/**  What is the smallest token index (indexing from 0) for this node
+	 *   and its children?
+	 */
+	int getTokenStartIndex();
+
+	void setTokenStartIndex(int index);
+
+	/**  What is the largest token index (indexing from 0) for this node
+	 *   and its children?
+	 */
+	int getTokenStopIndex();	
+
+	void setTokenStopIndex(int index);
+
+December 13, 2006
+ 
+* Added org.antlr.runtime.tree.DOTTreeGenerator so you can generate DOT
+  diagrams easily from trees.
+
+	CharStream input = new ANTLRInputStream(System.in);
+	TLexer lex = new TLexer(input);
+	CommonTokenStream tokens = new CommonTokenStream(lex);
+	TParser parser = new TParser(tokens);
+	TParser.e_return r = parser.e();
+	Tree t = (Tree)r.tree;
+	System.out.println(t.toStringTree());
+	DOTTreeGenerator gen = new DOTTreeGenerator();
+	StringTemplate st = gen.toDOT(t);
+	System.out.println(st);
+
+* Changed the way mark()/rewind() work in CommonTreeNode stream to mirror
+  more flexible solution in ANTLRStringStream.  Forgot to set lastMarker
+  anyway.  Now you can rewind to non-most-recent marker.
+
+December 12, 2006
+
+* Temp lexer now end in .gl (T__.gl, for example)
+
+* TreeParser suffix no longer generated for tree grammars
+
+* Defined reset for lexer, parser, tree parser; rewinds the input stream also
+
+December 10, 2006
+
+* Made Grammar.abortNFAToDFAConversion() abort in middle of a DFA.
+
+December 9, 2006
+
+* fixed bug in OrderedHashSet.add().  It didn't track elements correctly.
+
+December 6, 2006
+
+* updated build.xml for future Ant compatibility, thanks to Matt Benson.
+
+* various tests in TestRewriteTemplate and TestSyntacticPredicateEvaluation
+  were using the old 'channel' vs. new '$channel' notation.
+  TestInterpretedParsing didn't pick up an earlier change to CommonToken.
+  Reported by Matt Benson.
+
+* fixed platform dependent test failures in TestTemplates, supplied by Matt
+  Benson.
+
+November 29, 2006
+
+*  optimized semantic predicate evaluation so that p||!p yields true.
+
+November 22, 2006
+
+* fixed bug that prevented var = $rule.some_retval from working in anything
+  but the first alternative of a rule or subrule.
+
+* attribute names containing digits were not allowed, this is now fixed,
+  allowing attributes like 'name1' but not '1name1'.
+
+November 19, 2006
+
+* Removed LeftRecursionMessage and apparatus because it seems that I check
+  for left recursion upfront before analysis and everything gets specified as
+  recursion cycles at this point.
+
+November 16, 2006
+
+* TokenRewriteStream.replace was not passing programName to next method.
+
+November 15, 2006
+
+* updated DOT files for DFA generation to make smaller circles.
+
+* made epsilon edges italics in the NFA diagrams.
+
+3.0b5 - November 15, 2006
+
+The biggest thing is that your grammar file names must match the grammar name
+inside (your generated class names will also be different) and we use
+$channel=HIDDEN now instead of channel=99 inside lexer actions.
+Should be compatible other than that.   Please look at complete list of
+changes.
+
+November 14, 2006
+
+* Force token index to be -1 for CommonIndex in case not set.
+
+November 11, 2006
+
+* getUniqueID for TreeAdaptor now uses identityHashCode instead of hashCode.
+
+November 10, 2006
+
+* No grammar nondeterminism warning now when wildcard '.' is final alt.
+  Examples:
+
+	a : A | B | . ;
+
+	A : 'a'
+	  | .
+	  ;
+
+	SL_COMMENT
+	    : '//' (options {greedy=false;} : .)* '\r'? '\n'
+	    ;
+
+	SL_COMMENT2
+	    : '//' (options {greedy=false;} : 'x'|.)* '\r'? '\n'
+	    ;
+
+
+November 8, 2006
+
+* Syntactic predicates did not get hoisting properly upon non-LL(*) decision.  Other hoisting issues fixed.  Cleaned up code.
+
+* Removed failsafe that check to see if I'm spending too much time on a single DFA; I don't think we need it anymore.
+
+November 3, 2006
+
+* $text, $line, etc... were not working in assignments. Fixed and added
+  test case.
+
+* $label.text translated to label.getText in lexer even if label was on a char
+
+November 2, 2006
+
+* Added error if you don't specify what the AST type is; actions in tree
+  grammar won't work without it.
+
+  $ cat x.g
+  tree grammar x;
+  a : ID {String s = $ID.text;} ;
+
+  ANTLR Parser Generator   Early Access Version 3.0b5 (??, 2006)  1989-2006
+  error: x.g:0:0: (152) tree grammar x has no ASTLabelType option
+
+November 1, 2006
+
+* $text, $line, etc... were not working properly within lexer rule.
+
+October 32, 2006
+
+* Finally actions now execute before dynamic scopes are popped it in the
+  rule. Previously was not possible to access the rules scoped variables
+  in a finally action.
+
+October 29, 2006
+
+* Altered ActionTranslator to emit errors on setting read-only attributes
+  such as $start, $stop, $text in a rule. Also forbid setting any attributes
+  in rules/tokens referenced by a label or name.
+  Setting dynamic scopes's attributes and your own parameter attributes
+  is legal.
+
+October 27, 2006
+
+* Altered how ANTLR figures out what decision is associated with which
+  block of grammar.  Makes ANTLRWorks correctly find DFA for a block.
+
+October 26, 2006
+
+* Fixed bug where EOT transitions led to no NFA configs in a DFA state,
+  yielding an error in DFA table generation.
+
+* renamed action.g to ActionTranslator.g
+  the ActionTranslator class is now called ActionTranslatorLexer, as ANTLR
+  generates this classname now. Fixed rest of codebase accordingly.
+
+* added rules recognizing setting of scopes' attributes to ActionTranslator.g
+  the Objective C target needed access to the right-hand side of the assignment
+  in order to generate correct code
+
+* changed ANTLRCore.sti to reflect the new mandatory templates to support the above
+  namely: scopeSetAttributeRef, returnSetAttributeRef and the ruleSetPropertyRef_*
+  templates, with the exception of ruleSetPropertyRef_text. we cannot set this attribute
+
+October 19, 2006
+
+* Fixed 2 bugs in DFA conversion that caused exceptions.
+  altered functionality of getMinElement so it ignores elements<0.
+
+October 18, 2006
+
+* moved resetStateNumbersToBeContiguous() to after issuing of warnings;
+  an internal error in that routine should make more sense as issues
+  with decision will appear first.
+
+* fixed cut/paste bug I introduced when fixed EOF in min/max
+  bug. Prevented C grammar from working briefly.
+
+October 17, 2006
+
+* Removed a failsafe that seems to be unnecessary that ensure DFA didn't
+  get too big.  It was resulting in some failures in code generation that
+  led me on quite a strange debugging trip.
+
+October 16, 2006
+
+* Use channel=HIDDEN not channel=99 to put tokens on hidden channel.
+
+October 12, 2006
+
+* ANTLR now has a customizable message format for errors and warnings,
+  to make it easier to fulfill requirements by IDEs and such.
+  The format to be used can be specified via the '-message-format name'
+  command line switch. The default for name is 'antlr', also available
+  at the moment is 'gnu'. This is done via StringTemplate, for details
+  on the requirements look in org/antlr/tool/templates/messages/formats/
+
+* line numbers for lexers in combined grammars are now reported correctly.
+
+September 29, 2006
+
+* ANTLRReaderStream improperly checked for end of input.
+
+September 28, 2006
+
+* For ANTLRStringStream, LA(-1) was off by one...gave you LA(-2).
+
+3.0b4 - August 24, 2006
+
+* error when no rules in grammar.  doesn't crash now.
+
+* Token is now an interface.
+
+* remove dependence on non runtime classes in runtime package.
+
+* filename and grammar name must be same Foo in Foo.g.  Generates FooParser,
+  FooLexer, ...  Combined grammar Foo generates Foo$Lexer.g which generates
+  FooLexer.java.  tree grammars generate FooTreeParser.java
+
+August 24, 2006
+
+* added C# target to lib, codegen, templates
+
+August 11, 2006
+
+* added tree arg to navigation methods in treeadaptor
+
+August 07, 2006
+
+* fixed bug related to (a|)+ on end of lexer rules.  crashed instead
+  of warning.
+
+* added warning that interpreter doesn't do synpreds yet
+
+* allow different source of classloader:
+ClassLoader cl = Thread.currentThread().getContextClassLoader();
+if ( cl==null ) {
+    cl = this.getClass().getClassLoader();
+}
+
+
+July 26, 2006
+
+* compressed DFA edge tables significantly.  All edge tables are
+  unique. The transition table can reuse arrays.  Look like this now:
+
+     public static readonly DFA30_transition0 =
+     	new short[] { 46, 46, -1, 46, 46, -1, -1, -1, -1, -1, -1, -1,...};
+         public static readonly DFA30_transition1 =
+     	new short[] { 21 };
+      public static readonly short[][] DFA30_transition = {
+     	  DFA30_transition0,
+     	  DFA30_transition0,
+     	  DFA30_transition1,
+     	  ...
+      };
+
+* If you defined both a label like EQ and '=', sometimes the '=' was
+  used instead of the EQ label.
+
+* made headerFile template have same arg list as outputFile for consistency
+
+* outputFile, lexer, genericParser, parser, treeParser templates
+  reference cyclicDFAs attribute which was no longer used after I
+  started the new table-based DFA.  I made cyclicDFADescriptors
+  argument to outputFile and headerFile (only).  I think this is
+  correct as only OO languages will want the DFA in the recognizer.
+  At the top level, C and friends can use it.  Changed name to use
+  cyclicDFAs again as it's a better name probably.  Removed parameter
+  from the lexer, ...  For example, my parser template says this now:
+
+    <cyclicDFAs:cyclicDFA()> <! dump tables for all DFA !>
+
+* made all token ref token types go thru code gen's
+  getTokenTypeAsTargetLabel()
+
+* no more computing DFA transition tables for acyclic DFA.
+
+July 25, 2006
+
+* fixed a place where I was adding syn predicates into rewrite stuff.
+
+* turned off invalid token index warning in AW support; had a problem.
+
+* bad location event generated with -debug for synpreds in autobacktrack mode.
+
+July 24, 2006
+
+* changed runtime.DFA so that it treats all chars and token types as
+  char (unsigned 16 bit int).  -1 becomes '\uFFFF' then or 65535.
+
+* changed MAX_STATE_TRANSITIONS_FOR_TABLE to be 65534 by default
+  now. This means that all states can use a table to do transitions.
+
+* was not making synpreds on (C)* type loops with backtrack=true
+
+* was copying tree stuff and actions into synpreds with backtrack=true
+
+* was making synpreds on even single alt rules / blocks with backtrack=true
+
+3.0b3 - July 21, 2006
+
+* ANTLR fails to analyze complex decisions much less frequently.  It
+  turns out that the set of decisions for which ANTLR fails (times
+  out) is the same set (so far) of non-LL(*) decisions.  Morever, I'm
+  able to detect this situation quickly and report rather than timing
+  out. Errors look like:
+
+  java.g:468:23: [fatal] rule concreteDimensions has non-LL(*)
+    decision due to recursive rule invocations in alts 1,2.  Resolve
+    by left-factoring or using syntactic predicates with fixed k
+    lookahead or use backtrack=true option.
+
+  This message only appears when k=*.
+
+* Shortened no viable alt messages to not include decision
+  description:
+
+[compilationUnit, declaration]: line 8:8 decision=<<67:1: declaration
+: ( ( fieldDeclaration )=> fieldDeclaration | ( methodDeclaration )=>
+methodDeclaration | ( constructorDeclaration )=>
+constructorDeclaration | ( classDeclaration )=> classDeclaration | (
+interfaceDeclaration )=> interfaceDeclaration | ( blockDeclaration )=>
+blockDeclaration | emptyDeclaration );>> state 3 (decision=14) no
+viable alt; token=[@1,184:187='java',<122>,8:8]
+
+  too long and hard to read.
+
+July 19, 2006
+
+* Code gen bug: states with no emanating edges were ignored by ST.
+  Now an empty list is used.
+
+* Added grammar parameter to recognizer templates so they can access
+  properties like getName(), ...
+
+July 10, 2006
+
+* Fixed the gated pred merged state bug.  Added unit test.
+
+* added new method to Target: getTokenTypeAsTargetLabel()
+
+July 7, 2006
+
+* I was doing an AND instead of OR in the gated predicate stuff.
+  Thanks to Stephen Kou!
+
+* Reduce op for combining predicates was insanely slow sometimes and
+  didn't actually work well.  Now it's fast and works.
+
+* There is a bug in merging of DFA stop states related to gated
+  preds...turned it off for now.
+
+3.0b2 - July 5, 2006
+
+July 5, 2006
+
+* token emission not properly protected in lexer filter mode.
+
+* EOT, EOT DFA state transition tables should be init'd to -1 (only
+  was doing this for compressed tables).  Fixed.
+
+* in trace mode, exit method not shown for memoized rules
+
+* added -Xmaxdfaedges to allow you to increase number of edges allowed
+  for a single DFA state before it becomes "special" and can't fit in
+  a simple table.
+
+* Bug in tables.  Short are signed so min/max tables for DFA are now
+  char[].  Bizarre.
+
+July 3, 2006
+
+* Added a method to reset the tool error state for current thread.
+  See ErrorManager.java
+
+* [Got this working properly today] backtrack mode that let's you type
+  in any old crap and ANTLR will backtrack if it can't figure out what
+  you meant.  No errors are reported by antlr during analysis.  It
+  implicitly adds a syn pred in front of every production, using them
+  only if static grammar LL(*) analysis fails.  Syn pred code is not
+  generated if the pred is not used in a decision.
+
+  This is essentially a rapid prototyping mode.
+
+* Added backtracking report to the -report option
+
+* Added NFA->DFA conversion early termination report to the -report option
+
+* Added grammar level k and backtrack options to -report
+
+* Added a dozen unit tests to test autobacktrack NFA construction.
+
+* If you are using filter mode, you must manually use option
+  memoize=true now.
+
+July 2, 2006
+
+* Added k=* option so you can set k=2, for example, on whole grammar,
+  but an individual decision can be LL(*).
+
+* memoize option for grammars, rules, blocks.  Remove -nomemo cmd-line option
+
+* but in DOT generator for DFA; fixed.
+
+* runtime.DFA reported errors even when backtracking
+
+July 1, 2006
+
+* Added -X option list to help
+
+* Syn preds were being hoisted into other rules, causing lots of extra
+  backtracking.
+
+June 29, 2006
+
+* unnecessary files removed during build.
+
+* Matt Benson updated build.xml
+
+* Detecting use of synpreds in analysis now instead of codegen.  In
+  this way, I can avoid analyzing decisions in synpreds for synpreds
+  not used in a DFA for a real rule.  This is used to optimize things
+  for backtrack option.
+
+* Code gen must add _fragment or whatever to end of pred name in
+  template synpredRule to avoid having ANTLR know anything about
+  method names.
+
+* Added -IdbgST option to emit ST delimiters at start/stop of all
+  templates spit out.
+
+June 28, 2006
+
+* Tweaked message when ANTLR cannot handle analysis.
+
+3.0b1 - June 27, 2006
+
+June 24, 2006
+
+* syn preds no longer generate little static classes; they also don't
+  generate a whole bunch of extra crap in the rules built to test syn
+  preds.  Removed GrammarFragmentPointer class from runtime.
+
+June 23-24, 2006
+
+* added output option to -report output.
+
+* added profiling info:
+  Number of rule invocations in "guessing" mode
+  number of rule memoization cache hits
+  number of rule memoization cache misses
+
+* made DFA DOT diagrams go left to right not top to bottom
+
+* I try to recursive overflow states now by resolving these states
+  with semantic/syntactic predicates if they exist.  The DFA is then
+  deterministic rather than simply resolving by choosing first
+  nondeterministic alt.  I used to generated errors:
+
+~/tmp $ java org.antlr.Tool -dfa t.g
+ANTLR Parser Generator   Early Access Version 3.0b2 (July 5, 2006)  1989-2006
+t.g:2:5: Alternative 1: after matching input such as A A A A A decision cannot predict what comes next due to recursion overflow to b from b
+t.g:2:5: Alternative 2: after matching input such as A A A A A decision cannot predict what comes next due to recursion overflow to b from b
+
+  Now, I uses predicates if available and emits no warnings.
+
+* made sem preds share accept states.  Previously, multiple preds in a
+decision forked new accepts each time for each nondet state.
+
+June 19, 2006
+
+* Need parens around the prediction expressions in templates.
+
+* Referencing $ID.text in an action forced bad code gen in lexer rule ID.
+
+* Fixed a bug in how predicates are collected.  The definition of
+  "last predicated alternative" was incorrect in the analysis.  Further,
+  gated predicates incorrectly missed a case where an edge should become
+  true (a tautology).
+
+* Removed an unnecessary input.consume() reference in the runtime/DFA class.
+
+June 14, 2006
+
+* -> ($rulelabel)? didn't generate proper code for ASTs.
+
+* bug in code gen (did not compile)
+a : ID -> ID
+  | ID -> ID
+  ;
+Problem is repeated ref to ID from left side.  Juergen pointed this out.
+
+* use of tokenVocab with missing file yielded exception
+
+* (A|B)=> foo yielded an exception as (A|B) is a set not a block. Fixed.
+
+* Didn't set ID1= and INT1= for this alt:
+  | ^(ID INT+ {System.out.print(\"^(\"+$ID+\" \"+$INT+\")\");})
+
+* Fixed so repeated dangling state errors only occur once like:
+t.g:4:17: the decision cannot distinguish between alternative(s) 2,1 for at least one input sequence
+
+* tracking of rule elements was on (making list defs at start of
+  method) with templates instead of just with ASTs.  Turned off.
+
+* Doesn't crash when you give it a missing file now.
+
+* -report: add output info: how many LL(1) decisions.
+
+June 13, 2006
+
+* ^(ROOT ID?) Didn't work; nor did any other nullable child list such as
+  ^(ROOT ID* INT?).  Now, I check to see if child list is nullable using
+  Grammar.LOOK() and, if so, I generate an "IF lookahead is DOWN" gate
+  around the child list so the whole thing is optional.
+
+* Fixed a bug in LOOK that made it not look through nullable rules.
+
+* Using AST suffixes or -> rewrite syntax now gives an error w/o a grammar
+  output option.  Used to crash ;)
+
+* References to EOF ended up with improper -1 refs instead of EOF in output.
+
+* didn't warn of ambig ref to $expr in rewrite; fixed.
+list
+     :	'[' expr 'for' type ID 'in' expr ']'
+	-> comprehension(expr={$expr.st},type={},list={},i={})
+	;
+
+June 12, 2006
+
+* EOF works in the parser as a token name.
+
+* Rule b:(A B?)*; didn't display properly in AW due to the way ANTLR
+  generated NFA.
+
+* "scope x;" in a rule for unknown x gives no error.  Fixed.  Added unit test.
+
+* Label type for refs to start/stop in tree parser and other parsers were
+  not used.  Lots of casting.  Ick. Fixed.
+
+* couldn't refer to $tokenlabel in isolation; but need so we can test if
+  something was matched.  Fixed.
+
+* Lots of little bugs fixed in $x.y, %... translation due to new
+  action translator.
+
+* Improperly tracking block nesting level; result was that you couldn't
+  see $ID in action of rule "a : A+ | ID {Token t = $ID;} | C ;"
+
+* a : ID ID {$ID.text;} ; did not get a warning about ambiguous $ID ref.
+
+* No error was found on $COMMENT.text:
+
+COMMENT
+    :   '/*' (options {greedy=false;} : . )* '*/'
+        {System.out.println("found method "+$COMMENT.text);}
+    ;
+
+  $enclosinglexerrule scope does not exist.  Use text or setText() here.
+
+June 11, 2006
+
+* Single return values are initialized now to default or to your spec.
+
+* cleaned up input stream stuff.  Added ANTLRReaderStream, ANTLRInputStream
+  and refactored.  You can specify encodings now on ANTLRFileStream (and
+  ANTLRInputStream) now.
+
+* You can set text local var now in a lexer rule and token gets that text.
+  start/stop indexes are still set for the token.
+
+* Changed lexer slightly.  Calling a nonfragment rule from a
+  nonfragment rule does not set the overall token.
+
+June 10, 2006
+
+* Fixed bug where unnecessary escapes yield char==0 like '\{'.
+
+* Fixed analysis bug.  This grammar didn't report a recursion warning:
+x   : y X
+    | y Y
+    ;
+y   : L y R
+    | B
+    ;
+  The DFAState.equals() method was messed up.
+
+* Added @synpredgate {...} action so you can tell ANTLR how to gate actions
+  in/out during syntactic predicate evaluation.
+
+* Fuzzy parsing should be more efficient.  It should backtrack over a rule
+  and then rewind and do it again "with feeling" to exec actions.  It was
+  actually doing it 3x not 2x.
+
+June 9, 2006
+
+* Gutted and rebuilt the action translator for $x.y, $x::y, ...
+  Uses ANTLR v3 now for the first time inside v3 source. :)
+  ActionTranslator.java
+
+* Fixed a bug where referencing a return value on a rule didn't work
+  because later a ref to that rule's predefined properties didn't
+  properly force a return value struct to be built.  Added unit test.
+
+June 6, 2006
+
+* New DFA mechanisms.  Cyclic DFA are implemented as state tables,
+  encoded via strings as java cannot handle large static arrays :(
+  States with edges emanating that have predicates are specially
+  treated.  A method is generated to do these states.  The DFA
+  simulation routine uses the "special" array to figure out if the
+  state is special.  See March 25, 2006 entry for description:
+  http://www.antlr.org/blog/antlr3/codegen.tml.  analysis.DFA now has
+  all the state tables generated for code gen.  CyclicCodeGenerator.java
+  disappeared as it's unneeded code. :)
+
+* Internal general clean up of the DFA.states vs uniqueStates thing.
+  Fixed lookahead decisions no longer fill uniqueStates.  Waste of
+  time.  Also noted that when adding sem pred edges, I didn't check
+  for state reuse.  Fixed.
+
+June 4, 2006
+
+* When resolving ambig DFA states predicates, I did not add the new states
+  to the list of unique DFA states.  No observable effect on output except
+  that DFA state numbers were not always contiguous for predicated decisions.
+  I needed this fix for new DFA tables.
+
+3.0ea10 - June 2, 2006
+
+June 2, 2006
+
+* Improved grammar stats and added syntactic pred tracking.
+
+June 1, 2006
+
+* Due to a type mismatch, the DebugParser.recoverFromMismatchedToken()
+  method was not called.  Debug events for mismatched token error
+  notification were not sent to ANTLRWorks probably
+
+* Added getBacktrackingLevel() for any recognizer; needed for profiler.
+
+* Only writes profiling data for antlr grammar analysis with -profile set
+
+* Major update and bug fix to (runtime) Profiler.
+
+May 27, 2006
+
+* Added Lexer.skip() to force lexer to ignore current token and look for
+  another; no token is created for current rule and is not passed on to
+  parser (or other consumer of the lexer).
+
+* Parsers are much faster now.  I removed use of java.util.Stack for pushing
+  follow sets and use a hardcoded array stack instead.  Dropped from
+  5900ms to 3900ms for parse+lex time parsing entire java 1.4.2 source.  Lex
+  time alone was about 1500ms.  Just looking at parse time, we get about 2x
+  speed improvement. :)
+
+May 26, 2006
+
+* Fixed NFA construction so it generates NFA for (A*)* such that ANTLRWorks
+  can display it properly.
+
+May 25, 2006
+
+* added abort method to Grammar so AW can terminate the conversion if it's
+  taking too long.
+
+May 24, 2006
+
+* added method to get left recursive rules from grammar without doing full
+  grammar analysis.
+
+* analysis, code gen not attempted if serious error (like
+  left-recursion or missing rule definition) occurred while reading
+  the grammar in and defining symbols.
+
+* added amazing optimization; reduces analysis time by 90% for java
+  grammar; simple IF statement addition!
+
+3.0ea9 - May 20, 2006
+
+* added global k value for grammar to limit lookahead for all decisions unless
+overridden in a particular decision.
+
+* added failsafe so that any decision taking longer than 2 seconds to create
+the DFA will fall back on k=1.  Use -ImaxtimeforDFA n (in ms) to set the time.
+
+* added an option (turned off for now) to use multiple threads to
+perform grammar analysis.  Not much help on a 2-CPU computer as
+garbage collection seems to peg the 2nd CPU already. :( Gotta wait for
+a 4 CPU box ;)
+
+* switched from #src to // $ANTLR src directive.
+
+* CommonTokenStream.getTokens() looked past end of buffer sometimes. fixed.
+
+* unicode literals didn't really work in DOT output and generated code. fixed.
+
+* fixed the unit test rig so it compiles nicely with Java 1.5
+
+* Added ant build.xml file (reads build.properties file)
+
+* predicates sometimes failed to compile/eval properly due to missing (...)
+  in IF expressions.  Forced (..)
+
+* (...)? with only one alt were not optimized.  Was:
+
+        // t.g:4:7: ( B )?
+        int alt1=2;
+        int LA1_0 = input.LA(1);
+        if ( LA1_0==B ) {
+            alt1=1;
+        }
+        else if ( LA1_0==-1 ) {
+            alt1=2;
+        }
+        else {
+            NoViableAltException nvae =
+                new NoViableAltException("4:7: ( B )?", 1, 0, input);
+            throw nvae;
+        }
+
+is now:
+
+        // t.g:4:7: ( B )?
+        int alt1=2;
+        int LA1_0 = input.LA(1);
+        if ( LA1_0==B ) {
+            alt1=1;
+        }
+
+  Smaller, faster and more readable.
+
+* Allow manual init of return values now:
+  functionHeader returns [int x=3*4, char (*f)()=null] : ... ;
+
+* Added optimization for DFAs that fixed a codegen bug with rules in lexer:
+   EQ			 : '=' ;
+   ASSIGNOP		 : '=' | '+=' ;
+  EQ is a subset of other rule.  It did not given an error which is
+  correct, but generated bad code.
+
+* ANTLR was sending column not char position to ANTLRWorks.
+
+* Bug fix: location 0, 0 emitted for synpreds and empty alts.
+
+* debugging event handshake how sends grammar file name.  Added getGrammarFileName() to recognizers.  Java.stg generates it:
+
+    public String getGrammarFileName() { return "<fileName>"; }
+
+* tree parsers can do arbitrary lookahead now including backtracking.  I
+  updated CommonTreeNodeStream.
+
+* added events for debugging tree parsers:
+
+	/** Input for a tree parser is an AST, but we know nothing for sure
+	 *  about a node except its type and text (obtained from the adaptor).
+	 *  This is the analog of the consumeToken method.  Again, the ID is
+	 *  the hashCode usually of the node so it only works if hashCode is
+	 *  not implemented.
+	 */
+	public void consumeNode(int ID, String text, int type);
+
+	/** The tree parser looked ahead */
+	public void LT(int i, int ID, String text, int type);
+
+	/** The tree parser has popped back up from the child list to the
+	 *  root node.
+	 */
+	public void goUp();
+
+	/** The tree parser has descended to the first child of a the current
+	 *  root node.
+	 */
+	public void goDown();
+
+* Added DebugTreeNodeStream and DebugTreeParser classes
+
+* Added ctor because the debug tree node stream will need to ask quesitons about nodes and since  nodes are just Object, it needs an adaptor to decode the nodes and get text/type info for the debugger.
+
+public CommonTreeNodeStream(TreeAdaptor adaptor, Tree tree);
+
+* added getter to TreeNodeStream:
+	public TreeAdaptor getTreeAdaptor();
+
+* Implemented getText/getType in CommonTreeAdaptor.
+
+* Added TraceDebugEventListener that can dump all events to stdout.
+
+* I broke down and make Tree implement getText
+
+* tree rewrites now gen location debug events.
+
+* added AST debug events to listener; added blank listener for convenience
+
+* updated debug events to send begin/end backtrack events for debugging
+
+* with a : (b->b) ('+' b -> ^(PLUS $a b))* ; you get b[0] each time as
+  there is no loop in rewrite rule itself.  Need to know context that
+  the -> is inside the rule and hence b means last value of b not all
+  values.
+
+* Bug in TokenRewriteStream; ops at indexes < start index blocked proper op.
+
+* Actions in ST rewrites "-> ({$op})()" were not translated
+
+* Added new action name:
+
+@rulecatch {
+catch (RecognitionException re) {
+    reportError(re);
+    recover(input,re);
+}
+catch (Throwable t) {
+    System.err.println(t);
+}
+}
+Overrides rule catch stuff.
+
+* Isolated $ refs caused exception
+
+3.0ea8 - March 11, 2006
+
+* added @finally {...} action like @init for rules.  Executes in
+  finally block (java target) after all other stuff like rule memoization.
+  No code changes needs; ST just refs a new action:
+      <ruleDescriptor.actions.finally>
+
+* hideous bug fixed: PLUS='+' didn't result in '+' rule in lexer
+
+* TokenRewriteStream didn't do toString() right when no rewrites had been done.
+
+* lexer errors in interpreter were not printed properly
+
+* bitsets are dumped in hex not decimal now for FOLLOW sets
+
+* /* epsilon */ is not printed now when printing out grammars with empty alts
+
+* Fixed another bug in tree rewrite stuff where it was checking that elements
+  had at least one element.  Strange...commented out for now to see if I can remember what's up.
+
+* Tree rewrites had problems when you didn't have x+=FOO variables.  Rules
+  like this work now:
+
+  a : (x=ID)? y=ID -> ($x $y)?;
+
+* filter=true for lexers turns on k=1 and backtracking for every token
+  alternative.  Put the rules in priority order.
+
+* added getLine() etc... to Tree to support better error reporting for
+  trees.  Added MismatchedTreeNodeException.
+
+* $templates::foo() is gone.  added % as special template symbol.
+  %foo(a={},b={},...) ctor (even shorter than $templates::foo(...))
+  %({name-expr})(a={},...) indirect template ctor reference
+
+  The above are parsed by antlr.g and translated by codegen.g
+  The following are parsed manually here:
+
+  %{string-expr} anonymous template from string expr
+  %{expr}.y = z; template attribute y of StringTemplate-typed expr to z
+  %x.y = z; set template attribute y of x (always set never get attr)
+            to z [languages like python without ';' must still use the
+            ';' which the code generator is free to remove during code gen]
+
+* -> ({expr})(a={},...) notation for indirect template rewrite.
+  expr is the name of the template.
+
+* $x[i]::y and $x[-i]::y notation for accesssing absolute scope stack
+  indexes and relative negative scopes.  $x[-1]::y is the y attribute
+  of the previous scope (stack top - 1).
+
+* filter=true mode for lexers; can do this now...upon mismatch, just
+  consumes a char and tries again:
+lexer grammar FuzzyJava;
+options {filter=true;}
+
+FIELD
+    :   TYPE WS? name=ID WS? (';'|'=')
+        {System.out.println("found var "+$name.text);}
+    ;
+
+* refactored char streams so ANTLRFileStream is now a subclass of
+  ANTLRStringStream.
+
+* char streams for lexer now allowed nested backtracking in lexer.
+
+* added TokenLabelType for lexer/parser for all token labels
+
+* line numbers for error messages were not updated properly in antlr.g
+  for strings, char literals and <<...>>
+
+* init action in lexer rules was before the type,start,line,... decls.
+
+* Tree grammars can now specify output; I've only tested output=templat
+  though.
+
+* You can reference EOF now in the parser and lexer.  It's just token type
+  or char value -1.
+
+* Bug fix: $ID refs in the *lexer* were all messed up.  Cleaned up the
+  set of properties available...
+
+* Bug fix: .st not found in rule ref when rule has scope:
+field
+scope {
+	StringTemplate funcDef;
+}
+    :   ...
+	{$field::funcDef = $field.st;}
+    ;
+it gets field_stack.st instead
+
+* return in backtracking must return retval or null if return value.
+
+* $property within a rule now works like $text, $st, ...
+
+* AST/Template Rewrites were not gated by backtracking==0 so they
+  executed even when guessing.  Auto AST construction is now gated also.
+
+* CommonTokenStream was somehow returning tokens not text in toString()
+
+* added useful methods to runtime.BitSet and also to CommonToken so you can
+  update the text.  Added nice Token stream method:
+
+  /** Given a start and stop index, return a List of all tokens in
+   *  the token type BitSet.  Return null if no tokens were found.  This
+   *  method looks at both on and off channel tokens.
+   */
+  public List getTokens(int start, int stop, BitSet types);
+
+* literals are now passed in the .tokens files so you can ref them in
+  tree parses, for example.
+
+* added basic exception handling; no labels, just general catches:
+
+a : {;}A | B ;
+        exception
+                catch[RecognitionException re] {
+                        System.out.println("recog error");
+                }
+                catch[Exception e] {
+                        System.out.println("error");
+                }
+
+* Added method to TokenStream:
+  public String toString(Token start, Token stop);
+
+* antlr generates #src lines in lexer grammars generated from combined grammars
+  so error messages refer to original file.
+
+* lexers generated from combined grammars now use originally formatting.
+
+* predicates have $x.y stuff translated now.  Warning: predicates might be
+  hoisted out of context.
+
+* return values in return val structs are now public.
+
+* output=template with return values on rules was broken.  I assume return values with ASTs was broken too.  Fixed.
+
+3.0ea7 - December 14, 2005
+
+* Added -print option to print out grammar w/o actions
+
+* Renamed BaseParser to be BaseRecognizer and even made Lexer derive from
+  this; nice as it now shares backtracking support code.
+
+* Added syntactic predicates (...)=>.  See December 4, 2005 entry:
+
+  http://www.antlr.org/blog/antlr3/lookahead.tml
+
+  Note that we have a new option for turning off rule memoization during
+  backtracking:
+
+  -nomemo        when backtracking don't generate memoization code
+
+* Predicates are now tested in order that you specify the alts.  If you
+  leave the last alt "naked" (w/o pred), it will assume a true pred rather
+  than union of other preds.
+
+* Added gated predicates "{p}?=>" that literally turn off a production whereas
+disambiguating predicates are only hoisted into the predictor when syntax alone
+is not sufficient to uniquely predict alternatives.
+
+A : {p}?  => "a" ;
+B : {!p}? => ("a"|"b")+ ;
+
+* bug fixed related to predicates in predictor
+lexer grammar w;
+A : {p}? "a" ;
+B : {!p}? ("a"|"b")+ ;
+DFA is correct.  A state splits for input "a" on the pred.
+Generated code though was hosed.  No pred tests in prediction code!
+I added testLexerPreds() and others in TestSemanticPredicateEvaluation.java
+
+* added execAction template in case we want to do something in front of
+  each action execution or something.
+
+* left-recursive cycles from rules w/o decisions were not detected.
+
+* undefined lexer rules were not announced! fixed.
+
+* unreachable messages for Tokens rule now indicate rule name not alt. E.g.,
+
+  Ruby.lexer.g:24:1: The following token definitions are unreachable: IVAR
+
+* nondeterminism warnings improved for Tokens rule:
+
+Ruby.lexer.g:10:1: Multiple token rules can match input such as ""0".."9"": INT, FLOAT
+As a result, tokens(s) FLOAT were disabled for that input
+
+
+* DOT diagrams didn't show escaped char properly.
+
+* Char/string literals are now all 'abc' not "abc".
+
+* action syntax changed "@scope::actionname {action}" where scope defaults
+  to "parser" if parser grammar or combined grammar, "lexer" if lexer grammar,
+  and "treeparser" if tree grammar.  The code generation targets decide
+  what scopes are available.  Each "scope" yields a hashtable for use in
+  the output templates.  The scopes full of actions are sent to all output
+  file templates (currently headerFile and outputFile) as attribute actions.
+  Then you can reference <actions.scope> to get the map of actions associated
+  with scope and <actions.parser.header> to get the parser's header action
+  for example.  This should be very flexible.  The target should only have
+  to define which scopes are valid, but the action names should be variable
+  so we don't have to recompile ANTLR to add actions to code gen templates.
+
+  grammar T;
+  options {language=Java;}
+  @header { package foo; }
+  @parser::stuff { int i; } // names within scope not checked; target dependent
+  @members { int i; }
+  @lexer::header {head}
+  @lexer::members { int j; }
+  @headerfile::blort {...} // error: this target doesn't have headerfile
+  @treeparser::members {...} // error: this is not a tree parser
+  a
+  @init {int i;}
+    : ID
+    ;
+  ID : 'a'..'z';
+
+  For now, the Java target uses members and header as a valid name.  Within a
+  rule, the init action name is valid.
+
+* changed $dynamicscope.value to $dynamicscope::value even if value is defined
+  in same rule such as $function::name where rule function defines name.
+
+* $dynamicscope gets you the stack
+
+* rule scopes go like this now:
+
+  rule
+  scope {...}
+  scope slist,Symbols;
+  	: ...
+	;
+
+* Created RuleReturnScope as a generic rule return value.  Makes it easier
+  to do this:
+    RuleReturnScope r = parser.program();
+    System.out.println(r.getTemplate().toString());
+
+* $template, $tree, $start, etc...
+
+* $r.x in current rule.  $r is ignored as fully-qualified name. $r.start works too
+
+* added warning about $r referring to both return value of rule and dynamic scope of rule
+
+* integrated StringTemplate in a very simple manner
+
+Syntax:
+-> template(arglist) "..."
+-> template(arglist) <<...>>
+-> namedTemplate(arglist)
+-> {free expression}
+-> // empty
+
+Predicate syntax:
+a : A B -> {p1}? foo(a={$A.text})
+        -> {p2}? foo(a={$B.text})
+        -> // return nothing
+
+An arg list is just a list of template attribute assignments to actions in curlies.
+
+There is a setTemplateLib() method for you to use with named template rewrites.
+
+Use a new option:
+
+grammar t;
+options {output=template;}
+...
+
+This all should work for tree grammars too, but I'm still testing.
+
+* fixed bugs where strings were improperly escaped in exceptions, comments, etc..  For example, newlines came out as newlines not the escaped version
+
+3.0ea6 - November 13, 2005
+
+* turned off -debug/-profile, which was on by default
+
+* completely refactored the output templates; added some missing templates.
+
+* dramatically improved infinite recursion error messages (actually
+  left-recursion never even was printed out before).
+
+* wasn't printing dangling state messages when it reanalyzes with k=1.
+
+* fixed a nasty bug in the analysis engine dealing with infinite recursion.
+  Spent all day thinking about it and cleaned up the code dramatically.
+  Bug fixed and software is more powerful and I understand it better! :)
+
+* improved verbose DFA nodes; organized by alt
+
+* got much better random phrase generation.  For example:
+
+ $ java org.antlr.tool.RandomPhrase simple.g program
+ int Ktcdn ';' method wh '(' ')' '{' return 5 ';' '}'
+
+* empty rules like "a : ;" generated code that didn't compile due to
+  try/catch for RecognitionException.  Generated code couldn't possibly
+  throw that exception.
+
+* when printing out a grammar, such as in comments in generated code,
+  ANTLR didn't print ast suffix stuff back out for literals.
+
+* This never exited loop:
+  DATA : (options {greedy=false;}: .* '\n' )* '\n' '.' ;
+  and now it works due to new default nongreedy .*  Also this works:
+  DATA : (options {greedy=false;}: .* '\n' )* '.' ;
+
+* Dot star ".*" syntax didn't work; in lexer it is nongreedy by
+  default.  In parser it is on greedy but also k=1 by default.  Added
+  unit tests.  Added blog entry to describe.
+
+* ~T where T is the only token yielded an empty set but no error
+
+* Used to generate unreachable message here:
+
+  parser grammar t;
+  a : ID a
+    | ID
+    ;
+
+  z.g:3:11: The following alternatives are unreachable: 2
+
+  In fact it should really be an error; now it generates:
+
+  no start rule in grammar t (no rule can obviously be followed by EOF)
+
+  Per next change item, ANTLR cannot know that EOF follows rule 'a'.
+
+* added error message indicating that ANTLR can't figure out what your
+  start rule is.  Required to properly generate code in some cases.
+
+* validating semantic predicates now work (if they are false, they
+  throw a new FailedPredicateException
+
+* two hideous bug fixes in the IntervalSet, which made analysis go wrong
+  in a few cases.  Thanks to Oliver Zeigermann for finding lots of bugs
+  and making suggested fixes (including the next two items)!
+
+* cyclic DFAs are now nonstatic and hence can access instance variables
+
+* labels are now allowed on lexical elements (in the lexer)
+
+* added some internal debugging options
+
+* ~'a'* and ~('a')* were not working properly; refactored antlr.g grammar
+
+3.0ea5 - July 5, 2005
+
+* Using '\n' in a parser grammar resulted in a nonescaped version of '\n' in the token names table making compilation fail.  I fixed this by reorganizing/cleaning up portion of ANTLR that deals with literals.  See comment org.antlr.codegen.Target.
+
+* Target.getMaxCharValue() did not use the appropriate max value constant.
+
+* ALLCHAR was a constant when it should use the Target max value def.  set complement for wildcard also didn't use the Target def.  Generally cleaned up the max char value stuff.
+
+* Code gen didn't deal with ASTLabelType properly...I think even the 3.0ea7 example tree parser was broken! :(
+
+* Added a few more unit tests dealing with escaped literals
+
+3.0ea4 - June 29, 2005
+
+* tree parsers work; added CommonTreeNodeStream.  See simplecTreeParser
+  example in examples-v3 tarball.
+
+* added superClass and ASTLabelType options
+
+* refactored Parser to have a BaseParser and added TreeParser
+
+* bug fix: actions being dumped in description strings; compile errors
+  resulted
+
+3.0ea3 - June 23, 2005
+
+Enhancements
+
+* Automatic tree construction operators are in: ! ^ ^^
+
+* Tree construction rewrite rules are in
+	-> {pred1}? rewrite1
+	-> {pred2}? rewrite2
+	...
+	-> rewriteN
+
+  The rewrite rules may be elements like ID, expr, $label, {node expr}
+  and trees ^( <root> <children> ).  You have have (...)?, (...)*, (...)+
+  subrules as well.
+
+  You may have rewrites in subrules not just at outer level of rule, but
+  any -> rewrite forces auto AST construction off for that alternative
+  of that rule.
+
+  To avoid cycles, copy semantics are used:
+
+  r : INT -> INT INT ;
+
+  means make two new nodes from the same INT token.
+
+  Repeated references to a rule element implies a copy for at least one
+  tree:
+
+  a : atom -> ^(atom atom) ; // NOT CYCLE! (dup atom tree)
+
+* $ruleLabel.tree refers to tree created by matching the labeled element.
+
+* A description of the blocks/alts is generated as a comment in output code
+
+* A timestamp / signature is put at top of each generated code file
+
+3.0ea2 - June 12, 2005
+
+Bug fixes
+
+* Some error messages were missing the stackTrace parameter
+
+* Removed the file locking mechanism as it's not cross platform
+
+* Some absolute vs relative path name problems with writing output
+  files.  Rules are now more concrete.  -o option takes precedence
+  // -o /tmp /var/lib/t.g => /tmp/T.java
+  // -o subdir/output /usr/lib/t.g => subdir/output/T.java
+  // -o . /usr/lib/t.g => ./T.java
+  // -o /tmp subdir/t.g => /tmp/subdir/t.g
+  // If they didn't specify a -o dir so just write to location
+  // where grammar is, absolute or relative
+
+* does error checking on unknown option names now
+
+* Using just language code not locale name for error message file.  I.e.,
+  the default (and for any English speaking locale) is en.stg not en_US.stg
+  anymore.
+
+* The error manager now asks the Tool to panic rather than simply doing
+  a System.exit().
+
+* Lots of refactoring concerning grammar, rule, subrule options.  Now
+  detects invalid options.
+
+3.0ea1 - June 1, 2005
+
+Initial early access release

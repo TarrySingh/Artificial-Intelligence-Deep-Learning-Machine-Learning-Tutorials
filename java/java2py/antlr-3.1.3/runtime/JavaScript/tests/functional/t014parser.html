@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t014parser</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t014parserLexer.js"></script>
+<script type="text/javascript" src="t014parserParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("var foobar; gnarz(); var blupp; flupp ( ) ;"),
+            lexer = new t014parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t014parserParser(tstream),
+            i,
+            expected = [
+                ["decl", "foobar"],
+                ["call", "gnarz"],
+                ["decl", "blupp"],
+                ["call", "flupp"]
+            ];
+
+        parser.document();
+        assertEquals(0, parser.reportedErrors.length);
+        for (i=0; i<parser.events.length; i++) {
+            assertEquals(parser.events[i][0], expected[i][0]);
+            assertEquals(parser.events[i][1], expected[i][1]);
+        }
+    }
+
+    function testMalformedInput1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("var; foo();"),
+            lexer = new t014parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t014parserParser(tstream);
+
+        parser.document();
+        assertEquals(parser.reportedErrors.length, 1);
+        assertEquals(parser.reportedErrors[0].indexOf("line 1:3"), 0);
+        assertEquals(parser.events.length, 0);
+    }
+
+    function testMalformedInput2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("var foobar(); gnarz();"),
+            lexer = new t014parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t014parserParser(tstream),
+            expected = [["call", "gnarz"]];
+
+        parser.document();
+        assertEquals(parser.reportedErrors.length, 1);
+        assertEquals(parser.reportedErrors[0].indexOf("line 1:10"), 0);
+        var i;
+        assertEquals(parser.events.length, expected.length);
+        for (i=0; i<expected.length; i++) {
+            assertEquals(parser.events[i][0], expected[i][0]);
+            assertEquals(parser.events[i][1], expected[i][1]);
+        }
+    }
+
+    function testMalformedInput3() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("gnarz(; flupp();"),
+            lexer = new t014parserLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t014parserParser(tstream),
+            expected = [["call","gnarz"],["call","flupp"]];
+
+        parser.document();
+        assertEquals(parser.reportedErrors.length, 1);
+        assertEquals(parser.reportedErrors[0].indexOf("line 1:6"), 0);
+        var i;
+        assertEquals(parser.events.length, expected.length);
+        for (i=0; i<expected.length; i++) {
+            assertEquals(parser.events[i][0], expected[i][0]);
+            assertEquals(parser.events[i][1], expected[i][1]);
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t014parser</h1>
+</body>

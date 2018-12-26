@@ -1,0 +1,80 @@
+/* Test Infrastructure */
+
+function loadFile(fileName, encoding) {
+    var f = new java.io.File(fileName),
+        size = f.length(),
+        isr,
+        fis = new java.io.FileInputStream(f);
+    if (encoding) {
+        isr = new java.io.InputStreamReader(fis, encoding);
+    } else {
+        isr = new java.io.InputStreamReader(fis);
+    }
+
+    /* Should use the ternary version of isr.read here, but can't figure
+     * out how to create a Java char array from JS. . .
+     * @todo
+     */
+    var charCode, data=[];
+    while ((charCode = isr.read()) >= 0) {
+        data.push(String.fromCharCode(charCode));
+    }
+    return data.join("");
+}
+
+eval(loadFile("../../lib/antlr3-all.js"));
+eval(loadFile("../../lib/antlr3-cli.js"));
+eval(loadFile("PythonLexer.js"));
+eval(loadFile("PythonParser.js"));
+eval(loadFile("rhino-python.extensions"));
+
+/* Parser Extensions */
+
+var output = [];
+function xlog(msg) {
+    output.push(msg);
+}
+
+function MyLexer() {
+    MyLexer.superclass.constructor.apply(this, arguments);
+}
+ANTLR.lang.extend(MyLexer, PythonLexer, {
+    nextToken: function() {
+        // keep track of this token's position in line because Python is
+        // whitespace sensitive
+        this.startPos = this.getCharPositionInLine();
+        return MyLexer.superclass.nextToken.call(this);
+    }
+});
+MyLexer.prototype.emitErrorMessage = function(msg) {xlog(msg);}
+PythonParser.prototype.emitErrorMessage = function(msg) {xlog(msg);}
+
+/* Test */
+
+function parse(text) {        
+    try {    
+        var input = new ANTLR.runtime.ANTLRStringStream(text);
+        var lexer = new MyLexer(input);              
+        var tokens = new ANTLR.runtime.CommonTokenStream(lexer);
+        tokens.discardOffChannelTokens=true;
+        var indentedSource = new PythonTokenSource(tokens);
+        tokens = new ANTLR.runtime.CommonTokenStream(indentedSource);
+        var parser = new PythonParser(tokens);
+        parser.file_input();
+    } catch (e) {
+        xlog(e.toString());
+    } finally {
+    }
+}
+
+var input = loadFile("rhino-python.input");
+var expected = loadFile("rhino-python.output");
+parse(input);
+var actual = output.join("\n")+"\n";
+if (actual==expected) {
+    print("Test Passed!");
+} else {
+    print("Test Failed!");
+    print(actual);
+    print(expected);
+}

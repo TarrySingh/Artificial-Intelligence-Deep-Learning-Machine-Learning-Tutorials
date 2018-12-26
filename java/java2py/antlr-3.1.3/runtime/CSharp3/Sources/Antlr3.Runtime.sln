@@ -1,0 +1,36 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Runtime", "Antlr3.Runtime\Antlr3.Runtime.csproj", "{8FDC0A87-9005-4D5A-AB75-E55CEB575559}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Runtime.Debug", "Antlr3.Runtime.Debug\Antlr3.Runtime.Debug.csproj", "{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}"
+EndProject
+Global
+	GlobalSection(SourceCodeControl) = preSolution
+		SccNumberOfProjects = 3
+		SccLocalPath0 = .
+		SccProjectUniqueName1 = Antlr3.Runtime\\Antlr3.Runtime.csproj
+		SccLocalPath1 = .
+		SccProjectFilePathRelativizedFromConnection1 = Antlr3.Runtime\\
+		SccProjectUniqueName2 = Antlr3.Runtime.Debug\\Antlr3.Runtime.Debug.csproj
+		SccLocalPath2 = .
+		SccProjectFilePathRelativizedFromConnection2 = Antlr3.Runtime.Debug\\
+	EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8FDC0A87-9005-4D5A-AB75-E55CEB575559}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FDC0A87-9005-4D5A-AB75-E55CEB575559}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FDC0A87-9005-4D5A-AB75-E55CEB575559}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FDC0A87-9005-4D5A-AB75-E55CEB575559}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

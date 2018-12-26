@@ -1,0 +1,87 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2006 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/** Template overrides to add debugging to AST stuff.  Dynamic inheritance
+ *  hierarchy is set up as ASTDbg : AST : Dbg : Java by code generator.
+ */
+group ASTDbg;
+
+parserMembers() ::= <<
+protected DebugTreeAdaptor adaptor;
+public void setTreeAdaptor(TreeAdaptor adaptor) {
+<if(grammar.grammarIsRoot)>
+    this.adaptor = new DebugTreeAdaptor(dbg,adaptor);
+<else>
+    this.adaptor = (DebugTreeAdaptor)adaptor; // delegator sends dbg adaptor 
+<endif><\n>
+    <grammar.directDelegates:{g|<g:delegateName()>.setTreeAdaptor(this.adaptor);}>
+}
+public TreeAdaptor getTreeAdaptor() {
+    return adaptor;
+}<\n>
+>>
+
+parserCtorBody() ::= <<
+<super.parserCtorBody()>
+>>
+
+createListenerAndHandshake() ::= <<
+DebugEventSocketProxy proxy =
+    new DebugEventSocketProxy(this,port,<if(TREE_PARSER)>input.getTreeAdaptor()<else>adaptor<endif>);
+setDebugListener(proxy);
+set<inputStreamType>(new Debug<inputStreamType>(input,proxy));
+try {
+    proxy.handshake();
+}
+catch (IOException ioe) {
+    reportError(ioe);
+}
+>>
+
+@ctorForRootGrammar.finally() ::= <<
+TreeAdaptor adap = new CommonTreeAdaptor();
+setTreeAdaptor(adap);
+proxy.setTreeAdaptor(adap);
+>>
+
+@ctorForProfilingRootGrammar.finally() ::=<<
+TreeAdaptor adap = new CommonTreeAdaptor();
+setTreeAdaptor(adap);
+proxy.setTreeAdaptor(adap);
+>>
+
+@ctorForPredefinedListener.superClassRef() ::= "super(input, dbg);"
+
+@ctorForPredefinedListener.finally() ::=<<
+<if(grammar.grammarIsRoot)> <! don't create new adaptor for delegates !>
+TreeAdaptor adap = new CommonTreeAdaptor();
+setTreeAdaptor(adap);<\n>
+<endif>
+>>
+
+@rewriteElement.pregen() ::= "dbg.location(<e.line>,<e.pos>);"

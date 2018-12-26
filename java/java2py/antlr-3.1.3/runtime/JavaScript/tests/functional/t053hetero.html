@@ -1,0 +1,339 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t053hetero</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+
+<script type="text/javascript" src="t053heteroT1Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT1Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT2Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT2Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT3Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT3Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT4Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT4Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT5Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT5Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT6Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT6Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT7Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT7Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT8Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT8Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT9Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT9Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT10Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT10Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT11Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT11Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT12Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT12Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT13Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT13Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP13Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT14Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT14Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP14Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT15Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT15Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP15Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT16Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT16Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP16Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT17Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT17Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP17Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT18Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT18Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP18Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroT18Lexer.js"></script>
+<script type="text/javascript" src="t053heteroT18Parser.js"></script>
+<script type="text/javascript" src="t053heteroTP18Parser.js"></script>
+
+<script type="text/javascript" src="t053heteroTLexer.js"></script>
+<script type="text/javascript" src="t053heteroTParser.js"></script>
+<script type="text/javascript" src="t053heteroTPParser.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    // Parser Tests
+
+    function execParser(lexerCls, parserCls, grammarEntry, xinput) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new (EnhancedParser(lexerCls))(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new (EnhancedParser(parserCls))(tstream);
+        var r = parser[grammarEntry]();
+
+        if (r) {
+            return r.getTree().toStringTree();
+        }
+        return "";
+    }
+
+    function execTreeParser(lexerCls, parserCls, grammarEntry, walkerCls, treeEntry, xinput)
+    {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new (EnhancedParser(lexerCls))(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new (EnhancedParser(parserCls))(tstream);
+        var r = parser[grammarEntry]();
+
+        var nodes = new org.antlr.runtime.tree.CommonTreeNodeStream(r.getTree());
+        nodes.setTokenStream(tstream);
+        var walker = new walkerCls(nodes);
+        r = walker[treeEntry]();
+
+        if (r) {
+            return r.getTree().toStringTree();
+        }
+        return "";
+    }
+
+
+    function EnhancedParser(base) {
+        var T = function() {
+            T.superclass.constructor.apply(this, arguments);
+            this.traces = [];
+            this.buf = "";
+        };
+
+        org.antlr.lang.extend(T, base, {
+            capture: function(t) {
+                this.buf += t;
+            },
+            traceIn: function(ruleName, ruleIndex) {
+                this.traces.push(">"+ruleName);
+            },
+            traceOut: function(ruleName, ruleIndex) {
+                this.traces.push("<"+ruleName);
+            },
+            reportError: function(input, re) {
+                throw re;
+            }
+        });
+
+        return T;
+    }
+
+    // PARSERS -- AUTO AST
+
+    function testToken() {
+        var found = execParser(
+                t053heteroT1Lexer,
+                t053heteroT1Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testTokenWithLabel() {
+        var found = execParser(
+                t053heteroT2Lexer,
+                t053heteroT2Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testTokenWithListLabel() {
+        var found = execParser(
+                t053heteroT3Lexer,
+                t053heteroT3Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testTokenRoot() {
+        var found = execParser(
+                t053heteroT4Lexer,
+                t053heteroT4Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testTokenRootWithListLabel() {
+        var found = execParser(
+                t053heteroT5Lexer,
+                t053heteroT5Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testString() {
+        var found = execParser(
+                t053heteroT6Lexer,
+                t053heteroT6Parser,
+                "a",
+                "begin");
+        assertEquals("begin<V>", found);
+    }
+
+    function testStringRoot() {
+        var found = execParser(
+                t053heteroT7Lexer,
+                t053heteroT7Parser,
+                "a",
+                "begin");
+        assertEquals("begin<V>", found);
+    }
+
+    // PARSERS -- REWRITE AST
+
+    function testRewriteToken() {
+        var found = execParser(
+                t053heteroT8Lexer,
+                t053heteroT8Parser,
+                "a",
+                "a");
+        assertEquals("a<V>", found);
+    }
+
+    function testrewritetokenwithargs() {
+        var found = execParser(
+                t053heteroT9Lexer,
+                t053heteroT9Parser,
+                "a",
+                "a");
+        assertEquals("<V>;421930 a<V>;9900", found);
+    }
+
+    function testRewriteTokenRoot() {
+        var found = execParser(
+                t053heteroT10Lexer,
+                t053heteroT10Parser,
+                "a",
+                "a 2");
+        assertEquals("(a<V> 2)", found);
+    }
+
+    function testRewriteString() {
+        var found = execParser(
+                t053heteroT11Lexer,
+                t053heteroT11Parser,
+                "a",
+                "begin");
+        assertEquals("begin<V>", found);
+    }
+
+    function testRewriteStringRoot() {
+        var found = execParser(
+                t053heteroT12Lexer,
+                t053heteroT12Parser,
+                "a",
+                "begin 2");
+        assertEquals("(begin<V> 2)", found);
+    }
+
+    // TREE PARSERS -- REWRITE AST
+
+    function testTreeParserRewriteFlatList() {
+        var found = execTreeParser(
+                t053heteroT13Lexer,
+                t053heteroT13Parser,
+                "a",
+                t053heteroTP13Parser,
+                "a",
+                "abc 34");
+        assertEquals("34<V> abc<W>", found);
+    }
+
+    function testTreeParserRewriteTree() {
+        var found = execTreeParser(
+                t053heteroT14Lexer,
+                t053heteroT14Parser,
+                "a",
+                t053heteroTP14Parser,
+                "a",
+                "abc 34");
+        assertEquals("(34<V> abc<W>)", found);
+    }
+
+    function testTreeParserRewriteImaginary() {
+        var found = execTreeParser(
+                t053heteroT15Lexer,
+                t053heteroT15Parser,
+                "a",
+                t053heteroTP15Parser,
+                "a",
+                "abc");
+        assertEquals("ROOT<V> abc", found);
+    }
+
+    function testTreeParserRewriteImaginaryWithArgs() {
+        var found = execTreeParser(
+                t053heteroT16Lexer,
+                t053heteroT16Parser,
+                "a",
+                t053heteroTP16Parser,
+                "a",
+                "abc");
+        assertEquals("ROOT<V>;42 abc", found);
+    }
+
+    function testTreeParserRewriteImaginaryRoot() {
+        var found = execTreeParser(
+                t053heteroT17Lexer,
+                t053heteroT17Parser,
+                "a",
+                t053heteroTP17Parser,
+                "a",
+                "abc");
+        assertEquals("(ROOT<V> abc)", found);
+    }
+
+    function testTreeParserRewriteImaginaryFromReal() {
+        var found = execTreeParser(
+                t053heteroT18Lexer,
+                t053heteroT18Parser,
+                "a",
+                t053heteroTP18Parser,
+                "a",
+                "abc");
+        assertEquals("ROOT<V>@1", found);
+    }
+
+    function testTreeParserAutoHeteroAST() {
+        var found = execTreeParser(
+                t053heteroTLexer,
+                t053heteroTParser,
+                "a",
+                t053heteroTPParser,
+                "a",
+                "abc;");
+        assertEquals("abc<V> ;<V>", found);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t053hetero</h1>
+</body>
+</html>

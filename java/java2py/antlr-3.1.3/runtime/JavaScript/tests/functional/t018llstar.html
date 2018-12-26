@@ -1,0 +1,61 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t018llstar</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t018llstarLexer.js"></script>
+<script type="text/javascript" src="t018llstarParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    TestParser = function() {
+        TestParser.superclass.constructor.apply(this, arguments);
+        this.reportedErrors = [];
+    };
+    org.antlr.lang.extend(TestParser, t018llstarParser, {
+        emitErrorMessage: function(msg) {
+            this.reportedErrors.push(msg);
+        }
+    });
+
+    function testValid() {
+        var xinput = [
+                "char c;",
+                "int x;",
+                "",
+                "void bar(int x);",
+                "",
+                "int foo(int y, char d) {",
+                "  int i;",
+                "  for (i=0; i<3; i=i+1) {",
+                "    x=3;",
+                "    y=5;",
+                "  }",
+                "}"
+            ].join("\n"),
+            xoutput = [
+                "bar is a declaration",
+                "foo is a definition"
+            ].join("\n");
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new t018llstarLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TestParser(tstream);
+
+        parser.program();
+        assertEquals(xoutput, parser.olog.join("\n"));
+    }
+</script>
+
+</head>
+<body>
+    <h1>t018llstar</h1>
+</body>
+</html>

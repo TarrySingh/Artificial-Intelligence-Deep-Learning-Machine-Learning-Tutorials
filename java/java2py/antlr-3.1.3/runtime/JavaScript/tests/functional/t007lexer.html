@@ -1,0 +1,66 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t007lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t007lexer.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function TLexer() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TLexer, t007lexer, {
+        reportError: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    function testValid() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("fofababbooabb"),
+            lexer = new TLexer(stream),
+            token;
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.FOO);
+        assertEquals(token.getStartIndex(), 0);
+        assertEquals(token.getStopIndex(), 1);
+        assertEquals(token.getText(), "fo");
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.FOO);
+        assertEquals(token.getStartIndex(), 2);
+        assertEquals(token.getStopIndex(), 12);
+        assertEquals(token.getText(), 'fababbooabb');
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.EOF);
+    }
+
+    function testMalformedInput() {
+        var stream = new org.antlr.runtime.ANTLRStringStream('foaboao'),
+            lexer = new TLexer(stream),
+            token;
+
+        try {
+            token = lexer.nextToken();
+            fail("nextToken should have thrown error on invalid input");
+        } catch (e) {
+            assertEquals(e.getUnexpectedType(), 'o');
+            assertEquals(e.charPositionInLine, 6);
+            assertEquals(e.line, 1);
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t007lexer</h1>
+</body>

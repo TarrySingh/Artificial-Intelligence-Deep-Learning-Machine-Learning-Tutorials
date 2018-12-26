@@ -1,0 +1,64 @@
+// [The "BSD licence"]
+// Copyright (c) 2006 Kay Roepke
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions
+// are met:
+// 1. Redistributions of source code must retain the above copyright
+//    notice, this list of conditions and the following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright
+//    notice, this list of conditions and the following disclaimer in the
+//    documentation and/or other materials provided with the distribution.
+// 3. The name of the author may not be used to endorse or promote products
+//    derived from this software without specific prior written permission.
+//
+// THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+// IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+// OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+// IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+// INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+// NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+// THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+// THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+"[ANTLR_EXTRA_JAVA_ARGS]-name" = "Extra Java Args";
+"[ANTLR_EXTRA_JAVA_ARGS]-description" = "Additional arguments for the Java interpreter. Currently you have to supply the classpath for ANTLR and StringTemplate. You can pass additional arguments like memory size as well";
+"[ANTLR_FORCE_OUT_DIR]-name" = "Force Output Directory";
+"[ANTLR_FORCE_OUT_DIR]-description" = "Forces ANTLR to write every file it outputs into this directory";
+"[ANTLR_OUT_DIR]-name" = "Output Directory";
+"[ANTLR_OUT_DIR]-description" = "The generated sources are written to this directory";
+"[ANTLR_LIB_DIR]-name" = "Token Vocabulary Directory";
+"[ANTLR_LIB_DIR]-description" = "ANTLR looks for token vocabulary files in the directory when importing vocabularies";
+"[ANTLR_VERBOSE]-name" = "Verbose";
+"[ANTLR_VERBOSE]-description" = "ANTLR outputs additional information when probing decisions";
+"[ANTLR_NFA_DOT]-name" = "NFA graphviz files";
+"[ANTLR_NFA_DOT]-description" = "Generate GraphViz .dot files for the generated NFAs";
+"[ANTLR_DFA_DOT]-name" = "DFA graphviz files";
+"[ANTLR_DFA_DOT]-description" = "Generate GraphViz .dot files for the generated DFAs";
+"[ANTLR_DEBUG]-name" = "Debug Support in Grammars";
+"[ANTLR_DEBUG]-description" = "Adds debugging code to generated recognizers";
+"[ANTLR_TRACE]-name" = "Trace rules";
+"[ANTLR_TRACE]-description" = "Adds tracing code to generated recognizers";
+"[ANTLR_REPORT]-name" = "Grammar report";
+"[ANTLR_REPORT]-description" = "ANTLR outputs some statistical information about the compiled grammars";
+"[ANTLR_X_GRTREE]-name" = "Print grammar tree";
+"[ANTLR_X_GRTREE]-description" = "ANTLR outputs the AST of the input grammar when compiling";
+"[ANTLR_X_DFA]-name" = "";
+"[ANTLR_X_DFA]-description" = "";
+"[ANTLR_X_NOPRUNE]-name" = "";
+"[ANTLR_X_NOPRUNE]-description" = "";
+"[ANTLR_X_NOCOLLAPSE]-name" = "";
+"[ANTLR_X_NOCOLLAPSE]-description" = "";
+"[ANTLR_X_DBGCONVERSION]-name" = "";
+"[ANTLR_X_DBGCONVERSION]-description" = "";
+"[ANTLR_X_NFA_MULTITHREADED]-name" = "";
+"[ANTLR_X_NFA_MULTITHREADED]-description" = "";
+"[ANTLR_X_DFAVERBOSE,]-name" = "";
+"[ANTLR_X_DFAVERBOSE,]-description" = "";
+"[ANTLR_X_WATCHCONVERSION]-name" = "";
+"[ANTLR_X_WATCHCONVERSION]-description" = "";
+"[ANTLR_X_DEBUG_ST]-name" = "Code generation sentinels";
+"[ANTLR_X_DEBUG_ST]-description" = "Adds markers for each code generation template used when generating recognizers. Very useful when debugging ANTLR itself to see where the code came from.";
