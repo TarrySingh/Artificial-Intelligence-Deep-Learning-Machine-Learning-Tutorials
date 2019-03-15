@@ -1,5 +1,6 @@
 # March 2019 Machine Learning Study Path
 ## A complete ML study path, focused on TensorFlow, CNTK, PyTorch and MXNET
+## BEING ADAPTED BY TARRY SINGH (borrowed from Github) // ETA Complete Study Path --> 22 March 2019
 
 This repository is intended to provide a **complete and organic learning path** to getting started with Machine Learning.
 You will understand both theory and be able to apply it in practice, with hands-on project.
