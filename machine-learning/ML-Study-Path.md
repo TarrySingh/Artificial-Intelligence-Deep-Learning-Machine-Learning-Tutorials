@@ -43,6 +43,39 @@ When not possible, I collected both theory and examples, further some pointers t
 - Reinforcement Learning
 - Next steps
 
+#### Neural Networks with PyTorch
+- Why PyTorch?
+- Up and Running with PyTorch
+- ANN - Artificial Neural Networks 
+- CNN - Convolutional Neural Networks
+- RNN - Recurrent Neural Networks
+- Training Networks: Best practices 
+- AutoEncoders
+- Reinforcement Learning
+- Next steps
+
+#### Neural Networks with MXNET
+- Why MXNET?
+- Up and Running with MXNET
+- ANN - Artificial Neural Networks 
+- CNN - Convolutional Neural Networks
+- RNN - Recurrent Neural Networks
+- Training Networks: Best practices 
+- AutoEncoders
+- Reinforcement Learning
+- Next steps
+
+#### Neural Networks with CNTK
+- Why CNTK?
+- Up and Running with CNTK
+- ANN - Artificial Neural Networks 
+- CNN - Convolutional Neural Networks
+- RNN - Recurrent Neural Networks
+- Training Networks: Best practices 
+- AutoEncoders
+- Reinforcement Learning
+- Next steps
+
 #### Utilities
 - Machine Learning Projects 
 - Data Science Tools
