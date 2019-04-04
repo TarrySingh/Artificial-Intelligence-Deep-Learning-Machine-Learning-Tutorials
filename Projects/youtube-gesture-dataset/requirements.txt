@@ -1,0 +1,10 @@
+matplotlib
+numpy
+scipy
+tqdm
+Pillow
+
+google-api-python-client
+webvtt-py
+youtube-dl
+
