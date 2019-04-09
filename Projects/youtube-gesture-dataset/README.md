@@ -6,7 +6,7 @@ Please see the project page and paper for the details.
  
 [[Project page]](https://sites.google.com/view/youngwoo-yoon/projects/co-speech-gesture-generation) [[Paper]](https://arxiv.org/abs/1810.12541)
 
-If you have any questions or comments, please feel free to contact me by email ([youngwoo@etri.re.kr](mailto:youngwoo@etri.re.kr)).
+If you have any questions or comments, please feel free to contact the original author by email ([youngwoo@etri.re.kr](mailto:youngwoo@etri.re.kr)).
 
 ## Environment
 
