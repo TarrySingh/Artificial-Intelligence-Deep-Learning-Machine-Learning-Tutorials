@@ -1,0 +1,4 @@
+subword-nmt
+OpenNMT-tf
+html2text
+tensorflow-serving-api
