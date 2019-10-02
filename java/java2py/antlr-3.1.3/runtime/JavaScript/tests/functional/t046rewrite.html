@@ -1,0 +1,82 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t046rewrite</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t046rewriteLexer.js"></script>
+<script type="text/javascript" src="t046rewriteParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TLexer, t046rewriteLexer, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    var TParser = function() {
+        TParser.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TParser, t046rewriteParser, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testValid1() {
+        var xinput = [
+                        "method foo() {",
+                        "  i = 3;",
+                        "  k = i;",
+                        "  i = k*4;",
+                        "}",
+                        "",
+                        "method bar() {",
+                        "  j = i*2;",
+                        "}"
+                     ].join("\n");
+        var xoutput = [
+                        "public class Wrapper {",
+                        "public void foo() {",
+                        "int k;",
+                        "int i;",
+                        "  i = 3;",
+                        "  k = i;",
+                        "  i = k*4;",
+                        "}",
+                        "",
+                        "public void bar() {",
+                        "int j;",
+                        "  j = i*2;",
+                        "}",
+                        "}",
+                        ""
+                      ].join("\n");
+ 
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.TokenRewriteStream(lexer),
+            parser = new TParser(tstream);
+        parser.program();
+        assertEquals(tstream.toString(), xoutput);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t046rewrite</h1>
+</body>
+</html>

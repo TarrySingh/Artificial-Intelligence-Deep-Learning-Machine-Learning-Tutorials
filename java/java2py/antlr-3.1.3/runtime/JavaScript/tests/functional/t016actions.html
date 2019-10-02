@@ -1,0 +1,33 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t016actions</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t016actionsLexer.js"></script>
+<script type="text/javascript" src="t016actionsParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("int foo;"),
+            lexer = new t016actionsLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t016actionsParser(tstream);
+
+        var result = parser.declaration();
+        assertEquals("foo", result);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t016actions</h1>
+</body>
+</html>

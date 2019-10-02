@@ -1,0 +1,62 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t020fuzzy</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t020fuzzy.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid() {
+        var xinput = [
+                "import org.antlr.runtime.*;",
+                "",
+                "public class Main {",
+                "	public static void main(String[] args) throws Exception {",
+                "	    for (int i=0; i<args.length; i++) {",
+                "		CharStream input = new ANTLRFileStream(args[i]);",
+                "		FuzzyJava lex = new FuzzyJava(input);",
+                "		TokenStream tokens = new CommonTokenStream(lex);",
+                "		tokens.toString();",
+                "		//System.out.println(tokens);",
+                "	    }",
+                "	}",
+                "}"
+            ].join("\n"),
+            xoutput = [
+                "found class Main",
+                "found method main",
+                "found var i",
+                "found var input",
+                "found call ANTLRFileStream",
+                "found var lex",
+                "found call FuzzyJava",
+                "found var tokens",
+                "found call CommonTokenStream",
+                "found call tokens.toString",
+                "found // comment //System.out.println(tokens);\n"
+            ];
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new t020fuzzy(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            i;
+
+        assertEquals(tstream.getTokens().length, 36);
+        assertEquals(lexer.outbuf.length, xoutput.length);
+        for (i=0; i<xoutput.length; i++) {
+            assertEquals(lexer.outbuf[i], xoutput[i]+"\n");
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t020fuzzy</h1>
+</body>
+</html>

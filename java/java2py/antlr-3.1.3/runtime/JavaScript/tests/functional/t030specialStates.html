@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t030specialStates</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t030specialStatesLexer.js"></script>
+<script type="text/javascript" src="t030specialStatesParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TParser = function() {
+        this.cond = true;
+        TParser.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TParser, t030specialStatesParser);
+
+
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foo"),
+            lexer = new t030specialStatesLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        var events = parser.r();
+    }
+
+    function testValid2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foo name1"),
+            lexer = new t030specialStatesLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        var events = parser.r();
+    }
+
+    function testValid3() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("bar name1"),
+            lexer = new t030specialStatesLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.cond = false;
+        var events = parser.r();
+    }
+
+    function testValid4() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("bar name1 name2"),
+            lexer = new t030specialStatesLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.cond = false;
+        var events = parser.r();
+    }
+
+</script>
+
+</head>
+<body>
+    <h1>t030specialStates</h1>
+</body>
+</html>

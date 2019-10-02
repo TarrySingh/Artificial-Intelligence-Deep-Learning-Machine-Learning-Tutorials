@@ -1,0 +1,6 @@
+functionConst
+missingInclude
+unmatchedSuppression
+unusedFunction
+*:*/lib/*
+*:*/third_party/*

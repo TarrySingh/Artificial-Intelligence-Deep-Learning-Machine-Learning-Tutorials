@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 9.00
+# Visual Studio 2005
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Runtime (VS2005)", "Antlr3.Runtime\Antlr3.Runtime (VS2005).csproj", "{CF15D0D5-BE72-4F98-B70F-229ABA1DF0E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Utility (VS2005)", "Antlr3.Utility\Antlr3.Utility (VS2005).csproj", "{BEB27DCC-ABFB-4951-B618-2B639EC65A46}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Runtime.Tests (VS2005)", "Antlr3.Runtime.Tests\Antlr3.Runtime.Tests (VS2005).csproj", "{784B3027-5E9C-4BF2-BFE6-B5002CAE30AB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{784B3027-5E9C-4BF2-BFE6-B5002CAE30AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{784B3027-5E9C-4BF2-BFE6-B5002CAE30AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{784B3027-5E9C-4BF2-BFE6-B5002CAE30AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{784B3027-5E9C-4BF2-BFE6-B5002CAE30AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEB27DCC-ABFB-4951-B618-2B639EC65A46}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEB27DCC-ABFB-4951-B618-2B639EC65A46}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEB27DCC-ABFB-4951-B618-2B639EC65A46}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEB27DCC-ABFB-4951-B618-2B639EC65A46}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CF15D0D5-BE72-4F98-B70F-229ABA1DF0E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF15D0D5-BE72-4F98-B70F-229ABA1DF0E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF15D0D5-BE72-4F98-B70F-229ABA1DF0E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF15D0D5-BE72-4F98-B70F-229ABA1DF0E8}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		name = Antlr3.Runtime (VS2005)
+		version = 0.1
+		StartupItem = Antlr3.Runtime\Antlr3.Runtime (VS2005).csproj
+		Policies = $0
+		$0.DotNetNamingPolicy = $1
+		$1.DirectoryNamespaceAssociation = None
+		$1.ResourceNamePolicy = FileName
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

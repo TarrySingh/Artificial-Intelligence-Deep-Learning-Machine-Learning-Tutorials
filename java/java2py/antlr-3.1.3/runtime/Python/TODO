@@ -1,0 +1,82 @@
+- new test from CL4832
+- CS4531
+- testcases for error nodes
+- did I miss a change to Python.stg/returnScope?
+  - there are base classes Tree-/ParserRuleReturnScope
+- update old and add new examples
+- need protections in scopeAttributeRef? CL4426
+- testcase for $ID.int CL4413
+- need to override Target.encodeIntAsCharEscape? CL4389
+- look into buildbot
+  - link in report mails is broken
+  - timezone bug in p4 scraper
+  - core:
+    - only look at changes in src/ & runtime/Java
+    - quick
+      - incremential build 
+      - sanity check
+    - full
+      - depend on quick
+      - full build
+      - ant test
+  - targets
+    - depend on changes on src/ and runtime/XXX
+    - depend on successful core/quick build
+  - nightlybuild
+    - depend on core/full
+    - somehow check which targets are ok
+- TreeWizard:
+  - raise exception on parse errors
+  - document it in wiki
+- publish runtime on cheeseshop
+- better documentation for output=template w/ full examples
+- antlr3.main:
+  - verbose/quiet flag: show/hide warnings
+  - set options in grammar?
+  - write optionparser descriptions
+  - better output for return objects
+  - st support
+- custom grammar options per target
+  - make Grammar.legalOptions changeable
+  - first extract language option, load target class
+  - pass options not known by Grammar to target
+- patch for CS4010 "null check for $scope::var now" once action parser is fixed
+- rename @members/@init to @classmembers, @instancemembers?
+- gunit?
+- testcases error handling in tree parsers
+- better test coverage for runtime modules
+- documentation
+  - more documentation in docstrings
+  - tune doxygen output
+  - doxygen frontpage
+- do not use Set* templates for properties for Python target
+  - gate with sempred {target.usePropertySetTemplates()}?
+- special template for empty alternative -> pass
+- complete runtime
+ - tree.DoubleLinkTree
+ - tree.ParseTree
+ - tree.UnBufferedTreeNodeStream
+- default values in rule arguments?
+- turn some methods into attributes
+  - (String|CommonToken)Stream.index()
+  - (String|CommonToken)Stream.size() --> __len__
+- get rid of getter/setter in generated code
+- document differences to java API
+- add methods to emulate java API, but mark 'em as deprecated
+- using Stream.index as a state for 'error-already-reported' or memoization
+  will be a problem when the stream is not a linear buffer
+- optimizations which should be explored:
+  - DFA: perhaps zip() the lists into a tuple 
+    (eot, eof, min, max, accept, special, transition)
+    for each state. checkout potential performance gain.
+  - StingStream: look into optimizing LA(). Perhaps use LAk instead of LA(k)
+    and create the attributes when needed.
+  - Perform some magic to improve dfaStateSwitch.
+  - in lexer rules:
+    LA == u'a' or LA == u'b' or LA == u'c'...
+    -> LA in (u'a', u'b', u'c', ...)
+    or "LA in self.set_xyz" with set_xyz as a class member
+    - tweak CodeGenerator.genSetExpr()
+  - make BaseTree.nil() an attribute? or singleton?
+  - psycho??
+- ...

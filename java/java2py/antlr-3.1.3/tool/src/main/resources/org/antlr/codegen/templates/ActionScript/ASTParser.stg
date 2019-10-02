@@ -1,0 +1,190 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2006 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+
+/** Templates for building ASTs during normal parsing.
+ *
+ *  Deal with many combinations.  Dimensions are:
+ *  Auto build or rewrite
+ *    no label, label, list label  (label/no-label handled together)
+ *    child, root
+ *    token, set, rule, wildcard
+ *
+ *  The situation is not too bad as rewrite (->) usage makes ^ and !
+ *  invalid. There is no huge explosion of combinations.
+ */
+group ASTParser;
+
+@rule.setErrorReturnValue() ::= <<
+retval.tree = <ASTLabelType>(adaptor.errorNode(input, Token(retval.start), input.LT(-1), re));
+<! trace("<ruleName> returns "+((CommonTree)retval.tree).toStringTree()); !>
+>>
+
+// TOKEN AST STUFF
+
+/** ID and output=AST */
+tokenRef(token,label,elementIndex,hetero) ::= <<
+<super.tokenRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<label>_tree = <createNodeFromToken(...)>;
+adaptor.addChild(root_0, <label>_tree);
+<if(backtracking)>}<endif>
+>>
+
+/** ID! and output=AST (same as plain tokenRef) */
+tokenRefBang(token,label,elementIndex) ::= "<super.tokenRef(...)>"
+
+/** ID^ and output=AST */
+tokenRefRuleRoot(token,label,elementIndex,hetero) ::= <<
+<super.tokenRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<label>_tree = <createNodeFromToken(...)>;
+root_0 = <ASTLabelType>(adaptor.becomeRoot(<label>_tree, root_0));
+<if(backtracking)>}<endif>
+>>
+
+/** ids+=ID! and output=AST */
+tokenRefBangAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefBang(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** label+=TOKEN when output=AST but not rewrite alt */
+tokenRefAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** Match label+=TOKEN^ when output=AST but not rewrite alt */
+tokenRefRuleRootAndListLabel(token,label,hetero,elementIndex) ::= <<
+<tokenRefRuleRoot(...)>
+<listLabel(elem=label,...)>
+>>
+
+// SET AST
+
+// the match set stuff is interesting in that it uses an argument list
+// to pass code to the default matchSet; another possible way to alter
+// inherited code.  I don't use the region stuff because I need to pass
+// different chunks depending on the operator.  I don't like making
+// the template name have the operator as the number of templates gets
+// large but this is the most flexible--this is as opposed to having
+// the code generator call matchSet then add root code or ruleroot code
+// plus list label plus ...  The combinations might require complicated
+// rather than just added on code.  Investigate that refactoring when
+// I have more time.
+
+matchSet(s,label,hetero,elementIndex,postmatchCode) ::= <<
+<super.matchSet(..., postmatchCode={<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>adaptor.addChild(root_0, <createNodeFromToken(...)>);})>
+>>
+
+matchRuleBlockSet(s,label,hetero,elementIndex,postmatchCode,treeLevel="0") ::= <<
+<matchSet(...)>
+>>
+
+matchSetBang(s,label,elementIndex,postmatchCode) ::= "<super.matchSet(...)>"
+
+// note there is no matchSetTrack because -> rewrites force sets to be
+// plain old blocks of alts: (A|B|...|C)
+
+matchSetRuleRoot(s,label,hetero,elementIndex,debug) ::= <<
+<if(label)>
+<label>=<labelType>(input.LT(1));<\n>
+<endif>
+<super.matchSet(..., postmatchCode={<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>root_0 = <ASTLabelType>(adaptor.becomeRoot(<createNodeFromToken(...)>, root_0));})>
+>>
+
+// RULE REF AST
+
+/** rule when output=AST */
+ruleRef(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>adaptor.addChild(root_0, <label>.tree);
+>>
+
+/** rule! is same as normal rule ref */
+ruleRefBang(rule,label,elementIndex,args,scope) ::= "<super.ruleRef(...)>"
+
+/** rule^ */
+ruleRefRuleRoot(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) <endif>root_0 = <ASTLabelType>(adaptor.becomeRoot(<label>.tree, root_0));
+>>
+
+/** x+=rule when output=AST */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label+".tree",...)>
+>>
+
+/** x+=rule! when output=AST is a rule ref with list addition */
+ruleRefBangAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefBang(...)>
+<listLabel(elem=label+".tree",...)>
+>>
+
+/** x+=rule^ */
+ruleRefRuleRootAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<listLabel(elem=label+".tree",...)>
+>>
+
+// WILDCARD AST
+
+wildcard(label,elementIndex) ::= <<
+<super.wildcard(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<label>_tree = <ASTLabelType>(adaptor.create(<label>));
+adaptor.addChild(root_0, <label>_tree);
+<if(backtracking)>}<endif>
+>>
+
+wildcardBang(label,elementIndex) ::= "<super.wildcard(...)>"
+
+wildcardRuleRoot(label,elementIndex) ::= <<
+<super.wildcard(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>
+<label>_tree = <ASTLabelType>(adaptor.create(<label>));
+root_0 = <ASTLabelType>(adaptor.becomeRoot(<label>_tree, root_0));
+<if(backtracking)>}<endif>
+>>
+
+createNodeFromToken(label,hetero) ::= <<
+<if(hetero)>
+new <hetero>(<label>) <! new MethodNode(IDLabel) !>
+<else>
+<ASTLabelType>(adaptor.create(<label>))
+<endif>
+>>
+
+ruleCleanUp() ::= <<
+<super.ruleCleanUp()>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<\n><endif>
+retval.tree = <ASTLabelType>(adaptor.rulePostProcessing(root_0));
+adaptor.setTokenBoundaries(retval.tree, Token(retval.start), Token(retval.stop));
+<if(backtracking)>}<endif>
+>>

@@ -1,0 +1,150 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t056lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t056lexer1Lexer.js"></script>
+<script type="text/javascript" src="t056lexer1Parser.js"></script>
+<script type="text/javascript" src="t056lexer2Lexer.js"></script>
+<script type="text/javascript" src="t056lexer2Parser.js"></script>
+<script type="text/javascript" src="t056lexer3Lexer.js"></script>
+<script type="text/javascript" src="t056lexer3Parser.js"></script>
+<script type="text/javascript" src="t056lexer4Lexer.js"></script>
+<script type="text/javascript" src="t056lexer4Parser.js"></script>
+<script type="text/javascript" src="t056lexer5Lexer.js"></script>
+<script type="text/javascript" src="t056lexer5Parser.js"></script>
+<script type="text/javascript" src="t056lexer6Lexer.js"></script>
+<script type="text/javascript" src="t056lexer6Parser.js"></script>
+<script type="text/javascript" src="t056lexer7Lexer.js"></script>
+<script type="text/javascript" src="t056lexer7Parser.js"></script>
+<script type="text/javascript" src="t056lexer8Lexer.js"></script>
+<script type="text/javascript" src="t056lexer8Parser.js"></script>
+<script type="text/javascript" src="t056lexer9Lexer.js"></script>
+<script type="text/javascript" src="t056lexer9Parser.js"></script>
+<script type="text/javascript" src="t056lexer10Lexer.js"></script>
+<script type="text/javascript" src="t056lexer10Parser.js"></script>
+<script type="text/javascript" src="t056lexer11Lexer.js"></script>
+<script type="text/javascript" src="t056lexer11Parser.js"></script>
+<script type="text/javascript" src="t056lexer12.js"></script>
+<script type="text/javascript" src="t056lexer13.js"></script>
+<script type="text/javascript" src="t056lexer14.js"></script>
+<script type="text/javascript" src="t056lexer15.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function execParser(lexerCls, parserCls, grammarEntry, xinput)
+    {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new lexerCls(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new parserCls(tstream),
+            output = "";
+        lexer.xlog = function(msg){output += msg;};
+        parser.xlog = lexer.xlog;
+        var r = parser[grammarEntry]();
+
+        return output;
+    }
+
+    function execLexer(lexerCls, xinput) {
+        var token,
+            cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new lexerCls(cstream);
+        do {
+            token = lexer.nextToken();
+        } while (token.getType()!==lexer.EOF);
+    }
+
+function testSetText() {
+    var found = execParser(t056lexer1Lexer, t056lexer1Parser, "a", "\\t");
+    assertEquals("  ", found);
+}
+
+function testRefToRuleDoesNotSetTokenNorEmitAnother() {
+    // this must return A not I to the parser; calling a nonfragment rule
+    // from a nonfragment rule does not set the overall token.
+    var found = execParser(t056lexer2Lexer, t056lexer2Parser, "a", "-34");
+    assertEquals("-34", found);
+}
+
+function testRefToRuleDoesNotSetChannel() {
+    // this must set channel of A to HIDDEN.  $channel is local to rule
+    // like $type.
+    var found = execParser(t056lexer3Lexer, t056lexer3Parser, "a", "- 34");
+    assertEquals("- 34, channel=0", found);
+}
+
+function testWeCanSetType() {
+    var found = execParser(t056lexer4Lexer, t056lexer4Parser, "a", "-34");
+    assertEquals("-34", found);
+}
+
+function testRefToFragment() {
+    // this must return A not I to the parser; calling a nonfragment rule
+    // from a nonfragment rule does not set the overall token.
+    var found = execParser(t056lexer5Lexer, t056lexer5Parser, "a", "-34");
+    assertEquals("-34", found);
+}
+
+function testMultipleRefToFragment() {
+    // this must return A not I to the parser; calling a nonfragment rule
+    // from a nonfragment rule does not set the overall token.
+    var found = execParser(t056lexer6Lexer, t056lexer6Parser, "a", "3.14159");
+    assertEquals("3.14159", found);
+}
+
+function testLabelInSubrule() {
+    // can we see v outside?
+    var found = execParser(t056lexer7Lexer, t056lexer7Parser, "a", "hi 342");
+    assertEquals("342", found);
+}
+
+function testRefToTokenInLexer() {
+    var found = execParser(t056lexer8Lexer, t056lexer8Parser, "a", "342");
+    assertEquals("342", found);
+}
+
+function testListLabelInLexer() {
+    var found = execParser(t056lexer9Lexer, t056lexer9Parser, "a", "33 297");
+    assertEquals(" 33 297", found);
+}
+
+function testDupListRefInLexer() {
+    var found = execParser(t056lexer10Lexer, t056lexer10Parser, "a", "33 297");
+    assertEquals(" 33 297", found);
+}
+
+function testCharLabelInLexer() {
+    var found = execParser(t056lexer11Lexer, t056lexer11Parser, "a", "a");
+    assertEquals("a", found);
+}
+
+function testRepeatedLabelInLexer() {
+    execLexer(t056lexer12, "ababab");
+}
+
+function testRepeatedRuleLabelInLexer() {
+    execLexer(t056lexer13, "aa");
+}
+
+function testIsolatedEOTEdge() {
+    execLexer(t056lexer14, "qbalogna!q");
+}
+
+function testEscapedLiterals() {
+    execLexer(t056lexer15, "\\\"");
+}
+</script>
+
+</head>
+<body>
+    <h1>t056lexer</h1>
+</body>
+</html>
+

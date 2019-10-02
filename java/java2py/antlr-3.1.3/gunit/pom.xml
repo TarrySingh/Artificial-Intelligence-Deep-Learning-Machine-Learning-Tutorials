@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.antlr</groupId>
+    <artifactId>gunit</artifactId>
+    <packaging>jar</packaging>
+  
+    <name>ANTLR gUnit</name>
+  <!--
+
+    Inherit from the ANTLR master pom, which tells us what
+    version we are and allows us to inherit dependencies
+    and so on.
+
+    -->
+    <parent>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr-master</artifactId>
+        <version>3.1.3</version>
+    </parent>
+
+    <url>http://www.antlr.org/wiki/display/ANTLR3/gUnit+-+Grammar+Unit+Testing</url>
+
+    <!--
+
+    Define where the ANTLR gUnit jar is deployed both for
+    the main ANTLR repository, which syncs with the maven main
+    repository, and the snapshot repository, which can be
+    used by developers that need the latest development version of
+    something, but is used here to ensure that snapshot builds of the
+    ANTLR tool pick up the latest snapshot of the runtime and string tempalte
+    and whatever else it might need in the future.
+    -->
+    <distributionManagement>
+
+        <repository>
+            <id>antlr-repo</id>
+            <name>ANTLR Testing repository</name>
+            <url>scpexe://antlr.org/home/mavensync/antlr-repo</url>
+        </repository>
+
+        <snapshotRepository>
+            <id>antlr-snapshot</id>
+            <name>ANTLR Testing Snapshot Repository</name>
+            <url>scpexe://antlr.org/home/mavensync/antlr-snapshot</url>
+        </snapshotRepository>
+
+    </distributionManagement>
+
+  <!--
+
+    Inform Maven of the ANTLR snapshot repository, which it will
+    need to consult to get the latest snapshot build of the runtime and so on, should
+    this project need the latest builds from the antlr snapshots and not the pre-built
+    released jars from the repository.
+    -->
+    <repositories>
+
+      <!--
+        This is the ANTLR repository.
+        -->
+        <repository>
+            <id>antlr-snapshot</id>
+            <name>ANTLR Testing Snapshot Repository</name>
+            <url>http://antlr.org/antlr-snapshot</url>
+            <snapshots>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+
+    </repositories>
+  
+  <!--
+
+    Tell Maven which other artifacts we need in order to
+    build, run and test the ANTLR Tool. The ANTLR Tool uses earlier versions
+    of ANTLR at runtime (for the moment), uses the current
+    released version of ANTLR String template, but obviously is
+    reliant on the latest snapshot of the runtime, which will either be
+    taken from the antlr-snapshot repository, or your local .m2
+    repository if you built and installed that locally.
+
+    -->
+    <dependencies>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.5</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+            
+        </dependency>
+        
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>stringtemplate</artifactId>
+            <version>3.2</version>
+            <scope>compile</scope>
+        </dependency>
+
+
+
+    </dependencies>
+
+    <build>
+
+        <defaultGoal>install</defaultGoal>
+
+        <plugins>
+
+            <plugin>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr3-maven-plugin</artifactId>
+                <version>${project.version}</version>
+                <configuration></configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>antlr</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                    <sourceDirectory>src</sourceDirectory>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>findbugs-maven-plugin</artifactId>
+                <configuration>
+                    <findbugsXmlOutput>true</findbugsXmlOutput>
+                    <findbugsXmlWithMessages>true</findbugsXmlWithMessages>
+                    <xmlOutput>true</xmlOutput>
+                </configuration>
+            </plugin>
+
+        </plugins>
+
+        <extensions>
+            <extension>
+                <groupId>org.apache.maven.wagon</groupId>
+                <artifactId>wagon-ssh-external</artifactId>
+                <version>1.0-beta-2</version>
+            </extension>
+        </extensions>
+
+    
+    </build>
+
+</project>

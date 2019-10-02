@@ -1,0 +1,26 @@
+Metadata-Version: 1.0
+Name: java2python
+Version: 0.5.1
+Summary: Simple but effective tool to translate Java source code into Python.
+Home-page: https://github.com/natural/java2python/
+Author: Troy Melhase
+Author-email: troy@troy.io
+License: UNKNOWN
+Download-URL: https://github.com/downloads/natural/java2python/java2python-0.5.1.tar.gz
+Description: This package provides tools to imperfectly translate Java source code to
+        Python source code.
+        
+        This version requires Python 2.7.
+        
+Keywords: java,java2python,compiler
+Platform: UNKNOWN
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)
+Classifier: Natural Language :: English
+Classifier: Operating System :: OS Independent
+Classifier: Operating System :: POSIX
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Java
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Code Generators

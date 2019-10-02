@@ -1,0 +1,32 @@
+{ 
+    "params_cnn":
+    {
+        "EPOCHS":10,
+        "BATCHSIZE":64,
+        "LR":0.01,
+        "MOMENTUM":0.9,
+        "N_CLASSES":10,
+        "GPU":true
+   },
+   "params_lstm":
+   {
+        "EPOCHS":3,
+        "BATCHSIZE":64,
+        "EMBEDSIZE":125,
+        "NUMHIDDEN":100,
+        "DROPOUT":0.2,
+        "LR":0.001,
+        "BETA_1":0.9,
+        "BETA_2":0.999,
+        "EPS":1e-08,
+        "MAXLEN":150,
+        "MAXFEATURES":30000,
+        "GPU":true
+   },
+   "params_inf":
+   {
+       "BATCH_SIZE":32, 
+       "RESNET_FEATURES":2048, 
+       "BATCHES_GPU":40
+   }
+}

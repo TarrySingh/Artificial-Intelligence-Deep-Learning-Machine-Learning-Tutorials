@@ -1,0 +1,14 @@
+﻿""
+{
+"FILE_VERSION" = "9237"
+"ENLISTMENT_CHOICE" = "NEVER"
+"PROJECT_FILE_RELATIVE_PATH" = ""
+"NUMBER_OF_EXCLUDED_FILES" = "4"
+"EXCLUDED_FILE0" = "debugdll\\antlr3cd_dll.lib"
+"EXCLUDED_FILE1" = "releasedll\\antlr3c_dll.lib"
+"EXCLUDED_FILE2" = "debugdll\\antlr3cd_dll.exp"
+"EXCLUDED_FILE3" = "releasedll\\antlr3c_dll.exp"
+"ORIGINAL_PROJECT_FILE_PATH" = ""
+"NUMBER_OF_NESTED_PROJECTS" = "0"
+"SOURCE_CONTROL_SETTINGS_PROVIDER" = "PROVIDER"
+}

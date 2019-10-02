@@ -1,0 +1,285 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t048rewrite</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t048rewrite.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TLexer, t048rewrite, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    function _parse(xinput) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.TokenRewriteStream(lexer);
+        tstream.LT(1); // fill buffer
+        return tstream;
+    }
+
+    function testInsertBeforeIndex0() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(0,"0");
+
+        var result = tokens.toString(),
+            expecting = "0abc";
+        assertEquals(result, expecting);
+    }
+
+    function testInsertAfterLastIndex() {
+        var tokens = _parse("abc");
+        tokens.insertAfter(2,"x");
+
+        var result = tokens.toString(),
+            expecting = "abcx";
+        assertEquals(result, expecting);
+    }
+
+    function test2InsertBeforeAfterMiddleIndex() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(1,"x");
+        tokens.insertAfter(1, "x");
+
+        var result = tokens.toString(),
+            expecting = "axbxc";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceIndex0() {
+        var tokens = _parse("abc");
+        tokens.replace(0,"x");
+
+        var result = tokens.toString(),
+            expecting = "xbc";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceLastIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(2,"x");
+
+        var result = tokens.toString(),
+            expecting = "abx";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceMiddleIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(1,"x");
+
+        var result = tokens.toString(),
+            expecting = "axc";
+        assertEquals(result, expecting);
+    }
+
+    function test2ReplaceMiddleIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(1,"x");
+        tokens.replace(1,"y");
+
+        var result = tokens.toString(),
+            expecting = "ayc";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenDeleteMiddleIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(1,"x");
+        tokens.remove(1);
+
+        var result = tokens.toString(),
+            expecting = "ac";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenInsertSameIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(0,"x");
+        tokens.insertBefore(0,"0");
+
+        var result = tokens.toString(),
+            expecting = "0xbc";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThen2InsertSameIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(0,"x");
+        tokens.insertBefore(0,"y");
+        tokens.insertBefore(0,"z");
+
+        var result = tokens.toString(),
+            expecting = "zyxbc";
+        assertEquals(result, expecting);
+    }
+
+    function testInsertThenReplaceSameIndex() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(0,"0");
+        tokens.replace(0,"x");
+
+        var result = tokens.toString(),
+            expecting = "0xbc";
+        assertEquals(result, expecting);
+    }
+
+    function test2InsertMiddleIndex() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(1,"x");
+        tokens.insertBefore(1,"y");
+
+        var result = tokens.toString(),
+            expecting = "ayxbc";
+        assertEquals(result, expecting);
+    }
+
+    function test2InsertThenReplaceIndex0() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(0,"x");
+        tokens.insertBefore(0,"y");
+        tokens.replace(0,"z");
+
+        var result = tokens.toString(),
+            expecting = "yxzbc";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenInsertBeforeLastIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(2,"x");
+        tokens.insertBefore(2,"y");
+
+        var result = tokens.toString(),
+            expecting = "abyx";
+        assertEquals(result, expecting);
+    }
+
+    function testInsertThenReplaceLastIndex() {
+        var tokens = _parse("abc");
+        tokens.insertBefore(2,"y");
+        tokens.replace(2,"x");
+
+        var result = tokens.toString(),
+            expecting = "abyx";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenInsertLastIndex() {
+        var tokens = _parse("abc");
+        tokens.replace(2,"x");
+        tokens.insertAfter(2,"y");
+
+        var result = tokens.toString(),
+            expecting = "abxy";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceRangeThenInsertInMiddle() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"x");
+        tokens.insertBefore(3,"y");
+
+        var result = tokens.toString(),
+            expecting = "abxba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceRangeThenInsertAtLeftEdge() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"x");
+        tokens.insertBefore(2,"y");
+
+        var result = tokens.toString(),
+            expecting = "abyxba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceRangeThenInsertAtRightEdge() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"x");
+        tokens.insertBefore(4,"y");
+
+        var result = tokens.toString(),
+            expecting = "abxba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceRangeThenInsertAfterRightEdge() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"x");
+        tokens.insertAfter(4,"y");
+
+        var result = tokens.toString(),
+            expecting = "abxyba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceAll() {
+        var tokens = _parse("abcccba");
+        tokens.replace(0,6,"x");
+
+        var result = tokens.toString(),
+            expecting = "x";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceSubsetThenFetch() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"xyz");
+
+        var result = tokens.toString(0,6),
+            expecting = "abxyzba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenReplaceSuperset() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"xyz");
+        tokens.replace(2,5,"foo");
+
+        var result = tokens.toString(),
+            expecting = "abfooa";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceThenReplaceLowerIndexedSuperset() {
+        var tokens = _parse("abcccba");
+        tokens.replace(2,4,"xyz");
+        tokens.replace(1,3,"foo");
+
+        var result = tokens.toString(),
+            expecting = "afoocba";
+        assertEquals(result, expecting);
+    }
+
+    function testReplaceSingleMiddleThenOverlappingSuperset() {
+        var tokens = _parse("abcba");
+        tokens.replace(2,2,"xyz");
+        tokens.replace(0,3,"foo");
+
+        var result = tokens.toString(),
+            expecting = "fooa";
+        assertEquals(result, expecting);
+    }
+
+</script>
+
+</head>
+<body>
+    <h1>t048rewrite</h1>
+</body>
+</html>

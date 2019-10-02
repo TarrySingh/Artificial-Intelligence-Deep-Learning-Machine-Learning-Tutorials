@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="3.5" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>9.0.30729</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectGuid>{5EE27A90-B023-42C9-AAF1-52B0424C5D0B}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Antlr.Runtime.Debug</RootNamespace>
+    <AssemblyName>Antlr3.Runtime.Debug</AssemblyName>
+    <TargetFrameworkVersion>v3.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <SccProjectName>SAK</SccProjectName>
+    <SccLocalPath>SAK</SccLocalPath>
+    <SccAuxPath>SAK</SccAuxPath>
+    <SccProvider>SAK</SccProvider>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>Key.snk</AssemblyOriginatorKeyFile>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Core">
+      <RequiredTargetFramework>3.5</RequiredTargetFramework>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="BlankDebugEventListener.cs" />
+    <Compile Include="DebugEventHub.cs" />
+    <Compile Include="DebugEventRepeater.cs" />
+    <Compile Include="DebugEventSocketProxy.cs" />
+    <Compile Include="DebugParser.cs" />
+    <Compile Include="DebugTokenStream.cs" />
+    <Compile Include="DebugTreeAdaptor.cs" />
+    <Compile Include="DebugTreeNodeStream.cs" />
+    <Compile Include="DebugTreeParser.cs" />
+    <Compile Include="JavaExtensions\DictionaryExtensions.cs" />
+    <Compile Include="JavaExtensions\EnumeratorExtensions.cs" />
+    <Compile Include="JavaExtensions\ExceptionExtensions.cs" />
+    <Compile Include="JavaExtensions\IOExtensions.cs" />
+    <Compile Include="JavaExtensions\Iterator.cs" />
+    <Compile Include="JavaExtensions\JSystem.cs" />
+    <Compile Include="JavaExtensions\ListExtensions.cs" />
+    <Compile Include="JavaExtensions\ObjectExtensions.cs" />
+    <Compile Include="JavaExtensions\SetExtensions.cs" />
+    <Compile Include="JavaExtensions\StackExtensions.cs" />
+    <Compile Include="JavaExtensions\StringBuilderExtensions.cs" />
+    <Compile Include="JavaExtensions\StringExtensions.cs" />
+    <Compile Include="JavaExtensions\StringTokenizer.cs" />
+    <Compile Include="JavaExtensions\SubList.cs" />
+    <Compile Include="JavaExtensions\TreeExtensions.cs" />
+    <Compile Include="JavaExtensions\TypeExtensions.cs" />
+    <Compile Include="Misc\Stats.cs" />
+    <None Include="ParserDebugger.cs" />
+    <Compile Include="ParseTreeBuilder.cs" />
+    <Compile Include="Profiler.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RemoteDebugEventSocketListener.cs" />
+    <Compile Include="TraceDebugEventListener.cs" />
+    <Compile Include="Tracer.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Key.snk" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Antlr3.Runtime\Antlr3.Runtime.csproj">
+      <Project>{8FDC0A87-9005-4D5A-AB75-E55CEB575559}</Project>
+      <Name>Antlr3.Runtime</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>

@@ -1,0 +1,66 @@
+=head1 NAME
+
+design.pod - ANTLR::Runtime Design Document
+
+=head1 ABSTRACT
+
+This document describes the design of the C<ANTLR::Runtime> Perl 5 port.
+
+=head1 OVERVIEW
+
+C<ANTLR::Runtime> is the port of the runtime part for ANTLR to Perl 5.  ANTLR's
+primary target language is Java.  This port tries to mimic this implementation
+very closely, which hopefully makes it easier to port.  The parts visible to
+Perl users should be perlish if possible - at least as a secondary interface.
+
+=head1 Basic Porting Considerations
+
+Java is built on two basic concepts: Objects and Exceptions.  If there's a
+good match for those features most other things should fall into place.
+
+=head2 OO
+
+C<ANTLR::Runtime> uses C<Object::InsideOut> for OO modelling.
+
+=head3 Packages
+
+The Java package C<org.antlr.runtime> maps to the Perl 5 package
+C<ANTLR::Runtime>.
+
+=head3 Classes
+
+Each Java class maps to a Perl 5 class with the same name.
+
+=head2 Exceptions
+
+C<Exception::Class> should meet our needs and is used by C<Object::InsideOut>
+too.
+
+=head2 Types
+
+Here's a list of Java types and how they should map to Perl.
+
+=over
+
+=item byte, short, int, long, float, double, String
+
+Use a Perl scalar.
+
+=item C<java.util.List>
+
+Use a reference to a Perl array.
+
+=item C<java.util.Map>
+
+Use a reference to a Perl hash.
+
+=back
+
+=head1 SEE ALSO
+
+L<http://www.antlr.org/>
+
+
+=head1 AUTHOR
+
+Ronald Blaschke (ron@rblasch.org)

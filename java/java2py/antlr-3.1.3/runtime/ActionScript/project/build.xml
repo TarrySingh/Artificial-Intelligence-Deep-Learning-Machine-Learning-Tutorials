@@ -1,0 +1,84 @@
+<project name="Antlr3ActionScriptRuntime" basedir="." default="all">
+
+	<property environment="env"/>
+	<property name="build.dir" value="${basedir}/build"/>
+	<property name="build.lib.dir" value="${build.dir}/lib"/>
+	<property name="build.doc.dir" value="${build.dir}/doc"/>
+	<property name="build.test.dir" value="${build.dir}/test"/>
+	<property name="build.test.output.dir" value="${build.test.dir}/output"/>
+	<property name="src.dir" value="${basedir}/src"/>
+	
+	<property name="FLEX_HOME" value="${env.FLEX_HOME}"/>
+	
+	<!-- Assume SDK 3.0 or greater has the ant tasks -->
+	<taskdef resource="flexTasks.tasks" classpath="${FLEX_HOME}/ant/lib/flexTasks.jar"/>
+	<taskdef resource="com/adobe/ac/ant/tasks/tasks.properties" classpath="${basedir}/lib/FlexAntTasks.jar"/>
+
+	<fileset id="sources" dir="${src.dir}">
+		<include name="**/*.as"/>
+	</fileset>
+	
+	<pathconvert property="sourceClasses" refid="sources" pathsep=" ">
+		<filtermapper>
+			<replacestring from="${src.dir}/" to=""/>		<!-- Strip off directory -->
+			<replacestring from=".as" to=""/>				<!-- Strip off extension -->
+			<replacestring from="/" to="."/>				<!-- Convert path to package -->
+		</filtermapper>
+	</pathconvert>
+	
+	<target name="all" depends="build"/>
+	
+	<target name="check-env">
+		<fail>
+	     <condition>
+	       <not>
+	         <isset property="FLEX_HOME"/>
+	       </not>
+	     </condition>
+	   </fail>
+	</target>
+	
+	<target name="build" depends="check-env">
+		<echo>File are ${sourceClasses}</echo>
+		<compc output="${build.lib.dir}/antlr3.swc" include-classes="${sourceClasses}">
+			<load-config filename="${FLEX_HOME}/frameworks/air-config.xml"/>
+			<source-path path-element="${basedir}/src"/>
+		</compc>
+	</target>
+	
+	<target name="compile-tests">
+		<mxmlc debug="true" file="${basedir}/test/Antlr3Test.mxml" output="${build.test.dir}/testAntlr3.swf">
+			<source-path path-element="${basedir}/test"/>
+            <!-- List of SWC files or directories that contain SWC files. -->
+            <compiler.library-path dir="${basedir}" append="true">
+                <include name="lib/*.swc" />
+                <include name="build/lib/*.swc" />
+            </compiler.library-path>
+		</mxmlc>
+	</target>
+	
+	<target name="test" depends="compile-tests">
+		<flexunit timeout="0" swf="${build.test.dir}/testAntlr3.swf" toDir="${build.test.output.dir}" haltonfailure="false"/> 
+		<junitreport toDir="${build.test.output.dir}">
+			<fileset dir="${build.test.output.dir}">
+			    <include name="TEST-*.xml"/>
+			  </fileset>
+			  <report format="frames" todir="${build.test.output.dir}/html"/>
+		</junitreport>
+	</target>
+		
+	<target name="clean">
+		<delete dir="${build.dir}"/>
+	</target>
+	
+	<target name="docs">
+		<exec executable="${FLEX_HOME}/bin/aasdoc" failonerror="true">
+			<arg line="-doc-sources ${src.dir}"/>
+			<arg line="-window-title 'ANTLR 3 Runtime'"/>
+			<arg line="-output ${build.doc.dir}"/>
+		</exec>
+		<zip destfile="${build.dir}/antlr3-asdoc.zip">
+			<zipfileset dir="${build.doc.dir}" prefix="asdoc"/>
+		</zip>
+	</target>
+</project>

@@ -1,0 +1,37 @@
+Microsoft Visual Studio Solution File, Format Version 8.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Runtime (VS2003)", "Antlr3.Runtime\Antlr3.Runtime (VS2003).csproj", "{38F943D7-937F-4911-9882-24955F6AD0CC}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr3.Utility (VS2003)", "Antlr3.Utility\Antlr3.Utility (VS2003).csproj", "{B8845D7E-8201-4904-87E7-85508F58B2F0}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Antlr.Runtime.Tests (VS2003)", "Antlr3.Runtime.Tests\Antlr.Runtime.Tests (VS2003).csproj", "{B51F118A-098F-4432-98A6-8C69B83BA3B9}"
+	ProjectSection(ProjectDependencies) = postProject
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfiguration) = preSolution
+		Debug = Debug
+		Release = Release
+	EndGlobalSection
+	GlobalSection(ProjectConfiguration) = postSolution
+		{38F943D7-937F-4911-9882-24955F6AD0CC}.Debug.ActiveCfg = Debug|.NET
+		{38F943D7-937F-4911-9882-24955F6AD0CC}.Debug.Build.0 = Debug|.NET
+		{38F943D7-937F-4911-9882-24955F6AD0CC}.Release.ActiveCfg = Release|.NET
+		{38F943D7-937F-4911-9882-24955F6AD0CC}.Release.Build.0 = Release|.NET
+		{B8845D7E-8201-4904-87E7-85508F58B2F0}.Debug.ActiveCfg = Debug|.NET
+		{B8845D7E-8201-4904-87E7-85508F58B2F0}.Debug.Build.0 = Debug|.NET
+		{B8845D7E-8201-4904-87E7-85508F58B2F0}.Release.ActiveCfg = Release|.NET
+		{B8845D7E-8201-4904-87E7-85508F58B2F0}.Release.Build.0 = Release|.NET
+		{B51F118A-098F-4432-98A6-8C69B83BA3B9}.Debug.ActiveCfg = Debug|.NET
+		{B51F118A-098F-4432-98A6-8C69B83BA3B9}.Debug.Build.0 = Debug|.NET
+		{B51F118A-098F-4432-98A6-8C69B83BA3B9}.Release.ActiveCfg = Release|.NET
+		{B51F118A-098F-4432-98A6-8C69B83BA3B9}.Release.Build.0 = Release|.NET
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+	EndGlobalSection
+	GlobalSection(ExtensibilityAddIns) = postSolution
+	EndGlobalSection
+EndGlobal

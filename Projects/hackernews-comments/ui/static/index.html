@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+
+    <style>
+      body {
+        font-family: Verdana, Geneva, sans-serif;
+      }
+      .commentheader {
+        color: #828282;
+      }
+      p {
+        margin: 0pt;
+        padding: 0pt;
+        margin-top: 4pt;
+      }
+    </style>
+
+    <title>hncynic - Generate Hacker News Comments from Titles</title>
+  </head>
+  <body>
+    <div class="container">
+      <h1>hncynic</h1>
+
+      <p>Enter any <a href="https://news.ycombinator.com">Hacker News</a> title, and watch garbage pour out of a Deep Learning model (details on <a href="https://github.com/leod/hncynic">GitHub</a>):</p> 
+
+      <form class="my-4" action="javascript:request()">
+        <div class="form-group">
+          <!--<label for="title">Title:</label>-->
+          <input type="text" class="form-control" id="form-title" placeholder="Enter Title">
+        </div>
+        <button type="submit" class="btn btn-secondary">Generate</button>
+      </form> 
+      <div id="hn" class="my-4 border border-secondary" style="background-color: #f6f6ef; display: none">
+        <div style="background-color: #0099ff; padding: 2pt">
+          <b style="color: #222222; font-size: 13pt">Hacker News Cynic</b>
+        </div>
+
+        <div class="p-2">
+          <h2 id="title" style="color: #000000; font-size: 16pt"></h2>
+
+          <p id="status"></p>
+
+          <div id="comments">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      var entityMap = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;',
+        '/': '&#x2F;',
+        '`': '&#x60;',
+        '=': '&#x3D;'
+      };
+
+      function escapeHtml(string) {
+        return String(string).replace(/[&<>"'`=\/]/g, function (s) {
+          return entityMap[s];
+        });
+      }
+
+      function request() {
+        title = $("#form-title").val().trim();
+
+        if (title === "") {
+          return;
+        }
+
+        document.title = "hncynic - Generate Hacker News Comments from Titles - " + title;
+
+        $("#comments").empty();
+        $("#title").text(title);
+        $("#status").text("Generating comments...").show();
+        $("#hn").show();
+
+        $.ajax({
+          url: "/gen",
+          data: {
+            title: title,
+          },
+          type: "GET",
+          dataType: "json",
+        })
+        .done(function(comments) {
+          $("#comments").empty();
+          $("#title").text(title);
+          $("#status").hide();
+
+          for (i in comments) {
+            x = "<div class=\"p-2\">";
+            x += "<p class=\"commentheader\">hncynic 1 minute ago</p>";
+            x += commentToHtml(comments[i][0]);
+            x += "</div>";
+            $("#comments").append(x);
+          }
+        })
+        .fail(function(_xhr, _status, _errorThrown) {
+          $("#status").text("Request failed.");
+        });
+      }      
+
+      function commentToHtml(comment) {
+        // Reverse Markdown escaping (coming from html2text and reproduced by the model)
+        comment = comment.replace(/\\ -/g, "-");
+        comment = comment.replace(/\\./g, ".");
+
+        // Double newline is a paragraph.
+        comment = comment.replace(/<NL> <NL>/g, "\n");
+        comment = comment.replace(/<NL>/g, "");
+
+        paragraphs = comment.split('\n');
+
+        html = "";
+        for (i in paragraphs) {
+          paragraph = paragraphs[i].trim();
+          if (paragraph !== "") {
+            paragraph = quickFixes(paragraph);
+            paragraph = escapeHtml(paragraph);
+            //paragraph = paragraph.replace(/&lt;NL&gt;/g, "<br />\n");
+            paragraph = formatItalics(paragraph);
+            paragraph = paragraph.split(' ').join(' ');
+
+            html += "<p> " + paragraph + " </p>";
+          }
+        }
+
+        return html;
+      }
+
+      function quickFixes(comment) {
+        comment = comment.replace("x86 _ 64", "x86_64");
+        comment = comment.replace(": (", " :(");
+        comment = comment.replace(": )", " :)");
+        comment = comment.replace(":(", " :(");
+        comment = comment.replace(":)", " :)");
+        return comment;
+      }
+
+      function formatItalics(comment) {
+        // In the preprocessed training data, due to moses tokenization, underscores are
+        // standalone tokens. This function converts matching underscores into HTML <i></i>.
+        comment = comment.replace(/ _([^_]*)_$/g, " <i>$1</i> ");
+        comment = comment.replace(/^_([^_]*)_$/g, " <i>$1</i> ");
+        comment = comment.replace(/ _([^_]*)_ /g, " <i>$1</i> ");
+        comment = comment.replace(/^_([^_]*)_ /g, " <i>$1</i> ");
+        return comment;
+      }
+    </script>
+
+    <!-- Optional JavaScript -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+  </body>
+</html>

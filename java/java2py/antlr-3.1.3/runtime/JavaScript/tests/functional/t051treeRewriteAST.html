@@ -1,0 +1,454 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t051treeRewriteAST</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTbLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTbParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTbWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTcLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTcParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTcWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTdLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTdParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTdWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTeLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTeParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTeWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTfLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTfParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTfWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTgLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTgParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTgWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASThLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASThParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASThWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTiLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTiParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTiWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTjLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTjParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTjWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTkLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTkParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTkWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTlLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTlParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTlWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTmLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTmParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTmWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTnLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTnParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTnWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASToLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASToParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASToWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTpLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTpParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTpWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTqLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTqParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTqWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTrLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTrParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTrWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTsLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTsParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTsWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTtLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTtParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTtWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTuLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTuParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTuWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTvLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTvParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTvWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTwLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTwParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTwWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTxLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTxParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTxWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTyLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTyParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTyWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTzLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTzParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTzWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaaLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaaParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTaaWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTabLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTabParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTabWalker.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTacLexer.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTacParser.js"></script>
+<script type="text/javascript" src="t051treeRewriteASTacWalker.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function execTreeParser(lexerCls, parserCls, grammarEntry, walkerCls, treeEntry, xinput)
+    {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new lexerCls(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new parserCls(tstream);
+        var r = parser[grammarEntry]();
+
+        var nodes = new org.antlr.runtime.tree.CommonTreeNodeStream(r.getTree());
+        nodes.setTokenStream(tstream);
+        var walker = new (walkerClass(walkerCls))(nodes);
+        var w = walker[treeEntry]();
+
+        if (w.tree) {
+            return w.tree.toStringTree();
+        }
+        return "";
+    }
+
+    function walkerClass(base) {
+        var TWalker = function() {
+            TWalker.superclass.constructor.apply(this, arguments);
+            this.traces = [];
+            this.buf = "";
+        };
+
+        org.antlr.lang.extend(TWalker, base, {
+            traceIn: function(ruleName, ruleIndex) {
+                this.traces.push(">"+ruleName);
+            },
+            traceOut: function(ruleName, ruleIndex) {
+                this.traces.push("<"+ruleName);
+            },
+            reportError: function(input, re) {
+                throw re;
+            }
+        });
+
+        return TWalker;
+    }
+
+    function testFlatList() {
+        var found = execTreeParser(t051treeRewriteASTaLexer,
+                t051treeRewriteASTaParser,
+                "a",
+                t051treeRewriteASTaWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "34 abc");
+    }
+
+    function testSimpleTree() {
+        var found = execTreeParser(t051treeRewriteASTbLexer,
+                t051treeRewriteASTbParser,
+                "a",
+                t051treeRewriteASTbWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "(34 abc)");
+    }
+
+    function testCombinedRewriteAndAuto() {
+        var found = execTreeParser(t051treeRewriteASTcLexer,
+                t051treeRewriteASTcParser,
+                "a",
+                t051treeRewriteASTcWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "(34 abc)");
+
+        found = execTreeParser(t051treeRewriteASTcLexer,
+                t051treeRewriteASTcParser,
+                "a",
+                t051treeRewriteASTcWalker,
+                "a",
+                "34");
+        assertEquals(found, "34");
+    }
+
+    function testAvoidDup() {
+        var found = execTreeParser(t051treeRewriteASTdLexer,
+                t051treeRewriteASTdParser,
+                "a",
+                t051treeRewriteASTdWalker,
+                "a",
+                "abc");
+        assertEquals(found, "(abc abc)");
+    }
+
+    function testLoop() {
+        var found = execTreeParser(t051treeRewriteASTeLexer,
+                t051treeRewriteASTeParser,
+                "a",
+                t051treeRewriteASTeWalker,
+                "a",
+                "a b c 3 4 5");
+        assertEquals(found, "3 4 5 a b c");
+    }
+
+    function testAutoDup() {
+        var found = execTreeParser(t051treeRewriteASTfLexer,
+                t051treeRewriteASTfParser,
+                "a",
+                t051treeRewriteASTfWalker,
+                "a",
+                "abc");
+        assertEquals(found, "abc");
+    }
+
+    function testAutoDupRule() {
+        var found = execTreeParser(t051treeRewriteASTgLexer,
+                t051treeRewriteASTgParser,
+                "a",
+                t051treeRewriteASTgWalker,
+                "a",
+                "a 1");
+        assertEquals(found, "a 1");
+    }
+
+    function testAutoDupMultiple() {
+        var found = execTreeParser(t051treeRewriteASThLexer,
+                t051treeRewriteASThParser,
+                "a",
+                t051treeRewriteASThWalker,
+                "a",
+                "a b 3");
+        assertEquals(found, "a b 3");
+    }
+
+    function testAutoDupTree() {
+        var found = execTreeParser(t051treeRewriteASTiLexer,
+                t051treeRewriteASTiParser,
+                "a",
+                t051treeRewriteASTiWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupTreeWithLabels() {
+        var found = execTreeParser(t051treeRewriteASTjLexer,
+                t051treeRewriteASTjParser,
+                "a",
+                t051treeRewriteASTjWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupTreeWithListLabels() {
+        var found = execTreeParser(t051treeRewriteASTkLexer,
+                t051treeRewriteASTkParser,
+                "a",
+                t051treeRewriteASTkWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupTreeWithRuleRoot() {
+        var found = execTreeParser(t051treeRewriteASTlLexer,
+                t051treeRewriteASTlParser,
+                "a",
+                t051treeRewriteASTlWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupTreeWithRuleRootAndLabels() {
+        var found = execTreeParser(t051treeRewriteASTmLexer,
+                t051treeRewriteASTmParser,
+                "a",
+                t051treeRewriteASTmWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupTreeWithRuleRootAndListLabels() {
+        var found = execTreeParser(t051treeRewriteASTnLexer,
+                t051treeRewriteASTnParser,
+                "a",
+                t051treeRewriteASTnWalker,
+                "a",
+                "a 3");
+        assertEquals(found, "(a 3)");
+    }
+
+    function testAutoDupNestedTree() {
+        var found = execTreeParser(t051treeRewriteASToLexer,
+                t051treeRewriteASToParser,
+                "a",
+                t051treeRewriteASToWalker,
+                "a",
+                "a b 3");
+        assertEquals(found, "(a (b 3))");
+    }
+
+    function testDelete() {
+        var found = execTreeParser(t051treeRewriteASTpLexer,
+                t051treeRewriteASTpParser,
+                "a",
+                t051treeRewriteASTpWalker,
+                "a",
+                "abc");
+        assertEquals(found, "");
+    }
+
+    function testSetMatchNoRewrite() {
+        var found = execTreeParser(t051treeRewriteASTqLexer,
+                t051treeRewriteASTqParser,
+                "a",
+                t051treeRewriteASTqWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "abc 34");
+    }
+
+    function testSetMatchNoRewriteLevel2() {
+        var found = execTreeParser(t051treeRewriteASTrLexer,
+                t051treeRewriteASTrParser,
+                "a",
+                t051treeRewriteASTrWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "(abc 34)");
+    }
+
+    function testSetMatchNoRewriteLevel2Root() {
+        var found = execTreeParser(t051treeRewriteASTsLexer,
+                t051treeRewriteASTsParser,
+                "a",
+                t051treeRewriteASTsWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "(abc 34)");
+    }
+
+    function testRewriteModeCombinedRewriteAndAuto() {
+        var found = execTreeParser(t051treeRewriteASTtLexer,
+                t051treeRewriteASTtParser,
+                "a",
+                t051treeRewriteASTtWalker,
+                "a",
+                "abc 34");
+        assertEquals(found, "(ick 34)");
+
+        found = execTreeParser(t051treeRewriteASTtLexer,
+                t051treeRewriteASTtParser,
+                "a",
+                t051treeRewriteASTtWalker,
+                "a",
+                "34");
+        assertEquals(found, "34");
+    }
+
+    function testRewriteModeFlatTree() {
+        var found = execTreeParser(t051treeRewriteASTuLexer,
+                t051treeRewriteASTuParser,
+                "a",
+                t051treeRewriteASTuWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "abc 1");
+    }
+
+    function testRewriteModeChainRuleFlatTree() {
+        var found = execTreeParser(t051treeRewriteASTvLexer,
+                t051treeRewriteASTvParser,
+                "a",
+                t051treeRewriteASTvWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "34 abc");
+    }
+
+    function testRewriteModeChainRuleTree() {
+        var found = execTreeParser(t051treeRewriteASTwLexer,
+                t051treeRewriteASTwParser,
+                "a",
+                t051treeRewriteASTwWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "34");
+    }
+
+    function testRewriteModeChainRuleTree2() {
+        var found = execTreeParser(t051treeRewriteASTxLexer,
+                t051treeRewriteASTxParser,
+                "a",
+                t051treeRewriteASTxWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "34");
+    }
+
+    function testRewriteModeChainRuleTree3() {
+        var found = execTreeParser(t051treeRewriteASTyLexer,
+                t051treeRewriteASTyParser,
+                "a",
+                t051treeRewriteASTyWalker,
+                "s",
+                "boo abc 34");
+        assertEquals(found, "boo 34");
+    }
+
+    function testRewriteModeChainRuleTree4() {
+        var found = execTreeParser(t051treeRewriteASTzLexer,
+                t051treeRewriteASTzParser,
+                "a",
+                t051treeRewriteASTzWalker,
+                "s",
+                "boo abc 34");
+        assertEquals(found, "(boo 34)");
+    }
+
+    function testRewriteModeChainRuleTree5() {
+        var found = execTreeParser(t051treeRewriteASTaaLexer,
+                t051treeRewriteASTaaParser,
+                "a",
+                t051treeRewriteASTaaWalker,
+                "s",
+                "boo abc 34");
+        assertEquals(found, "(boo 34)");
+    }
+
+    function testRewriteModeWithPredicatedRewrites() {
+        var found = execTreeParser(t051treeRewriteASTabLexer,
+                t051treeRewriteASTabParser,
+                "a",
+                t051treeRewriteASTabWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "(root (ick 34))");
+    }
+
+    function testWildcard() {
+        var found = execTreeParser(t051treeRewriteASTacLexer,
+                t051treeRewriteASTacParser,
+                "a",
+                t051treeRewriteASTacWalker,
+                "s",
+                "abc 34");
+        assertEquals(found, "34");
+    }
+</script>
+
+</head>
+<body>
+    <h1>t051treeRewriteAST</h1>
+</body>
+</html>

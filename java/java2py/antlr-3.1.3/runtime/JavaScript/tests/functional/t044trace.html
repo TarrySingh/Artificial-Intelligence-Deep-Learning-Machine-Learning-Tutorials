@@ -1,0 +1,76 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t044trace</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t044traceLexer.js"></script>
+<script type="text/javascript" src="t044traceParser.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+        this.traces = [];
+    };
+    org.antlr.lang.extend(TLexer, t044traceLexer, {
+        traceIn: function(ruleName, ruleIndex) {
+            this.traces.push(">"+ruleName);
+        },
+        traceOut: function(ruleName, ruleIndex) {
+            this.traces.push("<"+ruleName);
+        },
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    var TParser = function() {
+        TParser.superclass.constructor.apply(this, arguments);
+        this.traces = [];
+    };
+    org.antlr.lang.extend(TParser, t044traceParser, {
+        traceIn: function(ruleName, ruleIndex) {
+            this.traces.push(">"+ruleName);
+        },
+        traceOut: function(ruleName, ruleIndex) {
+            this.traces.push("<"+ruleName);
+        },
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testTrace() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream('< 1 + 2 + 3 >'),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.a();
+        assertArrayEquals(lexer.traces,
+            [ '>T__6', '<T__6', '>WS', '<WS', '>INT', '<INT', '>WS', '<WS',
+              '>T__8', '<T__8', '>WS', '<WS', '>INT', '<INT', '>WS', '<WS',
+              '>T__8', '<T__8', '>WS', '<WS', '>INT', '<INT', '>WS', '<WS',
+              '>T__7', '<T__7']
+        );
+        assertArrayEquals(parser.traces,
+            [ '>a', '>synpred1_t044trace_fragment', '<synpred1_t044trace_fragment', '>b', '>c',
+              '<c', '>c', '<c', '>c', '<c', '<b', '<a' ]
+        );
+    }
+</script>
+
+</head>
+<body>
+    <h1>t044trace</h1>
+</body>
+</html>

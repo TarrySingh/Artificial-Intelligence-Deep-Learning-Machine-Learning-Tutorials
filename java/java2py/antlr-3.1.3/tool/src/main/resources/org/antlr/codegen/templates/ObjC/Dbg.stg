@@ -1,0 +1,178 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2006 Kay Roepke
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+/** Template overrides to add debugging to normal Objective-C output;
+ *  If ASTs are built, then you'll also get ASTDbg.stg loaded.
+ */
+group Dbg;
+
+@headerFile.imports() ::= <<
+<@super.imports()>
+#import \<ANTLR/ANTLRDebug.h>
+>>
+
+@parserHeaderFile.ivars() ::= <<
+int ruleLevel;
+NSArray *ruleNames;
+>>
+
+@parserHeaderFile.methodsdecl() ::= <<
+-(BOOL) evalPredicate:(NSString *)predicate matched:(BOOL)result;<\n>
+>>
+
+@genericParser.init() ::= <<
+ruleNames = [[NSArray alloc] initWithObjects:<rules:{rST | @"<rST.ruleName>"}; separator=", ", wrap="\n	">, nil];<\n>
+>>
+
+@genericParser.dealloc() ::= <<
+[ruleNames release];<\n>
+>>
+
+@genericParser.methods() ::= <<
+-(BOOL) evalPredicate:(NSString *)predicate matched:(BOOL)result
+{
+	[debugListener semanticPredicate:predicate matched:result];
+	return result;
+}<\n>
+>>
+
+/* bug: can't use @super.superClassName()> */
+@parserHeaderFile.superClassName() ::= "ANTLRDebug<if(TREE_PARSER)>Tree<endif>Parser"
+
+@rule.preamble() ::= <<
+@try { [debugListener enterRule:@"<ruleName>"];
+if ( ruleLevel==0 ) [debugListener commence];
+ruleLevel++;
+[debugListener locationLine:<ruleDescriptor.tree.line> column:<ruleDescriptor.tree.column>];<\n>
+>>
+
+@rule.postamble() ::= <<
+[debugListener locationLine:<ruleDescriptor.EORNode.line> column:<ruleDescriptor.EORNode.column>];<\n>
+}
+@finally {
+    [debugListener exitRule:@"<ruleName>"];
+    ruleLevel--;
+    if ( ruleLevel==0 ) [debugListener terminate];
+}<\n>
+>>
+
+/* these are handled in the runtime for now.
+ * stinks, but that's the easiest way to avoid having to generate two
+ * methods for each synpred
+
+@synpred.start() ::= "[debugListener beginBacktrack:backtracking];"
+
+@synpred.stop() ::= "[debugListener endBacktrack:backtracking wasSuccessful:success];"
+
+ */
+
+// Common debug event triggers used by region overrides below
+
+enterSubRule() ::=
+    "@try { [debugListener enterSubRule:<decisionNumber>];<\n>"
+
+exitSubRule() ::=
+    "} @finally { [debugListener exitSubRule:<decisionNumber>]; }<\n>"
+
+enterDecision() ::=
+    "@try { [debugListener enterDecision:<decisionNumber>];<\n>"
+
+exitDecision() ::=
+    "} @finally { [debugListener exitDecision:<decisionNumber>]; }<\n>"
+
+enterAlt(n) ::= "[debugListener enterAlt:<n>];<\n>"
+
+// Region overrides that tell various constructs to add debugging triggers
+
+@block.predecision() ::= "<enterSubRule()><enterDecision()>"
+
+@block.postdecision() ::= "<exitDecision()>"
+
+@block.postbranch() ::= "<exitSubRule()>"
+
+@ruleBlock.predecision() ::= "<enterDecision()>"
+
+@ruleBlock.postdecision() ::= "<exitDecision()>"
+
+@ruleBlockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@blockSingleAlt.prealt() ::= "<enterAlt(n=\"1\")>"
+
+@positiveClosureBlock.preloop() ::= "<enterSubRule()>"
+
+@positiveClosureBlock.postloop() ::= "<exitSubRule()>"
+
+@positiveClosureBlock.predecision() ::= "<enterDecision()>"
+
+@positiveClosureBlock.postdecision() ::= "<exitDecision()>"
+
+@positiveClosureBlock.earlyExitException() ::=
+    "[debugListener recognitionException:eee];<\n>"
+
+@closureBlock.preloop() ::= "<enterSubRule()>"
+
+@closureBlock.postloop() ::= "<exitSubRule()>"
+
+@closureBlock.predecision() ::= "<enterDecision()>"
+
+@closureBlock.postdecision() ::= "<exitDecision()>"
+
+@altSwitchCase.prealt() ::= "<enterAlt(n=i)>"
+
+@element.prematch() ::=
+    "[debugListener locationLine:<it.line> column:<it.pos>];"
+
+@matchSet.mismatchedSetException() ::=
+    "[debugListener recognitionException:mse];"
+
+@dfaState.noViableAltException() ::= "[debugListener recognitionException:nvae];"
+
+@dfaStateSwitch.noViableAltException() ::= "[debugListener recognitionException:nvae];"
+
+dfaDecision(decisionNumber,description) ::= <<
+@try {
+    // isCyclicDecision is only necessary for the Profiler. Which I didn't do, yet.
+    // isCyclicDecision = YES;
+    <super.dfaDecision(...)>
+}
+@catch (ANTLRNoViableAltException *nvae) {
+    [debugListener recognitionException:nvae];
+    @throw nvae;
+}
+>>
+
+@cyclicDFA.errorMethod() ::= <<
+-(void) error:(ANTLRNoViableAltException *)nvae
+{
+    [[recognizer debugListener] recognitionException:nvae];
+}
+>>
+
+/** Force predicate validation to trigger an event */
+evalPredicate(pred,description) ::= <<
+[self evalPredicate:@"<description>" result:<pred>];
+>>

@@ -1,0 +1,47 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t021hoist</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t021hoistLexer.js"></script>
+<script type="text/javascript" src="t021hoistParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("enum"),
+            lexer = new t021hoistLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t021hoistParser(tstream);
+
+        parser.enableEnum = true;
+        var enumIs = parser.stat();
+        
+        assertEquals(enumIs, "keyword");
+    }
+
+    function testValid2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("enum"),
+            lexer = new t021hoistLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t021hoistParser(tstream);
+
+        parser.enableEnum = false;
+        var enumIs = parser.stat();
+        
+        assertEquals(enumIs, "ID");
+    }
+</script>
+
+</head>
+<body>
+    <h1>t021hoist</h1>
+</body>
+</html>

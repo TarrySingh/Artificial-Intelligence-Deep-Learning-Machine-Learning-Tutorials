@@ -1,0 +1,129 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2007 Kay Roepke
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+group ASTTreeParser;
+
+/** match ^(root children) in tree parser; override here to
+ *  add tree construction actions.
+ */
+tree(root, actionsAfterRoot, children, nullableChildList,
+     enclosingTreeLevel, treeLevel) ::= <<
+{
+    <ASTLabelType> root_<treeLevel> = [treeAdapator newEmptyTree];
+    <root:element()>
+    <actionsAfterRoot:element()>
+    <if(nullableChildList)>
+    if ( [input LA:1] == ANTLRTokenTypeDOWN ) {
+        [self match:input tokenType:ANTLRTokenTypeDOWN follow:nil]; <checkRuleBacktrackFailure()>
+        <children:element()>
+        [self match:input tokenType:ANTLRTokenTypeUP follow:nil]; <checkRuleBacktrackFailure()>
+    }
+    <else>
+    [self match:input tokenType:ANTLRTokenTypeDOWN follow:nil]; <checkRuleBacktrackFailure()>
+    <children:element()>
+    [self match:input tokenType:ANTLRTokenTypeUP follow:nil]; <checkRuleBacktrackFailure()>
+    <endif>
+    [root_<treeLevel> release];
+}<\n>
+>>
+
+/** What to emit when there is no rewrite.  For auto build
+ *  mode, does nothing.
+ */
+noRewrite(rewriteBlockLevel, treeLevel) ::= <<
+<if(rewriteMode)>retval.tree = (<ASTLabelType>)retval.start;<endif>
+>>
+
+// TOKEN AST STUFF
+
+/** ID auto construct */
+tokenRef(token,label,elementIndex) ::= <<
+<super.tokenRef(...)>
+<if(backtracking)>if ( state.backtracking==0 ) {<endif>
+<label>_tree = (<ASTLabelType>)adaptor.dupNode(<label>);
+adaptor.addChild(root_<treeLevel>, <label>_tree);
+<if(backtracking)>}<endif>
+>>
+
+/** label+=TOKEN auto construct */
+tokenRefAndListLabel(token,label,elementIndex) ::= <<
+<tokenRef(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** ^(ID ...) auto construct */
+tokenRefRuleRoot(token,label,elementIndex) ::= <<
+<super.tokenRef(...)>
+<if(backtracking)>if ( state.backtracking==0 ) {<endif>
+<label>_tree = (<ASTLabelType>)adaptor.dupNode(<label>);
+root_<treeLevel> = (<ASTLabelType>)adaptor.becomeRoot(<label>_tree, root_<treeLevel>);
+<if(backtracking)>}<endif>
+>>
+
+/** Match ^(label+=TOKEN ...) auto construct */
+tokenRefRuleRootAndListLabel(token,label,elementIndex) ::= <<
+<tokenRefRuleRoot(...)>
+<listLabel(elem=label,...)>
+>>
+
+// RULE REF AST
+
+/** rule auto construct */
+ruleRef(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if ( state.backtracking==0 ) <endif>adaptor.addChild(root_<treeLevel>, <label>.getTree());
+>>
+
+/** x+=rule auto construct */
+ruleRefAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRef(...)>
+<listLabel(elem=label+".getTree()",...)>
+>>
+
+/** ^(rule ...) auto construct */
+ruleRefRuleRoot(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if ( state.backtracking==0 ) <endif>root_<treeLevel> = (<ASTLabelType>)adaptor.becomeRoot(<label>.getTree(), root_<treeLevel>);
+>>
+
+/** ^(x+=rule ...) auto construct */
+ruleRefRuleRootAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<listLabel(elem=label+".getTree()",...)>
+>>
+
+/** Streams for token refs are tree nodes now; override to
+ *  change nextToken to nextNode.
+ */
+createRewriteNodeFromElement(token,hetero,scope) ::= <<
+#error Heterogeneous tree support not implemented.
+<if(hetero)>
+new <hetero>(stream_<token>.nextNode())
+<else>
+stream_<token>.nextNode()
+<endif>
+>>

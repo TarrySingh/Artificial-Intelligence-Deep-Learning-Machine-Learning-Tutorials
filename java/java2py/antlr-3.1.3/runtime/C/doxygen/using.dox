@@ -1,0 +1,62 @@
+/// \page using Using the ANTLR3 C Target
+///
+/// \section intro Introduction
+///
+/// Using the ANTLR target involves gaining knowledge of a number of elements:
+///
+/// -# Writing ANTLR grammars (not covered in this manual);
+/// -# How ANTLR works (not covered in this manual);
+/// -# How to use the \@sections with the C target
+/// -# Interoperation with the runtime within rule actions;
+/// -# Implementing custom versions of the standard library methods;
+///
+/// If you are as yet unfamiliar with how ANTLR works in general, then
+/// it is suggested that you read the various <a href="http://www.antlr.org/wiki">wiki pages</a> concerned with
+/// getting started. However there are a few things that you should note:
+///
+/// - The lexer is independent of the parser. You \b cannot control the lexer from within the parser;
+/// - The tree parser is independent of the parser. You \b cannot control the parser from within the tree parser(s);
+/// - Each tree parser is independent of other tree parsers.
+///
+/// This means that your lexer runs first and consumes all the input stream until 
+/// you stop it programmatically, or it reaches the end of the input stream. It produces
+/// a complete stream of tokens, which the parser then consumes.
+///
+/// \section Using \@sections in a C Targeted Grammar
+///
+/// Within a grammar file there are a number of special sections you can add that cause the
+/// code within them to be placed at strategic points in the generated code such as
+/// before or after the #include statements in the .c file, within the generated header file
+/// or within the constructor for the recognizer.
+///
+/// Many of the \@sections used within a Java targeted grammar have some equivalent function within a 
+/// C targeted grammar, but their use may well be subtly different. There are also additional sections
+/// that have meaning only within a grammar targeted for the C runtime.
+///
+/// Detailed documentation of these sections is given here: \subpage atsections
+///
+/// \section interop Interoperation Within Rule Actions
+///
+/// Rule actions have a limited number of elements they can access by name, independently of the
+/// target language generated. These are elements such as $line, $pos, $text and so on. Where the
+/// $xxx returns a basic type such as \c int, then you can use these in C as you would in the Java
+/// target, but where a reference returns a string, you will get a pointer to the C runtime
+/// string implementation #pANTLR3_STRING. This will give you access to things like token text
+/// but also provides some convenience methods such as #pANTLR3_STRING->substring() and #pANTLR3_STRING->toUTF8().
+///
+/// The generated code provides a number of C MACROs, which make it easier to access runtime
+/// components. Always use these macros when available, to protect your action code from changes
+/// to the underlying implementation.
+///
+/// Detailed documentation of macros and rule action interoperation is given here: \subpage interop
+///
+/// \section Custom Implementing Customized Methods
+///
+/// Unless you wish to create your own tree structures using the built in ANTLR AST rewriting
+/// notation, you will rarely need to override the default implementation of runtime methods. The
+/// exception to this will be the syntax err reporting method, which is essentially a stub function
+/// that you will usually want to provide your own implementation for. You should consider the built in function
+/// displayRecognitionError() as an example of where to start as there can be no really useful
+/// generic error message display.
+///
+/// 

@@ -1,0 +1,78 @@
+<?xml version="1.0"?>
+<project name="ANTLR C# Runtime Utility Library" default="build">
+    <tstamp/>
+	<property name="base.dir" value="${path::get-full-path( project::get-base-directory() )}" />
+
+	<include buildfile="../../antlr3.runtime.net.common.inc" />
+
+	<property name="version" value="0.1" />
+
+	<property name="name" value="Antlr3.Utility" />
+	<property name="assembly.name" value="${name}.dll" />
+	<property name="src.dir" value="${base.dir}/" />
+
+    <property name="debug" value="true" unless="${property::exists('debug')}" />
+
+    <echo message="Building project: '${name}' version ${version} ==> '${assembly.name}'"/>
+
+    <target name="release" depends="clean" description="build non-debug version">
+        <!-- build a clean release distribution for release -->
+        <property name="debug" value="false"/>
+        <echo message="Debug = ${debug}"/>
+        <call target="build"/>
+    </target>
+    
+    <target name="build" depends="init, compile" description="compiles the source code">
+    </target>
+
+	<target name="init" depends="clean">
+	</target>
+
+    <target name="clean">
+    </target>
+
+    <target name="clean.vsnet" description="cleans up VS.NET build artifacts and output">
+		<!-- delete VS.NET project artifacts directory -->
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/bin'" />
+		<delete dir="${base.dir}/bin" failonerror="false" />
+        <echo message="Deleting VS.NET artifacts directory '${base.dir}/obj'" />
+		<delete dir="${base.dir}/obj" failonerror="false" />
+    </target>
+
+	<target name="compile" depends="init">
+		<csc 
+			define="${strong_name};${dotnet_define}"
+			target="library" 
+			debug="${debug}"
+			optimize="${optimize}"
+			output="${build.working.dir}/${assembly.name}" 
+			doc="${build.working.dir}/${name}.xml">
+			
+			<nowarn>
+				<warning number="1591" />
+				<warning number="1572" />
+			</nowarn>
+			
+			<resources prefix="Antlr.Utility" dynamicprefix="true">
+				<include name="**/*.resx" />
+			</resources>
+			
+			<sources basedir="${src.dir}" defaultexcludes="true">
+				<include name="**/*.cs" />
+			</sources>
+
+			<references>
+				<include name="${build.working.dir}/Antlr3.Runtime.dll" />
+				<include name="${build.working.dir}/StringTemplate.dll" />
+				<include name="${build.working.dir}/antlr.runtime.dll" />
+			</references>
+		</csc>
+	</target>
+
+	<target name="docs">
+	</target>
+			
+	<target name="dist" depends="docs">
+	</target>
+
+</project>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.antlr</groupId>
+    <artifactId>antlr</artifactId>
+    <packaging>jar</packaging>
+    <name>ANTLR Grammar Tool</name>
+    <url>http://antlr.org</url>
+
+
+  <!--
+
+    Inherit from the ANTLR master pom, which tells us what
+    version we are and allows us to inherit dependencies
+    and so on.
+
+    -->
+    <parent>
+        <groupId>org.antlr</groupId>
+        <artifactId>antlr-master</artifactId>
+        <version>3.1.3</version>
+    </parent>
+    <dependencies>
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr-runtime</artifactId>
+            <version>${project.version}</version>
+            <scope>compile</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.5</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+  <!--
+
+    Tell Maven which other artifacts we need in order to
+    build, run and test the ANTLR Tool. The ANTLR Tool uses earlier versions
+    of ANTLR at runtime (for the moment), uses the current
+    released version of ANTLR String template, but obviously is
+    reliant on the latest snapshot of the runtime, which will either be
+    taken from the antlr-snapshot repository, or your local .m2
+    repository if you built and installed that locally.
+
+    -->
+
+    
+    <build>
+      
+        <defaultGoal>install</defaultGoal>
+         
+        <plugins>
+            
+            <plugin>
+
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr3-maven-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <libDirectory>target/generated-sources/antlr/org/antlr/grammar/v3</libDirectory>
+                </configuration>
+                <executions>
+                    <execution>
+                        
+                        <goals>
+                            <goal>antlr</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                
+            </plugin>
+            
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>antlr-maven-plugin</artifactId>
+                <configuration>
+                    <sourceDirectory>src/main/antlr2/org/antlr/grammar/v2</sourceDirectory>
+                    <grammars>antlr.g codegen.g, antlr.print.g, assign.types.g, buildnfa.g, define.g</grammars>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.5</source>
+                    <target>1.5</target>
+                    <sourceDirectory>src</sourceDirectory>
+                </configuration>
+            </plugin>
+
+        </plugins>
+
+
+    </build>
+</project>

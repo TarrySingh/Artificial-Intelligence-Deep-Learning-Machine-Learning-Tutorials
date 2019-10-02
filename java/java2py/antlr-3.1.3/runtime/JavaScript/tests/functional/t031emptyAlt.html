@@ -1,0 +1,69 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t031emptyAlt</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t031emptyAltLexer.js"></script>
+<script type="text/javascript" src="t031emptyAltParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TParser = function() {
+        this.cond = true;
+        TParser.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TParser, t031emptyAltParser, {
+        emitErrorMessage: function() { /* don't report errors */ },
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foo"),
+            lexer = new t031emptyAltLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.cond = false;
+        parser.r();
+    }
+
+    function testValid2() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foo  jfef9jfe88d"),
+            lexer = new t031emptyAltLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        parser.cond = true;
+        parser.r();
+    }
+
+    function testInvalid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("foo bar"),
+            lexer = new t031emptyAltLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        try {
+            parser.cond = false;
+            parser.r();
+            fail("shouldn't reach here");
+        } catch(e) {}
+    }
+</script>
+
+</head>
+<body>
+    <h1>t031emptyAlt</h1>
+</body>
+</html>

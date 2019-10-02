@@ -1,0 +1,463 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t042ast</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t042astLexer.js"></script>
+<script type="text/javascript" src="t042astParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TLexer, t042astLexer, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    var TParser = function() {
+        TParser.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TParser, t042astParser, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function parse(text, method, rArgs, kwargs) {
+        var cstream = new org.antlr.runtime.ANTLRStringStream(text),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+            rArgs = rArgs || [];
+            kwargs = kwargs || {};
+
+            org.antlr.lang.augmentObject(parser, kwargs);
+            return parser[method].apply(parser, rArgs);
+    }
+
+    function testR1() {
+        var r = parse("1 + 2", "r1");
+        assertEquals(r.tree.toStringTree(), "(+ 1 2)");
+    }
+
+    function testR2a() {
+        var r = parse("assert 2+3;", "r2");
+        assertEquals(r.tree.toStringTree(), "(assert (+ 2 3))");
+    }
+
+    function testR2b() {
+        var r = parse("assert 2+3 : 5;", "r2");
+        assertEquals(r.tree.toStringTree(), "(assert (+ 2 3) 5)");
+    }
+
+    function testR3a() {
+        var r = parse("if 1 fooze", "r3");
+        assertEquals(r.tree.toStringTree(), "(if 1 fooze)");
+    }
+
+    function testR3b() {
+        var r = parse("if 1 fooze else fooze", "r3");
+        assertEquals(r.tree.toStringTree(), "(if 1 fooze fooze)");
+    }
+
+    function testR4a() {
+        var r = parse("while 2 fooze", "r4");
+        assertEquals(r.tree.toStringTree(), "(while 2 fooze)");
+    }
+
+    function testR4b() {
+        var r = parse("while 2 fooze", "r4");
+        assertEquals(r.tree.toStringTree(), "(while 2 fooze)");
+    }
+
+    function testR5a() {
+        var r = parse("return;", "r5");
+        assertEquals(r.tree.toStringTree(), "return");
+    }
+
+    function testR5b() {
+        var r = parse("return 2+3;", "r5");
+        assertEquals(r.tree.toStringTree(), "(return (+ 2 3))");
+    }
+
+    function testR6a() {
+        var r = parse("3", "r6");
+        assertEquals(r.tree.toStringTree(), "3");
+    }
+
+    function testR6b() {
+        var r = parse("3 a", "r6");
+        assertEquals(r.tree.toStringTree(), "3 a");
+    }
+
+    function testR7() {
+        var r = parse("3", "r7");
+        assertNull(r.tree);
+    }
+
+    function testR8() {
+        var r = parse("var foo:bool", "r8");
+        assertEquals(r.tree.toStringTree(), "(var bool foo)");
+    }
+
+    function testR9() {
+        var r = parse("int foo;", "r9");
+        assertEquals(r.tree.toStringTree(), "(VARDEF int foo)");
+    }
+
+    function testR10() {
+        var r = parse("10", "r10");
+        assertEquals(r.tree.toStringTree(), "10.0");
+    }
+
+    function testR11a() {
+        var r = parse("1+2", "r11");
+        assertEquals(r.tree.toStringTree(), "(EXPR (+ 1 2))");
+    }
+
+    function testR11b() {
+        var r = parse("", "r11");
+        assertEquals(r.tree.toStringTree(), "EXPR");
+    }
+
+    function testR12a() {
+        var r = parse("foo", "r12");
+        assertEquals(r.tree.toStringTree(), "foo");
+    }
+
+    function testR12b() {
+        var r = parse("foo, bar, gnurz", "r12");
+        assertEquals(r.tree.toStringTree(), "foo bar gnurz");
+    }
+   
+    function testR13a() {
+        var r = parse("int foo;", "r13");
+        assertEquals(r.tree.toStringTree(), "(int foo)");
+    }
+   
+    function testR13b() {
+        var r = parse("bool foo, bar, gnurz;", "r13");
+        assertEquals(r.tree.toStringTree(), "(bool foo bar gnurz)");
+    }
+
+    function testR14a() {
+        var r = parse("1+2 int", "r14");
+        assertEquals(r.tree.toStringTree(), "(EXPR (+ 1 2) int)");
+    }
+
+    function testR14b() {
+        var r = parse("1+2 int bool", "r14");
+        assertEquals(r.tree.toStringTree(), "(EXPR (+ 1 2) int bool)");
+    }
+
+    function testR14c() {
+        var r = parse("int bool", "r14");
+        assertEquals(r.tree.toStringTree(), "(EXPR int bool)");
+    }
+
+    function testR14d() {
+        var r = parse("fooze fooze int bool", "r14");
+        assertEquals(r.tree.toStringTree(), "(EXPR fooze fooze int bool)");
+    }
+
+    function testR14e() {
+        var r = parse("7+9 fooze fooze int bool", "r14");
+        assertEquals(r.tree.toStringTree(), "(EXPR (+ 7 9) fooze fooze int bool)");
+    }
+
+    function testR15() {
+        var r = parse("7", "r15");
+        assertEquals(r.tree.toStringTree(), "7 7");
+    }
+
+    function testR16a() {
+        var r = parse("int foo", "r16");
+        assertEquals(r.tree.toStringTree(), "(int foo)");
+    }
+
+    function testR16b() {
+        var r = parse("int foo, bar, gnurz", "r16");
+        assertEquals(r.tree.toStringTree(), "(int foo) (int bar) (int gnurz)");
+    }
+
+    function testR17a() {
+        var r = parse("for ( fooze ; 1 + 2 ; fooze ) fooze", "r17");
+        assertEquals(r.tree.toStringTree(), "(for fooze (+ 1 2) fooze fooze)");
+    }
+
+    function testR18a() {
+        var r = parse("for", "r18");
+        assertEquals(r.tree.toStringTree(), "BLOCK");
+    }
+
+    function testR19a() {
+        var r = parse("for", "r19");
+        assertEquals(r.tree.toStringTree(), "for");
+    }
+
+    function testR20a() {
+        var r = parse("for", "r20");
+        assertEquals(r.tree.toStringTree(), "FOR");
+    }
+  
+    function testR21a() {
+        var r = parse("for", "r21");
+        assertEquals(r.tree.toStringTree(), "BLOCK");
+    }
+
+    function testR22a() {
+        var r = parse("for", "r22");
+        assertEquals(r.tree.toStringTree(), "for");
+    }
+
+    function testR23a() {
+        var r = parse("for", "r23");
+        assertEquals(r.tree.toStringTree(), "FOR");
+    }
+
+    function testR24a() {
+        var r = parse("fooze 1 + 2", "r24");
+        assertEquals(r.tree.toStringTree(), "(fooze (+ 1 2))");
+    }
+
+    function testR25a() {
+        var r = parse("fooze, fooze 1 + 2", "r25");
+        assertEquals(r.tree.toStringTree(), "(fooze (+ 1 2))");
+    }
+
+    function testR26a() {
+        var r = parse("fooze, fooze2", "r26");
+        assertEquals(r.tree.toStringTree(), "(BLOCK fooze fooze2)");
+    }
+
+    function testR27a() {
+        var r = parse("fooze 1 + 2", "r27");
+        assertEquals(r.tree.toStringTree(), "(fooze (fooze (+ 1 2)))");
+    }
+
+    function testR28() {
+        var r = parse("foo28a", "r28");
+        assertNull(r.getTree());
+    }
+
+    function testR29() {
+        try {
+            var r = parse("", "r29");
+            fail("should not reach here");
+        } catch(e) {}
+    }
+
+    function testR31a() {
+        var r = parse("public int gnurz = 1 + 2;", "r31", null, {flag:0});
+        assertEquals(r.tree.toStringTree(), '(VARDEF gnurz public int (+ 1 2))');
+    }
+
+    function testR31b() {
+        var r = parse("public int gnurz = 1 + 2;", "r31", null, {flag:1});
+        assertEquals(r.tree.toStringTree(), '(VARIABLE gnurz public int (+ 1 2))');
+    }
+
+    function testR31c() {
+        var r = parse("public int gnurz = 1 + 2;", "r31", null, {flag:2});
+        assertEquals(r.tree.toStringTree(), '(FIELD gnurz public int (+ 1 2))');
+    }
+
+    function testR32a() {
+        var r = parse("gnurz 32", "r32", [1], {flag:2});
+        assertEquals(r.tree.toStringTree(), 'gnurz');
+    }
+
+    function testR32b() {
+        var r = parse("gnurz 32", "r32", [2], {flag:2});
+        assertEquals(r.tree.toStringTree(), '32');
+    }
+
+    function testR32c() {
+        var r = parse("gnurz 32", "r32", [3], {flag:2});
+        assertNull(r.tree);
+    }
+
+    function testR33a() {
+        var r = parse("public private fooze", "r33", [2], {flag:2});
+        assertEquals(r.tree.toStringTree(), 'fooze');
+    }
+
+    function testR34a() {
+        var r = parse("public class gnurz { fooze fooze2 }", "r34");
+        assertEquals(r.tree.toStringTree(), "(class gnurz public fooze fooze2)");
+    }
+
+    function testR34b() {
+        var r = parse("public class gnurz extends bool implements int, bool { fooze fooze2 }", "r34");
+        assertEquals(r.tree.toStringTree(), "(class gnurz public (extends bool) (implements int bool) fooze fooze2)");
+    }
+
+    function testR35() {
+        try {
+            var r = parse("{ extends }", "r35");
+            fail("should not reach here");
+        } catch(e) {}
+    }
+
+    function testR36a() {
+        var r = parse("if ( 1 + 2 ) fooze", "r36");
+        assertEquals(r.tree.toStringTree(), "(if (EXPR (+ 1 2)) fooze)");
+    }
+
+    function testR36b() {
+        var r = parse("if ( 1 + 2 ) fooze else fooze2", "r36");
+        assertEquals(r.tree.toStringTree(), "(if (EXPR (+ 1 2)) fooze fooze2)");
+    }
+
+    function testR37() {
+        var r = parse("1 + 2 + 3", "r37");
+        assertEquals(r.tree.toStringTree(), "(+ (+ 1 2) 3)");
+    }
+
+    function testR38() {
+        var r = parse("1 + 2 + 3", "r38");
+        assertEquals(r.tree.toStringTree(), "(+ (+ 1 2) 3)");
+    }
+
+    function testR39a() {
+        var r = parse("gnurz[1]", "r39");
+        assertEquals(r.tree.toStringTree(), "(INDEX gnurz 1)");
+    }
+
+    function testR39b() {
+        var r = parse("gnurz(2)", "r39");
+        assertEquals(r.tree.toStringTree(), "(CALL gnurz 2)");
+    }
+
+    function testR39c() {
+        var r = parse("gnurz.gnurz", "r39");
+        assertEquals(r.tree.toStringTree(), "(FIELDACCESS gnurz gnurz)");
+    }
+ 
+    function testR39d() {
+        var r = parse("gnurz.gnarz.gnorz", "r39");
+        assertEquals(r.tree.toStringTree(), "(FIELDACCESS (FIELDACCESS gnurz gnarz) gnorz)");
+    }
+
+    function testR40() {
+        var r = parse("1 + 2 + 3;", "r40");
+        assertEquals(r.tree.toStringTree(), "(+ 1 2 3)");
+    }
+
+    function testR41() {
+        var r = parse("1 + 2 + 3;", "r41");
+        assertEquals(r.tree.toStringTree(), "(3 (2 1))");
+    }
+
+    function testR42() {
+        var r = parse("gnurz, gnarz, gnorz", "r42");
+        assertEquals(r.tree.toStringTree(), "gnurz gnarz gnorz");
+    }
+
+    function testR43() {
+        var r = parse("gnurz, gnarz, gnorz", "r43");
+        assertNull(r.tree);
+        assertArrayEquals(r.res, ["gnurz", "gnarz", "gnorz"]);
+    }
+
+    function testR44() {
+        var r = parse("gnurz, gnarz, gnorz", "r44");
+        assertEquals(r.tree.toStringTree(), "(gnorz (gnarz gnurz))");
+    }
+
+    function testR45() {
+        var r = parse("gnurz", "r45");
+        assertEquals(r.tree.toStringTree(), "gnurz");
+    }
+
+    function testR46() {
+        var r = parse("gnurz, gnarz, gnorz", "r46");
+        assertNull(r.tree);
+        assertArrayEquals(r.res, ["gnurz", "gnarz", "gnorz"]);
+    }
+
+    function testR47() {
+        var r = parse("gnurz, gnarz, gnorz", "r47");
+        assertEquals(r.tree.toStringTree(), "gnurz gnarz gnorz");
+    }
+
+    function testR48() {
+        var r = parse("gnurz, gnarz, gnorz", "r48");
+        assertEquals(r.tree.toStringTree(), "gnurz gnarz gnorz");
+    }
+
+    function testR49() {
+        var r = parse("gnurz gnorz", "r49");
+        assertEquals(r.tree.toStringTree(), "(gnurz gnorz)");
+    }
+
+    function testR50() {
+        var r = parse("gnurz", "r50");
+        assertEquals(r.tree.toStringTree(), "(1.0 gnurz)");
+    }
+
+    function testR51() {
+        var r = parse("gnurza gnurzb gnurzc", "r51");
+        assertEquals(r.res.toStringTree(), "gnurzb");
+    }
+
+    function testR52() {
+        var r = parse("gnurz", "r52");
+        assertEquals(r.res.toStringTree(), "gnurz");
+    }
+
+    function testR53() {
+        var r = parse("gnurz", "r53");
+        assertEquals(r.res.toStringTree(), "gnurz");
+    }
+
+    function testR54() {
+        var r = parse("gnurza 1 + 2 gnurzb", "r54");
+        assertEquals(r.tree.toStringTree(), "(+ 1 2)");
+    }
+
+    function testR55a() {
+        var r = parse("public private 1 + 2", "r55");
+        assertEquals(r.tree.toStringTree(), "public private (+ 1 2)");
+    }
+
+    function testR55b() {
+        var r = parse("public fooze", "r55");
+        assertEquals(r.tree.toStringTree(), "public fooze"); 
+    }
+
+    function testR56() {
+        var r = parse("a b c d", "r56");
+        assertEquals(r.tree.toStringTree(), "foo"); 
+    }
+
+    function testR57() {
+        var r = parse("a b c d", "r57");
+        assertEquals(r.tree.toStringTree(), "foo"); 
+    }
+
+    function testR59() {
+        var r = parse("a b c fooze", "r59");
+        assertEquals(r.tree.toStringTree(), "(a fooze) (b fooze) (c fooze)"); 
+    }
+</script>
+
+</head>
+<body>
+    <h1>t042ast</h1>
+</body>
+</html>

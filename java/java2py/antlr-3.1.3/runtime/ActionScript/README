@@ -1,0 +1,66 @@
+1) ABOUT
+========
+
+This is the ActionScript package 'antlr3', which is required to use parsers created
+by the ANTLR3 tool. See <http://www.antlr.org/> for more information about
+ANTLR3.
+
+
+2) STATUS
+=========
+
+The ActionScript target for ANTLR3 is considered a solid beta at this point.  Most things
+should work, but a comprehensive suite of tests has not been built yet, so some areas may
+be untested.
+
+3) DOWNLOAD
+===========
+
+This runtime is part of the ANTLR distribution. The latest version can be found
+at <http://www.antlr.org/download.html>.
+
+If you are interested in the latest, most bleeding edge version, have a look at
+the perforce depot at <http://fisheye2.cenqua.com/browse/antlr>. There are
+tarballs ready to download, so you don't have to install the perforce client.
+
+
+4) USAGE
+===============
+
+Include the antlr3.swc from the lib directory into your flex project.
+
+5) DOCUMENTATION
+================
+
+API Documentation is available in the file "antlr3-asdoc.zip"  User documentation
+(as far as it exists) can be found in the wiki
+<http://www.antlr.org/wiki/display/ANTLR3/Antlr3ActionScriptTarget>
+
+
+6) REPORTING BUGS
+=================
+
+Please send bug reports to the ANTLR mailing list 
+<http://www.antlr.org:8080/mailman/listinfo/antlr-interest> or
+<george.scott-antrl@gmail.com>.  Direct e-mail is preferable as the antlr-interest
+list is not read on a daily basis by the maintainers.
+
+Existing bugs may appear someday in the bugtracker:
+<http://www.antlr.org:8888/browse/ANTLR>
+
+
+7) HACKING
+==========
+
+Only the runtime package can be found here. There are also some StringTemplate
+files in 'src/org/antlr/codegen/templates/ActionScript/' and some Java code in
+'src/org/antlr/codegen/ActionScriptTarget.java' (of the main ANTLR3 source
+distribution).
+
+The 'project' directory contains everything you need to rebuild the library from source.
+It also includes all unit tests.
+
+Please send patches to <george.scott-antlr@gmail.com>. For larger code contributions you'll
+have to sign the "Developer's Certificate of Origin", which can be found on
+<http://www.antlr.org/license.html> or use the feedback form at
+<http://www.antlr.org/misc/feedback>.

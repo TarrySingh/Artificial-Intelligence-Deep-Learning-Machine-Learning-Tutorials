@@ -1,0 +1,75 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t009lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t009lexer.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function TLexer() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TLexer, t009lexer, {
+        reportError: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    function testValid() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("085"),
+            lexer = new TLexer(stream),
+            token;
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.DIGIT);
+        assertEquals(token.getStartIndex(), 0);
+        assertEquals(token.getStopIndex(), 0);
+        assertEquals(token.getText(), "0");
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.DIGIT);
+        assertEquals(token.getStartIndex(), 1);
+        assertEquals(token.getStopIndex(), 1);
+        assertEquals(token.getText(), '8');
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.DIGIT);
+        assertEquals(token.getStartIndex(), 2);
+        assertEquals(token.getStopIndex(), 2);
+        assertEquals(token.getText(), '5');
+
+       token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.EOF);
+    }
+
+    function testMalformedInput() {
+        var stream = new org.antlr.runtime.ANTLRStringStream('2a'),
+            lexer = new TLexer(stream),
+            token;
+
+        lexer.nextToken();
+        try {
+            token = lexer.nextToken();
+            fail("nextToken should have thrown error on invalid input");
+        } catch (e) {
+            assertEquals(e.a, '0');
+            assertEquals(e.b, '9');
+            assertEquals(e.getUnexpectedType(), 'a');
+            assertEquals(e.charPositionInLine, 1);
+            assertEquals(e.line, 1);
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t009lexer</h1>
+</body>

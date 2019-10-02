@@ -1,0 +1,19 @@
+group gunit;
+
+gUnitFile(testSuite) ::= <<gunit <testSuite.grammarName>;
+
+<testSuite.rulesForStringTemplate:testGroup()>
+>>
+
+testGroup() ::= <<
+<if(it.notEmpty)>
+
+//------------------- <it.name>
+<it.name>:
+
+<it.testCases: testCase(); separator="\n\n">
+
+<endif>
+>>
+
+testCase() ::= "<it.input> <it.output>"

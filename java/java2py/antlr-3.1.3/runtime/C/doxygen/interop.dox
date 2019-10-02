@@ -1,0 +1,327 @@
+/// \page interop Interacting with the Generated Code
+///
+/// \section intro Introduction
+///
+/// The main way to interact with the generated code is via action code placed within <code>{</code> and
+/// <code>}</code> characters in your rules. In general, you are advised to keep the code you embed within
+/// these actions, and the grammar itself to an absolute minimum. Rather than embed code directly in your
+/// grammar, you should construct an API, that is called from the actions within your grammar. This way
+/// you will keep the grammar clean and maintainable and separate the code generators or other code
+/// from the definition of the grammar itself.
+///
+/// However, when you wish to call your API functions, or insert small pieces of code that do not 
+/// warrant external functions, you will need to access elements of tokens, return elements from 
+/// parser rules and perhaps the internals of the recognizer itself. The C runtime provides a number
+/// of MACROs that you can use within your action code. It also provides a number of performant
+/// structures that you may find useful for building symbol tables, lists, tries, stacks, arrays and so on (all
+/// of which are managed so that your memory allocation problems are minimized.)
+///
+/// \section rules Parameters and Returns from Parser Rules
+///
+/// The C target does not differ from the Java target in any major ways here, and you should consult
+/// the standard documentation for the use of parameters on rules and the returns clause. You should
+/// be aware though, that the rules generate C function calls and therefore the input and returns
+/// clauses are subject to the constraints of C scoping.
+///
+/// You should note that if your parser rule returns more than a single entity, then the return
+/// type of the generated rule function is a struct, which is returned by value. This is also the case
+/// if your rule is part of a tree building grammar (uses the <code>output=AST;</code> option.
+///
+/// Other than the notes above, you can use any pre-declared type as an input or output parameter
+/// for your rule. 
+///
+/// \section memory Memory Management
+///
+/// You are responsible for allocating and freeing any memory used by your own
+/// constructs, ANTLR will track and release any memory allocated internally for tokens, trees, stacks, scopes
+/// and so on. This memory is returned to the malloc pool when you call the free method of any
+/// ANTLR3 produced structure.
+///
+/// For performance reasons, and to avoid thrashing the malloc allocation system, memory for amy elements
+/// of your generated parser is allocated in chunks and parcelled out by factories. For instance memory
+/// for tokens is created as an array of tokens, and a token factory hands out the next available slot
+/// to the lexer. When you free the lexer, the allocated memory is returned to the pool. The same applies
+/// to 'strings' that contain the token text and various other text elements accessed within the lexer.
+///
+/// The only side effect of this is that after your parse and analysis is complete, if you wish to retain
+/// anything generated automatically, you must copy it before freeing the recognizer structures. In practice
+/// it is usually practical to retain the recognizer context objects until your processing is complete or
+/// to use your own allocation scheme for generating output etc.
+///
+/// The advantage of using object factories is of course that memory leaks and accessing de-allocated
+/// memory are bugs that rarely occur within the ANTLR3 C runtime. Further, allocating memory for 
+/// tokens, trees and so on is very fast.
+///
+/// \section ctx The CTX Macro
+///
+/// The CTX macro is a fundamental parameter that is passed as the first parameter to any generated function
+/// concerned with your lexer, parser, or tree parser. The is is the context pointer for your generated
+/// recognizer and is how you invoke the generated functions, and access the data embedded within your generated
+/// recognizer. While you can use it to directly access stacks, scopes and so on, this is not really recommended
+/// as you should use the $xxx references that are available generically within ANTLR grammars.
+///
+/// The context pointer is used because this removes the need for any global/static variables at all, either
+/// within the generated code, or the C runtime. This is of course fundamental to creating free threading
+/// recognizers. Wherever a function call or rule call required the ctx parameter, you either reference it
+/// via the CTX macro, or the ctx parameter is in fact the return type from calling the 'constructor'
+/// function for your parser/lexer/tree parser (see code example in "How to build Generated Code" .)
+///
+/// \section macros Pre-Defined convenience MACROs 
+///
+/// While the author is not fond of using C MACROs to hide code or structure access, in the case of generated
+/// code, they serve two useful purposes. The first is to simplify the references to internal constructs,
+/// the second is to facilitate the change of any internal interface without requiring you to port grammars
+/// from earlier versions (just regenerate and recompile). As of release 3.1, these macros are stable and
+/// will only change their usage interface in the event of bugs being discovered. You are encouraged to 
+/// use these macros in your code, rather than access the raw interface.
+///
+/// \bNB: Macros that act like statements must be terminated with a ';'. The macro body does not
+/// supply this, nor should it. Macros that call functions are declared with () even if they
+/// have no parameters, macros that reference fields do not have a () declaration.
+///
+/// \section lexermacros Lexer Macros
+///
+/// There are a number of macros that are useful exclusively within lexer rules. There are additional
+/// macros, common to all recognizer, and these are documented in the section Common Macros.
+///
+/// \subsection lexer LEXER
+///
+/// The <code>LEXER</code> macro returns a pointer to the base lexer object, which is of type #pANTLR3_LEXER. This is
+/// not the pointer to your generated lexer, which is supplied by the CTX macro,
+/// but to the common implementation of a lexer interface,
+/// which is supplied to all generated lexers.
+///
+/// \subsection lexstate LEXSTATE
+///
+/// Provides a pointer to the lexer shared state structure, which is where the tokens for a
+/// rule are constructed and the status elements of the lexer are kept. This pointer is of type
+/// #pANTLR3_RECOGNIZER_SHARED_STATE.In general you should only access elements of this structure
+/// if there is not already another MACRO or standard $xxxx antlr reference that refers to it.
+///
+/// \subsection la LA(n)
+///
+/// The <code>LA</code> macro returns the character at index n from the current input stream index. The return 
+/// type is #ANTLR3_UINT32. Hence <code>LA(1)</code> returns the character at the current input position (the
+/// character that will be consumed next), <code>LA(-1)</code> returns the character that has just been consumed
+/// and so on. The <code>LA(n)</code> macro is useful for constructing semantic predicates in lexer rules. The
+/// reference <code>LA(0)</code> is undefined and will cause an error in your lexer.
+///
+/// \subsection getcharindex GETCHARINDEX()
+///
+/// The <code>GETCHARINDEX</code> macro returns the index of the current character position as a 0 based
+/// offset from the start of the input stream. It returns a value type of #ANTLR3_UINT32.
+///
+/// \subsection getline GETLINE()
+///
+/// The <code>GETLINE</code> macro returns the line number of current character (<code>LA(1)</code> in the input
+/// stream. It returns a value type of #ANTLR3_UINT32. Note that the line number is incremented
+/// automatically by an input stream when it sees the input character '\n'. The character that causes
+/// the line number to increment can be changed by calling the SetNewLineChar() method on the input
+/// stream before invoking the lexer and after creating the input stream.
+///
+/// \subsection gettext GETTEXT()
+///
+/// The <code>GETTEXT</code> macro returns the text currently matched by the lexer rule. In general you should use the
+/// generic $text reference in ANTLR to retrieve this. The return type is a reference type of #pANTLR3_STRING
+/// which allows you to manipulate the text you have retrieved (\b NB this does not change the input stream
+/// only the text you copy from the input stream when you use this MACRO or $text). 
+///
+/// The reference $text->chars or GETTEXT()->chars will reference a pointer to the '\\0' terminated character
+/// string that the ANTLR3 #pANTLR3_STRING represents. String space is allocated automatically as well as
+/// the structure that holds the string. The #pANTLR3_STRING_FACTORY associated with the lexer handles this
+/// and when you close the lexer, it will automatically free any space allocated for strings and their structures.
+///
+/// \subsection getcharpositioninline GETCHARPOSITIONINLINE()
+///
+/// The <code>GETCHARPOSITIONINLINE</code> returns the zero based offset of character <code>LA(1)</code> 
+/// from the start of the current input line. See the macro <code>GETLINE</code> for details on what the 
+/// line number means.
+///
+/// \subsection emit EMIT()
+///
+/// The macro <code>EMIT</code> causes the text range currently matched to the lexer rule to be emitted
+/// immediately as the token for the rule. Subsequent text is matched but ignored. The type used for the
+/// the token is the name of the lexer rule or, if you have change this by using $type = XXX;, the type
+/// XXX is used.
+///
+/// \subsection emitnew EMITNEW(t)
+///
+/// The macro <code>EMITNEW</code> causes the supplied token reference <code>t</code> to be used as the
+/// token emitted by the rule. The parameter <code>t </code> must be of type #pANTLR3_COMMON_TOKEN.
+///
+/// \subsection index INDEX()
+/// 
+/// The <code>INDEX</code> macro returns the current input position according to the input stream. It is not
+/// guaranteed to be the character offset in the input stream but is instead used as a value
+/// for marking and rewinding to specific points in the input stream. Use the macro <code>GETCHARINDEX()</code>
+/// to find out the position of the <code>LA(1)</code> in the input stream.
+///
+/// \subsection pushstream PUSHSTREAM(str)
+///
+/// The <code>PUSHSTREAM</code> macro, in conjunction with the <code>POPSTREAM</code> macro (called internally in the runtime usually)
+/// can be used to stack many input streams to the lexer, and implement constructs such as the C pre-processor
+/// \#include directive. 
+/// 
+/// An input stream that is pushed on to the stack becomes the current input stream for the lexer and 
+/// the state of the previous stream is automatically saved. The input stream will be automatically
+/// popped from the stack when it is exhausted by the lexer. You may use the macro <code>POPSTREAM</code>
+/// to return to the previous input stream prior to exhausting the currently stacked input stream.
+///
+/// Here is an example of using the macro in a lexer to implement the C \#include pre-processor directive:
+///
+/// \code
+/// fragment
+/// STRING_GUTS :	(~('\\'|'"') )* ;
+///
+/// LINE_COMMAND 
+/// : '#' (' ' | '\t')*
+/// 	(
+/// 	    'include' (' ' | '\t')+ '"' file = STRING_GUTS '"' (' ' | '\t')* '\r'? '\n'
+/// 		{
+/// 		    pANTLR3_STRING	    fName;
+/// 		    pANTLR3_INPUT_STREAM    in;
+/// 
+/// 		    // Create an initial string, then take a substring
+/// 		    // We can do this by messing with the start and end
+/// 		    // pointers of tokens and so on. This shows a reasonable way to
+/// 		    // manipulate strings.
+/// 		    //
+/// 		    fName = $file.text;
+/// 		    printf("Including file '\%s'\n", fName->chars);
+/// 
+/// 		    // Create a new input stream and take advantage of built in stream stacking
+/// 		    // in C target runtime.
+/// 		    //
+/// 		    in = antlr3AsciiFileStreamNew(fName->chars);
+/// 		    PUSHSTREAM(in);
+/// 
+/// 		    // Note that the input stream is not closed when it EOFs, I don't bother
+/// 		    // to do it here, but it is up to you to track streams created like this
+/// 		    // and destroy them when the whole parse session is complete. Remember that you
+/// 		    // don't want to do this until all tokens have been manipulated all the way through 
+/// 		    // your tree parsers etc as the token does not store the text it just refers
+/// 		    // back to the input stream and trying to get the text for it will abort if you
+/// 		    // close the input stream too early.
+/// 		    //
+/// 
+/// 		}
+///             | (('0'..'9')=>('0'..'9'))+ ~('\n'|'\r')* '\r'? '\n'
+/// 	    )
+/// 	 {$channel=HIDDEN;}
+///     ;
+/// \endcode
+///
+/// \subsection popstream POPSTREAM()
+///
+/// Assuming that you have stacked an input stream using the PUSHSTREAM macro, you can 
+/// remove it from the stream stack and revert to the previous input stream. You should be careful
+/// to pop the stream at an appropriate point in your lexer action, so you do not match characters
+/// from one stream with those from another in the same rule (unless this is what you want to do)
+///
+/// \subsection settext SETTEXT(str)
+///
+/// A token manufactured by the lexer does not actually physically store the text from the
+/// input stream to which it matches. The token string is instead created only if you ask for
+/// the text. However if you wish to change the text that the token represents you can use
+/// this macro to set it explicitly. Note that this does not change the input stream text
+/// but associates the supplied #pANTLR3_STRING with the token. This string is then returned
+/// when parser and tree parser reference the tokens via the $xxx.text reference.
+///
+/// \subsection user1 USER1 USER2 USER3 and CUSTOM
+///
+/// While you can create your own custom token class and have the lexer deal with this, this
+/// is a lot of work compared to the trivial inheritance that can be achieved in the Java target.
+/// In many cases though, all that is needed is the addition of a few data items such as an
+/// integer or a pointer. Rather than require C programmers to create complicated structures
+/// just to add a few data items, the C target provides a few custom fields in the standard
+/// token, which will fulfil the needs of most lexers and parsers.
+///
+/// The token fields user1, user2, and user3 are all value types of #ANTLR_UINT32. In the
+/// parser you can reference these fields directly from the token: <code>x=TOKNAME { $x->user1 ...</code>
+/// but when you are building the token in the lexer, you must assign to the fields using the
+/// macros <code>USER1</code>, <code>USER2</code>, or <code>USER3</code>. As in:
+///
+/// \code
+/// LEXTOK: 'AAAAA' { USER1 = 99; } ;
+/// \endcode
+///
+///
+/// \section parsermacros Parser and Tree Parser Macros
+///
+/// \subsection parser PARSER
+///
+/// The <code>PARSER</code> macro returns a pointer to the base parser or tree parser object, which is of type #pANTLR3_PARSER
+/// or #pANTLR3_TREE_PARSER . This is not the pointer to your generated parser, which is supplied by the <code>CTX</code> macro,
+/// but to the common implementation of a parser or tree parser interface, which is supplied to all generated parsers.
+///
+/// \subsection index INDEX()
+///
+/// When used in the parser, the <code>INDEX</code> macro returns the position of the current
+/// token ( LT(1) ) in the input token stream. It can be used for <code>MARK</code> and <code>REWIND</code> 
+/// operations.
+///
+/// \subsection lt LT(n) and LA(n)
+///
+/// In the parser, the macro <code>LT(n)</code> returns the #pANTLR3_COMMON_TOKEN at offset <code>n</code> from
+/// the current token stream input position. The macro <code>LA(n)</code> returns the token type of the token
+/// at position <code>n</code>. The value <code>n</code> cannot be zero, and such a reference will return 
+/// <code>NULL</code> and possibly cause an error. <code>LA(1)</code> is the token that is about to be
+/// recognized and <code>LA(-1)</code> is the token that has just been recognized. Values of n that exceed the
+/// limits of the token stream boundaries will return <code>NULL</code>.
+///
+/// \subsection psrstate PSRSTATE
+///
+/// Returns the shared state pointer of type #pANTLR3_RECOGNIZER_SHARED_STATE. This is not generally
+/// useful to the grammar programmer as the useful elements have generic $xxx references built in to
+/// ANTLR.
+///
+/// \subsection adaptor ADAPTOR
+///
+/// When building an AST via a parser, the work of constructing and manipulating trees is done
+/// by a supplied adaptor class. The default class is usually fine for most tree operations but
+/// if you wish to build your own specialized linked/tree structure, then you may need to reference
+/// the adaptor you supply directly. The <code>ADAPTOR</code> macro returns the reference to the tree adaptor
+/// which is always of type #pANTLR3_BASE_TREE_ADAPTOR, even if it is your custom adapter.
+///
+/// \section commonmacros Macros Common to All Recognizers
+///
+/// \subsection recognizer RECOGNIZER
+///
+/// Returns a reference type of #pANTRL3_BASE_RECOGNIZER, which is the base functionality supplied
+/// to all recognizers, whether lexers, parsers or tree parsers. You can override methods in this
+/// interface by installing your own function pointers (once you know what you are doing).
+///
+/// \subsection input INPUT
+///
+/// Returns a reference to the input stream of the appropriate type for the recognizer. In a lexer
+/// this macro returns a reference type of #pANTLR3_INPUT_STREAM, in a parser this is type
+/// #pANTLR3_TOKEN_STREAM and in a tree parser this is type #pANTLR3_COMMON_TREE_NODE_STREAM.
+/// You can of course provide your own implementations of any of these interfaces.
+/// 
+/// \subsection mark MARK()
+///
+/// This macro will cause the input stream for the current recognizer to be marked with a
+/// checkpoint. It will return a value type of #ANTLR3_MARKER which you can use as the 
+/// parameter to a <code>REWIND</code> macro to return to the marked point in the input.
+/// 
+/// If you know you will only ever rewind to the last <code>MARK</code>, then you can ignore the return
+/// value of this macro and just use the <code>REWINDLAST</code> macro to return to the last <code>MARK</code> that
+/// was set in the input stream.
+///
+/// \subsection rewind REWIND(m)
+///
+/// Rewinds the appropriate input stream back to the marked checkpoint returned from a prior
+/// MARK macro call and supplied as the parameter <code>m</code> to the <code>REWIND(m)</code> 
+/// macro.
+///
+/// \subsection rewindlast REWINDLAST()
+///
+/// Rewinds the current input stream (character, tokens, tree nodes) back to the last checkpoint
+/// marker created by a <code>MARK</code> macro call. Fails silently if there was no prior
+/// <code>MARK</code> call.
+///
+/// \subsection seek SEEK(n)
+///
+/// Causes the input stream to position itself directly at offset <code>n</code> in the stream. Works for all
+/// input stream types, both lexer, parser and tree parser.
+///

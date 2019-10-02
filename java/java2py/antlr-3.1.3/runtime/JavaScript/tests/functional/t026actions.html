@@ -1,0 +1,36 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t026actions</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t026actionsLexer.js"></script>
+<script type="text/javascript" src="t026actionsParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function testValid1() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("foobar _Ab98 \n A12sdf"),
+            lexer = new t026actionsLexer(stream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new t026actionsParser(tstream),
+            token;
+
+        parser.emitErrorMessage = function() {};
+        parser.prog();
+        assertArrayEquals(parser.xlog, ["init;", "after;", "finally;"]);
+        assertArrayEquals(lexer.xlog, ["action;", "foobar 4 1 0 -1 0 0 5", "attribute;", "action;", "_Ab98 4 1 7 -1 0 7 11", "attribute;", "action;", "A12sdf 4 2 1 -1 0 15 20", "attribute;"]);
+    }
+</script>
+
+</head>
+<body>
+    <h1>t026actions</h1>
+</body>
+</html>

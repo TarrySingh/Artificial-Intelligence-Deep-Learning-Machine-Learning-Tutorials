@@ -1,0 +1,34 @@
+data:
+  train_features_file: ../../data/data.train.bpe.shuf.titles
+  train_labels_file: ../../data/data.train.bpe.shuf.comments
+  eval_features_file: ../../data/data.dev.bpe.titles
+  eval_labels_file: ../../data/data.dev.bpe.comments
+
+  source_words_vocabulary: ../../data/vocab.titles
+  target_words_vocabulary: ../../data/vocab.comments
+
+params:
+  average_loss_in_time: true
+  label_smoothing: 0.1
+  optimizer: LazyAdamOptimizer
+  optimizer_params:
+    beta1: 0.9
+    beta2: 0.998
+  learning_rate: 2
+  decay_type: noam_decay_v2
+  decay_params:
+    model_dim: 512
+    warmup_steps: 8000
+
+train:
+  effective_batch_size: 32384
+  batch_size: 4096
+  batch_type: tokens
+  maximum_features_length: 300
+  maximum_labels_length: 300
+  keep_checkpoint_max: 2
+  average_last_checkpoints: 8
+  train_steps: 300000
+
+eval:
+  eval_delay: 7200

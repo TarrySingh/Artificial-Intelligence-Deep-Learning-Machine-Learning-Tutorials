@@ -1,0 +1,87 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t010lexer</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t010lexer.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    function TLexer() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TLexer, t010lexer, {
+        reportError: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    function testValid() {
+        var stream = new org.antlr.runtime.ANTLRStringStream("foobar _Ab98 \n A12sdf"),
+
+            lexer = new TLexer(stream),
+            token;
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.IDENTIFIER);
+        assertEquals(token.getStartIndex(), 0);
+        assertEquals(token.getStopIndex(), 5);
+        assertEquals(token.getText(), "foobar");
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.WS);
+        assertEquals(token.getStartIndex(), 6);
+        assertEquals(token.getStopIndex(), 6);
+        assertEquals(token.getText(), ' ');
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.IDENTIFIER);
+        assertEquals(token.getStartIndex(), 7);
+        assertEquals(token.getStopIndex(), 11);
+        assertEquals(token.getText(), '_Ab98');
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.WS);
+        assertEquals(token.getStartIndex(), 12);
+        assertEquals(token.getStopIndex(), 14);
+        assertEquals(token.getText(), " \n ");
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.IDENTIFIER);
+        assertEquals(token.getStartIndex(), 15);
+        assertEquals(token.getStopIndex(), 20);
+        assertEquals(token.getText(), 'A12sdf');
+
+        token = lexer.nextToken();
+        assertEquals(token.getType(), lexer.EOF);
+    }
+
+    function testMalformedInput() {
+        var stream = new org.antlr.runtime.ANTLRStringStream('a-b'),
+            lexer = new TLexer(stream),
+            token;
+
+        lexer.nextToken();
+        try {
+            token = lexer.nextToken();
+            fail("nextToken should have thrown error on invalid input");
+        } catch (e) {
+            assert(e instanceof org.antlr.runtime.NoViableAltException);
+            assertEquals(e.getUnexpectedType(), '-');
+            assertEquals(e.charPositionInLine, 1);
+            assertEquals(e.line, 1);
+        }
+    }
+</script>
+
+</head>
+<body>
+    <h1>t010lexer</h1>
+</body>

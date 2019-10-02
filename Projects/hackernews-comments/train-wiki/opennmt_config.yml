@@ -1,0 +1,43 @@
+model_dir: FILL
+
+data:
+  train_features_file: FILL
+  train_labels_file: FILL
+  eval_features_file: FILL
+  eval_labels_file: FILL
+
+  source_words_vocabulary: FILL
+  target_words_vocabulary: FILL
+
+params:
+  average_loss_in_time: true
+  label_smoothing: 0.1
+  optimizer: LazyAdamOptimizer
+  optimizer_params:
+    beta1: 0.9
+    beta2: 0.998
+  learning_rate: 2
+  decay_type: noam_decay_v2
+  decay_params:
+    model_dim: 512
+    warmup_steps: 8000
+  beam_width: 1
+  sampling_topk: 20
+
+train:
+  effective_batch_size: 65536
+  batch_size: 4096
+  batch_type: tokens
+  maximum_features_length: 512
+  maximum_labels_length: 512
+  keep_checkpoint_max: 20
+  average_last_checkpoints: 8
+  train_steps: 300000
+  sample_buffer_size: 0
+
+eval:
+  eval_delay: 7200
+  save_eval_predictions: false
+
+infer:
+  maximum_iterations: 512

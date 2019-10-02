@@ -1,0 +1,38 @@
+dist: trusty
+language: c++
+compiler: gcc
+install: export CXX="g++-8"
+git:
+  submodules: false
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-8
+      - g++-8
+      - libzmqpp-dev
+before_install:
+  # Load git submodules
+  - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+  - git submodule update --init --recursive
+  # Install Cmake >= 3.10.0
+  - wget -O cmake.sh https://cmake.org/files/v3.10/cmake-3.10.0-rc1-Linux-x86_64.sh
+  - sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
+  # Install libtorch
+  - wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-latest.zip -O /tmp/libtorch.zip
+  - unzip /tmp/libtorch.zip -d /tmp/
+  # Install cppcheck
+  - git clone https://github.com/danmar/cppcheck /tmp/cppcheck
+  - mkdir -p /tmp/cppcheck/build && cd /tmp/cppcheck/build && cmake .. && make -j2 && sudo make install && cd -
+script:
+  # Print compiler versions
+  - gcc -v && g++ -v && cmake --version
+  # Build
+  - mkdir build && cd build
+  - /usr/local/bin/cmake -DCMAKE_PREFIX_PATH=/tmp/libtorch ..
+  - make -j2
+  # Run tests
+  - ./cpprl_tests
+  # Cppcheck
+  - make check

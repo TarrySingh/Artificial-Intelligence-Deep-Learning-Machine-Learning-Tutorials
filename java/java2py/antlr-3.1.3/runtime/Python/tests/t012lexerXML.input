@@ -1,0 +1,21 @@
+<?xml version='1.0'?>
+<!DOCTYPE component [
+<!ELEMENT component (PCDATA|sub)*>
+<!ATTLIST component
+          attr CDATA #IMPLIED
+          attr2 CDATA #IMPLIED
+>
+<!ELMENT sub EMPTY>
+
+]>
+<component attr="val'ue" attr2='val"ue'>
+<!-- This is a comment -->
+Text
+<![CDATA[huhu]]>
+öäüß
+&amp;
+&lt;
+<?xtal cursor='11'?>
+<sub/>
+<sub></sub>
+</component>

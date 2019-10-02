@@ -1,0 +1,60 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t035ruleLabelPropertyRef</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t035ruleLabelPropertyRefLexer.js"></script>
+<script type="text/javascript" src="t035ruleLabelPropertyRefParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TLexer, t035ruleLabelPropertyRefLexer, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+    var TParser = function() {
+        TParser.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TParser, t035ruleLabelPropertyRefParser, {
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("   a a a a  "),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        var a = parser.a(),
+            start = a[0],
+            stop = a[1],
+            text = a[2];
+
+        assertEquals(start.index, 1);
+        assertEquals(stop.index, 7);
+        assertEquals(text, "a a a a");
+    }
+</script>
+
+</head>
+<body>
+    <h1>t035ruleLabelPropertyRef</h1>
+</body>
+</html>

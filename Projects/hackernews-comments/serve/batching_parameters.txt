@@ -1,0 +1,3 @@
+max_batch_size { value: 32 }
+batch_timeout_micros { value: 0 }
+pad_variable_length_inputs: true

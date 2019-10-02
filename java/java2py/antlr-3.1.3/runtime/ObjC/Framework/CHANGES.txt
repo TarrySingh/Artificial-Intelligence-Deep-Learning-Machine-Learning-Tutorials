@@ -1,0 +1,15 @@
+ANTLRv3 Objective C Framework
+
+Kay Roepke <kroepke@classdump.org>
+
+CHANGES
+
+December 16, 2007
+
+* Text of imaginary nodes in tree rewrite mode weren't using NSStrings causing a runtime exception
+
+* Add currently empty ANTLRCommonTreeNodeStream class, which will be buffering tree nodes
+
+* Add ANTLRUnbufferedCommonTreeNodeStreamState.h to ANTLR.h umbrella include file
+
+* Meta change: there now is a CHANGES.txt

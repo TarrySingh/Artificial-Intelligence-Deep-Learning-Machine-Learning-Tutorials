@@ -1,0 +1,129 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t047treeparser</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t047treeparserLexer.js"></script>
+<script type="text/javascript" src="t047treeparserParser.js"></script>
+<script type="text/javascript" src="t047treeparserWalker.js"></script>
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TLexer = function() {
+        TLexer.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TLexer, t047treeparserLexer, {
+        reportError: function(re) {
+            throw re;
+        }
+    });
+
+    var TParser = function() {
+        TParser.superclass.constructor.apply(this, arguments);
+    };
+    org.antlr.lang.extend(TParser, t047treeparserParser, {
+        recover: function(re) {
+        throw new PrivateError(re);
+        }
+    });
+
+    var TWalker = function() {
+        TWalker.superclass.constructor.apply(this, arguments);
+        this.traces = [];
+    };
+    org.antlr.lang.extend(TWalker, t047treeparserWalker, {
+        recover: function(re) {
+            throw new PrivateError(re);
+        },
+        traceIn: function(ruleName, ruleIndex) {
+            this.traces.push(">"+ruleName);
+        },
+        traceOut: function(ruleName, ruleIndex) {
+            this.traces.push("<"+ruleName);
+        }
+    });
+
+    function testWalker() {
+        var xinput = [
+                        "char c;",
+                        "int x;",
+                        "",
+                        "void bar(int x);",
+                        "",
+                        "int foo(int y, char d) {",
+                        "  int i;",
+                        "  for (i=0; i<3; i=i+1) {",
+                        "    x=3;",
+                        "    y=5;",
+                        "  }",
+                        "}"
+                     ].join("\n"),
+            xoutput = "(VAR_DEF char c) (VAR_DEF int x) (FUNC_DECL (FUNC_HDR void bar (ARG_DEF int x))) (FUNC_DEF (FUNC_HDR int foo (ARG_DEF int y) (ARG_DEF char d)) (BLOCK (VAR_DEF int i) (for (= i 0) (< i 3) (= i (+ i 1)) (BLOCK (= x 3) (= y 5)))))",
+            traces = [
+              '>program', '>declaration', '>variable', '>type', '<type',
+              '>declarator', '<declarator', '<variable', '<declaration',
+              '>declaration', '>variable', '>type', '<type', '>declarator',
+              '<declarator', '<variable', '<declaration', '>declaration',
+              '>functionHeader', '>type', '<type', '>formalParameter',
+              '>type', '<type', '>declarator', '<declarator',
+              '<formalParameter', '<functionHeader', '<declaration',
+              '>declaration', '>functionHeader', '>type', '<type',
+              '>formalParameter', '>type', '<type', '>declarator',
+              '<declarator', '<formalParameter', '>formalParameter', '>type',
+              '<type', '>declarator', '<declarator', '<formalParameter',
+              '<functionHeader', '>block', '>variable', '>type', '<type',
+              '>declarator', '<declarator', '<variable', '>stat', '>forStat',
+              '>expr', '>expr', '>atom', '<atom', '<expr', '<expr', '>expr',
+              '>expr', '>atom', '<atom', '<expr', '>expr', '>atom', '<atom',
+              '<expr', '<expr', '>expr', '>expr', '>expr', '>atom', '<atom',
+              '<expr', '>expr', '>atom', '<atom', '<expr', '<expr', '<expr',
+              '>block', '>stat', '>expr', '>expr', '>atom', '<atom', '<expr',
+              '<expr', '<stat', '>stat', '>expr', '>expr', '>atom', '<atom',
+              '<expr', '<expr', '<stat', '<block', '<forStat', '<stat',
+              '<block', '<declaration', '<program'
+            ];
+
+
+        var cstream = new org.antlr.runtime.ANTLRStringStream(xinput),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+        var r = parser.program();
+
+        assertEquals(r.getTree().toStringTree(), xoutput);
+
+        var nodes = new org.antlr.runtime.tree.CommonTreeNodeStream(r.getTree());
+        nodes.setTokenStream(tstream);
+        var walker = new TWalker(nodes);
+        walker.program();
+
+        assertArrayEquals(walker.traces, traces);
+    }
+
+    function testRuleLabelPropertyRefText() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("\nchar c;\n"),
+            lexer = new TLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream),
+            r = parser.variable();
+
+        var nodes = new org.antlr.runtime.tree.CommonTreeNodeStream(r.getTree());
+        nodes.setTokenStream(tstream);
+        var walker = new TWalker(nodes);
+        r = walker.variable();
+
+        assertEquals(r, 'c');
+    }
+</script>
+
+</head>
+<body>
+    <h1>t047treeparser</h1>
+</body>
+</html>

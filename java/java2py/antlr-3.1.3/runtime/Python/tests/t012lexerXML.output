@@ -1,0 +1,39 @@
+XML declaration
+Attr: version='1.0'
+ROOTELEMENT: component
+INTERNAL DTD: [
+<!ELEMENT component (PCDATA|sub)*>
+<!ATTLIST component
+          attr CDATA #IMPLIED
+          attr2 CDATA #IMPLIED
+>
+<!ELMENT sub EMPTY>
+
+]
+Start Tag: component
+Attr: attr="val'ue"
+Attr: attr2='val"ue'
+PCDATA: "
+"
+Comment: "<!-- This is a comment -->"
+PCDATA: "
+Text
+"
+CDATA: "<![CDATA[huhu]]>"
+PCDATA: "
+öäüß
+&amp;
+&lt;
+"
+PI: xtal
+Attr: cursor='11'
+PCDATA: "
+"
+Empty Element: sub
+PCDATA: "
+"
+Start Tag: sub
+End Tag: sub
+PCDATA: "
+"
+End Tag: component

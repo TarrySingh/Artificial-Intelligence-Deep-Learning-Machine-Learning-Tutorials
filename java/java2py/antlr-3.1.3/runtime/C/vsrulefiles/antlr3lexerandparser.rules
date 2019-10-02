@@ -1,0 +1,201 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<VisualStudioToolFile
+	Name="ANTLR3 Combo Lexer and Parser"
+	Version="8.00"
+	>
+	<Rules>
+		<CustomBuildRule
+			Name="Antlr3ParserLexer"
+			DisplayName="ANTLR 3 Parser/Lexer Grammar Translation"
+			CommandLine="[java] [JavaOptions] [ANTLR3Jar] org.antlr.Tool [LibDir] -[Absolute]o [OutputDirectory]  -message-format vs2005 [DFA] [NFA] [Report] [Print] [Debug] [Profile] [AST] [TextDFA] [EBNFExits] [CollapseEdges] [DebugNFA] [MaxRules] [MaxDFAEdges] [DFATimeout] [inputs]"
+			Outputs="[OutputDirectory]\$(InputName)Parser.c;[OutputDirectory]\$(InputName)Parser.h;[OutputDirectory]\$(InputName)Lexer.c;[OutputDirectory]\$(InputName)Lexer.h"
+			FileExtensions="*.g3pl;*.g3;*.g"
+			ExecutionDescription="Translating to parser/lexer combination"
+			SupportsFileBatching="true"
+			ShowOnlyRuleProperties="false"
+			>
+			<Properties>
+				<StringProperty
+					Name="JavaOptions"
+					DisplayName="Java VM Options"
+					PropertyPageName="Java"
+					Description="Specify any options required to invoke the java VM on this grammar file. Sometimes larger grammars require more memory than the standard allocation and you can specify this here."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="[value]"
+					Delimited="true"
+					Inheritable="true"
+				/>
+				<BooleanProperty
+					Name="DFA"
+					DisplayName="Generate DFA dots"
+					PropertyPageName="DOT"
+					Category="DOT Ouputs"
+					Description="When set to True ANTLR3 will produce a number of .dot files that can be used with dot/graphviz to genreate pictorial representations of the DFAs gnerated for this grammar."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-dfa"
+				/>
+				<BooleanProperty
+					Name="NFA"
+					DisplayName="Generate NFA DOTs"
+					Category="DOT Outputs"
+					Description="When set to True ANTLR3 will produce a number of .dot files that can be used with dot/graphviz to genreate pictorial representations of the NFAs generated for this grammar."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-nfa"
+				/>
+				<BooleanProperty
+					Name="Report"
+					DisplayName="Generate Report"
+					PropertyPageName="Reporting"
+					Category="Reporting"
+					Description="If set to True then ANTLR3 will generate reports about the grammar file(s) it processes."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-report"
+				/>
+				<BooleanProperty
+					Name="Print"
+					DisplayName="Print grammar"
+					PropertyPageName="Reporting"
+					Category="Reporting"
+					Description="If set to True ANTLR3 will print out the grammar without the associated actions"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-print"
+				/>
+				<BooleanProperty
+					Name="Debug"
+					DisplayName="Debug mode"
+					PropertyPageName="Code Generation"
+					Category="Output"
+					Description="If set to True ANTLR3 will generate code that fires debugging events. [JI - Not yet implemented]"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-debug"
+				/>
+				<BooleanProperty
+					Name="Profile"
+					DisplayName="Generate profile"
+					Category="Output"
+					Description="If set to True ANTLR3 will generate code that computes profiling information [JI - not yet implemented]"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-profile"
+				/>
+				<BooleanProperty
+					Name="AST"
+					DisplayName="Show AST"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="If True ANTLR3 will print out the grammar AST"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xgrtree"
+				/>
+				<StringProperty
+					Name="LibDir"
+					DisplayName="Token directory"
+					PropertyPageName="Code Generation"
+					Category="General"
+					Description="In which directory can ANTLR3 locate grammar token files if not in the same directory as the grammar file."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-lib [value]"
+					DefaultValue="$(InputDir)"
+				/>
+				<BooleanProperty
+					Name="TextDFA"
+					DisplayName="Text DFA"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="If True ANTLR3 will generate a text version of the DFAsfor this grammar."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xdfa"
+				/>
+				<BooleanProperty
+					Name="EBNFExits"
+					DisplayName="EBNF Exits"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="If True ANTLR3 will not test EBNF exit branches."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xnoprune"
+				/>
+				<StringProperty
+					Name="OutputDirectory"
+					DisplayName="Output Directory"
+					PropertyPageName="Code Generation"
+					Description="Which directory the generated output files be sent to if not the same directory as the grammar file."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="[value]"
+					DefaultValue="$(InputDir)"
+				/>
+				<BooleanProperty
+					Name="CollapseEdges"
+					DisplayName="Collapse Edges"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="Collapse incident edges into DFA states"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xnocollapse"
+				/>
+				<BooleanProperty
+					Name="DebugNFA"
+					DisplayName="Debug NFA"
+					Category="Reporting"
+					Description="If True, ANTLR3 will dump lots of information to the screen during NFA conversion."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xdbgconversion "
+				/>
+				<StringProperty
+					Name="ANTLR3Jar"
+					DisplayName="ANTLR3 Jar"
+					PropertyPageName="Java"
+					Category="JavaVM"
+					Description="Specifies the absolute location of the ANTLR3 jar file if it is not in a location covered by %CLASSPATH%. Specify using UNIX directory delimiters to minimize problems."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-jar &quot;[value]&quot;"
+				/>
+				<StringProperty
+					Name="Java"
+					DisplayName="Java command"
+					Description="Specifies the command that invokes the java VM. Usually java, but could be something else such as jikes"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="[value]"
+					DefaultValue="java"
+				/>
+				<IntegerProperty
+					Name="MaxRules"
+					DisplayName="Max rule call"
+					PropertyPageName="Extended"
+					Category="Analysis"
+					Description="Maximum number of rule invocations during conversion"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xm [value]"
+					DefaultValue="4"
+				/>
+				<IntegerProperty
+					Name="MaxDFAEdges"
+					DisplayName="Max DFA Edges"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="Maximum &quot;comfortable&quot; number of edges for single DFA state"
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xmaxdfaedges [value]"
+					DefaultValue="65534"
+				/>
+				<IntegerProperty
+					Name="DFATimeout"
+					DisplayName="DFA Timeout"
+					PropertyPageName="Extended"
+					Category="Extended"
+					Description="DFA conversion timeout period for each decision."
+					HelpURL="http://www.antlr.org/wiki/display/ANTLR3/Command+line+options"
+					Switch="-Xconversiontimeout [value]"
+					DefaultValue="1000"
+				/>
+				<BooleanProperty
+					Name="Absolute"
+					DisplayName="Absolute Directories"
+					PropertyPageName="Code Generation"
+					Description="If true, causes ANTLR to assume output directory is always the absolute output path and not to use relative paths as per the intput spec. For visual studio, this should usually be set to true."
+					Switch="f"
+					DefaultValue="true"
+				/>
+			</Properties>
+		</CustomBuildRule>
+	</Rules>
+</VisualStudioToolFile>

@@ -1,0 +1,45 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+<meta http-equiv="content-type" content="text/html;charset=utf-8" />
+<title>t033backtracking</title>
+
+<!-- ANTLR includes -->
+<script type="text/javascript" src="../../lib/antlr3-all.js"></script>
+<script type="text/javascript" src="t033backtrackingLexer.js"></script>
+<script type="text/javascript" src="t033backtrackingParser.js"></script>
+
+
+<!-- JsUnit include -->
+<script type="text/javascript" src="../jsunit/app/jsUnitCore.js"></script>
+
+<!-- Test Code -->
+<script type="text/javascript">
+    var TParser = function() {
+        this.cond = true;
+        TParser.superclass.constructor.apply(this, arguments);
+    }
+    org.antlr.lang.extend(TParser, t033backtrackingParser, {
+        emitErrorMessage: function() { /* don't report errors */ },
+        recover: function(re) {
+            /* don't recover, just crash */
+            throw re;
+        }
+    });
+
+
+    function testValid1() {
+        var cstream = new org.antlr.runtime.ANTLRStringStream("int a;"),
+            lexer = new t033backtrackingLexer(cstream),
+            tstream = new org.antlr.runtime.CommonTokenStream(lexer),
+            parser = new TParser(tstream);
+
+        var events = parser.translation_unit();
+    }
+</script>
+
+</head>
+<body>
+    <h1>t033backtracking</h1>
+</body>
+</html>

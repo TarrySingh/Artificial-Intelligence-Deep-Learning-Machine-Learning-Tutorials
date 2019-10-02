@@ -1,0 +1,56 @@
+/// \page changes31 Changes in 3.1 from 3.0
+///
+/// The following changes have taken place from 3.0 to 3.1. Some of
+/// them may require minor changes to your grammar files or the
+/// programs that invoke your grammar. Please take the time to read
+/// through this list as it may save you time later.
+///
+/// \section returns Constructor Return Values
+///
+/// In previous releases the return value from both the generated constructors and
+/// built in constructor functions would return a value of -1 or -2 if a problem
+/// occurred. However, the only problem that can really occur is lack of memory, 
+/// hence to avoid the remote change that some memory allocation scheme would return
+/// an address of -1 for a pointer, the return address is now NULL if there was
+/// no memory available. The old macros for this mechanism have been removed which
+/// will force you to read this information. You now need only check the return
+/// address for NULL, or you could not bother doing that and join with 95% of the world's
+/// C code.
+///
+/// \section trees Tree Parser Rewrites
+///
+/// The 3.1 runtime now supports tree rewrites from tree parsers. See the main ANTLR
+/// documentation for more details. This beta version contains \subpage knownissues regarding
+/// the release of mmeory allocated to tree nodes when they are rewritten in some combinations
+/// of re-writing tree parsers. These issues will be corrected before release.
+///
+/// \section debugger ANTLRWorks Debugger
+///
+/// The ANTLRWorks debugger is now fully supported by this version of the runtime. It
+/// supports remote debugging only (you cannot generate C, compile and debug it from the
+/// ANTLRWorks IDE.) However both parser and tree parser debugging is supported providing 
+/// you are using a version of ANTLRWorks that supports tree parser debugging. Generate
+/// the C code with the -debug option of the ANTLR tool, as per any other target.
+///
+/// Note that when you invoke your debugging version of the parser, it will appear to hang
+/// but is in fact waiting on a local TCP socket connection from the ANTLRWorks debugger. As the
+/// target environment is unknown, it is not prudent to generate notification status messages
+/// using something like printf, as the target environment may not have a console or implement
+/// printf.
+///
+/// \section macros Macro Changes
+///
+/// Prior to the 3.1 release, accessing the token source of a lexer required knowledge of where
+/// the token source pointer was located wihtin the lexer. In 3.1, the token source was burried
+/// further in the innards of the C runtime and such knowledge is considerd irreleavant and confusing.
+/// Hence, when creating a token stream from a token source, it is now mandatory to use the new
+/// C macro TOKENSOURCE(lxr), which will expand to point at the token source interface. This MACRO
+/// will be maintained across future versions. You can see how to use it in the downloadable 
+/// examples, avaiable from the downloads page of the ANTLR web site. Here is the relevant code
+/// for creating a token stream, extracted from those examples:
+///
+/// \code
+/// tstream = antlr3CommonTokenStreamSourceNew(ANTLR3_SIZE_HINT, TOKENSOURCE(lxr));
+/// \endcode
+///
+

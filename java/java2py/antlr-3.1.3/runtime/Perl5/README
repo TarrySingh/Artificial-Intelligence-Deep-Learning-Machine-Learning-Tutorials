@@ -1,0 +1,28 @@
+ANTLR::Runtime
+
+This is the Perl 5 runtime for ANTLR.  It is currently under early
+development.  Most parts are not working yet, and some of those that are need
+to catch up with the current development version.  The good news is that some
+parts are working, as illustrated by the examples.  You'd probably want to
+take a look at examples/expr/.
+
+
+KNOWN ISSUES
+============
+
+* Perl's syntax clashes with ANTLR's StringTemplate ('%') and variable ('$')
+syntax.  Expect error messages like the following.
+
+error(146): Expr.g:10:10: invalid StringTemplate % shorthand syntax: '%memory'
+error(114): Expr.g:18:9: attribute is not a token, parameter, or return value: memory
+error(114): Expr.g:36:9: attribute is not a token, parameter, or return value: v
+
+Currently, it's best to check the syntax of the generated code, like so:
+
+$ perl -c ExprLexer.pm
+ExprLexer.pm syntax OK
+
+$ perl -c ExprParser.pm
+ExprParser.pm syntax OK
+
+Or use the lexer/parser in an example.

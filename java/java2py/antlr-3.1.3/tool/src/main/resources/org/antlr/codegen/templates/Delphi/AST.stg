@@ -1,0 +1,445 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2008 Erik van Bilsen
+ Copyright (c) 2007-2008 Johannes Luber
+ Copyright (c) 2005-2007 Kunle Odutola
+ Copyright (c) 2005 Terence Parr
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+group AST;
+
+@outputFile.imports() ::= <<
+<@super.imports()><if(!TREE_PARSER)><! tree parser would already have imported !>  Antlr.Runtime.Tree,<\n><endif>
+>>
+
+@genericParser.members() ::= <<
+<@super.members()>
+<parserMembers()>
+>>
+
+@genericParser.membersConstructor() ::= <<
+<@super.membersConstructor()>
+<parserMembersConstructor()>
+>>
+
+@genericParser.membersImplementation() ::= <<
+<@super.membersImplementation()>
+<parserMembersImplementation()>
+>>
+
+/** Add an adaptor property that knows how to build trees */
+parserMembers() ::= <<
+  strict protected
+    FAdaptor: ITreeAdaptor;
+    procedure SetAdaptor(const Value: ITreeAdaptor);
+    property Adaptor: ITreeAdaptor read FAdaptor;
+  public
+    property TreeAdaptor: ITreeAdaptor read FAdaptor write SetAdaptor;
+
+>>
+
+parserMembersConstructor() ::= <<
+FAdaptor := TCommonTreeAdaptor.Create;
+>>
+
+parserMembersImplementation() ::= <<
+procedure T<grammar.recognizerName>.SetAdaptor(const Value: ITreeAdaptor);
+begin
+  FAdaptor := Value;
+  <grammar.directDelegates:{g|<g:delegateName()>.TreeAdaptor := FAdaptor;}>
+end;
+>>
+
+@returnScope.ruleReturnMembers() ::= <<
+function T<grammar.recognizerName>.T<ruleDescriptor:returnStructName()>.GetTree: IANTLRInterface;
+begin
+  Result := FTree;
+end;
+
+procedure T<grammar.recognizerName>.T<ruleDescriptor:returnStructName()>.SetTree(const Value: IANTLRInterface);
+begin
+  FTree := Value as I<ASTLabelType>;
+end;
+>>
+
+@returnScopeDeclaration.ruleReturnMembers() ::= <<
+strict private
+  FTree: I<ASTLabelType>;
+protected
+  { IRuleReturnScope }
+  function GetTree: IANTLRInterface; override;
+  procedure SetTree(const Value: IANTLRInterface); override;
+>>
+
+/** Add a variable to track rule's return AST */
+ruleDeclarations() ::= <<
+<super.ruleDeclarations()>
+Root[0] := nil;<\n>
+>>
+
+ruleDeclarationVars() ::= <<
+<super.ruleDeclarationVars()>
+Root: array [0..63] of I<ASTLabelType>;
+>>
+
+ruleLabelDefs() ::= <<
+<super.ruleLabelDefs()>
+<ruleDescriptor.tokenLabels:{<it.label.text>_tree := nil;}; separator="\n">
+<ruleDescriptor.tokenListLabels:{<it.label.text>_tree := nil;}; separator="\n">
+<ruleDescriptor.allTokenRefsInAltsWithRewrites:{Locals['Stream_<it>'] := TRewriteRule<rewriteElementType>Stream.Create(Adaptor,'token <it>');}; separator="\n">
+<ruleDescriptor.allRuleRefsInAltsWithRewrites:{Locals['Stream_<it>'] := TRewriteRuleSubtreeStream.Create(Adaptor,'rule <it>');}; separator="\n">
+>>
+
+ruleLabelDefVars() ::= <<
+<super.ruleLabelDefVars()>
+<ruleDescriptor.tokenLabels:{<it.label.text>_tree: I<ASTLabelType>;}; separator="\n">
+<ruleDescriptor.tokenListLabels:{<it.label.text>_tree: I<ASTLabelType>;}; separator="\n">
+>>
+/** When doing auto AST construction, we must define some variables;
+ *  These should be turned off if doing rewrites.  This must be a "mode"
+ *  as a rule could have both rewrite and AST within the same alternative
+ *  block.
+ */
+@alt.declarations() ::= <<
+<if(autoAST)>
+<if(outerAlt)>
+<if(!rewriteMode)>
+Root[0] := Adaptor.GetNilNode as I<ASTLabelType>;
+<endif>
+<endif>
+<endif>
+>>
+
+// T r a c k i n g  R u l e  E l e m e n t s
+
+/** ID and track it for use in a rewrite rule */
+tokenRefTrack(token,label,elementIndex,hetero) ::= <<
+<tokenRefBang(...)> <! Track implies no auto AST construction!>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>(Locals['Stream_<token>'] as IRewriteRuleElementStream).Add(<label>);<\n>
+>>
+
+/** ids+=ID and track it for use in a rewrite rule; adds to ids *and*
+ *  to the tracking list stream_ID for use in the rewrite.
+ */
+tokenRefTrackAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefTrack(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** ^(ID ...) track for rewrite */
+tokenRefRuleRootTrack(token,label,elementIndex,hetero) ::= <<
+<tokenRefBang(...)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>(Locals['Stream_<token>'] as IRewriteRuleElementStream).Add(<label>);<\n>
+>>
+
+/** Match ^(label+=TOKEN ...) track for rewrite */
+tokenRefRuleRootTrackAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefRuleRootTrack(...)>
+<listLabel(elem=label,...)>
+>>
+
+wildcardTrack(label,elementIndex) ::= <<
+<super.wildcard(...)>
+>>
+
+/** rule when output=AST and tracking for rewrite */
+ruleRefTrack(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>(Locals['Stream_<rule.name>'] as IRewriteRuleElementStream).Add(<label>.Tree);<\n>
+>>
+
+/** x+=rule when output=AST and tracking for rewrite */
+ruleRefTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefTrack(...)>
+<listLabel(elem=label+".Tree",...)>
+>>
+
+/** ^(rule ...) rewrite */
+ruleRefRuleRootTrack(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<if(backtracking)>if (State.Backtracking = 0) then <endif>(Locals['Stream_<rule>'] as IRewriteRuleElementStream).Add(<label>.Tree);
+>>
+
+/** ^(x+=rule ...) rewrite */
+ruleRefRuleRootTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRootTrack(...)>
+<listLabel(elem=label+".Tree",...)>
+>>
+
+// R e w r i t e
+
+rewriteCode(
+	alts, description,
+	referencedElementsDeep, // ALL referenced elements to right of ->
+	referencedTokenLabels,
+	referencedTokenListLabels,
+	referencedRuleLabels,
+	referencedRuleListLabels,
+    referencedWildcardLabels,
+    referencedWildcardListLabels,
+	rewriteBlockLevel, enclosingTreeLevel, treeLevel) ::=
+<<
+
+// AST REWRITE
+// elements:          <referencedElementsDeep; separator=", ">
+// token labels:      <referencedTokenLabels; separator=", ">
+// rule labels:       <referencedRuleLabels; separator=", ">
+// token list labels: <referencedTokenListLabels; separator=", ">
+// rule list labels:  <referencedRuleListLabels; separator=", ">
+<if(backtracking)>
+if (State.Backtracking = 0) then 
+begin<\n>
+<endif>
+<prevRuleRootRef()>.Tree := Root[0];
+<rewriteCodeLabels()>
+Root[0] := Adaptor.GetNilNode as I<ASTLabelType>;
+<alts:rewriteAlt(); separator="else ">
+<! if tree parser and rewrite=true !>
+<if(TREE_PARSER)>
+<if(rewriteMode)>
+<prevRuleRootRef()>.Tree = (<ASTLabelType>)adaptor.rulePostProcessing(root[0]);
+input.ReplaceChildren(adaptor.GetParent(retval.Start),
+                      adaptor.GetChildIndex(retval.Start),
+                      adaptor.GetChildIndex(_last),
+                      retval.Tree);
+<endif>
+<endif>
+<! if parser or rewrite!=true, we need to set result !>
+<if(!TREE_PARSER)>
+<prevRuleRootRef()>.Tree := Root[0];<\n>
+<endif>
+<if(!rewriteMode)>
+<prevRuleRootRef()>.Tree := Root[0];<\n>
+<endif>
+<if(backtracking)>
+end;
+<endif>
+>>
+
+rewriteCodeLabels() ::= <<
+<referencedTokenLabels
+    :{Locals['Stream_<it>'] := TRewriteRule<rewriteElementType>Stream.Create(Adaptor, 'token <it>', <it>);};
+    separator="\n"
+>
+<referencedTokenListLabels
+    :{Locals['Stream_<it>'] := TRewriteRule<rewriteElementType>Stream.Create(Adaptor,'token <it>', list_<it>);};
+    separator="\n"
+>
+<referencedRuleLabels:{
+if Assigned(<it>) then
+  Locals['Stream_<it>'] := TRewriteRuleSubtreeStream.Create(Adaptor, 'token <it>', <it>.Tree)
+else
+  Locals['Stream_<it>'] := TRewriteRuleSubtreeStream.Create(Adaptor, 'token <it>', nil);}; separator="\n">
+<referencedRuleListLabels
+    :{Locals['Stream_<it>'] := TRewriteRuleSubtreeStream.Create(Adaptor, 'token <it>', list_<it>);};
+    separator="\n"
+>
+>>
+
+/** Generate code for an optional rewrite block; note it uses the deep ref'd element
+  *  list rather shallow like other blocks.
+  */
+rewriteOptionalBlock(
+	alt,rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,     // elements in immediately block; no nested blocks
+	description) ::=
+<<
+(* <fileName>:<description> *)
+if (<referencedElementsDeep:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).HasNext}; separator=" or ">) then
+begin
+  <alt>
+end;
+<referencedElementsDeep:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).Reset;<\n>}>
+>>
+
+rewriteClosureBlock(
+	alt,rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,     // elements in immediately block; no nested blocks
+	description) ::=
+<<
+(* <fileName>:<description> *)
+while (<referencedElements:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).HasNext}; separator=" or ">) do
+begin
+  <alt>
+end;
+<referencedElements:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).Reset();<\n>}>
+>>
+
+rewritePositiveClosureBlock(
+	alt,rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,     // elements in immediately block; no nested blocks
+	description) ::=
+<<
+if (not (<referencedElements:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).HasNext}; separator=" or ">)) then
+  raise ERewriteEarlyExitException.Create('');
+
+while (<referencedElements:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).HasNext}; separator=" or ">) do
+begin
+  <alt>
+end;
+<referencedElements:{el | (Locals['Stream_<el>'] as IRewriteRuleElementStream).Reset();<\n>}>
+>>
+
+rewriteAlt(a) ::= <<
+(* <a.description> *)
+<if(a.pred)>
+if (<a.pred>) then
+begin
+  <a.alt>
+end<\n>
+<else>
+begin
+  <a.alt>
+end;<\n>
+<endif>
+>>
+
+/** For empty rewrites: "r : ... -> ;" */
+rewriteEmptyAlt() ::= "Root[0] = null;"
+
+rewriteTree(root,children,description,enclosingTreeLevel,treeLevel) ::= <<
+(* <fileName>:<description> *)
+begin
+  Root[<treeLevel>] := Adaptor.GetNilNode as I<ASTLabelType>;
+  <root:rewriteElement()>
+  <children:rewriteElement()>
+  Adaptor.AddChild(Root[<enclosingTreeLevel>], Root[<treeLevel>]);
+end;<\n>
+>>
+
+rewriteElementList(elements) ::= "<elements:rewriteElement()>"
+
+rewriteElement(e) ::= <<
+<@pregen()>
+<e.el>
+>>
+
+/** Gen ID or ID[args] */
+rewriteTokenRef(token,elementIndex,hetero,args) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], <createRewriteNodeFromElement(...)>);<\n>
+>>
+
+/** Gen $label ... where defined via label=ID */
+rewriteTokenLabelRef(label,elementIndex) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], (Locals['Stream_<label>'] as IRewriteRuleElementStream).NextNode());<\n>
+>>
+
+/** Gen $label ... where defined via label+=ID */
+rewriteTokenListLabelRef(label,elementIndex) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], (Locals['Stream_<label>'] as IRewriteRuleElementStream).NextNode);<\n>
+>>
+
+/** Gen ^($label ...) */
+rewriteTokenLabelRefRoot(label,elementIndex) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot((Locals['Stream_<label>'] as IRewriteRuleElementStream).NextNode(), Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+/** Gen ^($label ...) where label+=... */
+rewriteTokenListLabelRefRoot ::= rewriteTokenLabelRefRoot
+
+/** Gen ^(ID ...) or ^(ID[args] ...) */
+rewriteTokenRefRoot(token,elementIndex,hetero,args) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot(<createRewriteNodeFromElement(...)>, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+rewriteImaginaryTokenRef(args,token,hetero,elementIndex) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], <createImaginaryNode(tokenType=token, ...)>);<\n>
+>>
+
+rewriteImaginaryTokenRefRoot(args,token,hetero,elementIndex) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot(<createImaginaryNode(tokenType=token, ...)>, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+/** plain -> {foo} action */
+rewriteAction(action) ::= <<
+Root[0] = <action>;<\n>
+>>
+
+/** What is the name of the previous value of this rule's root tree?  This
+ *  let's us refer to $rule to mean previous value.  I am reusing the
+ *  variable 'tree' sitting in retval struct to hold the value of Root[0] right
+ *  before I set it during rewrites.  The assign will be to retval.Tree.
+ */
+prevRuleRootRef() ::= "RetVal"
+
+rewriteRuleRef(rule) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], (Locals['Stream_<rule>'] as IRewriteRuleElementStream).NextTree());<\n>
+>>
+
+rewriteRuleRefRoot(rule) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot((Locals['Stream_<rule>'] as IRewriteRuleElementStream).NextNode, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+rewriteNodeAction(action) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], <action>);<\n>
+>>
+
+rewriteNodeActionRoot(action) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot(<action>, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+/** Gen $ruleLabel ... where defined via ruleLabel=rule */
+rewriteRuleLabelRef(label) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], (Locals['Stream_<label>'] as IRewriteRuleElementStream).NextTree());<\n>
+>>
+
+/** Gen $ruleLabel ... where defined via ruleLabel+=rule */
+rewriteRuleListLabelRef(label) ::= <<
+Adaptor.AddChild(Root[<treeLevel>], (Locals['Stream_<label>'] as IRewriteRuleElementStream).NextTree());<\n>
+>>
+
+/** Gen ^($ruleLabel ...) where ruleLabel=rule */
+rewriteRuleLabelRefRoot(label) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot((Locals['Stream_<label>'] as IRewriteRuleElementStream).NextNode, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+/** Gen ^($ruleLabel ...) where ruleLabel+=rule */
+rewriteRuleListLabelRefRoot(label) ::= <<
+Root[<treeLevel>] := Adaptor.BecomeRoot((Locals['Stream_<label>'] as IRewriteRuleElementStream).NextNode, Root[<treeLevel>]) as I<ASTLabelType>;<\n>
+>>
+
+createImaginaryNode(tokenType,hetero,args) ::= <<
+<if(hetero)>
+<! new MethodNode(IDLabel, args) !>
+T<hetero>.Create(<tokenType><if(args)>, <args; separator=", "><endif>)
+<else>
+Adaptor.CreateNode(<tokenType>, <args; separator=", "><if(!args)>'<tokenType>'<endif>) as I<ASTLabelType>
+<endif>
+>>
+
+createRewriteNodeFromElement(token,hetero,args) ::= <<
+<if(hetero)>
+T<hetero>.Create((Locals['Stream_<token>'] as IRewriteRuleElementStream).NextToken<if(args)>, <args; separator=", "><endif>)
+<else>
+<if(args)> <! must create new node from old !>
+Adaptor.Create(<token>, <args; separator=", ">)
+<else>
+(Locals['Stream_<token>'] as IRewriteRuleElementStream).NextNode
+<endif>
+<endif>
+>>

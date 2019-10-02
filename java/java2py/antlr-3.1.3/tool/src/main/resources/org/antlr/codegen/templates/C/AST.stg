@@ -1,0 +1,562 @@
+/*
+ [The "BSD licence"]
+ Copyright (c) 2005-2009 Jim Idle, Temporal Wave LLC
+ http://www.temporal-wave.com
+ http://www.linkedin.com/in/jimidle
+
+ All rights reserved.
+
+ Redistribution and use in source and binary forms, with or without
+ modification, are permitted provided that the following conditions
+ are met:
+ 1. Redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer.
+ 2. Redistributions in binary form must reproduce the above copyright
+    notice, this list of conditions and the following disclaimer in the
+    documentation and/or other materials provided with the distribution.
+ 3. The name of the author may not be used to endorse or promote products
+    derived from this software without specific prior written permission.
+
+ THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+ IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+ OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+ INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
+group AST;
+
+/** Add an adaptor property that knows how to build trees */
+@headerFile.members() ::= <<
+/* @headerFile.members() */
+pANTLR3_BASE_TREE_ADAPTOR	adaptor;
+pANTLR3_VECTOR_FACTORY		vectors;
+/* End @headerFile.members() */
+>>
+
+/** Install the tree adaptor interface pointer and anything else that 
+ *  tree parsers and producers require.
+ */
+@genericParser.apifuncs() ::= <<
+<if(PARSER)>
+ADAPTOR	= ANTLR3_TREE_ADAPTORNew(instream->tstream->tokenSource->strFactory);<\n>
+<endif>
+ctx->vectors	= antlr3VectorFactoryNew(0);
+>>
+
+@genericParser.cleanup() ::= <<
+ctx->vectors->close(ctx->vectors);
+<if(PARSER)>
+/* We created the adaptor so we must free it
+ */
+ADAPTOR->free(ADAPTOR);
+<endif>
+>>
+
+@returnScope.ruleReturnMembers() ::= <<
+
+<super.ASTLabelType()>	tree;
+
+>>
+
+/** Add a variable to track rule's return AST */
+ruleDeclarations() ::= <<
+<super.ruleDeclarations()>
+<ASTLabelType> root_0;<\n>
+>>
+
+ruleInitializations() ::= <<
+<super.ruleInitializations()>
+root_0 = NULL;<\n>
+>>
+
+ruleLabelDefs() ::= <<
+<super.ruleLabelDefs()>
+<ruleDescriptor.tokenLabels:{<ASTLabelType> <it.label.text>_tree;}; separator="\n">
+<ruleDescriptor.tokenListLabels:{<ASTLabelType> <it.label.text>_tree;}; separator="\n">
+<ruleDescriptor.allTokenRefsInAltsWithRewrites
+    :{pANTLR3_REWRITE_RULE_<rewriteElementType>_STREAM stream_<it>;}; separator="\n">
+<ruleDescriptor.allRuleRefsInAltsWithRewrites
+    :{pANTLR3_REWRITE_RULE_SUBTREE_STREAM stream_<it>;}; separator="\n">
+>>
+
+/* Note that we defer the actual creation of any rewrite streams we need here and just initialize
+ * them to NULL. This saves creating huge numbers of rewrite streams that cannot be used as only
+ * one alt will be taken in a rule, but we are declaring all the streams here. So we define
+ * a macro that conatins the create code, then use this macro later to check if the stream
+ * has been created yet. Checking for NULL is almost free in C.
+ */
+ruleLabelInitializations() ::= <<
+<super.ruleLabelInitializations()>
+<ruleDescriptor.tokenLabels:{<it.label.text>_tree   = NULL;}; separator="\n">
+<ruleDescriptor.tokenListLabels:{<it.label.text>_tree   = NULL;}; separator="\n">
+
+<ruleDescriptor.allTokenRefsInAltsWithRewrites
+:{stream_<it>   = NULL;
+#define CREATE_stream_<it>  if (stream_<it> == NULL) {stream_<it> = antlr3RewriteRule<rewriteElementType>StreamNewAE(ADAPTOR, RECOGNIZER, (pANTLR3_UINT8)"token <it>"); } }; separator="\n">
+<ruleDescriptor.allRuleRefsInAltsWithRewrites
+:{stream_<it>   = NULL;
+#define CREATE_stream_<it>  if (stream_<it> == NULL) {stream_<it> = antlr3RewriteRuleSubtreeStreamNewAE(ADAPTOR, RECOGNIZER, (pANTLR3_UINT8)"rule <it>"); }}; separator="\n">
+
+<if(ruleDescriptor.hasMultipleReturnValues)>
+retval.tree  = NULL;
+<endif>
+>>
+
+/**  a rule label including default value */
+ruleLabelInitVal(label) ::= <<
+<super.ruleLabelInitVal(...)>
+<label.label.text>.tree = <initValue(typeName=ruleLabelType(referencedRule=label.referencedRule))>;<\n>
+>>
+
+/** When doing auto AST construction, we must define some variables;
+ *  These should be turned off if doing rewrites.  This must be a "mode"
+ *  as a rule could have both rewrite and AST within the same alternative
+ *  block.
+ */
+@alt.declarations() ::= <<
+<if(autoAST)>
+<if(outerAlt)>
+<endif>
+<endif>
+>>
+
+@alt.initializations() ::= <<
+<if(autoAST)>
+<if(outerAlt)>
+<if(!rewriteMode)>
+root_0 = (<ASTLabelType>)(ADAPTOR->nilNode(ADAPTOR));<\n>
+<endif>
+<endif>
+<endif>
+>>
+
+
+// T r a c k i n g  R u l e  E l e m e n t s
+//
+/** ID but track it for use in a rewrite rule */
+tokenRefTrack(token,label,elementIndex,hetero) ::= <<
+<tokenRefBang(...)> <! Track implies no auto AST construction!>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) { <endif>CREATE_stream_<token>; stream_<token>->add(stream_<token>, <label>, NULL);<if(backtracking)> }<endif><\n>
+>>
+
+/** ids+=ID and track it for use in a rewrite rule; adds to ids *and*
+ *  to the tracking list stream_ID for use in the rewrite.
+ */
+tokenRefTrackAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefTrack(...)>
+<listLabel(elem=label,...)>
+>>
+
+/** ^(ID ...) track for rewrite */
+tokenRefRuleRootTrack(token,label,elementIndex,hetero) ::= <<
+<tokenRefBang(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) {<endif>CREATE_stream_<token>; stream_<token>->add(stream_<token>, <label>, NULL);<if(backtracking)> }<endif><\n>
+>>
+
+wildcardTrack(label,elementIndex) ::= <<
+<super.wildcard(...)>
+>> 
+
+/** rule when output=AST and tracking for rewrite */
+ruleRefTrack(rule,label,elementIndex,args,scope) ::= <<
+<super.ruleRef(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) { <endif>CREATE_stream_<rule.name>; stream_<rule.name>->add(stream_<rule.name>, <label>.tree, NULL);<if(backtracking)> }<endif>
+>>
+
+/** x+=rule when output=AST and tracking for rewrite */
+ruleRefTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefTrack(...)>
+<listLabelTrack(...)>
+>>
+
+/** ^(rule ...) rewrite */
+ruleRefRuleRootTrack(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRoot(...)>
+<if(backtracking)>if ( <actions.(actionScope).synpredgate> ) { <endif>CREATE_stream_<rule.name>; stream_<rule.name>->add(stream_<rule.name>, <label>.tree, NULL);<if(backtracking)> }<endif>
+>>
+
+/** ^(x+=rule ...) rewrite */
+ruleRefRuleRootTrackAndListLabel(rule,label,elementIndex,args,scope) ::= <<
+<ruleRefRuleRootTrack(...)>
+<listLabelAST(...)>
+>>
+
+
+// RULE REF AST
+
+
+
+/** Match ^(label+=TOKEN ...) track for rewrite */
+tokenRefRuleRootTrackAndListLabel(token,label,elementIndex,hetero) ::= <<
+<tokenRefRuleRootTrack(...)>
+<listLabel(elem=label,...)>
+>>
+
+
+/* How to accumulate lists when we are doing rewrite tracking...
+ */
+listLabelTrack(label) ::= <<
+/* listLabelTrack(label)
+ */
+if (list_<label> == NULL)
+{
+    list_<label>=ctx->vectors->newVector(ctx->vectors);
+}
+list_<label>->add(list_<label>, <label>.tree, NULL);
+>>
+
+/* How to accumulate lists of rule outputs (only allowed with AST
+ * option but if the user is going to walk the tree, they will want
+ * all their custom elements from rule returns.
+ *
+ * Normally, we use inline structures (which the compiler lays down
+ * code to copy from heap allocations. However, here we want to accumulate copies
+ * of the returned structures because we are adding them to a list. This only makes sense if the
+ * grammar is not rewriting the tree as a tree rewrite only preserves the tree, not the object/structure
+ * returned from the rule. The rewrite will extract the tree pointer. However, if we are not going to 
+ * do a tree re-write, then the user may wish to iterate the structures returned by the rule in 
+ * action code and will expect the user defined returns[] elements to be available when they do this.
+ * Hence we cannot just preserve the tree that was returned. So, we must copy the local structure and provide 
+ * a function that can free the allocated space. We cannot know how to free user allocated elements and
+ * presume that the user will know to do this using their own factories for the structures they allocate.
+ */
+listLabelAST(label) ::= <<
+if (list_<label> == NULL)
+{
+    list_<label>=ctx->vectors->newVector(ctx->vectors);
+}
+{
+    RETURN_TYPE_<label> * tcopy;
+
+    tcopy = ANTLR3_MALLOC(sizeof(RETURN_TYPE_<label>)); /* Note no memory allocation checks! */
+    ANTLR3_MEMCPY((void *)(tcopy), (const void *)&<label>, sizeof(RETURN_TYPE_<label>));
+    list_<label>->add(list_<label>, tcopy, freeScope);  /* Add whatever the return type is */<\n>
+}
+>>
+
+// R e w r i t e
+
+rewriteCode(
+	alts, 
+	description,
+	referencedElementsDeep, // ALL referenced elements to right of ->
+	referencedTokenLabels,
+	referencedTokenListLabels,
+	referencedRuleLabels,
+	referencedRuleListLabels,
+    referencedWildcardLabels,
+    referencedWildcardListLabels,
+	rewriteBlockLevel, 
+	enclosingTreeLevel, 
+	treeLevel) ::=
+<<
+ 
+/* AST REWRITE
+ * elements          : <referencedElementsDeep; separator=", ">
+ * token labels      : <referencedTokenLabels; separator=", ">
+ * rule labels       : <referencedRuleLabels; separator=", ">
+ * token list labels : <referencedTokenListLabels; separator=", ">
+ * rule list labels  : <referencedRuleListLabels; separator=", ">
+ */
+<if(backtracking)>
+if ( <actions.(actionScope).synpredgate> ) <\n>
+<endif>
+{
+	<rewriteCodeLabelsDecl()>
+	<rewriteCodeLabelsInit()>
+	root_0			    = (<ASTLabelType>)(ADAPTOR->nilNode(ADAPTOR));
+	<prevRuleRootRef()>.tree    = root_0;
+	<alts:rewriteAlt(); separator="else ">
+	<if(TREE_PARSER)>
+	<if(rewriteMode)>
+	<prevRuleRootRef()>.tree = (<ASTLabelType>)(ADAPTOR->rulePostProcessing(ADAPTOR, root_0));
+	INPUT->replaceChildren(INPUT, ADAPTOR->getParent(ADAPTOR, retval.start),
+                      ADAPTOR->getChildIndex(ADAPTOR, retval.start),
+                      ADAPTOR->getChildIndex(ADAPTOR, _last),
+                      retval.tree);
+	<endif>
+	<endif>
+	<prevRuleRootRef()>.tree = root_0; // set result root
+	<rewriteCodeLabelsFree()>
+
+}
+>>
+
+rewriteCodeLabelsDecl() ::= <<
+<referencedTokenLabels
+    :{pANTLR3_REWRITE_RULE_<rewriteElementType>_STREAM stream_<it>;};
+    separator="\n"
+>
+<referencedTokenListLabels
+    :{pANTLR3_REWRITE_RULE_<rewriteElementType>_STREAM stream_<it>;};
+    separator="\n"
+>
+<referencedRuleLabels
+    :{pANTLR3_REWRITE_RULE_SUBTREE_STREAM stream_<it>;};
+    separator="\n"
+>
+<referencedRuleListLabels
+    :{pANTLR3_REWRITE_RULE_SUBTREE_STREAM stream_<it>;};
+    separator="\n"
+>
+>>
+
+rewriteCodeLabelsInit() ::= <<
+<referencedTokenLabels
+:{stream_<it>=antlr3RewriteRule<rewriteElementType>StreamNewAEE(ADAPTOR,  RECOGNIZER, (pANTLR3_UINT8)"token <it>", <it>);};
+separator="\n"
+>
+<referencedTokenListLabels
+:{stream_<it>=antlr3RewriteRule<rewriteElementType>StreamNewAEV(ADAPTOR,  RECOGNIZER, (pANTLR3_UINT8)"token <it>", list_<it>); };
+separator="\n"
+>
+<referencedRuleLabels
+:{stream_<it>=antlr3RewriteRuleSubtreeStreamNewAEE(ADAPTOR,  RECOGNIZER, (pANTLR3_UINT8)"token <it>", <it>.tree != NULL ? <it>.tree : NULL);};
+separator="\n"
+>
+<referencedRuleListLabels
+:{stream_<it>=antlr3RewriteRuleSubtreeStreamNewAEV(ADAPTOR,  RECOGNIZER, (pANTLR3_UINT8)"token <it>", list_<it>);};
+separator="\n"
+>
+>>
+rewriteCodeLabelsFree() ::= <<
+<referencedTokenLabels
+:{if (stream_<it> != NULL) stream_<it>->free(stream_<it>); };
+separator="\n"
+>
+<referencedTokenListLabels
+:{if (stream_<it> != NULL) stream_<it>->free(stream_<it>);};
+separator="\n"
+>
+<referencedRuleLabels
+:{if (stream_<it> != NULL) stream_<it>->free(stream_<it>);};
+separator="\n"
+>
+<referencedRuleListLabels
+:{if (stream_<it> != NULL) stream_<it>->free(stream_<it>);};
+separator="\n"
+>
+>>
+
+/** Generate code for an optional rewrite block; note it uses the deep ref'd element
+  *  list rather shallow like other blocks.
+  */
+rewriteOptionalBlock(
+	alt,
+	rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,		// elements in immediately block; no nested blocks
+	description) ::=
+<<
+// <fileName>:<description>
+{
+	if ( <referencedElementsDeep:{el | (stream_<el> != NULL && stream_<el>->hasNext(stream_<el>)) }; separator="|| "> )
+	{
+		<alt>
+	}
+	<referencedElementsDeep:{el | if ( stream_<el> != NULL) stream_<el>->reset(stream_<el>);<\n>}>
+}<\n>
+>>
+
+rewriteClosureBlock(
+	alt,
+	rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,		// elements in immediately block; no nested blocks
+	description) ::=
+<<
+// <fileName>:<description>
+{
+	while ( <referencedElements:{el | (stream_<el> != NULL && stream_<el>->hasNext(stream_<el>)) }; separator="|| "> )
+	{
+		<alt>
+	}
+	<referencedElements:{el | if (stream_<el> != NULL) stream_<el>->reset(stream_<el>);<\n>}>
+}<\n>
+>>
+RewriteEarlyExitException() ::=
+<<
+CONSTRUCTEX();
+EXCEPTION->type         = ANTLR3_REWRITE_EARLY_EXCEPTION;
+EXCEPTION->name         = (void *)ANTLR3_REWRITE_EARLY_EXCEPTION_NAME;
+>>
+rewritePositiveClosureBlock(
+	alt,
+	rewriteBlockLevel,
+	referencedElementsDeep, // all nested refs
+	referencedElements,		// elements in immediately block; no nested blocks
+	description) ::=
+<<
+if (<referencedElements:{el | (stream_<el> == NULL || !stream_<el>->hasNext(stream_<el>)) }; separator="|| "> )
+{
+    <RewriteEarlyExitException()>
+}
+else
+{
+	while ( <referencedElements:{el | (stream_<el>->hasNext(stream_<el>)) }; separator="|| "> ) {
+		<alt>
+	}
+	<referencedElements:{el | stream_<el>->reset(stream_<el>);<\n>}>
+}
+>>
+
+rewriteAlt(a) ::= <<
+// <a.description>
+<if(a.pred)>
+if (<a.pred>) 
+{
+    <a.alt>
+}<\n>
+<else>
+{
+    <a.alt>
+}<\n>
+<endif>
+>>
+
+/** For empty rewrites: "r : ... -> ;" */
+rewriteEmptyAlt() ::= "root_0 = NULL; /* \<-- rewriteEmptyAlt()) */"
+
+rewriteTree(root,children,description,enclosingTreeLevel,treeLevel) ::= <<
+// <fileName>:<description>
+{
+    <ASTLabelType> root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->nilNode(ADAPTOR));
+    <root:rewriteElement()>
+    <children:rewriteElement()>
+    ADAPTOR->addChild(ADAPTOR, root_<enclosingTreeLevel>, root_<treeLevel>);
+}<\n>
+>>
+
+rewriteElementList(elements) ::= "<elements:rewriteElement()>"
+
+rewriteElement(e) ::= <<
+<@pregen()>
+<e.el>
+>>
+
+/** Gen ID or ID[args] */
+rewriteTokenRef(token,elementIndex,hetero,args) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, <createRewriteNodeFromElement(...)>);<\n>
+<endif>
+>>
+
+/** Gen $label ... where defined via label=ID */
+rewriteTokenLabelRef(label,elementIndex) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, stream_<label> == NULL ? NULL : stream_<label>->nextNode(stream_<label>));<\n>
+>>
+
+/** Gen $label ... where defined via label+=ID */
+rewriteTokenListLabelRef(label,elementIndex) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, stream_<label> == NULL ? NULL : stream_<label>->nextNode(stream_<label>));<\n>
+>>
+
+/** Gen ^($label ...) */
+rewriteTokenLabelRefRoot(label,elementIndex) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRootToken(ADAPTOR, stream_<label> == NULL ? NULL : stream_<label>->nextToken(stream_<label>), root_<treeLevel>));<\n>
+>>
+
+/** Gen ^($label ...) where label+=... */
+rewriteTokenListLabelRefRoot ::= rewriteTokenLabelRefRoot
+
+/** Gen ^(ID ...) or ^(ID[args] ...) */
+rewriteTokenRefRoot(token,elementIndex,hetero,args) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRoot(ADAPTOR, <createRewriteNodeFromElement(...)>, root_<treeLevel>));<\n>
+>>
+
+rewriteImaginaryTokenRef(args,token,hetero,elementIndex) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, <createImaginaryNode(tokenType=token, ...)>);<\n>
+>>
+
+rewriteImaginaryTokenRefRoot(args,token,hetero,elementIndex) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRoot(ADAPTOR, <createImaginaryNode(tokenType=token, ...)>, root_<treeLevel>));<\n>
+>>
+
+/** plain -> {foo} action */
+rewriteAction(action) ::= <<
+root_0 = <action>;<\n>
+>>
+
+/** What is the name of the previous value of this rule's root tree?  This
+ *  let's us refer to $rule to mean previous value.  I am reusing the
+ *  variable 'tree' sitting in retval struct to hold the value of root_0 right
+ *  before I set it during rewrites.  The assign will be to retval.tree.
+ */
+prevRuleRootRef() ::= "retval"
+
+rewriteRuleRef(rule,dup) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, stream_<rule> == NULL ? NULL : stream_<rule>->nextTree(stream_<rule>));<\n>
+>>
+
+rewriteRuleRefRoot(rule,dup) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRoot(ADAPTOR, stream_<rule> == NULL ? NULL : stream_<rule>->nextNode(stream_<rule>), root_<treeLevel>));<\n>
+>>
+
+rewriteNodeAction(action) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, <action>);<\n>
+>>
+
+rewriteNodeActionRoot(action) ::= <<
+root_<treeLevel> = (<ASLabelType>)(ADAPTOR->becomeRoot(ADAPTOR, <action>, root_<treeLevel>));<\n>
+>>
+
+/** Gen $ruleLabel ... where defined via ruleLabel=rule */
+rewriteRuleLabelRef(label) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, stream_<label> == NULL ? NULL : stream_<label>->nextTree(stream_<label>));<\n>
+>>
+
+/** Gen $ruleLabel ... where defined via ruleLabel+=rule */
+rewriteRuleListLabelRef(label) ::= <<
+ADAPTOR->addChild(ADAPTOR, root_<treeLevel>, stream_<label> == NULL ? NULL : stream_<label>->nextTree(stream_<label>));<\n>
+>>
+
+/** Gen ^($ruleLabel ...) where ruleLabel=rule */
+rewriteRuleLabelRefRoot(label) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRoot(ADAPTOR, stream_<label> == NULL ? NULL : stream_<label>->nextNode(stream_<label>), root_<treeLevel>));<\n>
+>>
+
+/** Gen ^($ruleLabel ...) where ruleLabel+=rule */
+rewriteRuleListLabelRefRoot(label) ::= <<
+root_<treeLevel> = (<ASTLabelType>)(ADAPTOR->becomeRoot((<ASTLabelType>)(stream_<label> == NULL ? NULL : stream_<label>->nextNode(stream_<label>), root_<treeLevel>));<\n>
+>>
+
+createImaginaryNode(tokenType,hetero,args) ::= <<
+<if(hetero)>
+<! new MethodNode(IDLabel, args) !>
+<hetero>New(<tokenType><if(args)>, <args; separator=", "><endif>)
+<else>
+<if(args)>
+
+#if <length(args)> == 2
+	(<ASTLabelType>)ADAPTOR->createTypeTokenText(ADAPTOR, <tokenType>, TOKTEXT(<args; separator=", ">))
+#else
+	(<ASTLabelType>)ADAPTOR->createTypeText(ADAPTOR, <tokenType>, (pANTLR3_UINT8)<args; separator=", ">)
+#endif
+
+<else>
+(<ASTLabelType>)ADAPTOR->createTypeText(ADAPTOR, <tokenType>, (pANTLR3_UINT8)"<tokenType>")
+<endif>
+<endif>
+>>
+
+createRewriteNodeFromElement(token,hetero,args) ::= <<
+<if(hetero)>
+<hetero>New(stream_<token>->nextToken(stream_<token>)<if(args)>, <args; separator=", "><endif>)
+<else>
+<if(args)> <! must create new node from old !>
+
+#if	<length(args)> == 2
+ADAPTOR->createTypeTokenText(ADAPTOR, <token>->getType(<token>, TOKTEXT(<token>, <args; separator=", ">)) /* JIMI */
+#else
+ADAPTOR->createTypeToken(ADAPTOR, <token>->getType(<token>, <token>, <args; separator=", ">)
+#endif
+
+<else>
+stream_<token> == NULL ? NULL : stream_<token>->nextNode(stream_<token>)
+<endif>
+<endif>
+>>

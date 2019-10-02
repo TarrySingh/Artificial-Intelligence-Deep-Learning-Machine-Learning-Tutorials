@@ -1,0 +1,104 @@
+// Main page documentation for ANTLR3C runtime. Contains
+// doxygen things only.
+//
+
+/// \mainpage ANTLR3 C Runtime API and Usage Guide.
+///
+/// \section version Version 3.1
+///
+/// This documentation is specifically for the C rutime version 3.1.x.x, which is
+/// specifically for use with version 3.1.x.x of the ANTLR recognizer generation
+/// tool. While some of the documentation may well apply to prior or future versions
+/// you should consult the manuals for the correct version whenever possible.
+///
+/// \section chchchchangeesss Changes from 3.0 to 3.1
+/// 
+/// Some changes in 3.1 may require small changes in your invoking programs or
+/// in the grammar itself. Please read about them here before emailing the user group,
+/// where you will be told to come and read about them here, unless they were missed
+/// from this list.
+///
+/// - \subpage changes31 Check here for API changes
+///
+/// \section intro Introduction
+///
+/// The ANTLR3 recognizer generation tool is written in Java, but allows the generation
+/// of code targeted for a number of other languages. Each target language provides a code
+/// generation template for the tool and a runtime library for use by generated recognizers.
+/// The C runtime tracks the Java runtime releases and in general when a new version of the
+/// tool is released, a new version of the C runtime will be released at the same time.
+///
+/// The documentation here is in three parts:
+///
+/// - \subpage build Building the runtime itself from source code;
+/// - \subpage generate How to tell ANTLR to generate code for the C target;
+/// - \subpage buildrec How to build the generated code
+/// - \subpage using Using the runtime and the libraries and so on;
+/// - \subpage runtime The documentation of the runtime code and functions;
+///
+/// \section background Background Information
+///
+/// The ANTLR 3 C runtime and code generation templates were written by <a href="http://www.linkedin.com/in/jimidle"> Jim Idle</a>
+/// (jimi|at|temporal-wave|dott/com) of <a href="http://www.temporal-wave.com">Temporal Wave LLC</a>.
+///
+/// The C runtime and therefore the code generated to utilize the runtime reflects the object model of the 
+/// Java version of the runtime as closely as a language without class structures and inheritance can. 
+/// Compromises have only been made where performance would be adversely affected such as minimizing the 
+/// number of pointer to pointer to pointer to function type structures that could ensue through trying to
+/// model inheritance too exactly. Other differences include the use of token and string factories to minimize 
+/// the number of calls to system functions such as calloc().This model was adopted so that overriding any
+/// default implementation of a function is relatively simple for the grammar programmer.
+///
+/// The generated code is free threading (subject to the systems calls used on any particular platform 
+/// being likewise free threading.)
+///
+/// \subsection model Runtime Model
+///
+/// As there is no such thing as an object reference in C, the runtime defines a number of typedef structs that reflect 
+/// the calling interface chosen by Terence Parr for the Java version of the same. The initialization of a parser, 
+/// lexer, input stream or other internal structure therefore consists of allocating the memory required for 
+/// an instance of the typedef struct that represents the interface, initializing any counters, and buffers etc,
+/// then populating a number of pointers to functions that implement the equivalent of the methods in the Java class.
+///
+/// The use and initialization of the C versions of a parser is therefore similar to the examples given for Java, 
+/// but with a bent towards C of course. You may need to be aware of memory allocation and freeing operations 
+/// in certain environments such as Windows, where you cannot allocate memory in one DLL and free it in another.
+///
+/// The runtime provides a number of structures and interfaces that the author has found useful when writing action and 
+/// processing code within java parsers, and furthermore were required by the C runtime code if it was not to 
+/// depart too far from the logical layout of the Java model. These include the C equivalents of String, List, 
+/// Hashtable, Vector and Trie, implemented by pointers to structures. These are freely available for your own programming needs.
+///
+/// A goal of the generated code was to minimize the tracking, allocation and freeing of memory for reasons of both 
+/// performance and reliability. In essence any memory used by a lexer, parser or tree parser is automatically tracked and 
+/// freed when the instance of it is released. There are therefore factory functions for tokens and so on such that they 
+/// can be allocated in blocks and parceled out as they are required. They are all then freed in one go, minimizing the 
+/// risk of memory leaks and alloc/free thrashing. This has only one side effect, being that if you wish to preserve some structure generated by 
+/// the lexer, parser or tree parser, then you must make a copy of it before freeing those structures, and track it yourself 
+/// after that. In practice, it is easy enough just not to release the antlr generated components until you are 
+/// finished with their results.
+///
+/// \section targets Target Platforms
+///
+/// The C project is constructed such that it will compile on any reasonable ANSI C compiler in either 64 or 32 bit mode, 
+/// with all warnings turned on. This is true of both the runtime code and the generated code and has been summarily tested 
+/// with Visual Studio .Net (2003, 2005 and 2008) and later versions of gcc on Redhat Linux, as well as on AIX 5.2/5.3, Solaris 9/10, 
+/// HPUX 11.xx, OSX (PowerPC and Intel) and Cygwin.
+///
+/// \b Notes
+///   - The C runtime is constructed such that the library can be integrated as an archive library, or a shared library/DLL.
+///   - The C language target code generation templates are distributed with the source code for the ANTLR tool itself.
+///
+/// \section performance Performance
+///
+/// It is C :-). Basic testing of performance against the Java runtime, 
+/// using the JDK1.6 java source code, and the Java parser provided in the examples (which is a tough test as it includes 
+/// backtracking and memoization) show that the C runtime uses about half the memory and is between 2 and 3 times the speed. 
+/// Tests of non-backtracking, non-memoizing parsers, indicate results significantly better than this.
+///
+/// \section examples Downloading Examples
+///
+/// The <a href="http://www.antlr.org/download.html">downloads page</a> of the ANTLR web site contains a downloadable
+/// zip/tar of examples projects for use with the C runtime model. It contains .sln files and source code for a 
+/// number of example grammars and helps to see how to invoke and call the generated recognizers.
+///
