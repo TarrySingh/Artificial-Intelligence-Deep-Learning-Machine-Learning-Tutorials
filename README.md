@@ -95,6 +95,9 @@ Additional PyRo tutorials:
 </p>
 Additional TensorFlow tutorials:
 
+* [TensorFlow 2.0 Official Website](https://github.com/tensorflow/docs/tree/master/site/en/tutorials)
+* [dragen1860/TensorFlow-2.x-Tutorials](https://github.com/dragen1860/TensorFlow-2.x-Tutorials)
+* [aymericdamien/TensorFlow-Examples](https://github.com/aymericdamien/TensorFlow-Examples)
 * [pkmital/tensorflow_tutorials](https://github.com/pkmital/tensorflow_tutorials)
 * [nlintz/TensorFlow-Tutorials](https://github.com/nlintz/TensorFlow-Tutorials)
 * [alrojo/tensorflow-tutorial](https://github.com/alrojo/tensorflow-tutorial)
