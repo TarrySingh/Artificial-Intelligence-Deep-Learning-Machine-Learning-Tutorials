@@ -68,7 +68,7 @@ class t012lexerXML(testbase.ANTLRTest):
 
             raise AssertionError
 
-        except antlr3.NoViableAltException, exc:
+        except antlr3.NoViableAltException as exc:
             assert exc.unexpectedType == '>', repr(exc.unexpectedType)
             assert exc.charPositionInLine == 11, repr(exc.charPositionInLine)
             assert exc.line == 2, repr(exc.line)
@@ -92,7 +92,7 @@ class t012lexerXML(testbase.ANTLRTest):
 
             raise AssertionError
 
-        except antlr3.MismatchedSetException, exc:
+        except antlr3.MismatchedSetException as exc:
             assert exc.unexpectedType == 't', repr(exc.unexpectedType)
             assert exc.charPositionInLine == 2, repr(exc.charPositionInLine)
             assert exc.line == 1, repr(exc.line)
@@ -116,7 +116,7 @@ class t012lexerXML(testbase.ANTLRTest):
 
             raise AssertionError
 
-        except antlr3.NoViableAltException, exc:
+        except antlr3.NoViableAltException as exc:
             assert exc.unexpectedType == 'a', repr(exc.unexpectedType)
             assert exc.charPositionInLine == 11, repr(exc.charPositionInLine)
             assert exc.line == 2, repr(exc.line)

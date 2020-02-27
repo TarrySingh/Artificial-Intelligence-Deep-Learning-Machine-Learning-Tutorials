@@ -1,4 +1,5 @@
 """Evaluation utils."""
+from __future__ import print_function
 import sys
 
 sys.path.append('/u/subramas/Research/nmt-pytorch')
@@ -203,16 +204,16 @@ def evaluate_model(
             preds.append(['<s>'] + sentence_pred[:index + 1])
 
             if verbose:
-                print ' '.join(['<s>'] + sentence_pred[:index + 1])
+                print(' '.join(['<s>'] + sentence_pred[:index + 1]))
 
             if '</s>' in sentence_real:
                 index = sentence_real.index('</s>')
             else:
                 index = len(sentence_real)
             if verbose:
-                print ' '.join(['<s>'] + sentence_real[:index + 1])
+                print(' '.join(['<s>'] + sentence_real[:index + 1]))
             if verbose:
-                print '--------------------------------------'
+                print('--------------------------------------')
             ground_truths.append(['<s>'] + sentence_real[:index + 1])
 
     return get_bleu(preds, ground_truths)
@@ -228,7 +229,7 @@ def evaluate_autoencode_model(
     ground_truths = []
     for j in xrange(0, len(src_test['data']), config['data']['batch_size']):
 
-        print 'Decoding batch : %d out of %d ' % (j, len(src_test['data']))
+        print('Decoding batch : %d out of %d ' % (j, len(src_test['data'])))
         input_lines_src, lens_src, mask_src = get_autoencode_minibatch(
             src_test['data'], src['word2id'], j, config['data']['batch_size'],
             config['data']['max_src_length'], add_start=True, add_end=True
@@ -279,16 +280,16 @@ def evaluate_autoencode_model(
             preds.append(sentence_pred[:index + 1])
 
             if verbose:
-                print ' '.join(sentence_pred[:index + 1])
+                print(' '.join(sentence_pred[:index + 1]))
 
             if '</s>' in sentence_real:
                 index = sentence_real.index('</s>')
             else:
                 index = len(sentence_real)
             if verbose:
-                print ' '.join(sentence_real[:index + 1])
+                print(' '.join(sentence_real[:index + 1]))
             if verbose:
-                print '--------------------------------------'
+                print('--------------------------------------')
             ground_truths.append(sentence_real[:index + 1])
 
     return get_bleu(preds, ground_truths)

@@ -5,6 +5,7 @@ This tutorial requires your machine to have 2 GPUs
 "/gpu:0": The first GPU of your machine
 "/gpu:1": The second GPU of your machine
 '''
+from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
@@ -81,5 +82,5 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=log_device_placement)
 t2_2 = datetime.datetime.now()
 
 
-print "Single GPU computation time: " + str(t2_1-t1_1)
-print "Multi GPU computation time: " + str(t2_2-t1_2)
+print("Single GPU computation time: " + str(t2_1-t1_1))
+print("Multi GPU computation time: " + str(t2_2-t1_2))

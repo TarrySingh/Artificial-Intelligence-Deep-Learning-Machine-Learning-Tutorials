@@ -1,4 +1,5 @@
 """Decode Seq2Seq model with beam search."""
+from __future__ import print_function
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -32,9 +33,9 @@ class BeamSearchDecoder(object):
         self._load_model()
 
     def _load_model(self):
-        print 'Loading pretrained model'
+        print('Loading pretrained model')
         if self.config['model']['seq2seq'] == 'vanilla':
-            print 'Loading Seq2Seq Vanilla model'
+            print('Loading Seq2Seq Vanilla model')
 
             self.model = Seq2Seq(
                 src_emb_dim=self.config['model']['dim_word_src'],
@@ -53,7 +54,7 @@ class BeamSearchDecoder(object):
             ).cuda()
 
         elif self.config['model']['seq2seq'] == 'attention':
-            print 'Loading Seq2Seq Attention model'
+            print('Loading Seq2Seq Attention model')
 
             self.model = Seq2SeqAttention(
                 src_emb_dim=self.config['model']['dim_word_src'],
@@ -238,7 +239,7 @@ class BeamSearchDecoder(object):
             self.config['data']['batch_size']
         ):
             """Decode a single minibatch."""
-            print 'Decoding %d out of %d ' % (j, len(self.src['data']))
+            print('Decoding %d out of %d ' % (j, len(self.src['data'])))
             hypotheses, scores = decoder.decode_batch(j)
             all_hyp_inds = [[x[0] for x in hyp] for hyp in hypotheses]
             all_preds = [
@@ -268,7 +269,7 @@ class BeamSearchDecoder(object):
 
         bleu_score = get_bleu(trg_preds, trg_gold)
 
-        print 'BLEU : %.5f ' % (bleu_score)
+        print('BLEU : %.5f ' % (bleu_score))
 
 
 class GreedyDecoder(object):
@@ -294,9 +295,9 @@ class GreedyDecoder(object):
         self._load_model()
 
     def _load_model(self):
-        print 'Loading pretrained model'
+        print('Loading pretrained model')
         if self.config['model']['seq2seq'] == 'vanilla':
-            print 'Loading Seq2Seq Vanilla model'
+            print('Loading Seq2Seq Vanilla model')
 
             self.model = Seq2Seq(
                 src_emb_dim=self.config['model']['dim_word_src'],
@@ -315,7 +316,7 @@ class GreedyDecoder(object):
             ).cuda()
 
         elif self.config['model']['seq2seq'] == 'attention':
-            print 'Loading Seq2Seq Attention model'
+            print('Loading Seq2Seq Attention model')
 
             self.model = Seq2SeqAttention(
                 src_emb_dim=self.config['model']['dim_word_src'],
@@ -371,7 +372,7 @@ class GreedyDecoder(object):
             self.config['data']['batch_size']
         ):
 
-            print 'Decoding : %d out of %d ' % (j, len(self.src['data']))
+            print('Decoding : %d out of %d ' % (j, len(self.src['data'])))
             # Get source minibatch
             input_lines_src, output_lines_src, lens_src, mask_src = (
                 get_minibatch(
@@ -448,7 +449,7 @@ class GreedyDecoder(object):
                 ground_truths.append(['<s>'] + sentence_real[:index + 1])
 
         bleu_score = get_bleu(preds, ground_truths)
-        print 'BLEU score : %.5f ' % (bleu_score)
+        print('BLEU score : %.5f ' % (bleu_score))
 
 if __name__ == '__main__':
 

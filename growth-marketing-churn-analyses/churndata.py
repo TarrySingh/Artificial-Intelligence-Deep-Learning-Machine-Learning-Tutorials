@@ -1,3 +1,4 @@
+from __future__ import print_function
 from forjar import *
 from scipy.stats import bernoulli
 
@@ -165,7 +166,7 @@ class Event(Base):
              if should_gen >= 1:
                 self.Type = 'bought'
          
-         print 'Campaign ' + user.Campaign_ID + ' with ' + self.Type
+         print('Campaign ' + user.Campaign_ID + ' with ' + self.Type)
          self.Meal_Id = get_random(Meal,session=session,basetime=basetime)
          
     period = DAY

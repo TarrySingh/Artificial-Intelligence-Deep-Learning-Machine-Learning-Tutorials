@@ -60,7 +60,7 @@ class t004lexer(testbase.ANTLRTest):
             token = lexer.nextToken()
             self.fail()
 
-        except antlr3.MismatchedTokenException, exc:
+        except antlr3.MismatchedTokenException as exc:
             self.failUnlessEqual(exc.expecting, 'f')
             self.failUnlessEqual(exc.unexpectedType, '2')
             

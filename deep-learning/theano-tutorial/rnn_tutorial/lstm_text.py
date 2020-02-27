@@ -1,3 +1,4 @@
+from __future__ import print_function
 import cPickle as pkl
 import time
 
@@ -252,7 +253,7 @@ def train_model(batch_size=100, n_h=50, n_epochs=40):
     iteration = 0
 
     for epoch in range(n_epochs):
-        print 'epoch:', epoch
+        print('epoch:', epoch)
 
         for x_, mask_ in train_stream.get_epoch_iterator():
             iteration += 1
@@ -279,16 +280,16 @@ def train_model(batch_size=100, n_h=50, n_epochs=40):
                                                            c_p.flatten())
                         sentence += reverse_mapping[x_t]
                         sample = numpy.random.multinomial(1, prediction.flatten())
-                    print 'LSTM: "' + sentence + '"'
+                    print('LSTM: "' + sentence + '"')
                 except ValueError:
-                    print 'Something went wrong during sentence generation.'
+                    print('Something went wrong during sentence generation.')
 
             if iteration % 40 == 0:
-                print 'epoch:', epoch, '  minibatch:', iteration
+                print('epoch:', epoch, '  minibatch:', iteration)
                 val_scores = []
                 for x_val, mask_val in val_stream.get_epoch_iterator():
                     val_scores.append(evaluate_model(x_val.T, mask_val.T))
-                print 'Average validation CE per sentence:', numpy.mean(val_scores)
+                print('Average validation CE per sentence:', numpy.mean(val_scores))
 
     end_time = time.clock()
     print('Optimization complete.')

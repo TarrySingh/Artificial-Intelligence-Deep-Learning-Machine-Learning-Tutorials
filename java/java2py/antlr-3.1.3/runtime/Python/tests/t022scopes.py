@@ -90,7 +90,7 @@ class t022scopes(testbase.ANTLRTest):
         try:
             parser.c()
             self.fail()
-        except RuntimeError, exc:
+        except RuntimeError as exc:
             self.failUnlessEqual(exc.args[0], 'x')
 
 

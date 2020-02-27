@@ -45,7 +45,7 @@ class t003lexer(testbase.ANTLRTest):
             token = lexer.nextToken()
             self.fail()
 
-        except antlr3.NoViableAltException, exc:
+        except antlr3.NoViableAltException as exc:
             self.failUnlessEqual(exc.unexpectedType, '2')
             
 

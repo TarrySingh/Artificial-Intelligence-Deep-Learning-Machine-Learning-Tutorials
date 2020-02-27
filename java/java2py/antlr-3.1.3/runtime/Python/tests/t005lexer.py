@@ -54,7 +54,7 @@ class t005lexer(testbase.ANTLRTest):
             token = lexer.nextToken()
             raise AssertionError
 
-        except antlr3.MismatchedTokenException, exc:
+        except antlr3.MismatchedTokenException as exc:
             assert exc.expecting == 'f', repr(exc.expecting)
             assert exc.unexpectedType == '2', repr(exc.unexpectedType)
 
@@ -67,7 +67,7 @@ class t005lexer(testbase.ANTLRTest):
             token = lexer.nextToken()
             raise AssertionError
 
-        except antlr3.EarlyExitException, exc:
+        except antlr3.EarlyExitException as exc:
             assert exc.unexpectedType == antlr3.EOF, repr(exc.unexpectedType)
             
 

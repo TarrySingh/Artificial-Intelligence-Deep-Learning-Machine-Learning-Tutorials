@@ -14,7 +14,7 @@ import antlr3
 def unlink(path):
     try:
         os.unlink(path)
-    except OSError, exc:
+    except OSError as exc:
         if exc.errno != errno.ENOENT:
             raise
 

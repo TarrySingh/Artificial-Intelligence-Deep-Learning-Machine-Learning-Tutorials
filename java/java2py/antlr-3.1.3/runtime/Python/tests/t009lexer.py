@@ -1,3 +1,4 @@
+from future.utils import raise_
 import antlr3
 import testbase
 import unittest
@@ -53,9 +54,9 @@ class t009lexer(testbase.ANTLRTest):
         lexer.nextToken()
         try:
             token = lexer.nextToken()
-            raise AssertionError, token
+raise_(AssertionError, token)
 
-        except antlr3.MismatchedRangeException, exc:
+        except antlr3.MismatchedRangeException as exc:
             assert exc.a == '0', repr(exc.a)
             assert exc.b == '9', repr(exc.b)
             assert exc.unexpectedType == 'a', repr(exc.unexpectedType)

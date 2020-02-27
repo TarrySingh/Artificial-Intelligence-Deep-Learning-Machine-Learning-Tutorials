@@ -46,7 +46,7 @@ class clean(_clean):
                         try:
                             log.info("removing '%s'", filePath)
                             os.unlink(filePath)
-                        except OSError, exc:
+                        except OSError as exc:
                             log.warn(
                                 "Failed to delete '%s': %s",
                                 filePath, exc

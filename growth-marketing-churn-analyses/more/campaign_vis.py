@@ -1,3 +1,4 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -74,7 +75,7 @@ Subplot call here
 """
 for column in d.columns:
     if column_transforms.has_key(column):
-        print 'Transforming ' + column
+        print('Transforming ' + column)
         transform_column(d,column,column_transforms[column])
 
 
@@ -84,8 +85,8 @@ for column in d.columns:
     for column2 in d.columns:
         x = d[column]
         y = d[column2]
-        print (x,y)
-        print('Plotting ',column,column2)
+        print((x,y))
+        print(('Plotting ',column,column2))
         fig.add_subplot(1,sub_plot_size,count)
         count = count + 1
         plt.scatter(x,y)

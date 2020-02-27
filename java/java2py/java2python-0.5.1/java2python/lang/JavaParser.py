@@ -473,7 +473,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -607,7 +607,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -698,7 +698,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -775,7 +775,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -892,7 +892,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1028,7 +1028,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1218,7 +1218,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1319,7 +1319,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1420,7 +1420,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1521,7 +1521,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1669,7 +1669,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1828,7 +1828,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -1957,7 +1957,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2096,7 +2096,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2232,7 +2232,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2339,7 +2339,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2440,7 +2440,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2562,7 +2562,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2660,7 +2660,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2774,7 +2774,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -2937,7 +2937,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -3030,7 +3030,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -3158,7 +3158,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -3286,7 +3286,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4029,7 +4029,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4490,7 +4490,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4623,7 +4623,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4751,7 +4751,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4884,7 +4884,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -4995,7 +4995,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5081,7 +5081,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5177,7 +5177,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5274,7 +5274,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5408,7 +5408,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5584,7 +5584,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5685,7 +5685,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -5808,7 +5808,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6056,7 +6056,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6172,7 +6172,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6268,7 +6268,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6364,7 +6364,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6492,7 +6492,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6617,7 +6617,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6739,7 +6739,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -6877,7 +6877,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7010,7 +7010,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7096,7 +7096,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7182,7 +7182,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7257,7 +7257,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7410,7 +7410,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7574,7 +7574,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7658,7 +7658,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7806,7 +7806,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7902,7 +7902,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -7995,7 +7995,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8333,7 +8333,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8448,7 +8448,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8569,7 +8569,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8732,7 +8732,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8858,7 +8858,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -8952,7 +8952,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9059,7 +9059,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9265,7 +9265,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9342,7 +9342,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9454,7 +9454,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9549,7 +9549,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9725,7 +9725,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9840,7 +9840,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -9968,7 +9968,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -10227,7 +10227,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -10301,7 +10301,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -10429,7 +10429,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -10530,7 +10530,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -10645,7 +10645,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -11993,7 +11993,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12122,7 +12122,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12210,7 +12210,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12305,7 +12305,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12508,7 +12508,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12595,7 +12595,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12696,7 +12696,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12789,7 +12789,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -12964,7 +12964,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13076,7 +13076,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13188,7 +13188,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13295,7 +13295,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13388,7 +13388,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13483,7 +13483,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13761,7 +13761,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13866,7 +13866,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -13964,7 +13964,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14062,7 +14062,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14160,7 +14160,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14258,7 +14258,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14356,7 +14356,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14489,7 +14489,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14583,7 +14583,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14745,7 +14745,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -14892,7 +14892,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -15025,7 +15025,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -15172,7 +15172,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -15459,7 +15459,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -15693,7 +15693,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -16384,7 +16384,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -17238,7 +17238,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -17947,7 +17947,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -18262,7 +18262,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -18424,7 +18424,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -18593,7 +18593,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -18717,7 +18717,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)
@@ -18792,7 +18792,7 @@ class JavaParser(Parser):
 
 
                 success = True
-            except RecognitionException, re:
+            except RecognitionException as re:
                 self.reportError(re)
                 self.recover(self.input, re)
                 retval.tree = self._adaptor.errorNode(self.input, retval.start, self.input.LT(-1), re)

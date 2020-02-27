@@ -1157,7 +1157,7 @@ class TestTreeContext(unittest.TestCase):
         try:
             TreeParser._inContext(adaptor, self.tokenNames, node, "PRINT ... ... VEC")
             self.fail()
-        except ValueError, exc: 
+        except ValueError as exc: 
             expecting = "invalid syntax: ... ..."
             found = str(exc)
             self.assertEquals(expecting, found)
@@ -1180,7 +1180,7 @@ class TestTreeContext(unittest.TestCase):
         try:
             TreeParser._inContext(adaptor, self.tokenNames, node, "PRINT .. VEC")
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             expecting = "invalid syntax: .."
             found = str(exc)
             self.assertEquals(expecting, found)

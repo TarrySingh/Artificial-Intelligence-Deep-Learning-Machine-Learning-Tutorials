@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import pandas as pd
 import numpy as np
 
@@ -10,10 +11,10 @@ from sklearn.svm import SVC
 
 from yhat import Yhat,YhatModel,preprocess
 
-print "Importing data"
+print("Importing data")
 churn_df = pd.read_csv('data/churn.csv')
 
-print "Formatting feature space"
+print("Formatting feature space")
 # Isolate target data
 churn_result = churn_df['Churn?']
 y = np.where(churn_result == 'True.',1,0)
@@ -32,19 +33,19 @@ features = churn_feat_space.columns
 
 X = churn_feat_space.as_matrix().astype(np.float)
 
-print "Scaling features"
+print("Scaling features")
 # This is important
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
 
-print "Generating training data"
+print("Generating training data")
 train_index,test_index = train_test_split(churn_df.index)
 
 # Write test data to file
 test_churn_df = churn_df.ix[test_index]
 test_churn_df.to_csv("test_churn.csv")
 
-print "Training classifier"
+print("Training classifier")
 clf = SVC(probability=True)
 clf.fit(X[train_index],y[train_index])
 
@@ -77,7 +78,7 @@ yh = Yhat(
     "http://cloud.yhathq.com/" 
 )
 
-print "Deploying model"
+print("Deploying model")
 response = yh.deploy("PythonChurnModel",ChurnModel,globals())
 
-print json.dumps(response,indent=2)
+print(json.dumps(response,indent=2))

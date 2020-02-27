@@ -54,6 +54,7 @@ Options:
       The number of co-occurrences that are buffered; default 16M.
 
 """
+from __future__ import print_function
 
 import itertools
 import math
@@ -130,8 +131,8 @@ def write_vocab_and_sums(vocab, sums, vocab_filename, sums_filename):
   with open(os.path.join(FLAGS.output_dir, vocab_filename), 'w') as vocab_out:
     with open(os.path.join(FLAGS.output_dir, sums_filename), 'w') as sums_out:
       for tok, cnt in itertools.izip(vocab, sums):
-        print >> vocab_out, tok
-        print >> sums_out, cnt
+        print(tok, file=vocab_out)
+        print(cnt, file=sums_out)
 
 
 def compute_coocs(lines, vocab):

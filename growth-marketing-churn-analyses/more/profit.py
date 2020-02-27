@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -46,7 +47,7 @@ sum = 0
 for campaign_id in campaign_to_num.keys():
     rows = num_rows(df.groupby('Users_Campaign_ID').get_group(campaign_id))
     sum = sum + rows
-    print 'id was ' + campaign_id + ' ' + str(rows)
+    print('id was ' + campaign_id + ' ' + str(rows))
 
 """
 Print the percentage of buy actions for each campaign id
@@ -54,7 +55,7 @@ Print the percentage of buy actions for each campaign id
 for campaign_id in campaign_to_num.keys():
     rows = num_rows(df.groupby('Users_Campaign_ID').get_group(campaign_id))
     rows = rows / sum
-    print 'id was ' + campaign_id + ' and percent of customers bought was ' + str(rows)
+    print('id was ' + campaign_id + ' and percent of customers bought was ' + str(rows))
 
 
 
@@ -94,7 +95,7 @@ features = churn_feat_space.columns
 #X = churn_feat_space.fillna(0).as_matrix().astype(np.float)
 X = churn_feat_space.as_matrix().astype(np.float)
 
-print "Scaling features"
+print("Scaling features")
 # This is important
 scaler = StandardScaler()
 X = scaler.fit_transform(X)

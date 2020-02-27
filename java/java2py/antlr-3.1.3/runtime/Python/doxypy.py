@@ -28,6 +28,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 @author Gina Haeussge
 @author Philippe Neumann
 """
+from __future__ import print_function
 
 import sys
 import re
@@ -202,7 +203,7 @@ def optParse():
 	(options, filename) = parser.parse_args()
 		
 	if not filename:
-		print >>sys.stderr, "No filename given."
+		print("No filename given.", file=sys.stderr)
 		sys.exit(-1)
 	
 	return filename[0]
@@ -217,11 +218,11 @@ def main():
 	try:
 		input = loadFile(filename)
 	except IOError, (errno, msg):
-		print >>sys.stderr, msg
+		print(msg, file=sys.stderr)
 		sys.exit(-1)
 	
 	output = parse(input)
-	print output
+	print(output)
 	
 if __name__ == "__main__":
 	main()

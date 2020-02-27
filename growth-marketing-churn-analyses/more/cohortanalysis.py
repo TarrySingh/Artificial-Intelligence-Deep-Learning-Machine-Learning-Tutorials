@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -48,4 +49,4 @@ Resets the data frame and unpacks groupings
 
 df = df_user.reset_index()
 df = df.groupby(df.Users_date).aggregate(group_agg)
-print df
+print(df)

@@ -24,7 +24,7 @@ class Debugger(threading.Thread):
                 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 s.connect(('127.0.0.1', self.port))
                 break
-            except socket.error, exc:
+            except socket.error as exc:
                 if exc.args[0] != errno.ECONNREFUSED:
                     raise
                 time.sleep(0.1)

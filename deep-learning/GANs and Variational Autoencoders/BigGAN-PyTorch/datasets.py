@@ -119,8 +119,7 @@ class ImageFolder(data.Dataset):
       imgs = make_dataset(root, class_to_idx)
       np.savez_compressed(index_filename, **{'imgs' : imgs})
     if len(imgs) == 0:
-      raise(RuntimeError("Found 0 images in subfolders of: " + root + "\n"
-                           "Supported image extensions are: " + ",".join(IMG_EXTENSIONS)))
+      raise RuntimeError
 
     self.root = root
     self.imgs = imgs

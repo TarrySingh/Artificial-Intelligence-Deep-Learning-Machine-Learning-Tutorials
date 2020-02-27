@@ -1,5 +1,6 @@
 #!/u/subramas/miniconda2/bin/python
 """Main script to run things"""
+from __future__ import print_function
 import sys
 
 sys.path.append('/u/subramas/Research/nmt-pytorch/')
@@ -50,7 +51,7 @@ console.setFormatter(formatter)
 logging.getLogger('').addHandler(console)
 
 
-print 'Reading data ...'
+print('Reading data ...')
 
 src, _ = read_nmt_data(
     src=config['data']['src'],

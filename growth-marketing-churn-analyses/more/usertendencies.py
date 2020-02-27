@@ -1,3 +1,4 @@
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -30,7 +31,7 @@ hist_and_show(user_df,'Users_Campaign_ID')
 
 q = session.query(Users.Campaign_ID,Event.Type,Users.id,Event.User_Id).filter(Event.Type == 'bought')
 d = query_to_df(session,q)
-print d.columns
+print(d.columns)
 
 transform_column(d,'Users_Campaign_ID',campaign_to_num.get)
 """

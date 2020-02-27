@@ -114,7 +114,7 @@ class T1(testbase.ANTLRTest):
         try:
             tokens.toString()
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             self.failUnlessEqual(
                 str(exc),
                 "insert op <InsertBeforeOp@1:\"0\"> within boundaries of "
@@ -200,7 +200,7 @@ class T1(testbase.ANTLRTest):
         try:
             tokens.toString()
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             self.failUnlessEqual(
                 str(exc),
                 "insert op <InsertBeforeOp@4:\"y\"> within boundaries of "
@@ -243,7 +243,7 @@ class T1(testbase.ANTLRTest):
         try:
             tokens.toString()
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             self.failUnlessEqual(
                 str(exc),
                 "replace op boundaries of <ReplaceOp@3..5:\"foo\"> overlap "
@@ -258,7 +258,7 @@ class T1(testbase.ANTLRTest):
         try:
             tokens.toString()
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             self.failUnlessEqual(
                 str(exc),
                 "replace op boundaries of <ReplaceOp@1..3:\"foo\"> overlap "
@@ -339,7 +339,7 @@ class T1(testbase.ANTLRTest):
         try:
             tokens.toString()
             self.fail()
-        except ValueError, exc:
+        except ValueError as exc:
             self.failUnlessEqual(
                 str(exc),
                 "replace op boundaries of <ReplaceOp@1..2:\"foo\"> overlap "

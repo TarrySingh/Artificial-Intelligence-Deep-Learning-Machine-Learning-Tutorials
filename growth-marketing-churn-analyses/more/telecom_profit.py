@@ -1,4 +1,5 @@
 from __future__ import division
+from __future__ import print_function
 import matplotlib.pyplot as plt
 from sqlalchemy import *
 import numpy as np
@@ -55,7 +56,7 @@ features = churn_feat_space.columns
 #X = churn_feat_space.fillna(0).as_matrix().astype(np.float)
 X = churn_feat_space.as_matrix().astype(np.float)
 
-print "Scaling features"
+print("Scaling features")
 # This is important
 scaler = StandardScaler()
 X = scaler.fit_transform(X)

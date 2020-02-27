@@ -4,6 +4,7 @@ Date : 18 September 2012
 Revised: 28 March 2014
 
 """
+from __future__ import print_function
 
 
 import csv as csv
@@ -44,8 +45,8 @@ men_onboard = data[men_only_stats,1].astype(np.float)
 proportion_women_survived = np.sum(women_onboard) / np.size(women_onboard)
 proportion_men_survived = np.sum(men_onboard) / np.size(men_onboard)
 
-print 'Proportion of women who survived is %s' % proportion_women_survived
-print 'Proportion of men who survived is %s' % proportion_men_survived
+print('Proportion of women who survived is %s' % proportion_women_survived)
+print('Proportion of men who survived is %s' % proportion_men_survived)
 
 # Now that I have my indicator that women were much more likely to survive,
 # I am done with the training set.

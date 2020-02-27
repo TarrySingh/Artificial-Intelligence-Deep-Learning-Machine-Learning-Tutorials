@@ -42,6 +42,6 @@ from treewizard import TreeWizard
 
 try:
     from antlr3.dottreegen import toDOT
-except ImportError, exc:
+except ImportError as exc:
     def toDOT(*args, **kwargs):
         raise exc
