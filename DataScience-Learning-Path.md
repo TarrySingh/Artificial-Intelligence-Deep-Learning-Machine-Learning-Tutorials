@@ -24,7 +24,13 @@ It does not require any previous knowledge, but being confident with programming
 - The Math you need
 - The Machine Learning landscape
 
-#### Machine learning with Scikit-Learn
+#### Data Visualization
+- xxxx
+- yyyy
+- zzzz
+- vvvv
+
+#### Machine learning
 - Why Scikit-Learn?
 - End-to-End Machine Learning project 
 - Linear Regression 
@@ -35,7 +41,7 @@ It does not require any previous knowledge, but being confident with programming
 - Ensemble Learning and Random Forest 
 - Wrapping up and looking forward
 
-#### Neural Networks with TensorFlow
+#### Deep Learning
 - Why TensorFlow?
 - Up and Running with TensorFlow
 - ANN - Artificial Neural Networks 
@@ -46,7 +52,7 @@ It does not require any previous knowledge, but being confident with programming
 - Reinforcement Learning
 - Next steps
 
-#### Utilities
+#### Applied AI
 - Machine Learning Projects 
 - Data Science Tools
 - Blogs / Youtube Channels / Websites worth taking a look!
@@ -56,7 +62,7 @@ So let's get started!
 
 ---------------------------------------------------------------
 
-## Prerequisites
+## Fundamentals
 
 ### Python
 According to Sun Tzu:
@@ -99,7 +105,7 @@ Check it [here](https://www.oreilly.com/library/view/hands-on-machine-learning/9
 
 ----------------------------------------------------------------
 
-## Machine Learning with Scikit-Learn
+## Machine Learning
 
 To install Scikit-Learn 
 
@@ -173,7 +179,7 @@ Now, if you followed all the steps and explored all the resources i posted, you'
 
 -----------------------------------------------------------------
 
-## Neural Networks with TensorFlow
+## Deep Learning
 In this section we'll follow a track that will bring us to zero knowledge of neural network to fully understand them, thanks to the Stanford University Deep Learning course and some tutorials i've searched over the internet. Some of them come from Google, other from Stanford or Cambridge university, and you will learn to leverage neural networks (ANN, CNN, RNN) for several kind of ML tasks.
 These are [some use cases](https://www.digitaldoughnut.com/articles/2017/march/top-5-use-cases-of-tensorflow) of using TensorFlow for ML tasks. 
 
@@ -200,7 +206,11 @@ The structure follows the track proposed by the Stanford awesome course. You fin
 
 This is the [**Book**](https://www.deeplearningbook.org/) I refer to in each section.
 
-### Why TensorFlow?
+### What is TensorFlow
+Created by the [Google Brain](https://ai.google/research/teams/brain) team, [TensorFlow](https://www.tensorflow.org/) is an open source library for numerical computation and large-scale machine learning. TensorFlow bundles together a slew of machine learning and deep learning (aka neural networking) models and algorithms and makes them useful by way of a common metaphor. It uses Python to provide a convenient front-end API for building applications with the framework, while executing those applications in high-performance C++.
+TensorFlow is the de-facto standard for the major industry-sized company that need to implement Machine Learning algorithms. Is built for scaling, with really cool features to parallelize training over multiple GPU's or devices.
+
+### What is PyTorch
 Created by the [Google Brain](https://ai.google/research/teams/brain) team, [TensorFlow](https://www.tensorflow.org/) is an open source library for numerical computation and large-scale machine learning. TensorFlow bundles together a slew of machine learning and deep learning (aka neural networking) models and algorithms and makes them useful by way of a common metaphor. It uses Python to provide a convenient front-end API for building applications with the framework, while executing those applications in high-performance C++.
 TensorFlow is the de-facto standard for the major industry-sized company that need to implement Machine Learning algorithms. Is built for scaling, with really cool features to parallelize training over multiple GPU's or devices.
 
@@ -307,7 +317,7 @@ _Second pass:_
  [1](https://medium.com/@BonsaiAI/deep-reinforcement-learning-models-tips-tricks-for-writing-reward-functions-a84fe525e8e0), [2](https://towardsdatascience.com/applications-of-reinforcement-learning-in-real-world-1a94955bcd12).
 
 
-## Utilities
+## Applied AI
 
 **Hey You**.
 During the last few years i collected tons of articles, web apps, reddit thread, best practices, projects and repositories, and I want to share with you each single bit of information, trying to organize them by type of resource (blogs or projects ideas, and so on). 
@@ -367,20 +377,15 @@ During the last few years i collected tons of articles, web apps, reddit thread,
 
 ## Next Steps Roadmap
 
-Thanks to the great success of this guide,  i've decided to expand it a lot and make more similar for different topics.
-Some of the extensions i'm addig here next weeks are:
+A lot of cool and 2021 savvy stuff is coming to this content:
 
 - Unsupervised Learning / Self-Suerpvised Learning
-- MLOps : Machine Learning mindset framework (how to think like a data scientist)
+- MLOps : Machine Learning mindset framework (how to work like a succesful data scientist)
 - Data processing and preparation
 - Feature Selection
 - Features Engineering
 - Extending the parameters optimization section
-- Add a section for the Keras Library
-- Add a section for the TensorFlow 2.0 
-- Add a section to "How to deploy my model on AWS"
-- Add a section to "How to deploy my model on Azure"
+- Popular Computer Vision Models and datasets
+- Popular NLP, RNN, Language Models and datasets
+- Real World AI Projects / Industry Verticals (Agriculture, Climate / Energy, Healthcare, Retail, Document AI, HR analytics, Hominis, PETAI, CAELI, AI Projects)
 
-
-
-### ... Coming Very Soon! Stay tuned :)
