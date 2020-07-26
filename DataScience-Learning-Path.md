@@ -11,7 +11,12 @@ It does not require any previous knowledge, but being confident with programming
 
 
 
-#### I organized the Path in 4 sections:
+#### I have organized the Path in 5 sections:(Note : This is Work In Progress)
+
+<p align="center">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/learning-path.png">
+</p>
+
 
 #### Fundamentals
 - Python
