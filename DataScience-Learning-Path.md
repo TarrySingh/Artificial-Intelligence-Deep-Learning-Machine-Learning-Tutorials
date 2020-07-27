@@ -1,8 +1,9 @@
-<p align="center">
-  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/LiveAI.png">
-</p>
 # March 2020 - 2021 Data Science (Machine Learning / Deep Learning) Study Path
-## A complete ML study path focused on making you a real world AI engineer / expert
+## A complete ML study path focused on making you a Real World AI Expert (Engineer / Developer and Researcher)
+<p align="center">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/LiveAI.png" width="400" height="143">
+</p>
+
 <p align="center">
   <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/liveai-2.png">
 </p>
