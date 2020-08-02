@@ -59,12 +59,15 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Understanding the Neuron
 - Feed Forward Networks
 - Activation Functions
-- Backpropagation - Full Review
+- Backpropagation - Complete ins and outs
+- Optimizers - Why we need them
+- Deep Learning - Full review
 - Introduction to TensorFlow, PyTorch and other frameworks
 - Up and Running with TensorFlow and PyTorch
 - ANN - Artificial Neural Networks
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
+- The Mightly keras - Complete overview
 - Training Networks: Best practices
 - AutoEncoders
 - Reinforcement Learning
