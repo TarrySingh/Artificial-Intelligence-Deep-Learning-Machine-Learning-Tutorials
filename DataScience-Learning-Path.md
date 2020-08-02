@@ -59,6 +59,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Understanding the Neuron
 - Feed Forward Networks
 - Activation Functions
+- Backpropagation - Full Review
 - Introduction to TensorFlow, PyTorch and other frameworks
 - Up and Running with TensorFlow and PyTorch
 - ANN - Artificial Neural Networks
