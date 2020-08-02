@@ -41,6 +41,8 @@ It does not require any previous knowledge, but being confident with programming
 - Bayesian Approach
 - Math of Curvature and Surfaces
 - Information Theory, Entropy & Cross Entropy
+- Classification, Clustering and Classifiers
+-
 - Scikit-Learn
 - End-to-End Machine Learning project
 - Linear Regression
@@ -52,8 +54,9 @@ It does not require any previous knowledge, but being confident with programming
 - Wrapping up and looking forward
 
 #### Deep Learning
-- Why TensorFlow?
-- Up and Running with TensorFlow
+- -
+- Introduction to TensorFlow, PyTorch and other frameworks
+- Up and Running with TensorFlow amd PyTorch
 - ANN - Artificial Neural Networks
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
