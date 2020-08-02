@@ -35,34 +35,35 @@ It does not require any previous knowledge, but being confident with programming
 - vvvv
 
 #### Machine learning
-- Introduction 
+- Introduction
 - Statistics and Randomness
 - Probability
 - Bayesian Approach
-- Curvature and Surfaces
+- Math of Curvature and Surfaces
+- Information Theory, Entropy & Cross Entropy
 - Scikit-Learn
-- End-to-End Machine Learning project 
-- Linear Regression 
+- End-to-End Machine Learning project
+- Linear Regression
 - Classification
 - Training models
 - Support Vector Machines
 - Decision Trees
-- Ensemble Learning and Random Forest 
+- Ensemble Learning and Random Forest
 - Wrapping up and looking forward
 
 #### Deep Learning
 - Why TensorFlow?
 - Up and Running with TensorFlow
-- ANN - Artificial Neural Networks 
+- ANN - Artificial Neural Networks
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
-- Training Networks: Best practices 
+- Training Networks: Best practices
 - AutoEncoders
 - Reinforcement Learning
 - Next steps
 
 #### Applied AI
-- Machine Learning Projects 
+- Machine Learning Projects
 - Data Science Tools
 - Blogs / Youtube Channels / Websites worth taking a look!
 
@@ -81,7 +82,7 @@ Python is one of the most used and loved programming languages, and it's necessa
 
 First, let's [install Python 3](https://realpython.com/installing-python/) on your machine!
 
-We are ready to start our journey! 
+We are ready to start our journey!
 
 If you don't know the basics of Python, just start from [here](https://pythonprogramming.net/introduction-learn-python-3-tutorials/).\
 Else if you know the syntax and you want to have a more solid Python background (recommended) take this Intermediate Python Course from [here](https://pythonprogramming.net/introduction-intermediate-python-tutorial/).\
@@ -134,9 +135,9 @@ Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium dolor
 
 ### Scikit-Learn
 
-To install Scikit-Learn 
+To install Scikit-Learn
 
-``` 
+```
 python pip install -U scikit-learn
 ```
 
@@ -146,11 +147,11 @@ If you encounter some problems, it may be because you don't have the last versio
  python -m pip install --upgrade pip
 ```
 
-[Scikit-Learn](https://scikit-learn.org/stable/) one of the most complete, mature and well-documented library for Machine Learning tasks. It comes out-of-the-box with powerful and advanced models and offers facility functions for the data science process. 
-We'll learn and use other modules along the road, for a quick usage just look at their official documentation. 
+[Scikit-Learn](https://scikit-learn.org/stable/) one of the most complete, mature and well-documented library for Machine Learning tasks. It comes out-of-the-box with powerful and advanced models and offers facility functions for the data science process.
+We'll learn and use other modules along the road, for a quick usage just look at their official documentation.
 
 
-### End-to-End Machine Learning project 
+### End-to-End Machine Learning project
 For a first taste, i suggest you to go through this Kaggle notebook, which is the most classic example of ML task. The goal is trying to predict if a Titanic passenger would have been most likely to survive or not. Many things will be unclear for now, but don't worry, they will be all explained comprehensively later. Is nice to get the picture of the "applied" project, going through the classical steps of the applied Machine Learning (problem framing, data exploration, question formulation...).
 
 The notebook is on [Kaggle](https://www.kaggle.com/), the go-to platform for ML and general Data Science projects, which provides a lot of free datasets and offers interesting challenges and ML model experiments.
@@ -189,25 +190,25 @@ This is another classical algorithm to create ML models.
 Decision Trees are one of the most simple but effective idea behind predicting outcomes, and they're used in many ways (i.e. Random Forest). Check [here](https://www.youtube.com/watch?v=eKD5gxPPeY0&list=PLBv09BD7ez_4temBw7vLA19p3tdQH6FYO) and go through the playlist to get a theoretical overview of Decision Trees (ID3).
 [Here](https://scikit-learn.org/stable/modules/tree.html) you have the pratical application of ID3.
 Here you have a some end-to-end examples, with  Scikit-Learn:
-- [Example 1](https://www.youtube.com/watch?v=9YcMzsFvfxU) 
+- [Example 1](https://www.youtube.com/watch?v=9YcMzsFvfxU)
 - [Example 2](https://www.youtube.com/watch?v=RmajweUFKvM)
 - [Example 3](http://dataaspirant.com/2017/02/01/decision-tree-algorithm-python-with-scikit-learn/)
 
-### Ensemble Learning and Random Forest 
-The idea of Ensemble Learning is to leverage all the different features, pro and cons of several ML models to obtain a group of "voters" that, for each prediction, gives you the most likely outcome, voted by different classifiers (SVM, ID3, maybe Logistic Regression). 
+### Ensemble Learning and Random Forest
+The idea of Ensemble Learning is to leverage all the different features, pro and cons of several ML models to obtain a group of "voters" that, for each prediction, gives you the most likely outcome, voted by different classifiers (SVM, ID3, maybe Logistic Regression).
 [Here](https://www.youtube.com/watch?v=9VmKYwX_U7s) you find the basics of the ensemble learning approach, and [here](https://www.youtube.com/watch?v=3kYujfDgmNk) you find the most classic of them, the Random Forest. Altough the idea is simple, this ensemble model came up really effective tackling even some "hard" classification problems, or with a lot of data.  
 
-[Here](https://scikit-learn.org/stable/modules/ensemble.html) you get a complete overview of the best practices for ensemble learning, and [here](https://towardsdatascience.com/random-forest-in-python-24d0893d51c0) you find an example of Random Forest with Scikit-Learn. Both link come with a bunch of useful techniques touse in practice. 
+[Here](https://scikit-learn.org/stable/modules/ensemble.html) you get a complete overview of the best practices for ensemble learning, and [here](https://towardsdatascience.com/random-forest-in-python-24d0893d51c0) you find an example of Random Forest with Scikit-Learn. Both link come with a bunch of useful techniques touse in practice.
 
 ### Wrapping up and looking forward
-Now, if you followed all the steps and explored all the resources i posted, you're likely to be mode confident with Machine Learning and have a general idea of the things. Of course you need to explore and learn more, because this field is changing and enhancing techniques and approaches day-by-day! All the algorithm we've seen are widely used in the Data Science and Analytics field, but there are some complex tasks where they fail or give really poor performances. Now we are ready to fall down in the **deep** rabbit hole, trying to understand how Neural Network and in general Deep Learning can help tackling big problem with millions of parameters and variables. 
+Now, if you followed all the steps and explored all the resources i posted, you're likely to be mode confident with Machine Learning and have a general idea of the things. Of course you need to explore and learn more, because this field is changing and enhancing techniques and approaches day-by-day! All the algorithm we've seen are widely used in the Data Science and Analytics field, but there are some complex tasks where they fail or give really poor performances. Now we are ready to fall down in the **deep** rabbit hole, trying to understand how Neural Network and in general Deep Learning can help tackling big problem with millions of parameters and variables.
 [Why use Deep Learning over classical ML algorithms?](https://towardsdatascience.com/why-deep-learning-is-needed-over-traditional-machine-learning-1b6a99177063)
 
 -----------------------------------------------------------------
 
 ## Deep Learning
 In this section we'll follow a track that will bring us to zero knowledge of neural network to fully understand them, thanks to the Stanford University Deep Learning course and some tutorials i've searched over the internet. Some of them come from Google, other from Stanford or Cambridge university, and you will learn to leverage neural networks (ANN, CNN, RNN) for several kind of ML tasks.
-These are [some use cases](https://www.digitaldoughnut.com/articles/2017/march/top-5-use-cases-of-tensorflow) of using TensorFlow for ML tasks. 
+These are [some use cases](https://www.digitaldoughnut.com/articles/2017/march/top-5-use-cases-of-tensorflow) of using TensorFlow for ML tasks.
 
 The theory and the applications of the Neural Networks are not too easy to get at a first look. Because of that, you'll need to pass again through tutorials and videos, to ensure a fully comprehension of the coming topics. Because of that, I spent a decent amount of time trying to understand (reading paths like this, articles, offical forums, related subreddits) which was **the most effective way** to deeply learn the concepts, formulas, tradeoffs...
 I came up with this approach, but you can tweak it as you prefer, because every brain is different.
@@ -245,22 +246,22 @@ A number of pieces of Deep Learning software are built on top of PyTorch, includ
 PyTorch provides two high-level features: Tensor computing (like NumPy) with strong acceleration via graphics processing units (GPU) **and** Deep neural networks built on a tape-based automatic differentiation system
 
 ### Up and Running with TensorFlow
-Assuming you have [Python stored in the variable PATH](https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/), to install the Tensorflow library you just need to open a terminal inside you Python installation folder and run this command. 
+Assuming you have [Python stored in the variable PATH](https://helpdeskgeek.com/windows-10/add-windows-path-environment-variable/), to install the Tensorflow library you just need to open a terminal inside you Python installation folder and run this command.
 
-``` 
+```
 python pip install tensorflow
 ```
 
 The first read i recommend you is [this](https://jacobbuckman.com/post/tensorflow-the-confusing-parts-1/).
 The second thing to do is to follow this [Introduction to TensorFlow](https://www.youtube.com/watch?v=tYYVSEHq-io) directly from the **awesome** [Google Education](https://ai.google/education/) page.
-Again, some theoretical concepts might be unclear, but focus on how the TensorFlow library and process are conceived. 
+Again, some theoretical concepts might be unclear, but focus on how the TensorFlow library and process are conceived.
 [This](https://medium.com/@camrongodbout/tensorflow-in-a-nutshell-part-one-basics-3f4403709c9d) is a good resume of the latter.
 [Another beginner tutorial from google](https://codelabs.developers.google.com/codelabs/tensorflow-for-poets/#0).
-[This](https://www.youtube.com/watch?v=k5c-vg4rjBw&t=246s) is about the TensorFlow 2.0 update. 
+[This](https://www.youtube.com/watch?v=k5c-vg4rjBw&t=246s) is about the TensorFlow 2.0 update.
 
-Now you're most likely familiar with **TensorFlow as a tool**, and it's time to understand **how to use** it to build large scale Neural Networks. 
- 
-### ANN - Artificial Neural Networks 
+Now you're most likely familiar with **TensorFlow as a tool**, and it's time to understand **how to use** it to build large scale Neural Networks.
+
+### ANN - Artificial Neural Networks
 _First look (in order):_
 - [This video](https://www.youtube.com/watch?v=v2tKoymKIuE).
 - [This is your bible](http://neuralnetworksanddeeplearning.com/chap1.html), understand it totally.
@@ -276,7 +277,7 @@ _Tips & Best practices:_
 
 ### CNN - Convolutional Neural Networks
 _First look (in order):_
-- [Here](https://ujjwalkarn.me/2016/08/11/intuitive-explanation-convnets/) is an awesome deep explanation. 
+- [Here](https://ujjwalkarn.me/2016/08/11/intuitive-explanation-convnets/) is an awesome deep explanation.
 - [Here](https://medium.com/technologymadeeasy/the-best-explanation-of-convolutional-neural-networks-on-the-internet-fbb8b1ad5df8) another super good one.
 - [Here](https://www.datacamp.com/community/tutorials/cnn-tensorflow-python) is serious CNN tutorial with TensorFlow.
 
@@ -299,16 +300,16 @@ _Second pass:_
 
 _Tips & Best practices:_
 [1](https://danijar.com/tips-for-training-recurrent-neural-networks/), [2](https://svail.github.io/rnn_perf/), [3](https://towardsdatascience.com/rnn-training-tips-and-tricks-2bf687e67527), [4](http://slazebni.cs.illinois.edu/spring17/lec20_rnn.pdf), [5](https://www.quora.com/What-are-the-best-practices-for-choosing-hidden-state-size-in-RNNs), [6](https://www.quora.com/Can-recurrent-neural-networks-with-LSTM-be-used-for-time-series-prediction), [7](https://www.reddit.com/r/MachineLearning/comments/5ogbd5/d_training_lstms_in_practice_tips_and_tricks/).
- 
-### Training Networks: Best practices 
+
+### Training Networks: Best practices
 _First look (in order):_
 I **strongly recommend** you to refer to [this page](http://cs231n.github.io/) from Stanford and go through all the Module 1 and 2.
 I put also here a list of the various topic to explore when talking about _how to train NN in real life applications_.
 
-- Overfitting vs Underfitting: [1](https://keeeto.github.io/blog/bias_variance/), [2](https://cran.r-project.org/web/packages/keras/vignettes/tutorial_overfit_underfit.html), [3](https://machinelearningmastery.com/overfitting-and-underfitting-with-machine-learning-algorithms/), [4](https://medium.com/greyatom/what-is-underfitting-and-overfitting-in-machine-learning-and-how-to-deal-with-it-6803a989c76), [5](https://elitedatascience.com/overfitting-in-machine-learning). 
+- Overfitting vs Underfitting: [1](https://keeeto.github.io/blog/bias_variance/), [2](https://cran.r-project.org/web/packages/keras/vignettes/tutorial_overfit_underfit.html), [3](https://machinelearningmastery.com/overfitting-and-underfitting-with-machine-learning-algorithms/), [4](https://medium.com/greyatom/what-is-underfitting-and-overfitting-in-machine-learning-and-how-to-deal-with-it-6803a989c76), [5](https://elitedatascience.com/overfitting-in-machine-learning).
 - Vanishing/Exploding Gradient: [1](https://medium.com/learn-love-ai/the-curious-case-of-the-vanishing-exploding-gradient-bf58ec6822eb), [2](https://machinelearningmastery.com/exploding-gradients-in-neural-networks/), [3](https://hackernoon.com/exploding-and-vanishing-gradient-problem-math-behind-the-truth-6bd008df6e25), [4](https://www.jefkine.com/general/2018/05/21/2018-05-21-vanishing-and-exploding-gradient-problems/), [5](https://medium.com/@prateekvishnu/xavier-and-he-normal-he-et-al-initialization-8e3d7a087528).
 - Transfer Learning: [1](https://medium.com/analytics-vidhya/reusing-a-pre-trained-deep-learning-model-on-a-new-task-transfer-learning-1c0a25a92dfb), [2](https://www.analyticsvidhya.com/blog/2017/06/transfer-learning-the-art-of-fine-tuning-a-pre-trained-model/), [3](https://jjallaire.github.io/deep-learning-with-r-notebooks/notebooks/5.3-using-a-pretrained-convnet.nb.html), [4](https://towardsdatascience.com/a-comprehensive-hands-on-guide-to-transfer-learning-with-real-world-applications-in-deep-learning-212bf3b2f27a), [5](https://machinelearningmastery.com/transfer-learning-for-deep-learning/).
-- Faster Optimizers: [1](http://ruder.io/optimizing-gradient-descent/), [2](https://www.jeremyjordan.me/nn-learning-rate/), [3](https://towardsdatascience.com/learning-rate-schedules-and-adaptive-learning-rate-methods-for-deep-learning-2c8f433990d1), [4](https://towardsdatascience.com/learning-rate-scheduler-d8a55747dd90). 
+- Faster Optimizers: [1](http://ruder.io/optimizing-gradient-descent/), [2](https://www.jeremyjordan.me/nn-learning-rate/), [3](https://towardsdatascience.com/learning-rate-schedules-and-adaptive-learning-rate-methods-for-deep-learning-2c8f433990d1), [4](https://towardsdatascience.com/learning-rate-scheduler-d8a55747dd90).
 - Avoiding Overfitting through Regularization: [1](https://towardsdatascience.com/regularization-in-machine-learning-76441ddcf99a), [2](https://codeburst.io/what-is-regularization-in-machine-learning-aed5a1c36590), [3](https://www.analyticsvidhya.com/blog/2018/04/fundamentals-deep-learning-regularization-techniques/), [4](https://machinelearningmastery.com/weight-regularization-to-reduce-overfitting-of-deep-learning-models/).
 
 _Second pass:_
@@ -316,7 +317,7 @@ _Second pass:_
 - [Regularizaton Chapter](https://www.deeplearningbook.org/contents/regularization.html).
 - [Optimization Chapter](https://www.deeplearningbook.org/contents/optimization.html).
 - [Pratical Methodology Chapter](https://www.deeplearningbook.org/contents/guidelines.html).
- 
+
 
 ### AutoEncoders
 _First look (in order):_
@@ -327,10 +328,10 @@ _First look (in order):_
 
 _Second pass:_
 [AutoEncoders Chapter](https://www.deeplearningbook.org/contents/autoencoders.html).
- 
+
  _Tips & Best practices:_
  [1](https://stats.stackexchange.com/questions/257163/architecture-of-autoencoders), [2](https://stats.stackexchange.com/questions/193780/how-much-noise-for-denoising-autoencoder), [3](https://www.reddit.com/r/MachineLearning/comments/6aw8ik/d_reddit_do_you_use_autoencoders_in_practice/), [4](https://www.reddit.com/r/MachineLearning/comments/89f17m/d_current_best_practices_for_vaes/), [5](https://www.reddit.com/r/MachineLearning/comments/5k8h07/p_insights_into_variational_autoencoders_for/).
- 
+
 ### Reinforcement Learning
 _First look (in order):_
 - [Here](https://www.youtube.com/watch?v=2pWv7GOvuf0) you have an explanation video.
@@ -342,7 +343,7 @@ _Second pass:_
 [The go-to guide](https://lilianweng.github.io/lil-log/2018/02/19/a-long-peek-into-reinforcement-learning.html?utm_campaign=Data%20Machina&utm_medium=email&utm_source=Revue%20newsletter).
 [Paper](https://arxiv.org/pdf/1710.02298.pdf) with state of art RL architecture.
 [Complete free book on RL](http://www0.cs.ucl.ac.uk/staff/d.silver/web/Teaching.html).
- 
+
  _Tips & Best practices:_
  [1](https://medium.com/@BonsaiAI/deep-reinforcement-learning-models-tips-tricks-for-writing-reward-functions-a84fe525e8e0), [2](https://towardsdatascience.com/applications-of-reinforcement-learning-in-real-world-1a94955bcd12).
 
@@ -350,9 +351,9 @@ _Second pass:_
 ## Applied AI
 
 **Hey You**.
-During the last few years i collected tons of articles, web apps, reddit thread, best practices, projects and repositories, and I want to share with you each single bit of information, trying to organize them by type of resource (blogs or projects ideas, and so on). 
+During the last few years i collected tons of articles, web apps, reddit thread, best practices, projects and repositories, and I want to share with you each single bit of information, trying to organize them by type of resource (blogs or projects ideas, and so on).
 
-### Machine Learning Projects 
+### Machine Learning Projects
 
 - [Enormous and awesome collection](https://github.com/FavioVazquez/ds-cheatsheets) of Data Science Cheat Sheets
 - [Infinite collection](https://docs.google.com/document/d/e/2PACX-1vRRC3ZIcvjFqEYEgnN9pptoWONr2mSGZJ4hSdL8Jpf2IpXdxjTc-d3jrpb98h59xJnZ3h1frUDydoxc/pub) of actual Data Science / ML projects
@@ -373,7 +374,7 @@ During the last few years i collected tons of articles, web apps, reddit thread,
 - [Engineering Man](https://www.youtube.com/channel/UCrUL8K81R4VBzm-KOYwrcxQ)
 - [The Tech Lead](https://www.youtube.com/channel/UC4xKdmAXFh4ACyhpiQ_3qBw)
 
-### Blogs 
+### Blogs
 
 - [How to build a data science portfolio](https://lilianweng.github.io/lil-log/2018/02/19/a-long-peek-into-reinforcement-learning.html?utm_campaign=Data%20Machina&utm_medium=email&utm_source=Revue%20newsletter)
 - [Distill blog](https://distill.pub/)  
@@ -386,7 +387,7 @@ During the last few years i collected tons of articles, web apps, reddit thread,
 ### Websites worth taking a look!
 
 - [A monster collection of Data related free course](https://github.com/kmario23/deep-learning-drizzle)
-- [Machine Learning Map](http://www.saedsayad.com/data_mining_map.htm) 
+- [Machine Learning Map](http://www.saedsayad.com/data_mining_map.htm)
 - [Data modeling for Business Intelligence](https://www.1keydata.com/datawarehousing/data-modeling-levels.html)
 - [Statistics explained](http://www.statsoft.com/Textbook/Elementary-Statistics-Concepts#Two%20basic%20features%20of%20every%20relation%20between%20variables)
 - [Visualizing data - Turorials](https://datascienceplus.com/category/visualizing-data/?tdo_tag=Python)
@@ -417,5 +418,4 @@ A lot of cool and 2021 savvy stuff is coming to this content:
 - Extending the parameters optimization section
 - Popular Computer Vision Models and datasets
 - Popular NLP, RNN, Language Models and datasets
-- Real World AI Projects / Industry Verticals (Agriculture, Climate / Energy, Healthcare, Retail, Document AI, HR analytics, Hominis, PETAI, CAELI, AI Projects)
-
+- Real World AI Projects / Industry Verticals (Agriculture, Climate / Energy, Healthcare, Retail, Document AI, HR analytics, Ethics AI - Project Hominis, PETAI, CAELI, AI Projects)
