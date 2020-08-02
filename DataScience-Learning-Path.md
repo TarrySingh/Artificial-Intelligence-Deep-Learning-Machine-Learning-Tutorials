@@ -41,8 +41,10 @@ It does not require any previous knowledge, but being confident with programming
 - Bayesian Approach
 - Math of Curvature and Surfaces
 - Information Theory, Entropy & Cross Entropy
-- Classification, Clustering and Classifiers
--
+- Classification, Clustering and Popular Classifiers
+- Data : Preparation, Training and Testing
+- Overfitting and Underfitting
+Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Scikit-Learn
 - End-to-End Machine Learning project
 - Linear Regression
@@ -50,13 +52,14 @@ It does not require any previous knowledge, but being confident with programming
 - Training models
 - Support Vector Machines
 - Decision Trees
-- Ensemble Learning and Random Forest
+- Ensemble Learning and Random Forest (remove / merge with top)
 - Wrapping up and looking forward
 
 #### Deep Learning
-- -
+- Understanding the Neuron
+- Feed Forward Networks
 - Introduction to TensorFlow, PyTorch and other frameworks
-- Up and Running with TensorFlow amd PyTorch
+- Up and Running with TensorFlow and PyTorch
 - ANN - Artificial Neural Networks
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
