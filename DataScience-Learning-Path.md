@@ -58,6 +58,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 #### Deep Learning
 - Understanding the Neuron
 - Feed Forward Networks
+- Activation Functions
 - Introduction to TensorFlow, PyTorch and other frameworks
 - Up and Running with TensorFlow and PyTorch
 - ANN - Artificial Neural Networks
