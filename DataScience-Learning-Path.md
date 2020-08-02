@@ -70,12 +70,15 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - The Mightly keras - Complete overview
 - Training Networks: Best practices
 - AutoEncoders
-- Reinforcement Learning
+- Reinforcement Learning (Flippers, L-Learning, Q-Learning, SARSA)
+- Generative Models - GANs, Flow-Based Models and more
 - Next steps
 
 #### Applied AI
+- Datasets - Complete Review
+- Building Creative Applications
 - Machine Learning Projects
-- Data Science Tools
+- MLOps - Data Science Tools
 - Blogs / Youtube Channels / Websites worth taking a look!
 
 
