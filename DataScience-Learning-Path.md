@@ -67,6 +67,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Introduction to TensorFlow, PyTorch and other frameworks
 - Up and Running with TensorFlow and PyTorch
 - ANN - Artificial Neural Networks
+- NLP - Comprehensive tutorial
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
 - The Mighty keras - Complete overview
