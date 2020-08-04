@@ -82,7 +82,6 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Machine Learning Projects
 - MLOps - Stitching Data Science Tools for Succesfull
 - Blogs / Youtube Channels / Websites worth taking a look!
-- Future Directions
 
 So let's get started!
 
