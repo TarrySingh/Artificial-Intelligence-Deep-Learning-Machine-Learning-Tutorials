@@ -1,4 +1,4 @@
-# NEW LIST 2017 - 2020: Machine-Learning / Deep-Learning / AI -Tutorials
+# NEW LIST 2020 - 2021: Machine-Learning / Deep-Learning / AI -Tutorials
 
 Hi - Thanks for dropping by!<br>
 <br>
@@ -427,7 +427,7 @@ To view interactive content or to modify elements within the IPython notebooks, 
     $ jupyter notebook
     
 
-Notebooks tested with Python 2.7.x.(will soon be updated to Python 3.5+)
+Notebooks tested with Python 3.7+
 
 ## curated-list-of-deeplearning-blogs
 
