@@ -67,7 +67,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - ANN - Artificial Neural Networks
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
-- The Mightly keras - Complete overview
+- The Mighty keras - Complete overview
 - AutoEncoders
 - Reinforcement Learning (Flippers, L-Learning, Q-Learning, SARSA)
 - Generative Models - GANs, Flow-Based Models and more
