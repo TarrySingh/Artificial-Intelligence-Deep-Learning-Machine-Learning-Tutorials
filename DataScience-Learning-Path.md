@@ -27,7 +27,7 @@ It does not require any previous knowledge, but being confident with programming
 - Jupyter Notebook
 - The Math you need
 - The Machine Learning landscape
-
+- More fundamentals
 #### Data Visualization
 - xxxx
 - yyyy
@@ -80,7 +80,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Machine Learning Projects
 - MLOps - Stitching Data Science Tools for Succesfull
 - Blogs / Youtube Channels / Websites worth taking a look!
-
+- Future Directions
 
 So let's get started!
 
