@@ -78,7 +78,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Training Networks: Best practices
 - Building Creative Applications
 - Machine Learning Projects
-- MLOps - Stitching Data Science Tools for Succesful
+- MLOps - Stitching Data Science Tools for Succesfull
 - Blogs / Youtube Channels / Websites worth taking a look!
 
 
