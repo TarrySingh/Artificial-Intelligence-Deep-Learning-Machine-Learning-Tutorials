@@ -30,8 +30,8 @@ It does not require any previous knowledge, but being confident with programming
 - On to Plateau 2
 #### Data Visualization
 - Pandas
-- yyyy
-- zzzz
+- Matplotlib
+- Seaborn, Plotly and More
 - vvvv
 - On to Plateau 3
 
