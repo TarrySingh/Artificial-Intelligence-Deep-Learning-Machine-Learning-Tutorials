@@ -68,17 +68,17 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - CNN - Convolutional Neural Networks
 - RNN - Recurrent Neural Networks
 - The Mightly keras - Complete overview
-- Training Networks: Best practices
 - AutoEncoders
 - Reinforcement Learning (Flippers, L-Learning, Q-Learning, SARSA)
 - Generative Models - GANs, Flow-Based Models and more
 - Next steps
 
-#### Applied AI
+#### Applied AI in Production
 - Datasets - Complete Review
+- Training Networks: Best practices
 - Building Creative Applications
 - Machine Learning Projects
-- MLOps - Data Science Tools
+- MLOps - Stitching Data Science Tools for Succesful
 - Blogs / Youtube Channels / Websites worth taking a look!
 
 
