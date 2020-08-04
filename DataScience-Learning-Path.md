@@ -28,11 +28,13 @@ It does not require any previous knowledge, but being confident with programming
 - The Math you need
 - The Machine Learning landscape
 - More fundamentals
+- On to Plateau 2
 #### Data Visualization
 - xxxx
 - yyyy
 - zzzz
 - vvvv
+- On to Plateau 3
 
 #### Machine learning
 - Introduction
@@ -53,7 +55,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - Support Vector Machines
 - Decision Trees
 - Ensemble Learning and Random Forest (remove / merge with top)
-- Wrapping up and looking forward
+- Wrap up and to Plateau 4
 
 #### Deep Learning
 - Understanding the Neuron
@@ -71,7 +73,7 @@ Ensembles: Voting, Bagging, Boosting, Random Forests and More
 - AutoEncoders
 - Reinforcement Learning (Flippers, L-Learning, Q-Learning, SARSA)
 - Generative Models - GANs, Flow-Based Models and more
-- Next steps
+- Next steps to Plateau 5
 
 #### Applied AI in Production
 - Datasets - Complete Review
