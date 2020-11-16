@@ -1,0 +1,3 @@
+file2_line1
+file2_line2
+file2_line3
