@@ -2,7 +2,7 @@
 
 Hi - Thanks for dropping by!<br>
 <br>
-I will be updating this tutorials site on a <b>daily basis</b> adding all relevant topcis for 2022 - 2024 especially pertaining to **GPU programming, Data Centric AI, Web3 (DeFI, DAO)**.<br>
+I will be updating this tutorials site on a <b>daily basis</b> adding all relevant topcis for 2022 - 2024 especially pertaining to **GPU programming, Data Centric AI, Web3 (DeFI, DAO, NFT) and much more**.<br>
 <br>
 More importantly the applications of ML/DL/AI into industry areas such as Transportation, Medicine/Healthcare etc. will be something I'll watch with keen interest and would love to share the same with you.
 <br>
