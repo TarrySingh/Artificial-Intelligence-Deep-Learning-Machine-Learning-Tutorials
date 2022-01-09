@@ -8,7 +8,7 @@ More importantly the applications of ML/DL/AI into industry areas such as Transp
 <br>
 Finally, it is **YOUR** help I will seek to make it more useful and less boring, so please do suggest/comment/contribute!
 <p align="center">
-  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/DK.mov">
+  <img src="https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/images/DK.png">
 </p>
 
 ## Index
