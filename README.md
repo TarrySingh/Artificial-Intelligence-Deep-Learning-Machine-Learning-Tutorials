@@ -719,7 +719,7 @@ Feel free to contact me to discuss any issues, questions, or comments.
 
 This repository contains a variety of content; some developed by Tarry Singh and some from third-parties and a lot will be maintained by me. The third-party content is distributed under the license provided by those parties.
 
-The content was originally developed by Donne Martin is distributed under the following license. I will be maintaining and revamping it by adding PyTorch, Torch/Lua, MXNET and much more:
+The content was originally started by Donne Martin is distributed under the following license in 2017. I have been further developing and maintaining it by adding PyTorch, Torch/Lua, MXNET and much more:
 
 *I am providing code and resources in this repository to you under an open source license.*
 
