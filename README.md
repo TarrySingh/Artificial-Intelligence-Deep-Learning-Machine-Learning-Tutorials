@@ -578,6 +578,7 @@ Notebooks tested with Python 3.7+
 * Machine Learning Blogs https://machinelearningblogs.com/ [(RSS)](https://machinelearningblogs.com/feed/)
 * Machine Learning, etc http://yaroslavvb.blogspot.com [(RSS)](http://yaroslavvb.blogspot.com/feeds/posts/default)
 * Machine Learning, Maths and Physics https://mlopezm.wordpress.com/ [(RSS)](https://mlopezm.wordpress.com/feed/)
+* Machine Learning Career https://www.scaler.com/blog/machine-learning-career/ [(RSS)](https://www.scaler.com/blog/machine-learning-career/)
 * Machine Learning Flashcards https://machinelearningflashcards.com/ $10, but a nicely illustrated set of 300 flash cards
 * Machined Learnings http://www.machinedlearnings.com/ [(RSS)](http://www.machinedlearnings.com/feeds/posts/default)
 * MAPPING BABEL https://jack-clark.net/ [(RSS)](https://jack-clark.net/feed/)
