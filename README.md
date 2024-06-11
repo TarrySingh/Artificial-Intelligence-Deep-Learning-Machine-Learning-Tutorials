@@ -680,6 +680,7 @@ Notebooks tested with Python 3.7+
 * ŷhat http://blog.yhat.com/ [(RSS)](http://blog.yhat.com/rss.xml)
 * ℚuantitative √ourney http://outlace.com/ [(RSS)](http://outlace.com/feed.xml)
 * 大トロ http://blog.otoro.net/ [(RSS)](http://blog.otoro.net/feed.xml)
+* Scaler Blogs - Data Science and Business Analytics [(RSS)](https://www.scaler.com/blog/category/data-science-business-analytics/)
 
 
 ## credits
