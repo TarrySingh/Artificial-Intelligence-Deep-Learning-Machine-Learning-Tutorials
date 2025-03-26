@@ -7,7 +7,7 @@ entrypoints==0.2.2
 h5py==2.7.0
 html5lib==0.999999999
 ipykernel==4.5.2
-ipython==5.3.0
+ipython==8.10.0
 ipython-genutils==0.2.0
 ipywidgets==6.0.0
 Jinja2==2.9.5
