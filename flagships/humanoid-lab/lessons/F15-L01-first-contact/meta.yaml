@@ -69,10 +69,56 @@ points: 26
 # all-or-nothing), the crouched-keyframe assertion (keyframe 0 is "squat", COM 0.362 m
 # against 0.850 m standing, so the 0.1 m margin is ample), and every docstring worked
 # example, each re-run against the shipped model.
+#
+# ---------------------------------------------------------------------------------------
+# Independent review, 2026-09-16, of the lesson as left by the audit pass above. 21 fresh
+# mutants of the reference solution were graded in /tmp (8 on step_for, 6 on com_height,
+# 7 on real_time_factor). 18 were caught as shipped; 3 scored a full 26/26 and two of those
+# were genuine rubric defects.
+#
+# Defect 1 — a missing mj_resetData scored 100%. The docstring and section 6 both order the
+# reset first, and it is what makes the measurement repeatable, but nothing graded it: a
+# submission that skipped it still produced a consistent report, because steps, sim_seconds
+# and the ratio are all internally consistent whether or not the clock was zeroed. Silently
+# wrong, too: every call after the first then times an already-fallen, contact-heavy pose.
+# test_real_time_factor_is_measured_and_right_way_up already makes two calls on one `data`,
+# so it now asserts that data.time equals the second call's own steps * timestep — exact if
+# the reset ran, roughly doubled if it did not.
+#
+# Defect 2 — steps returned as a float scored 100%. The rubric compared steps by ==, and
+# float(42) == 42, so np.ceil (the natural numpy spelling of the ceiling this exercise asks
+# for) passed while breaking range() and every index built from it downstream. The shape
+# test now rejects a float steps, worded to accept a numpy integer.
+#
+# Not a defect: a try/except around the whole measurement returning a zeroed report scores
+# 100%, but its except branch is unreachable on every input the rubric or a student can
+# supply — an equivalent mutant, not a gap. Re-run with a real typo inside the try (so the
+# swallow actually fires) it scores 22/26, so the category is graded.
+#
+# After both fixes: 21 mutants, 20 caught, 1 equivalent; reference still 26/26 and partial
+# credit intact in all 20 (35%-92%, no all-or-nothing collapse).
+#
+# Also fixed, outside the rubric: the com_height failure message named the wrong mistake.
+# It told a student that an unweighted mean "sits between" the root height and the COM; on
+# this model the unweighted mean is 0.8342 m, BELOW the COM's 0.8498 m, with the root at
+# 1.2820 m. All three near misses are now computed from the student's own pose and printed
+# in the message, in lesson.py, the solution and tests/test_lesson.py alike. Section 8's
+# "the gap is centimetres" was the last magnitude typed into prose about the model; the
+# stale-xipos cell now measures it (0.1700 m worst, 0.1140 m mean over the 9 bodies where
+# xpos and xipos differ) and the prose no longer states it.
+#
+# Checked and found sound: prerequisites [] is correct and consistent — F15-L01 is the root
+# of the flagship and the other seven humanoid lessons list it, so no id points at a
+# placeholder. All six claims re-fetched from their primary sources today and confirmed
+# verbatim, including the timestep default of "0.002" and the upstream XML's
+# <option timestep="0.005"/>; asset is 267 lines / 11,287 bytes with the Apache-2.0 header
+# intact and no mesh, include or file= reference. Worst prose run 33 lines. Every stub has a
+# docstring, a worked example, # YOUR CODE HERE and raise NotImplementedError. No prose
+# points a student at a solutions/ path.
 status: reviewed        # draft | executed | reviewed | shipped
 # Kept to one line on purpose: tools/build_student_bundle.py strips a line starting with
 # "reviewed_by:" but not the indented continuation lines of a folded block, which would leave
 # the student bundle's meta.student.yaml malformed. The narrative lives in the comments above.
-reviewed_by: "Audit and completion pass 2026-09-16 — all 12 gates checked, 12 mutants tested, gate-7 leak and a NameError that capped the reference at 92% both fixed; notes above"
-measured_seconds: 0.2
-measured_peak_mib: 68
+reviewed_by: "Independent review 2026-09-16 — 21 mutants graded, 18 caught as shipped; 2 rubric defects fixed (unreset mjData and a float steps count both scored 100%), 1 equivalent mutant; a false com_height diagnostic and the last typed magnitude in prose also fixed; 20/21 caught after, reference still 26/26; notes above"
+measured_seconds: 0.3
+measured_peak_mib: 67

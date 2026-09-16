@@ -32,8 +32,13 @@ UNAME_S := $(shell uname -s)
 MJ_DIR := $(shell $(PYTHON) -c "import mujoco, os; print(os.path.dirname(mujoco.__file__))")
 MJ_LIB := $(shell $(PYTHON) -c "import glob, os, mujoco; d = os.path.dirname(mujoco.__file__); c = sorted(glob.glob(os.path.join(d, 'libmujoco*.dylib')) + glob.glob(os.path.join(d, 'libmujoco.so*'))); print(c[0] if c else '')")
 
+# `clean` and `paths` keep working even when the interpreter on PATH has no mujoco. `make
+# clean` is the documented fix for a binary whose baked-in library path has gone stale, and
+# refusing to run it because the library cannot be found would be exactly backwards.
 ifeq ($(MJ_LIB),)
+ifeq ($(filter clean paths,$(MAKECMDGOALS)),)
 $(error could not find libmujoco next to $(MJ_DIR) — is mujoco installed for $(PYTHON)?)
+endif
 endif
 
 # On macOS the wheel's dylib announces its own install name as

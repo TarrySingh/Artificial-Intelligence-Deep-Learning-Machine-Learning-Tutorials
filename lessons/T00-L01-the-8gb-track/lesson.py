@@ -175,6 +175,10 @@ def measure(fn: Callable[..., Any], *args: Any, **kwargs: Any) -> Measurement:
       * `rss_hwm_mib` is the process high-water mark after the call, in MiB.
       * `rss_delta_mib` is `rss_hwm_mib` minus the same reading taken before the call,
         clamped at 0.0.
+      * if `fn` raises, the exception comes straight back out: a measured call is a drop-in
+        replacement for the plain one. A `finally` is the tidy way to stop the clock and
+        switch tracing off on both paths; an `except` that returns a Measurement anyway
+        reports a cost for work that never finished.
 
     Example:
         >>> m = measure(sum, [1, 2, 3])
@@ -223,6 +227,23 @@ def _check_measure() -> None:
         "a near-zero value means you subtracted a baseline that belongs in rss_delta_mib"
     )
     assert small.rss_delta_mib >= 0.0, "rss_delta_mib must be clamped at 0.0, never negative"
+
+    class _Boom(RuntimeError):
+        pass
+
+    def _explode() -> None:
+        raise _Boom("this call was meant to fail")
+
+    try:
+        measure(_explode)
+    except _Boom:
+        pass
+    else:
+        raise AssertionError(
+            "measure() swallowed the exception _explode raised and returned a Measurement "
+            "anyway — that reports a cost for work that never finished. Catch nothing; put "
+            "the clock and the tracemalloc clean-up in a finally block instead"
+        )
     print("exercise 1 looks right — measure() reports the clock, Python's peak and the OS peak")
 
 
@@ -273,8 +294,10 @@ _try("blind-spot demo", _show_blind_spot)
 # ## 3. The floor you never asked for
 #
 # A fresh interpreter costs memory before your code runs at all, and importing a library costs
-# more. On an 8 GiB tier that floor is not yours to spend. Measure it the way this
-# repository's own gate does: in a child process, through `RUSAGE_CHILDREN`.
+# more. On an 8 GiB tier that floor is not yours to spend. Measure it where the repository's
+# own gate measures it — in a fresh child interpreter, never in this one. `tools/execute.py`
+# reads the child's own `RUSAGE_SELF` from inside it; from out here the same peak arrives
+# through `RUSAGE_CHILDREN`.
 #
 # The snippets run in ascending order of cost on purpose. `RUSAGE_CHILDREN` is also a
 # high-water mark, over *all* finished children, so a cheap child measured after an expensive
@@ -282,15 +305,20 @@ _try("blind-spot demo", _show_blind_spot)
 
 # %%
 def measure_subprocess(snippet: str) -> tuple[float, float]:
-    """Run `snippet` in a fresh interpreter; return (wall seconds, peak child RSS in MiB)."""
-    before = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
+    """Run `snippet` in a fresh interpreter; return (wall seconds, peak child RSS in MiB).
+
+    The figure returned is the absolute high-water mark over all children, not the rise
+    during this one. A difference would be the honest number if the mark could fall, and it
+    cannot: that is the trap this whole section is about, one level up. Running the snippets
+    in ascending order of cost is what keeps each reading its own.
+    """
     t0 = time.perf_counter()
     proc = subprocess.run([sys.executable, "-c", snippet], capture_output=True, text=True)
     wall = time.perf_counter() - t0
     after = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss
     if proc.returncode != 0:
         raise RuntimeError(f"child failed: {proc.stderr.strip().splitlines()[-1:]}")
-    return wall, max(after - before, after) / RU_MAXRSS_DIVISOR
+    return wall, after / RU_MAXRSS_DIVISOR
 
 
 for _label, _snippet in (("a bare interpreter", "pass"),
@@ -673,6 +701,9 @@ _try("budget versus rewrite", _show_why_the_budget_does_not_move)
 # - **Believing `tracemalloc` is the whole story.** It reports what Python allocated. Memory
 #   mapped straight from the OS is invisible to it, and the gate counts it anyway.
 # - **Reporting `get_traced_memory()[0]`.** That is the *current* size; the peak is `[1]`.
+# - **Catching what the measured call raised.** A profiler that turns a failure into a default
+#   `Measurement` reports a cost for work that never happened, and the run goes green.
+#   `try`/`finally` stops the clock on both paths; `try`/`except` hides one of them.
 # - **Measuring once.** The first run pays import and page-fault costs the second never sees.
 # - **Letting numpy pick the accumulator.** `int64` wraps silently. Sum slices into a Python
 #   `int` whenever the total can outgrow the dtype.

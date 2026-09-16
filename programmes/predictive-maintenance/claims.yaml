@@ -1,0 +1,114 @@
+# Every factual claim README.md and MODULES.md make about the world, with a primary source
+# URL and the date it was read. Market claims without a source do not go in the README.
+#
+# Rule applied here: a claim is sourced to the body that produced the number or the rule —
+# a statistical agency for employment, an EU institution or agency for a regulation, the
+# company itself for what the company does, the data publisher for a dataset. Vendor blogs,
+# consultancy market-size reports and press summaries are not used anywhere in this
+# programme's documentation, which is why there is no "the predictive maintenance market
+# will be worth $X billion by 20YY" sentence in the README. No primary source for a figure
+# like that could be verified, so it is not made.
+claims:
+  - id: bls-industrial-maintenance-outlook
+    claim: >-
+      The US Bureau of Labor Statistics projects employment of industrial machinery
+      mechanics, machinery maintenance workers and millwrights to grow 14 percent from 2025
+      to 2035, much faster than the average for all occupations, with about 51,900 openings
+      projected each year on average over the decade, from a 2025 base of 547,300 jobs and a
+      median pay of $64,100 in May 2025. The README uses this as evidence that the
+      maintenance function these lessons serve is growing rather than shrinking, and that the
+      people a graduate will work alongside are numerous and being hired.
+    where: "README.md — 'Why this programme exists'"
+    source_url: https://www.bls.gov/ooh/installation-maintenance-and-repair/industrial-machinery-mechanics-and-maintenance-workers-and-millwrights.htm
+    source_title: "Occupational Outlook Handbook — Industrial Machinery Mechanics, Machinery Maintenance Workers, and Millwrights, US Bureau of Labor Statistics"
+    quote: >-
+      Overall employment of industrial machinery mechanics, machinery maintenance workers,
+      and millwrights is projected to grow 14 percent from 2025 to 2035, much faster than the
+      average for all occupations.
+    accessed: 2026-09-16
+
+  - id: eu-machinery-regulation-2027
+    claim: >-
+      Regulation (EU) 2023/1230 of the European Parliament and of the Council of 14 June 2023
+      on machinery applies from 20 January 2027, replacing the Machinery Directive
+      2006/42/EC. The README uses the date, and only the date, as the reason a condition
+      monitoring system fitted to machinery sold into the EU has a documentation deadline
+      attached to it. The README does not claim what the Regulation requires of a monitoring
+      system; that is a question for the conformity lesson in track T10, not for a market
+      paragraph.
+    where: "README.md — 'Why this programme exists'"
+    source_url: https://osha.europa.eu/en/legislation/directive/regulation-20231230eu-machinery
+    source_title: "Regulation 2023/1230/EU — machinery, EU-OSHA legislation summary (CELEX 32023R1230)"
+    quote: "The Regulation applies from 20 January 2027."
+    quote_context: >-
+      EU-OSHA is the European Agency for Safety and Health at Work. The Regulation's own text
+      is CELEX 32023R1230 on EUR-Lex; eur-lex.europa.eu would not serve a machine-readable
+      copy on the access date, so the EU agency summary is cited in its place and the claim
+      is limited to the application date it states.
+    accessed: 2026-09-16
+
+  - id: siemens-db-predictive-maintenance
+    claim: >-
+      Siemens and Deutsche Bahn announced a predictive maintenance pilot in which vehicle
+      data is received and analysed in a central diagnostics system to calculate failure
+      predictions, which specialists then turn into recommendations passed to technicians in
+      DB workshops for acute or planned maintenance. The README uses this as a named,
+      dated example of the pipeline these lessons build — sensor to prediction to a
+      maintenance decision someone acts on — being run in production by large operators.
+    where: "README.md — 'Why this programme exists'"
+    source_url: https://press.siemens.com/global/en/pressrelease/deutsche-bahn-and-siemens-launch-pilot-project-predictive-maintenance
+    source_title: "Deutsche Bahn and Siemens launch pilot project for predictive maintenance — Siemens press release, 25 October 2016"
+    quote: >-
+      Data from the vehicles will be received and analyzed in a central diagnostics system to
+      calculate failure predictions.
+    accessed: 2026-09-16
+
+  - id: db-condition-based-maintenance-goal
+    claim: >-
+      Deutsche Bahn's own page on artificial intelligence states that its goal is the
+      wholesale implementation of condition-based maintenance for trains, and that in
+      diagnostics AI technologies identify maintenance requirements by automatically
+      evaluating camera images and sensor data. The README pairs this with the 2016 Siemens
+      release to show the direction of travel at one operator over a decade, rather than
+      resting a current claim on a ten-year-old announcement.
+    where: "README.md — 'Why this programme exists'"
+    source_url: https://www.deutschebahn.com/en/artificial_intelligence-6935068
+    source_title: "Artificial intelligence at DB — Deutsche Bahn"
+    quote: "DB's goal here is the wholesale implementation of condition-based maintenance for trains."
+    accessed: 2026-09-16
+
+  - id: nasa-pcoe-turbofan
+    claim: >-
+      NASA's Prognostics Center of Excellence maintains a Prognostics Data Repository of data
+      sets donated by universities, agencies and companies, for the development of prognostic
+      algorithms. It includes the Turbofan Engine Degradation Simulation sets, produced with
+      the Commercial Modular Aero-Propulsion System Simulation (C-MAPSS) under different
+      combinations of operational conditions and fault modes, and states that users employ
+      the data at their own risk. MODULES.md names this as the real run-to-failure corpus the
+      remaining-useful-life module moves onto, once the threshold logic has been checked
+      against a fleet whose ground truth the student can see.
+    where: "MODULES.md — module 5, and README.md's note on data"
+    source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+    source_title: "Prognostics Center of Excellence Data Set Repository — NASA"
+    quote: >-
+      Engine degradation simulation was carried out using the Commercial Modular
+      Aero-Propulsion System Simulation (C-MAPSS). Four different sets were simulated under
+      different combinations of operational conditions and fault modes.
+    accessed: 2026-09-16
+
+  - id: hse-alarm-flood
+    claim: >-
+      The UK Health and Safety Executive's information sheet on alarm handling, written after
+      the 1994 Texaco Milford Haven refinery explosion, records that two operators had to
+      recognise, acknowledge and act on 275 alarms in the last eleven minutes before the
+      explosion, and sets a normal-operation target of no more than one alarm every ten
+      minutes. The README uses this to say why alarm economics is the programme's opening
+      module rather than a footnote to modelling: the cost of a false alarm is bounded by
+      human attention, and that bound has been measured and written down by a regulator.
+    where: "README.md — 'What a graduate can do', and lesson P03-L01 section 7"
+    source_url: https://www.hse.gov.uk/pubns/chis6.pdf
+    source_title: "Better alarm handling — HSE information sheet, Chemicals Sheet No 6 (CHIS6)"
+    quote: >-
+      In the last 11 minutes before the explosion the two operators had to recognise,
+      acknowledge and act on 275 alarms.
+    accessed: 2026-09-16

@@ -138,11 +138,15 @@ claims:
     where: "lesson.py section 1, OBLIGATIONS, exercise 1; self-check questions 1 and 2"
     source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
     source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "Rules for systems used in certain high-risk areas ... will apply from 2 December 2027"
+    quote: >-
+      Rules for systems used in certain high-risk areas — including biometrics, critical
+      infrastructure, education, employment, migration, asylum and border control — will
+      apply from 2 December 2027
     quote_note: >-
-      The ellipsis marks a clause elided by the retrieval, not by the author; the sentence as
-      rendered on the page names the high-risk areas in between. The date and the category
-      are as retrieved.
+      Retrieved in full on 2026-09-16 by the independent reviewer. An earlier version of this
+      entry carried the same sentence with the list of areas elided by the fetcher; the full
+      sentence is quoted above, and it names education and employment, which are the two
+      Annex III areas the shipped registry uses.
     corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
     corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
     corroborating_quote: "from 2 December 2027 as regards AI systems classified as high-risk"
@@ -166,10 +170,15 @@ claims:
     where: "lesson.py section 1, OBLIGATIONS, exercise 1; self-check question 4"
     source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
     source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "For systems integrated into products ... the rules will apply from 2 August 2028"
+    quote: >-
+      For systems integrated into products such as lifts or toys, the rules will apply from
+      2 August 2028
     quote_note: >-
-      The ellipsis marks a clause elided by the retrieval, not by the author. The date and
-      the category are as retrieved.
+      Retrieved in full on 2026-09-16 by the independent reviewer, replacing an elided
+      version. Note that the Commission's illustration is lifts and toys; the registry's two
+      Annex I fixtures are a medical device and machinery, which are Annex I product
+      legislation on the same footing. That mapping is the lesson's modelling choice, not a
+      quotation.
     corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
     corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
     corroborating_quote: "from 2 August 2028 as regards AI systems classified as high-risk"
@@ -254,3 +263,13 @@ claims:
 # Outstanding: the authoritative EUR-Lex text of CELEX 32026R1744 was unreachable on this
 # date (HTTP 202, empty body, on all three URL forms and via two different HTTP clients), so
 # no claim in this file quotes it verbatim.
+#
+# --- Second, independent reviewer, 2026-09-16 -------------------------------------------
+# Every source_url in this file re-fetched from scratch. The Commission's AI Act page
+# returned, verbatim and unprompted, all six dates the rulebook encodes (1 August 2024,
+# 2 February 2025, 2 August 2025, 2 August 2026, 2 December 2027, 2 August 2028) and the
+# 27 July 2026 Omnibus entry into force; the Article 50 FAQ returned the 2 August 2026
+# application sentence and the whole grace-period paragraph word for word; the Chapter III
+# page returned all twelve article titles relied on. Two quotes that had been stored with
+# an ellipsis were re-retrieved in full and replaced above. EUR-Lex CELEX 32026R1744 was
+# retried and again returned an empty body, so the retrieval notes stand unchanged.

@@ -77,7 +77,8 @@ points: 47
 #    documentation in claims.yaml and demonstrated by the trace comparison: C and Python agree
 #    bit for bit at every sampled tick, so the measured difference cannot be the physics.
 #  - The droop section needed no invented number. The C `run` command prints final error
-#    beside qfrc_bias/kp, and on the shipped model they agree to twelve significant figures,
+#    beside qfrc_bias/kp, and on the shipped model they agree to better than one part in
+#    10^10 (measured: 1.9e-11 relative at the shoulder, 2.3e-11 at the elbow),
 #    so the PD steady-state-error result from F15-L03 is re-derived here as a measurement the
 #    student's own loop produces rather than as a claim.
 #  - Gate 7: lesson.py never names a path under solutions/, and the two file variants set
@@ -103,7 +104,40 @@ points: 47
 #    that no rate a real robot runs troubles either — the overhead only decides anything when
 #    one control period must buy many ticks, which is F15-L07's problem, not this lesson's.
 #    A table whose verdict column never changes is decoration, not a measurement.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
-measured_seconds: 1.0
-measured_peak_mib: 50
+#
+# Independent review, 2026-09-16. Twenty mutants of the reference were graded; eighteen were
+# caught as shipped and two scored a full 47/47:
+#
+#  - pd_ctrl clamping UNCONDITIONALLY, ignoring m->actuator_ctrllimited[i]. Both shipped
+#    models limit both actuators, so the conditional branch was unobservable and a wrong
+#    answer was indistinguishable from a right one. Fixed by giving the ctrldump command an
+#    --unlimited flag that clears the flag on the loaded model, then asserting the RAW 32 and
+#    -48 come back; the C self-test now makes the same check in-place (save, clear, restore)
+#    so the student sees it before the autograder does.
+#  - pd_ctrl reading d->qvel[qadr] — the damping term indexed by the POSITION address. Every
+#    ctrldump case ran on the pinned arm, where the two addresses agree, so the exact bug this
+#    lesson exists to prevent scored full marks in the control law even though the address
+#    lookup itself was graded on both models. Fixed by a ctrldump case on the floating arm
+#    with both hinges on target and distinct dof velocities: the command IS the damping term
+#    there, so qvel[6] = 0.1 gives -0.2 and qvel[7] = 0.3 gives -0.6.
+#
+# Two further defects, neither visible to the four gates:
+#
+#  - make_test() returned MAKE's exit code, and make reports any failed recipe as 2 — the same
+#    code the binary uses for "still a stub". Every wrong C answer was therefore graded TODO,
+#    "not implemented yet", and the self-test's own named diagnostics never reached the
+#    student. It now builds with make and runs the binary directly, so 0/1/2 mean what
+#    section 2 says they mean.
+#  - lesson.py defined _check_self_check() and never called it, so the section 11 instruction
+#    to "run the cell" marked nothing. A marking cell now follows the answer block.
+#
+# Also: `make clean` — the documented fix for the dyld trap below — aborted with $(error)
+# when the interpreter on PATH had no mujoco, which is backwards for a target whose job is to
+# delete a binary; the error is now skipped for clean and paths. The compiled-lesson warning
+# required by QUALITY.md ("Known trap") is in section 10 of lesson.py. The answer key's claim
+# that error and qfrc_bias/kp "agree to twelve significant figures" overstated a measured
+# 1.9e-11 relative gap and now says one part in 10^10.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: 20-mutant rubric pass, 2 rubric defects found and fixed (unconditional clamp, qvel indexed by qpos address), plus a make-exit-code misreport, an uncalled self-check, a make clean that could not run and an overstated precision claim; 20/20 caught after, reference still 47/47, all four gates green"
+measured_seconds: 1.3
+measured_peak_mib: 62

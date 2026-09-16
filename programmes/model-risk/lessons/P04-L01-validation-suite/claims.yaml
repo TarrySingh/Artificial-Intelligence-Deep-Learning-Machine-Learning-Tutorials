@@ -1,0 +1,77 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson is about evidence, so the standard it holds itself to is the one it teaches.
+# Two deliberate NON-claims are recorded at the foot of this file: the PSI amber/red bands and
+# the minimum-support figure are policy inputs the notebook passes in, and the lesson never
+# says where they come from, because it has no source that says so.
+claims:
+  - id: ece-definition-binned-and-support-weighted
+    claim: >-
+      The expected calibration error is defined as a partition of the predictions into equally
+      spaced bins and a weighted average of each bin's gap between accuracy and confidence,
+      with each bin weighted by the share of samples it holds. This is exactly the shape
+      exercises 1 and 2 build: equal-width bins over [0, 1], and a per-bin weight of
+      count / total rather than 1 / n_bins.
+    where: "lesson.py section 3 (exercise 2 requirements and docstring); tests/test_lesson.py::test_ece_weighted_by_support"
+    source_url: https://arxiv.org/abs/1706.04599
+    source_title: "Guo, Pleiss, Sun and Weinberger — On Calibration of Modern Neural Networks (ICML 2017)"
+    quote: >-
+      Expected Calibration Error - or ECE - approximates by partitioning predictions into M
+      equally-spaced bins and taking a weighted average of the bins' accuracy/confidence
+      difference.
+    accessed: 2026-09-16
+
+  - id: reliability-diagram-is-observed-against-predicted
+    claim: >-
+      A reliability diagram plots observed accuracy as a function of predicted confidence, so
+      a perfectly calibrated model traces the diagonal. The reliability TABLE this lesson
+      builds is that diagram's underlying data: one row per bin, carrying the mean prediction
+      and the observed rate. The lesson keeps the empty bins in the table, which a plotted
+      diagram usually hides; that is a deliberate departure and the notebook says so.
+    where: "lesson.py section 2 (exercise 1) and section 9 (common mistakes)"
+    source_url: https://arxiv.org/abs/1706.04599
+    source_title: "Guo, Pleiss, Sun and Weinberger — On Calibration of Modern Neural Networks (ICML 2017)"
+    quote: "These diagrams plot expected sample accuracy as a function of confidence."
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026-validation-and-outcomes
+    claim: >-
+      On 17 April 2026 the Federal Reserve Board, the OCC and the FDIC jointly issued revised
+      guidance on model risk management, which the Federal Reserve carries as SR 26-2 and the
+      OCC as Bulletin 2026-13. It supersedes SR 11-7 of 4 April 2011 and SR 21-8 of 9 April
+      2021, and it names model validation and monitoring — including validating conceptual
+      soundness and outcomes analyses — among the practices it addresses. This lesson builds
+      the outcomes-analysis half of that pair, and says as much in section 1.
+    where: "lesson.py section 1 (the one sentence of regulatory context in the notebook)"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "SR 26-2: Revised Guidance on Model Risk Management — Board of Governors of the Federal Reserve System"
+    quote: >-
+      clarify model risk management principles and to emphasize a risk-based approach to model
+      risk management
+    quote_context: >-
+      The phrase "model validation and monitoring, including validating conceptual soundness
+      and outcomes analyses" is quoted from the OCC's companion issuance of the same guidance,
+      Bulletin 2026-13, https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+      (accessed 2026-09-16), which describes the same interagency document.
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * PSI bands. The notebook uses 0.25 as the threshold at which the generated report prints
+#   BREACH. It is passed in as `psi_threshold`, it is described in the prose as a policy
+#   input, and the lesson nowhere says that any regulator, standard or paper sets it. The
+#   widely repeated 0.10 / 0.25 bands trace to practitioner literature rather than to a
+#   primary public source that could be cited here, so the lesson makes no claim about them
+#   and the exercise takes the threshold as an argument instead of hard-coding one.
+#
+# * Minimum support. MIN_SUPPORT = 200 is likewise an argument, not an assertion. The lesson
+#   teaches the SHAPE of the rule — suppress the metric, keep the group and its count — and
+#   is explicit that the number itself belongs to a policy document the notebook does not have.
+#
+# * Synthetic data. The sample is generated by numpy.random.default_rng(20260916) inside the
+#   notebook and declared synthetic in DATA_NOTE, in the notebook's own output, and in section
+#   1 of every report it generates. It makes no claim about any real portfolio, so it is not a
+#   dataset for the purposes of gate 11 and meta.yaml declares datasets: [].

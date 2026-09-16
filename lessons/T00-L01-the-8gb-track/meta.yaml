@@ -13,7 +13,7 @@ objectives:
   - "Implement tier_check() so it reproduces this repository's own execution gate, including the equality boundary"
   - "Explain why a lesson that exceeds its declared budget is rewritten rather than given a bigger budget"
 datasets: []            # none: every number this lesson shows is measured on the student's own machine
-points: 47
+points: 49         # = sum of RUBRIC points in tests/test_lesson.py; 47 + the 2 added below
 # Independent review, 2026-09-16. All four gates re-run from the repo root on the venv
 # interpreter; the measured figures below were written back by tools/execute.py, never typed.
 # The rubric was mutation-tested against 14 plausible wrong implementations.
@@ -49,11 +49,51 @@ points: 47
 # tools/build_student_bundle.py drops a "reviewed_by:" line but not the indented continuation
 # lines of a folded block, so T10-L01's multi-line reviewed_by would leave a malformed
 # meta.student.yaml in the bundle. That is a tools/ fix, out of scope for this lesson.
+#
+# SECOND, INDEPENDENT REVIEW — 2026-09-16, a different reviewer, mutation-first.
+# 20 mutants built in /tmp from the reference solution (19 that break it, plus one deliberate
+# control that must NOT be caught). 17 of the 19 were already caught. Two scored a full 47/47:
+#
+#   * rss_hwm_mib reporting the reading taken BEFORE the call. Every delta stays right, every
+#     other case stays green, and the field the notebook prints as "process peak now ..." is
+#     silently one call stale. test_measure_rss_high_water now also asserts the absolute
+#     reading cleared the record the call was sized to beat.
+#   * measure() wrapping fn in try/except and returning a default. No rubric case handed
+#     measure a callable that fails, so a profiler that turns a crash into a zero-cost
+#     Measurement was indistinguishable from a correct one. New graded case (2 points, so the
+#     rubric total is 49), plus the requirement stated in the stub docstring, a public check
+#     in the notebook, and a common-mistakes entry. Both mutants now score 92% and 96% — they
+#     lose the points they earned and keep the rest, which is what partial credit is for.
+#
+# The control (no try/finally at all: the exception propagates, tracing is left running,
+# every stated requirement met) still scores 100%, so the new case rejects the wrong answer
+# without rejecting a differently-shaped right one. A third mutant, profile() with a mutable
+# default dict, was caught only because the notebook's own demos had already polluted that
+# dict before the tests ran; the check no longer depends on that accident.
+#
+# Three author-side fixes outside the rubric. measure_subprocess computed
+# max(after - before, after), which is `after` for every possible input — dead arithmetic in
+# a lesson about not believing your instruments; it now returns the absolute figure and says
+# why. Section 3 said the repository's gate measures through RUSAGE_CHILDREN; tools/execute.py
+# reads RUSAGE_SELF from inside the child, so the prose now says both. The rubric's own
+# docstring announced "Three rules" above five.
+#
+# Checked and left alone: all 6 claims.yaml sources re-fetched 2026-09-16 and each still
+# carries its quoted sentence (python.org tracemalloc + time, man7 getrusage "(in KiB)",
+# FreeBSD getrusage "(in kilobytes)", numpy tracemalloc_domain). datasets: [] so gate 11 is
+# vacuous. prerequisites: [] is correct — this is the first lesson and the tree holds no
+# lesson it could depend on. Worst prose run before a runnable cell: 38 non-blank lines
+# (the self-check quiz plus the closing paragraph), inside gate 3's ~40. Every stub is a
+# docstring with a worked example, YOUR CODE HERE and NotImplementedError. No prose in
+# lesson.py points at a solutions/ path.
+#
+# Open for the owner: lessons/ holds 5 of the 13 wave-1 lessons, so no cross-lesson
+# prerequisite in this tree can be resolved yet by anything but T00-L01's empty list.
 status: reviewed        # draft | executed | reviewed | shipped
 # Kept to one line on purpose: tools/build_student_bundle.py strips a line starting with
 # "reviewed_by:" but not the indented continuation lines of a folded block, which would leave
 # the student bundle's meta.student.yaml malformed. The narrative lives in the comments above,
 # which survive into the bundle as valid YAML comments.
-reviewed_by: "Independent review 2026-09-16 — all 12 gates checked, 14 mutants tested, every finding fixed; notes above"
-measured_seconds: 10.4
+reviewed_by: "Second independent review 2026-09-16 — 20 mutants (19 breaking + 1 control), 2 rubric defects found and fixed, rubric now 49 points, all 4 gates re-run; notes above"
+measured_seconds: 10.8
 measured_peak_mib: 589

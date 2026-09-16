@@ -193,6 +193,12 @@ def _check_rollout() -> None:
         "part, but not all, of the episode against its 40 N*m limit. Exactly 0.0 means you "
         "compared the CLAMPED command against the range instead of the raw one."
     )
+    took = data.time / model.opt.timestep
+    assert abs(took - HORIZON_STEPS) < 1e-6, (
+        f"you reported {r['steps']} steps, but MuJoCo's own clock says {took:.0f} steps were "
+        f"simulated. The loop runs range({HORIZON_STEPS}) — check the bound — and `steps` is "
+        "the number of steps actually taken, not a label."
+    )
     slow = rollout(model, data, BASELINE_GAINS, delay_steps=2)
     assert slow["rms_lean"] > r["rms_lean"] * 1.3, (
         f"8 ms of latency changed rms_lean from {r['rms_lean']:.4f} to {slow['rms_lean']:.4f} "
@@ -408,7 +414,12 @@ def _check_sweeps() -> None:
     assert fric[0][1]["rms_lean"] < fric[-1][1]["rms_lean"], (
         "friction should make the wobble worse even where it does not cause a fall"
     )
-    print("\nread that again: friction never topples it, and still burns the torque budget."
+    # The multiple is COMPUTED from the table you just ran, never typed into the prose. If
+    # the model or the gains ever change, this sentence changes with them.
+    wobble_ratio = fric[-1][1]["rms_lean"] / fric[0][1]["rms_lean"]
+    print(f"\nread that again: friction never topples it, and still multiplies the wobble by "
+          f"{wobble_ratio:.1f}x while pinning the ankle at its limit for "
+          f"{fric[-1][1]['saturated_fraction']:.0%} of the episode."
           "\nSurvival is not the only thing worth measuring, and it is often the last to move.")
 
 
@@ -752,8 +763,11 @@ def ladder_table(ladder: list = HARDWARE_LADDER) -> None:
 # - **Reporting the score on the conditions you tuned on.** It is 100% by construction. Only
 #   the held-out column carries information.
 # - **Treating survival as the only metric.** Dry friction never topples this machine and
-#   still triples the wobble and pins the actuator at its limit. The gap that eventually
-#   kills you usually shows up first as a saturation number nobody was watching.
+#   still multiplies the wobble several times over and pins the actuator at its limit. The
+#   exact multiple is printed by the sweep in section 6, computed from your own rollouts —
+#   this bullet does not quote it, because a number in prose is a number that can go stale.
+#   The gap that eventually kills you usually shows up first as a saturation number nobody
+#   was watching.
 
 # %%
 # Watch one of those mistakes happen. Change the mass, skip mj_setConst, and read back the

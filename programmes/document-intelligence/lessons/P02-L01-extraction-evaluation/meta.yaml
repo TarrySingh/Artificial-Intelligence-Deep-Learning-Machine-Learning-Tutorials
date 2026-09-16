@@ -1,0 +1,64 @@
+id: P02-L01-extraction-evaluation
+title: Build the evaluation harness for a field-extraction system before you build the extractor
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+objectives:
+  - "Implement normalise_value so that per-field-type equality is a written, reviewable policy"
+  - "Implement exact, normalised and fuzzy matching, and measure what fuzzy matching costs when it is applied to a money field"
+  - "Implement a per-field precision/recall/F1 scorer that counts a wrong value as both a false positive and a false negative"
+  - "Build a confusion analysis over field types that turns one F1 number into a work order"
+  - "Implement a confidence-ordered review queue under a fixed budget and measure the macro-F1 it buys per unit of cost"
+  - "Explain why the harness is built before the extractor rather than after it"
+datasets: []            # none: the corpus is generated deterministically inside the lesson, and
+                        # every number a student sees is computed by code they run
+points: 84              # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-16. All four gates run from the repo root on the venv interpreter; the
+# measured figures below were written back by tools/execute.py and never typed.
+#
+# WHY THE CORPUS IS SYNTHETIC. No PDF library, no OCR engine and no model API exist in this
+# environment, so there is nothing to extract FROM. Rather than fake a dependency, the lesson
+# makes the constraint the argument: the harness is the artefact that outlives every extractor
+# behind it, and it can be built and proven without one. build_corpus() and run_extractor()
+# are given code with fixed seeds; every student sees the same 180 documents, the same 1080
+# cells, the same error mix and therefore the same numbers.
+#
+# MUTATION TESTING. 14 plausible-wrong variants of the reference solution were built in a
+# scratch directory and graded, plus 2 controls. Measured scores, not predicted ones. Each
+# mutant loses the points for the behaviour it breaks and keeps the rest, so partial credit
+# survives every one of them:
+#   1. wrong value counted as a false positive only          -> 79/84
+#   2. wrong value counted as a false negative only          -> 79/84
+#   3. fuzzy matching applied to every field type            -> 79/84
+#   4. review_queue sorted highest-confidence first          -> 77/84
+#   5. apply_reviews mutating its input in place             -> 71/84
+#   6. macro_f1 pooling the counts (micro average)           -> 80/84
+#   7. slashed dates read month-first                        -> 75/84
+#   8. score_field ignoring its mode argument                -> 75/84
+#   9. classify_cell returning "wrong_value" for a miss      -> 75/84
+#  10. normalise_value returning "" for unparseable input    -> 81/84
+#  11. confusion table omitting labels with a zero count     -> 79/84
+#  12. review_queue filtering out empty predictions          -> 70/84
+#  13. money normaliser treating every comma as a separator  -> 79/84
+#  14. text normaliser popping every trailing short token    -> 80/84
+# Mutant 5 is the instructive one: it loses four more points than its own case is worth,
+# because the notebook's quality/cost sweep runs at import and an in-place apply_reviews
+# corrupts the shared RECORDS list, which the two corpus-level cases then notice. That is the
+# bug's real blast radius, not a grading accident.
+# Two further variants are deliberate CONTROLS — differently shaped and equally correct:
+# score_field rewritten to collect per-cell verdicts first and count them afterwards, and
+# normalise_value collapsing whitespace with a regex rather than split/join. Both score 84/84,
+# so the rubric rejects wrong answers without rejecting right ones it did not expect.
+#
+# TWO NUMBERS THAT ARE NOT CLAIMS. SECONDS_PER_REVIEWED_CELL and REVIEWER_COST_PER_HOUR in
+# section 8 are labelled in the notebook as placeholders for the reader's own rates. Nothing
+# in the lesson asserts they are typical of any organisation, so they are not entries in
+# claims.yaml; everything computed from them is computed, in front of the student.
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: 0.2
+measured_peak_mib: 29

@@ -1,0 +1,269 @@
+# Claims made by this programme's README.md and MODULES.md, with a source and the date it was
+# read. Per-lesson claims live in each lesson's own claims.yaml; nothing is duplicated here.
+#
+# Two kinds of claim appear below and are labelled as such:
+#   * REGULATORY — what the law says and when it binds. Sourced to the European Commission or
+#     to a reproduction of the Official Journal text.
+#   * MARKET — hiring and adoption. Sourced to a named study with its sample size and
+#     collection window. Every market sentence in README.md traces to one of these entries;
+#     there are no unsourced market claims in this programme, and none of these entries is a
+#     forecast.
+claims:
+  - id: ai-act-general-application-2026-08-02
+    kind: regulatory
+    claim: >-
+      The AI Act, Regulation (EU) 2024/1689, entered into force on 1 August 2024 and became
+      applicable on 2 August 2026, with some exceptions. Article 50's transparency obligations
+      applied from that general application date.
+    where: "README.md — why this programme exists now; MODULES.md module 1"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026,
+      with some exceptions
+    corroborating_source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+    corroborating_source_title: "European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)"
+    corroborating_quote: "Article 50 of the AI Act applies as from 2 August 2026."
+    accessed: 2026-09-16
+
+  - id: omnibus-moved-high-risk-to-2027-and-2028
+    kind: regulatory
+    claim: >-
+      Regulation (EU) 2026/1744, the Digital Omnibus on AI, was published in the Official
+      Journal on 24 July 2026 and entered into force on 27 July 2026. It moved the Chapter III
+      high-risk duties: 2 December 2027 for the Annex III stand-alone high-risk systems, and
+      2 August 2028 for AI integrated into products covered by Annex I product-safety law.
+      This is the deadline every module in this programme is built against, and it is the
+      reason the programme exists in 2026 rather than in 2028.
+    where: "README.md — the deadline; MODULES.md preamble"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      Starting on 2 December 2027, high-risk AI systems will be subject to strict obligations
+      before they can be put on the market
+    corroborating_quote: >-
+      For systems integrated into products such as lifts or toys, the rules will apply from
+      2 August 2028
+    corroborating_quote_2: "entered into force on 27 July 2026"
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+    retrieval_note: >-
+      The authoritative EUR-Lex text of CELEX 32026R1744 returned HTTP 202 with an empty body
+      on 2026-09-16 for two independent reviewers of the prerequisite lesson T10-L01, on all
+      three URL forms and through two HTTP clients. This programme cites the Commission's own
+      statement of the dates instead and records that the enacting text was not retrieved.
+    accessed: 2026-09-16
+
+  - id: article-99-fine-ceilings
+    kind: regulatory
+    claim: >-
+      Article 99 sets two different administrative fine ceilings, and they are routinely
+      conflated. Non-compliance with the Article 5 prohibitions carries up to EUR 35 000 000
+      or 7 % of total worldwide annual turnover, whichever is higher. Non-compliance with the
+      obligations of providers, deployers, importers, distributors and notified bodies —
+      Articles 16, 22, 23, 24, 25, 26, 31, 33, 34 and 50, which is where the record-keeping,
+      documentation and oversight duties this programme builds actually sit — carries up to
+      EUR 15 000 000 or 3 %. A programme that quoted the 7 % figure for a logging defect would
+      be teaching the wrong number on its first page.
+    where: "README.md — what is at stake"
+    source_url: https://artificialintelligenceact.eu/article/99/
+    source_title: "EU Artificial Intelligence Act — Article 99: Penalties (reproduction of the OJ text)"
+    quote: >-
+      Non-compliance with the prohibition of the AI practices referred to in Article 5 shall be
+      subject to administrative fines of up to EUR 35 000 000 or, if the offender is an
+      undertaking, up to 7 % of its total worldwide annual turnover for the preceding financial
+      year, whichever is higher.
+    quote_2: >-
+      Non-compliance with any of the following provisions related to operators or notified
+      bodies, other than those laid down in Articles 5, shall be subject to administrative
+      fines of up to EUR 15 000 000 or, if the offender is an undertaking, up to 3 % of its
+      total worldwide annual turnover for the preceding financial year, whichever is higher
+    accessed: 2026-09-16
+    note: >-
+      Secondary source: a reproduction of the Official Journal text of Regulation (EU)
+      2024/1689, cross-checkable against EUR-Lex CELEX 32024R1689.
+
+  - id: iapp-organisations-working-on-ai-governance
+    kind: market
+    claim: >-
+      The IAPP's AI Governance Profession Report 2025, published 16 April 2025, found that 77 %
+      of surveyed organisations are currently working on AI governance, rising to near 90 % for
+      organisations already using AI. This is the adoption figure the README uses; it is a
+      survey of organisations, not a count of vacancies, and the README says so.
+    where: "README.md — who is hiring"
+    source_url: https://iapp.org/resources/article/ai-governance-profession-report/
+    source_title: "IAPP — AI Governance Profession Report 2025"
+    quote: >-
+      77% are currently working on AI governance, with a jump to near 90% for those
+      organizations already using AI.
+    accessed: 2026-09-16
+
+  - id: iapp-staffing-gap
+    kind: market
+    claim: >-
+      In the same IAPP survey, only 10 of 671 respondents — 1.5 % — said they would not need
+      additional AI governance staff in the next 12 months, and 23.5 % named finding qualified
+      AI professionals as part of the challenge of delivering AI. The README quotes the 671
+      denominator rather than the bare percentage, because a percentage without its sample size
+      is exactly the kind of unsourced market claim this programme teaches people to refuse.
+    where: "README.md — who is hiring"
+    source_url: https://iapp.org/resources/article/ai-governance-profession-report/
+    source_title: "IAPP — AI Governance Profession Report 2025"
+    quote: >-
+      Only 10 out of 671, or 1.5%, reporting they will not need additional staff in the next
+      12 months.
+    quote_2: "23.5% said finding qualified AI professionals was part of the challenge delivering AI."
+    accessed: 2026-09-16
+    note: >-
+      Dated April 2025 and therefore the older of the two market sources here. It is kept
+      because it is a named survey with a stated denominator; the README gives its date so a
+      reader can discount it.
+
+  - id: axipro-eu-governance-hiring-gap-2026
+    kind: market
+    claim: >-
+      Axipro Technology's EU AI Act governance hiring-gap study analysed 3,519 AI-related job
+      postings across eight EU countries — Belgium, France, Germany, Ireland, Italy, the
+      Netherlands, Spain and Sweden — over a 30-day collection window in mid-2026, shortly
+      after the Council approved the Digital Omnibus. It found 3,004 builder roles against 446
+      governance roles, the EU AI Act named in 7.6 % of all AI postings, and named in fewer
+      than three in ten even of the governance roles. The country spread ran from 16:1 in
+      Sweden to 3.5:1 in Ireland.
+    where: "README.md — who is hiring, and what the shortage actually is"
+    source_url: https://axipro.co/eu-ai-act-hiring-gap-study/
+    source_title: "Axipro — EU AI Act Governance Hiring Gap study"
+    quote: >-
+      For every professional hired to keep AI lawful, safe and accountable, nearly seven were
+      hired to build more of it.
+    quote_2: >-
+      Fewer than three in ten of the governance roles created to handle it actually name the
+      law in the job description.
+    corroborating_source_url: https://aijourn.com/the-ai-governance-say-do-gap-what-3519-job-postings-reveal-about-europes-real-ai-act-readiness/
+    corroborating_source_title: "The AI Journal — The AI governance say-do gap: what 3,519 job postings reveal about Europe's real AI Act readiness, 13 July 2026, by Ali Hayat"
+    corroborating_quote: "3,004 builder roles against 446 governance roles"
+    accessed: 2026-09-16
+    note: >-
+      An industry study by a vendor in the space, not a peer-reviewed or statistical-office
+      source, and the README labels it that way. It is used because it reports its sample
+      size, its countries, its collection window and its raw counts, which is more than most
+      hiring commentary does. The 7.6 % figure is the one this programme cares about: the
+      demand is real and it is mostly NOT being advertised against the Act by name, which is
+      why the README tells readers to search for the adjacent titles too.
+
+  - id: article-6-3-derogation-and-profiling-override
+    kind: regulatory
+    claim: >-
+      Article 6(3) provides that an AI system referred to in Annex III is not considered
+      high-risk where it does not pose a significant risk of harm to the health, safety or
+      fundamental rights of natural persons, including by not materially influencing the
+      outcome of decision making, and where one of four conditions is met: (a) a narrow
+      procedural task; (b) improving the result of a previously completed human activity;
+      (c) detecting decision-making patterns or deviations from prior patterns without being
+      meant to replace or influence the previously completed human assessment without proper
+      human review; or (d) a preparatory task to an assessment relevant to an Annex III use
+      case. A system that performs profiling of natural persons is always high-risk regardless,
+      and a provider relying on the derogation must document its assessment before the system
+      is placed on the market or put into service.
+    where: "MODULES.md module 2 (risk classification as a decision procedure)"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "EU Artificial Intelligence Act — Article 6: Classification Rules for High-Risk AI Systems (reproduction of the OJ text)"
+    quote: "the AI system is intended to perform a narrow procedural task"
+    quote_2: >-
+      an AI system referred to in Annex III shall always be considered to be high-risk where
+      the AI system performs profiling of natural persons.
+    quote_3: >-
+      document its assessment before that system is placed on the market or put into service
+    accessed: 2026-09-16
+    note: >-
+      Secondary source: a reproduction of the Official Journal text of Regulation (EU)
+      2024/1689, cross-checkable against EUR-Lex CELEX 32024R1689. The profiling override is
+      recorded here because a specification that described only the derogation would invite
+      exactly the wrong module.
+
+  - id: article-43-assessment-routes
+    kind: regulatory
+    claim: >-
+      Article 43(1) lets providers of the Annex III point 1 high-risk systems choose between
+      the conformity assessment based on internal control (Annex VI) and the assessment of the
+      quality management system and of the technical documentation with the involvement of a
+      notified body (Annex VII). Article 43(2) requires providers of the systems in Annex III
+      points 2 to 8 — which include employment and creditworthiness — to follow the internal
+      control procedure of Annex VI, which does not provide for the involvement of a notified
+      body.
+    where: "MODULES.md module 8 (the conformity assessment route)"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "EU Artificial Intelligence Act — Article 43: Conformity Assessment (reproduction of the OJ text)"
+    quote: >-
+      For high-risk AI systems referred to in points 2 to 8 of Annex III, providers shall
+      follow the conformity assessment procedure based on internal control as referred to in
+      Annex VI, which does not provide for the involvement of a notified body.
+    accessed: 2026-09-16
+
+  - id: article-15-accuracy-declared-in-instructions
+    kind: regulatory
+    claim: >-
+      Article 15(1) requires high-risk AI systems to be designed and developed so that they
+      achieve an appropriate level of accuracy, robustness and cybersecurity, and perform
+      consistently in those respects throughout their lifecycle. Article 15 further requires
+      that the levels of accuracy and the relevant accuracy metrics be declared in the
+      accompanying instructions for use — which is why module 6 is built around declaring an
+      interval rather than a point estimate: a declared figure is one a market surveillance
+      authority can test you against.
+    where: "MODULES.md module 6 (accuracy, robustness and cybersecurity evidence)"
+    source_url: https://artificialintelligenceact.eu/article/15/
+    source_title: "EU Artificial Intelligence Act — Article 15: Accuracy, Robustness and Cybersecurity (reproduction of the OJ text)"
+    quote: >-
+      High-risk AI systems shall be designed and developed in such a way that they achieve an
+      appropriate level of accuracy, robustness, and cybersecurity, and that they perform
+      consistently in those respects throughout their lifecycle.
+    quote_2: >-
+      The levels of accuracy and the relevant accuracy metrics of high-risk AI systems shall be
+      declared in the accompanying instructions of use.
+    accessed: 2026-09-16
+
+  - id: article-72-post-market-monitoring-uses-deployer-data
+    kind: regulatory
+    claim: >-
+      Article 72(1) requires providers to establish and document a post-market monitoring
+      system in a manner proportionate to the nature of the AI technologies and the risks, and
+      Article 72(2) requires that system to actively and systematically collect, document and
+      analyse relevant data which may be provided by deployers or collected through other
+      sources on the performance of high-risk AI systems. The "provided by deployers" clause is
+      why module 7's lab has a deployer ingest path and a clock reconciliation rather than a
+      single-party monitor.
+    where: "MODULES.md module 7 (post-market monitoring and serious incidents)"
+    source_url: https://artificialintelligenceact.eu/article/72/
+    source_title: "EU Artificial Intelligence Act — Article 72: Post-Market Monitoring by Providers (reproduction of the OJ text)"
+    quote: >-
+      The post-market monitoring system shall actively and systematically collect, document and
+      analyse relevant data which may be provided by deployers or which may be collected
+      through other sources on the performance of high-risk AI systems
+    accessed: 2026-09-16
+
+  - id: annex-iv-contents
+    kind: regulatory
+    claim: >-
+      Annex IV lists what the technical documentation referred to in Article 11(1) must contain
+      at least, as applicable to the relevant AI system: a general description of the AI
+      system; a detailed description of its elements and of the development process; detailed
+      information about monitoring, functioning and control; the appropriateness of the
+      performance metrics; a description of the risk management system; changes made by the
+      provider through the lifecycle; the harmonised standards applied or other solutions
+      adopted; a copy of the EU declaration of conformity; and a description of the system in
+      place to evaluate post-market performance.
+    where: "MODULES.md module 3 (Annex IV technical documentation, generated)"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      The technical documentation referred to in Article 11(1) shall contain at least the
+      following information, as applicable to the relevant AI system
+    accessed: 2026-09-16
+
+# --- Explicitly NOT claimed ------------------------------------------------------------
+# This programme makes no salary claim, no forecast of how many roles will exist, and no claim
+# that completing it qualifies anyone for a certification, a role or a legal opinion. Several
+# widely-repeated 2026 figures were considered and DROPPED for want of a retrievable primary
+# source on 2026-09-16: a LinkedIn "Skills on the Rise" year-on-year growth percentage for AI
+# governance roles, a "98.5 % of organisations need more AI governance professionals"
+# restatement of the IAPP figure above, a weekly new-roles rate attributed to a recruiter, and
+# a Forrester prediction about heads of AI governance at large companies. None of them is in
+# README.md.

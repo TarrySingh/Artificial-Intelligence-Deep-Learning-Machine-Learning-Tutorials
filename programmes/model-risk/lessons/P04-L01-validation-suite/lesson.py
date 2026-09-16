@@ -1,0 +1,822 @@
+# %% [markdown]
+# # P04-L01 · A validation suite that would survive an audit
+#
+# **You will build:** six functions that measure a model's calibration, stability and
+# subgroup behaviour, apply a written promotion rule to a challenger — and then generate the
+# validation report from those results, instead of writing one by hand.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** T00-L01 (the tier gate and the profiler). Pure numpy throughout.
+#
+# The data is **synthetic and generated in this notebook**. Every figure you see is computed
+# by code you run, including the figures in the report.
+#
+# By the end you will be able to:
+#
+# 1. Implement a reliability table and the expected calibration error over it.
+# 2. Implement a population stability index against a fixed baseline, floored so a bin that
+#    empties out is reported rather than erased.
+# 3. Implement a subgroup performance table with a minimum-support rule that suppresses
+#    metrics without hiding groups.
+# 4. Apply a written champion/challenger decision rule and report the reason for every test.
+# 5. Generate the validation report from those results, so the document and the run cannot
+#    disagree.
+# 6. Explain why re-cutting stability bins on each new sample makes a drifting population
+#    read as stable forever.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import sys
+import time
+from typing import Any, Callable, Mapping, NamedTuple
+
+import numpy as np
+
+SEED = 20260916
+N_DEV = 6000
+N_MON = 6000
+N_BINS = 10
+MIN_SUPPORT = 200
+PSI_THRESHOLD = 0.25
+AS_OF = "2026-09-16"
+PSI_FLOOR = 1e-6
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+DATA_NOTE = (
+    "SYNTHETIC DATA. Every record below was generated inside this notebook by "
+    f"numpy.random.default_rng({SEED}). No real applicant, account or lending decision is "
+    "represented. A validation report on real data must name the extract, its date and its "
+    "lineage here instead; a report that cannot say where its data came from is not evidence."
+)
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other five.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def synthetic_portfolio(rng: np.random.Generator, n: int, drift: float = 0.0) -> dict:
+    """Generate one deterministic synthetic sample. SYNTHETIC — see DATA_NOTE.
+
+    `drift` shifts the latent risk driver, which is how the monitoring sample is made to
+    differ from the development sample without changing the model at all.
+    """
+    segment_names = np.array(["A", "B", "C", "D", "E"])
+    seg_idx = rng.choice(5, size=n, p=[0.34, 0.28, 0.22, 0.14, 0.02])
+    seg_offset = np.array([0.0, -0.25, 0.30, 0.55, -0.10])[seg_idx]
+
+    z = rng.normal(0.0, 1.0, n) + drift + seg_offset
+    true_logit = -1.55 + 0.95 * z
+    y = (rng.random(n) < _sigmoid(true_logit)).astype(np.int64)
+
+    # The champion sees a noisier view of the driver (weaker ranking), is over-confident
+    # (slope > 1), and carries a segment-D bias nobody noticed at build time.
+    champ_logit = 1.30 * (-1.55 + 0.95 * (z + rng.normal(0.0, 0.62, n))) + 0.18
+    champ_logit = champ_logit - 0.55 * (seg_idx == 3)
+    # The challenger sees a cleaner view and was fitted on the log-odds scale, so it is
+    # both better ranked and better calibrated. Whether that is enough to promote it is a
+    # policy question, not a modelling one — which is the point of exercise 5.
+    chal_logit = -1.55 + 0.95 * (z + rng.normal(0.0, 0.26, n))
+
+    return {
+        "segment": segment_names[seg_idx],
+        "y": y,
+        "champion": _sigmoid(champ_logit),
+        "challenger": _sigmoid(chal_logit),
+    }
+
+
+def auc_by_ranks(y_true: np.ndarray, y_prob: np.ndarray) -> float:
+    """Area under the ROC curve, by the Mann-Whitney rank identity. Given to you, not graded.
+
+    Ties get the average rank, so two identical scores can never be silently ordered.
+    """
+    y = np.asarray(y_true)
+    p = np.asarray(y_prob, dtype=float)
+    n_pos = int(y.sum())
+    n_neg = int(y.size - n_pos)
+    if n_pos == 0 or n_neg == 0:
+        raise ValueError("AUC is undefined when one class is absent from the sample")
+    order = np.argsort(p, kind="mergesort")
+    ordered = p[order]
+    ranks_ordered = np.empty(p.size, dtype=float)
+    i = 0
+    while i < p.size:
+        j = i
+        while j + 1 < p.size and ordered[j + 1] == ordered[i]:
+            j += 1
+        ranks_ordered[i:j + 1] = (i + j) / 2.0 + 1.0
+        i = j + 1
+    ranks = np.empty(p.size, dtype=float)
+    ranks[order] = ranks_ordered
+    return float((ranks[y == 1].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
+
+
+def quantile_edges(x: np.ndarray, n_bins: int = N_BINS) -> np.ndarray:
+    """Bin edges at equally spaced quantiles of `x`, widened so nothing falls outside them.
+
+    Given to you. The edges are cut ONCE, on the expected sample, and then travel with it
+    into monitoring: PSI only means anything against a baseline that cannot move.
+    """
+    edges = np.quantile(np.asarray(x, dtype=float), np.linspace(0.0, 1.0, n_bins + 1))
+    edges = np.unique(edges)
+    edges[0] = -np.inf
+    edges[-1] = np.inf
+    return edges
+
+
+_rng = np.random.default_rng(SEED)
+DEV = synthetic_portfolio(_rng, N_DEV, drift=0.0)
+MON = synthetic_portfolio(_rng, N_MON, drift=1.00)
+print(f"development sample: {N_DEV} records, event rate {DEV['y'].mean():.4f}")
+print(f"monitoring sample:  {N_MON} records, event rate {MON['y'].mean():.4f}")
+print("segments:", ", ".join(f"{s}={int((DEV['segment'] == s).sum())}" for s in "ABCDE"))
+print("\n" + DATA_NOTE)
+
+# %% [markdown]
+# ## 1. The phenomenon: a model that discriminates well and lies about the odds
+#
+# A validator is asked two different questions and must not confuse them. *Does the model
+# rank?* is answered by AUC. *Does the model mean what it says?* is answered by calibration.
+# A model can ace the first and fail the second, and only the second one decides whether a
+# decision taken at "12% risk" was defensible. The interagency guidance the US banking
+# agencies issued on 17 April 2026 puts validating conceptual soundness and outcomes
+# analysis at the centre of model validation; this notebook builds the outcomes half.
+#
+# Run this. Both models are scored on the same records.
+
+# %%
+_dev_champ_auc = auc_by_ranks(DEV["y"], DEV["champion"])
+_dev_chal_auc = auc_by_ranks(DEV["y"], DEV["challenger"])
+_hi = DEV["champion"] >= 0.50
+print(f"champion AUC   {_dev_champ_auc:.3f}   challenger AUC {_dev_chal_auc:.3f}")
+print(f"of the {_hi.sum()} records the champion scored at or above 0.50, it predicted an "
+      f"average risk of {DEV['champion'][_hi].mean():.3f}")
+print(f"the observed event rate in that same group was {DEV['y'][_hi].mean():.3f}")
+print("\nRanking and calibration are different properties. The suite has to measure both.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `reliability_table()`
+#
+# Bin the predictions, then compare what the model *said* against what actually *happened*
+# inside each bin. Bins are equally spaced over `[0, 1]`; bin *m* covers the half-open
+# interval `((m-1)/M, m/M]`, with `0.0` belonging to the first bin.
+#
+# Two traps are deliberately in your way. An empty bin has no rate — reporting `0.0` for it
+# invents a finding. And an empty bin must still appear in the table, because "we had no
+# observations up there" is itself something an auditor needs to see.
+
+# %%
+class ReliabilityTable(NamedTuple):
+    """One row per bin, empty bins included."""
+
+    lo: np.ndarray          # lower edge of each bin
+    hi: np.ndarray          # upper edge of each bin
+    count: np.ndarray       # number of records in the bin, integer dtype
+    mean_pred: np.ndarray   # mean predicted probability in the bin, nan when empty
+    obs_rate: np.ndarray    # observed event rate in the bin, nan when empty
+
+
+def reliability_table(y_true: np.ndarray, y_prob: np.ndarray,
+                      n_bins: int = N_BINS) -> ReliabilityTable:
+    """Bin `y_prob` into `n_bins` equal-width bins over [0, 1] and summarise each bin.
+
+    Requirements, each of which is graded:
+      * every one of the `n_bins` bins appears in the output, in ascending order, even when
+        no record fell in it.
+      * a bin holding no records reports `count == 0` and `nan` for both rates. Not `0.0`:
+        a rate of zero is a finding, and you did not observe one.
+      * bin edges are `numpy.linspace(0, 1, n_bins + 1)`; a probability landing exactly on an
+        interior edge belongs to the LOWER bin, and `0.0` belongs to the first bin.
+      * `ValueError` if `n_bins < 1`, if the two arrays differ in length, if any probability
+        falls outside `[0, 1]`, or if `y_true` holds anything but 0 and 1. A validation suite
+        that silently accepts a malformed extract is how a bad number reaches a committee.
+
+    Example:
+        >>> t = reliability_table(np.array([0, 1, 1]), np.array([0.05, 0.15, 0.95]), 10)
+        >>> int(t.count[0]), int(t.count[1]), int(t.count[5])
+        (1, 1, 0)
+        >>> float(t.obs_rate[0]), bool(np.isnan(t.obs_rate[5]))
+        (0.0, True)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public checks — run these as often as you like.
+def _check_reliability() -> None:
+    t = reliability_table(np.array([0, 1, 1]), np.array([0.05, 0.15, 0.95]), 10)
+    assert isinstance(t, ReliabilityTable), (
+        "return a ReliabilityTable, not a tuple or a dict — build it with "
+        "ReliabilityTable(lo=..., hi=..., count=..., mean_pred=..., obs_rate=...)"
+    )
+    assert len(t.count) == 10, (
+        f"the table has {len(t.count)} rows for n_bins=10 — empty bins must be kept, not "
+        "dropped, or the report cannot show where the model was never exercised"
+    )
+    assert int(t.count[0]) == 1 and int(t.count[1]) == 1 and int(t.count[9]) == 1, (
+        f"counts {t.count.tolist()} — 0.05 goes in bin 0, 0.15 in bin 1, 0.95 in bin 9"
+    )
+    assert np.isnan(t.obs_rate[5]) and np.isnan(t.mean_pred[5]), (
+        "an empty bin must report nan, not 0.0 — a zero rate is a finding you did not observe"
+    )
+    assert t.obs_rate[0] == 0.0, "bin 0 holds one non-event, so its observed rate is 0.0"
+    edge = reliability_table(np.array([1]), np.array([0.10]), 10)
+    assert int(edge.count[0]) == 1, (
+        "0.10 sits exactly on the edge between bin 0 and bin 1 and belongs to the LOWER bin; "
+        "np.searchsorted(edges, p, side='left') - 1 gets this right, side='right' does not"
+    )
+    zero = reliability_table(np.array([0]), np.array([0.0]), 10)
+    assert int(zero.count[0]) == 1, "0.0 belongs to the first bin — clip the index at 0"
+    for bad, why in (
+        ((np.array([0, 1]), np.array([0.5, 1.5]), 10), "a probability above 1"),
+        ((np.array([0, 1]), np.array([0.5]), 10), "mismatched lengths"),
+        ((np.array([0, 2]), np.array([0.5, 0.6]), 10), "a label that is not 0 or 1"),
+        ((np.array([0, 1]), np.array([0.5, 0.6]), 0), "n_bins of 0"),
+    ):
+        try:
+            reliability_table(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError, not be quietly accepted")
+    print("exercise 1 looks right")
+
+
+# %% [markdown]
+# ## 3. Exercise 2 — `expected_calibration_error()`
+#
+# The reliability table is the evidence; ECE is the single number that goes on the summary
+# page. It is the average gap between predicted and observed, **weighted by how many records
+# sit in each bin** — a bin holding four records must not carry the same weight as one
+# holding four thousand.
+
+# %%
+def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray,
+                               n_bins: int = N_BINS) -> float:
+    """Support-weighted mean absolute gap between predicted and observed rates.
+
+    Build the table with `reliability_table` and reduce it. Requirements, each graded:
+      * empty bins contribute nothing and, in particular, do not count towards the weights.
+      * each bin's weight is its share of the records, `count / total`, never `1 / n_bins`.
+      * the gap is an ABSOLUTE difference, so over- and under-prediction cannot cancel out.
+      * the return type is a plain Python `float`. `np.float64` is a subclass of `float`, so
+        `isinstance` will not catch it — but `json.dumps` refuses it, which is where a numpy
+        scalar that escaped into a report pipeline usually stops it.
+
+    Example — two bins, 3 records predicted 0.1 that never happen, 1 record predicted 0.9
+    that does; gaps 0.1 and 0.1, weights 0.75 and 0.25:
+        >>> round(expected_calibration_error(np.array([0, 0, 0, 1]),
+        ...                                  np.array([0.1, 0.1, 0.1, 0.9]), 2), 6)
+        0.1
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_ece() -> None:
+    worked = expected_calibration_error(np.array([0, 0, 0, 1]), np.array([0.1, 0.1, 0.1, 0.9]), 2)
+    assert abs(worked - 0.1) < 1e-9, (
+        f"the docstring example should give 0.1, got {worked:.6f} — weight each bin by "
+        "count/total, not equally across bins"
+    )
+    perfect = expected_calibration_error(np.array([0, 1]), np.array([0.0, 1.0]), 10)
+    assert abs(perfect) < 1e-12, f"a perfectly calibrated sample should score 0.0, got {perfect}"
+    # One bin over-predicts by 0.4, the other under-predicts by 0.4. Signed errors cancel to
+    # zero; absolute errors do not, and it is the absolute one that is the finding.
+    cancel = expected_calibration_error(np.array([0, 0, 1, 1]), np.array([0.4, 0.4, 0.6, 0.6]), 2)
+    assert abs(cancel - 0.4) < 1e-9, (
+        f"got {cancel:.6f}: an over-predicting bin and an under-predicting bin must not "
+        "cancel — take the absolute gap inside each bin before averaging"
+    )
+    assert type(worked) is float, (
+        f"return a plain Python float, got {type(worked).__name__} — np.float64 passes "
+        "isinstance(x, float) and still breaks json.dumps; wrap the reduction in float()"
+    )
+    print("exercise 2 looks right")
+
+
+# %% [markdown]
+# ## 4. Exercise 3 — `population_stability_index()`
+#
+# Calibration asks whether the model is right on the data you have. Stability asks whether
+# the data you have is still the data it was built on. PSI compares the *shape* of a score
+# distribution against a baseline, bin by bin:
+#
+# `PSI = Σ (a_i − e_i) · ln(a_i / e_i)`, over shares of the total, not counts.
+
+# %%
+class StabilityResult(NamedTuple):
+    """PSI and the per-bin arithmetic that produced it, so a finding can be traced to a bin."""
+
+    psi: float                   # the total
+    contributions: np.ndarray    # per-bin (a - e) * ln(a / e), same length as the bins
+    expected_pct: np.ndarray     # baseline share per bin, summing to 1.0
+    actual_pct: np.ndarray       # current share per bin, summing to 1.0
+
+
+def population_stability_index(expected: np.ndarray, actual: np.ndarray,
+                               edges: np.ndarray, floor: float = PSI_FLOOR) -> StabilityResult:
+    """Population stability index of `actual` against baseline `expected`, on given `edges`.
+
+    `edges` has `len(edges) - 1` bins; bin *i* is `[edges[i], edges[i+1])`, and the last bin
+    is closed on the right. Values outside the edges fall into the nearest end bin, which is
+    why `quantile_edges` opens the outer edges to infinity.
+
+    Requirements, each graded:
+      * shares, not counts: each side is divided by its OWN total, so samples of different
+        sizes are comparable.
+      * every share is floored at `floor` before the logarithm. A bin that empties out is the
+        single most important thing PSI can tell you, and `log(0)` throws it away.
+      * `contributions` is the per-bin term and sums to `psi`; each term is non-negative.
+      * `ValueError` if `edges` is not strictly increasing, or holds fewer than two values.
+
+    Example — identical distributions shift nothing:
+        >>> e = np.array([0.1, 0.2, 0.8, 0.9])
+        >>> round(population_stability_index(e, e, np.array([0.0, 0.5, 1.0])).psi, 12)
+        0.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_psi() -> None:
+    same = np.array([0.1, 0.2, 0.8, 0.9])
+    flat = population_stability_index(same, same, np.array([0.0, 0.5, 1.0]))
+    assert isinstance(flat, StabilityResult), "return a StabilityResult, not a bare float"
+    assert abs(flat.psi) < 1e-12, (
+        f"two identical samples must score 0.0, got {flat.psi:.6f} — are you comparing counts "
+        "instead of shares?"
+    )
+    # Different sizes, same shape: PSI still has to be 0. Counts would give a huge number.
+    sized = population_stability_index(np.array([0.1, 0.9]), np.array([0.1, 0.1, 0.9, 0.9]),
+                                       np.array([0.0, 0.5, 1.0]))
+    assert abs(sized.psi) < 1e-12, (
+        f"the same shape at twice the size scored {sized.psi:.6f} — divide each side by its "
+        "own total before comparing"
+    )
+    moved = population_stability_index(np.array([0.1, 0.1, 0.9, 0.9]),
+                                       np.array([0.1, 0.9, 0.9, 0.9]),
+                                       np.array([0.0, 0.5, 1.0]))
+    assert moved.psi > 0.0, "a real shift must give a positive PSI"
+    assert abs(float(moved.contributions.sum()) - moved.psi) < 1e-12, (
+        "contributions must sum to psi, or a breach cannot be traced back to a bin"
+    )
+    emptied = population_stability_index(np.array([0.1, 0.9]), np.array([0.9, 0.9]),
+                                         np.array([0.0, 0.5, 1.0]))
+    assert np.isfinite(emptied.psi) and emptied.psi > 1.0, (
+        f"a bin that emptied out scored {emptied.psi} — floor both shares before the log "
+        "instead of letting log(0) return -inf and erasing the most important finding"
+    )
+    for bad, why in ((np.array([0.0]), "fewer than two edges"),
+                     (np.array([0.0, 0.5, 0.5, 1.0]), "a repeated edge")):
+        try:
+            population_stability_index(same, same, bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 3 looks right")
+
+
+# %% [markdown]
+# ## 5. Exercise 4 — `subgroup_table()`
+#
+# An aggregate ECE of 0.02 can hide a segment the model is wrong about by 0.15. The subgroup
+# table is where that shows up — and where the **minimum-support rule** lives.
+#
+# The rule has two halves, and dropping either one is a finding. A metric computed on 30
+# records is noise, so you do not report it. But the group does not disappear: it is listed,
+# with its count, and marked as suppressed. Silently dropping small groups is how a model
+# gets signed off as fair on the segments that were big enough to measure.
+
+# %%
+def subgroup_table(y_true: np.ndarray, y_prob: np.ndarray, groups: np.ndarray,
+                   min_support: int = MIN_SUPPORT, n_bins: int = N_BINS) -> dict:
+    """Per-subgroup calibration, with a minimum-support rule.
+
+    Returns a dict of equal-length arrays keyed `group`, `count`, `event_rate`, `mean_pred`,
+    `gap`, `ece`, `reportable`. Requirements, each graded:
+      * one row per distinct value in `groups`, in ascending sorted order, and EVERY distinct
+        value gets a row — including the ones below support.
+      * `count` is always the true count, for every group.
+      * `reportable` is `count >= min_support`. A group sitting exactly on the threshold is
+        reportable; the rule is a minimum, not a strict inequality.
+      * for a group that is not reportable, `event_rate`, `mean_pred`, `gap` and `ece` are all
+        `nan`. Do not compute a metric you have just declared you cannot support.
+      * `gap` is `mean_pred - event_rate`, signed: positive means the model over-predicted
+        risk for that group, negative means it under-predicted. A sign is a direction, and a
+        remediation plan needs one.
+      * `ece` for a reportable group is `expected_calibration_error` on that group's records.
+      * `ValueError` if `min_support < 1`, or if the three arrays differ in length.
+
+    Example:
+        >>> t = subgroup_table(np.array([0, 1, 0, 1]), np.array([0.2, 0.8, 0.3, 0.7]),
+        ...                    np.array(["big", "big", "tiny", "tiny"]), min_support=2)
+        >>> list(t["group"]), t["reportable"].tolist()
+        (['big', 'tiny'], [True, True])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_subgroups() -> None:
+    y = np.array([0, 1, 0, 1, 1, 0])
+    p = np.array([0.2, 0.8, 0.3, 0.7, 0.6, 0.4])
+    g = np.array(["big", "big", "big", "big", "tiny", "tiny"])
+    t = subgroup_table(y, p, g, min_support=4)
+    assert list(t["group"]) == ["big", "tiny"], (
+        f"groups {list(t['group'])} — every distinct value gets a row, sorted; a group below "
+        "support is suppressed, never deleted"
+    )
+    assert t["count"].tolist() == [4, 2], f"counts {t['count'].tolist()} should be [4, 2]"
+    assert t["reportable"].tolist() == [True, False], (
+        "'big' has exactly min_support records and is reportable; 'tiny' has 2 and is not"
+    )
+    assert np.isnan(t["ece"][1]) and np.isnan(t["gap"][1]), (
+        "a suppressed group must report nan metrics — you declared you cannot support them"
+    )
+    assert abs(t["mean_pred"][0] - 0.5) < 1e-12 and abs(t["event_rate"][0] - 0.5) < 1e-12, (
+        f"'big' has mean prediction {t['mean_pred'][0]} and event rate {t['event_rate'][0]}; "
+        "both should be 0.5"
+    )
+    # Sign of the gap: this group is predicted at 0.9 and only half of them happen, so the
+    # model OVER-predicted and the gap must be positive.
+    over = subgroup_table(np.array([0, 1]), np.array([0.9, 0.9]), np.array(["x", "x"]),
+                          min_support=2)
+    assert over["gap"][0] > 0, (
+        f"gap {over['gap'][0]} — predicted 0.9 against an observed 0.5 is OVER-prediction and "
+        "must be positive: gap is mean_pred - event_rate, not the other way round"
+    )
+    try:
+        subgroup_table(y, p, g, min_support=0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("min_support of 0 should raise ValueError")
+    print("exercise 4 looks right")
+
+
+# %% [markdown]
+# ## 6. Exercise 5 — `challenger_decision()`
+#
+# The challenger is better on both metrics. That is not, on its own, a reason to promote it —
+# and "better" is not a decision. A decision rule is written down *before* the numbers are
+# known, applied mechanically, and reported with its reasons attached.
+
+# %%
+class Decision(NamedTuple):
+    """A verdict, the reason for every rule that produced it, and the margins."""
+
+    verdict: str                 # "promote" | "hold" | "reject"
+    reasons: tuple               # one string per rule, in order, each starting PASS or FAIL
+    margins: dict                # how far each rule was cleared or missed, by
+
+
+def challenger_decision(champion: Mapping[str, float], challenger: Mapping[str, float],
+                        policy: Mapping[str, float]) -> Decision:
+    """Apply the promotion policy to a champion/challenger pair.
+
+    `champion` and `challenger` each carry `auc` and `ece`. `policy` carries `min_auc`,
+    `max_ece` and `min_auc_gain`.
+
+    The rules, in this order, with every one of them evaluated and reported:
+      0. absolute gate — `challenger.auc >= policy.min_auc`
+      1. absolute gate — `challenger.ece <= policy.max_ece`
+      2. improvement  — `challenger.auc - champion.auc >= policy.min_auc_gain`
+      3. no regression — `challenger.ece <= champion.ece`
+
+    Requirements, each graded:
+      * `reasons` has exactly four entries, in rule order, each beginning `"PASS "` or
+        `"FAIL "` and naming both the observed figure and the limit it was judged against.
+      * if either absolute gate fails the verdict is `"reject"`, whatever rules 2 and 3 say.
+      * otherwise `"promote"` when rules 2 and 3 both pass, and `"hold"` when they do not.
+        A challenger that is merely not worse is held, not promoted.
+      * every comparison is inclusive: landing exactly on a limit passes it.
+      * `margins` holds `auc_gain`, `ece_change`, `auc_headroom`, `ece_headroom`, where
+        `ece_change` is `challenger.ece - champion.ece` and so is NEGATIVE when the
+        challenger is better calibrated.
+      * `ValueError` naming every missing key if any of the three mappings is incomplete.
+
+    Example:
+        >>> d = challenger_decision({"auc": 0.70, "ece": 0.05}, {"auc": 0.74, "ece": 0.02},
+        ...                         {"min_auc": 0.65, "max_ece": 0.04, "min_auc_gain": 0.02})
+        >>> d.verdict, len(d.reasons)
+        ('promote', 4)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_decision() -> None:
+    policy = {"min_auc": 0.65, "max_ece": 0.04, "min_auc_gain": 0.02}
+    good = challenger_decision({"auc": 0.70, "ece": 0.05}, {"auc": 0.74, "ece": 0.02}, policy)
+    assert good.verdict == "promote", f"a clear winner should promote, got {good.verdict!r}"
+    assert len(good.reasons) == 4, (
+        f"{len(good.reasons)} reasons — all four rules are reported every time, including the "
+        "ones that passed; a decision an auditor cannot re-derive is not a decision"
+    )
+    assert all(r.startswith(("PASS ", "FAIL ")) for r in good.reasons), (
+        f"each reason starts with 'PASS ' or 'FAIL ': {good.reasons}"
+    )
+    tiny = challenger_decision({"auc": 0.70, "ece": 0.05}, {"auc": 0.705, "ece": 0.02}, policy)
+    assert tiny.verdict == "hold", (
+        f"a gain of 0.005 against a required 0.02 is a hold, got {tiny.verdict!r} — better is "
+        "not the same as better by enough"
+    )
+    bad = challenger_decision({"auc": 0.70, "ece": 0.05}, {"auc": 0.90, "ece": 0.30}, policy)
+    assert bad.verdict == "reject", (
+        f"an ECE of 0.30 blows the absolute ceiling and must reject however good the AUC is, "
+        f"got {bad.verdict!r}"
+    )
+    edge = challenger_decision({"auc": 0.70, "ece": 0.02}, {"auc": 0.72, "ece": 0.02}, policy)
+    assert edge.verdict == "promote", (
+        "a gain of exactly 0.02 with unchanged calibration sits on both limits and passes "
+        "both — every comparison in this rule set is inclusive"
+    )
+    assert edge.margins["ece_change"] == 0.0, "ece_change is challenger minus champion"
+    assert good.margins["ece_change"] < 0, (
+        "the challenger is better calibrated, so ece_change must be negative — if yours is "
+        "positive you have the subtraction the wrong way round"
+    )
+    try:
+        challenger_decision({"auc": 0.7}, {"auc": 0.7, "ece": 0.0}, policy)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a missing champion.ece should raise ValueError")
+    print("exercise 5 looks right")
+
+
+# %% [markdown]
+# ## 7. Exercise 6 — `render_validation_report()`
+#
+# Everything above produced evidence. This produces the document — from that evidence, and
+# from nothing else. A report written by hand alongside a run is a report that can disagree
+# with the run, and when it does, nobody finds out until an examiner does.
+
+# %%
+REPORT_SECTIONS = ("## 1. Data", "## 2. Calibration", "## 3. Population stability",
+                   "## 4. Subgroup performance", "## 5. Champion versus challenger",
+                   "## 6. Decision")
+
+
+def render_validation_report(findings: Mapping[str, Any]) -> str:
+    """Render the validation report as markdown, entirely from `findings`.
+
+    `findings` carries: `model_id`, `as_of`, `data_note`, `reliability`, `ece`, `psi`,
+    `psi_threshold`, `subgroups`, `min_support`, `champion`, `challenger`, `decision`.
+
+    Requirements, each graded:
+      * the first line is `"# Validation report — <model_id>"`, and the six headings in
+        `REPORT_SECTIONS` appear in that order.
+      * every figure is formatted from `findings`. Nothing is hard-coded, and nothing is
+        recomputed here: this function reports, it does not measure.
+      * ECE and PSI print to 4 decimal places, AUC to 3, the PSI threshold to 2.
+      * the calibration table has one row per bin, empty bins included, and an empty bin
+        prints `n/a` for both rates rather than a number.
+      * section 3 ends in `"Verdict: BREACH"` when `psi > psi_threshold` and
+        `"Verdict: WITHIN THRESHOLD"` otherwise. Exactly on the threshold is within it.
+      * every subgroup gets a row. A suppressed one prints `"suppressed (n=<count> < minimum "
+        "support <min_support>)"` and no metrics at all.
+      * section 6 prints `"Verdict: <VERDICT>"` in upper case, then every reason from the
+        decision, verbatim, one per line, each prefixed `"- "`.
+      * `ValueError` naming every missing key if `findings` is incomplete.
+
+    Example:
+        >>> report.splitlines()[0]                       # doctest: +SKIP
+        '# Validation report — champion-v3'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_report() -> None:
+    probe = _probe_findings()
+    text = render_validation_report(probe)
+    assert text.splitlines()[0] == "# Validation report — probe-model", (
+        f"first line was {text.splitlines()[0]!r} — it must be "
+        "'# Validation report — <model_id>', taken from findings"
+    )
+    positions = [text.find(h) for h in REPORT_SECTIONS]
+    assert all(pos >= 0 for pos in positions), (
+        f"missing sections: {[h for h, pos in zip(REPORT_SECTIONS, positions) if pos < 0]}"
+    )
+    assert positions == sorted(positions), "the six sections must appear in order"
+    assert "0.4242" in text, (
+        "the ECE in findings is 0.4242 and does not appear in the report at 4 decimal places "
+        "— report the number you were handed, do not recompute or round it differently"
+    )
+    assert "0.7777" in text and "Verdict: BREACH" in text, (
+        "a PSI of 0.7777 against a threshold of 0.25 is a breach and both must be in the text"
+    )
+    assert "suppressed (n=11 < minimum support 200)" in text, (
+        "the below-support group must be listed and marked suppressed, with its count and "
+        "the threshold it missed — not dropped from the table"
+    )
+    assert "0.9191" not in text.split(REPORT_SECTIONS[3])[0], (
+        "the suppressed group's metrics must not be printed anywhere"
+    )
+    assert "Verdict: PROMOTE" in text, "the decision verdict is printed in upper case"
+    for reason in probe["decision"].reasons:
+        assert reason in text, f"reason missing from the report, verbatim: {reason!r}"
+    try:
+        render_validation_report({k: v for k, v in probe.items() if k != "psi"})
+    except ValueError as exc:
+        assert "psi" in str(exc), f"the error should name the missing key, got {exc}"
+    else:
+        raise AssertionError("incomplete findings should raise ValueError")
+    print("exercise 6 looks right")
+
+
+def _probe_findings() -> dict:
+    """A tiny findings dict with unmistakable numbers, so you can see where each one lands."""
+    rel = ReliabilityTable(lo=np.array([0.0, 0.5]), hi=np.array([0.5, 1.0]),
+                           count=np.array([2, 0]), mean_pred=np.array([0.25, np.nan]),
+                           obs_rate=np.array([0.5, np.nan]))
+    psi = StabilityResult(psi=0.7777, contributions=np.array([0.1, 0.6777]),
+                          expected_pct=np.array([0.5, 0.5]), actual_pct=np.array([0.2, 0.8]))
+    sub = {"group": np.array(["big", "small"]), "count": np.array([900, 11]),
+           "event_rate": np.array([0.3, np.nan]), "mean_pred": np.array([0.35, np.nan]),
+           "gap": np.array([0.05, np.nan]), "ece": np.array([0.0505, 0.9191]),
+           "reportable": np.array([True, False])}
+    return {"model_id": "probe-model", "as_of": "1970-01-01", "data_note": "PROBE NOTE",
+            "reliability": rel, "ece": 0.4242, "psi": psi, "psi_threshold": 0.25,
+            "subgroups": sub, "min_support": 200,
+            "champion": {"auc": 0.6161, "ece": 0.5252},
+            "challenger": {"auc": 0.8181, "ece": 0.0303},
+            "decision": Decision(verdict="promote",
+                                 reasons=("PASS probe rule zero", "PASS probe rule one",
+                                          "PASS probe rule two", "PASS probe rule three"),
+                                 margins={"auc_gain": 0.202})}
+
+
+# %% [markdown]
+# ## 8. Run the suite and generate the report
+#
+# Six functions, one document. Nothing below types a number.
+
+# %%
+def run_suite() -> dict:
+    """Assemble every finding for the champion model and return the report with them."""
+    edges = quantile_edges(DEV["champion"], N_BINS)
+    champion = {"auc": auc_by_ranks(DEV["y"], DEV["champion"]),
+                "ece": expected_calibration_error(DEV["y"], DEV["champion"], N_BINS)}
+    challenger = {"auc": auc_by_ranks(DEV["y"], DEV["challenger"]),
+                  "ece": expected_calibration_error(DEV["y"], DEV["challenger"], N_BINS)}
+    policy = {"min_auc": 0.65, "max_ece": 0.04, "min_auc_gain": 0.02}
+    findings = {
+        "model_id": "champion-v3 (retail application scorecard)",
+        "as_of": AS_OF,
+        "data_note": DATA_NOTE,
+        "reliability": reliability_table(DEV["y"], DEV["champion"], N_BINS),
+        "ece": champion["ece"],
+        "psi": population_stability_index(DEV["champion"], MON["champion"], edges),
+        "psi_threshold": PSI_THRESHOLD,
+        "subgroups": subgroup_table(DEV["y"], DEV["champion"], DEV["segment"], MIN_SUPPORT),
+        "min_support": MIN_SUPPORT,
+        "champion": champion,
+        "challenger": challenger,
+        "decision": challenger_decision(champion, challenger, policy),
+    }
+    return {"findings": findings, "report": render_validation_report(findings)}
+
+
+def _show_report() -> None:
+    out = run_suite()
+    print(out["report"])
+    findings = out["findings"]
+    assert findings["psi"].psi > PSI_THRESHOLD, (
+        "the monitoring sample was drifted on purpose; if PSI came back inside the threshold, "
+        "check that you are binning the monitoring scores on the DEVELOPMENT sample's edges"
+    )
+    assert bool((~findings["subgroups"]["reportable"]).any()), (
+        "segment E was built below the support threshold and should be suppressed"
+    )
+    assert findings["decision"].verdict in {"promote", "hold", "reject"}
+
+
+_try("the suite", _show_report)
+
+# %% [markdown]
+# ## 9. Common mistakes
+#
+# - **Reporting a rate for an empty bin.** `0.0` is a finding; "no observations" is not.
+# - **Averaging the bins of a reliability table equally.** ECE weights by support. A bin with
+#   four records must not outvote one with four thousand.
+# - **Letting signed calibration errors cancel.** Over-prediction here and under-prediction
+#   there is not calibration; it is two findings that add up to zero.
+# - **Letting `log(0)` erase a PSI finding.** A score band that emptied out is the loudest
+#   signal the index can give you. Floor the share, do not drop the bin.
+# - **Computing PSI on counts.** Two samples of different sizes then look like a shift.
+# - **Re-cutting the PSI bins on the new sample.** The edges belong to the baseline. Re-cut
+#   them and every distribution scores a perfect zero against itself, forever.
+# - **Dropping small subgroups.** Suppress the metric, keep the row. The list of groups you
+#   could not measure is evidence too — often the most interesting evidence.
+# - **Treating "better" as "promote".** The rule is written before the numbers are seen, it
+#   has a required margin, and it has absolute gates that a large AUC cannot buy past.
+# - **Writing the report by hand from the run.** The moment a number is typed, the document
+#   and the evidence can disagree, and the disagreement is discovered by someone else.
+#
+# The sixth one is worth seeing rather than believing. Run the cell below: it scores the
+# drifted monitoring sample against edges cut on the monitoring sample itself.
+
+# %%
+def _show_self_referential_edges() -> None:
+    honest = population_stability_index(DEV["champion"], MON["champion"],
+                                        quantile_edges(DEV["champion"], N_BINS))
+    rebased = population_stability_index(MON["champion"], MON["champion"],
+                                         quantile_edges(MON["champion"], N_BINS))
+    print(f"monitoring vs development, on the development edges: PSI {honest.psi:.4f}")
+    print(f"monitoring vs itself, on freshly cut edges:          PSI {rebased.psi:.4f}")
+    print("\nThe population moved. The second figure will report that it did not, every month,")
+    print("for as long as the edges are re-cut — and it will never once look broken.")
+
+
+_try("self-referential edges", _show_self_referential_edges)
+
+# %% [markdown]
+# ## 10. Self-check
+#
+# 1. Your aggregate ECE is 0.011 and the committee is satisfied. The subgroup table shows
+#    one segment with a gap of -0.14 on 840 records. The right reading is:
+#    - (a) 840 records is too few to act on; the aggregate is the reliable number
+#    - (b) the model under-predicts risk for that segment; the aggregate averaged it away
+#    - (c) the model over-predicts risk for that segment and is therefore conservative
+#
+# 2. A monthly PSI report has read between 0.01 and 0.03 for two years, through a pandemic
+#    and a rate cycle. The most likely explanation is:
+#    - (a) the population really is that stable
+#    - (b) the bin edges are being re-cut on each month's own data
+#    - (c) PSI is insensitive to shifts in the middle of the distribution
+#
+# 3. A group of 30 records shows an ECE of 0.31, far worse than any other group. Your suite
+#    is right to suppress it because:
+#    - (a) the finding is embarrassing and needs more work before it is raised
+#    - (b) 30 records cannot distinguish a real miscalibration from sampling noise, so the
+#          number is not evidence — but the group and its count still belong in the report
+#    - (c) suppressed groups are excluded from validation scope
+#
+# 4. The challenger beats the champion on AUC by 0.004 and on ECE by 0.001. The policy
+#    requires a gain of 0.02. Promoting it anyway would be wrong mainly because:
+#    - (a) the improvement is within noise and the rule that says so was agreed in advance
+#    - (b) challengers should never be promoted in the same year they are built
+#    - (c) AUC is not a valid comparison metric between two models
+#
+# 5. Two validators run the same suite on the same extract and their reports differ in one
+#    figure. With this design, the only way that can happen is:
+#    - (a) someone edited a number in the document after it was generated
+#    - (b) ECE is stochastic
+#    - (c) the report renders whatever is in `findings`, so the inputs must have differed
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# Six functions and a generated document: calibration measured and binned, stability indexed
+# against a baseline that cannot move, subgroups reported under a support rule that suppresses
+# metrics without hiding groups, and a promotion decision taken by a rule written before the
+# numbers were seen. The rest of this programme hangs off these — the inventory and tiering
+# lesson decides which models get this treatment, and the validation-report lesson turns this
+# document into the one a committee signs.
+
+# %%
+print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_reliability),
+                          ("exercise 2", _check_ece),
+                          ("exercise 3", _check_psi),
+                          ("exercise 4", _check_subgroups),
+                          ("exercise 5", _check_decision),
+                          ("exercise 6", _check_report)):
+        _try(_name, _check)
+    # A stub you have not reached yet is not a failure. A check that ran and came back
+    # wrong is, and it ends this run non-zero rather than letting a green exit code paper
+    # over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

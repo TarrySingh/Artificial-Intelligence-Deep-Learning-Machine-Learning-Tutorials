@@ -28,15 +28,6 @@ datasets:
       claims.yaml with their EUR-Lex and European Commission URLs and access dates.
 points: 30
 status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: >-
-  Independent review 2026-09-16. All four gates re-run from a clean checkout; the rubric was
-  mutation-tested against 21 plausible wrong implementations. Three rubric holes found and
-  closed (next_deadline ignoring the incomplete filter, blocking dropping the prohibited
-  clause, and a row-order test whose fixture ids were alphabetical so sorting passed). Every
-  sourced date re-verified against the European Commission's own pages. The EUR-Lex HTML,
-  ELI and OJ views for CELEX 32026R1744 all returned HTTP 202 with an empty body on this
-  date, so the two deferral claims no longer carry a verbatim EUR-Lex quote; see claims.yaml.
-  Open for the owner: the flagship id on line 4. F09 appears nowhere else in this repo, and
-  the repo uses two conventions — a bare id (F13, F02) and a slug (F15-humanoid-lab).
+reviewed_by: "Second independent review 2026-09-16, all four gates re-run green. Rubric mutation-tested against 35 plausible wrong implementations built from the reference solution and graded outside the lesson tree; 30 caught, 5 scored 100% and were rubric defects, all five now closed and re-confirmed (missing_evidence returning an unsorted list off a set; overdue comparing < as_of instead of <= so an obligation binding on the grading date was ignored; next_deadline comparing >= as_of so today was reported as the next deadline; by_tier pre-seeded with all six tiers, which the shipped registry cannot detect because it happens to use all six; row['name'] never compared to the system's name). Final: 35 of 35 mutants caught, reference still 30/30. Also fixed: a rubric failure message and a section-7 prose line that both said the blocking systems are not the ones with the longest gap lists, when loan-copilot has the registry's longest list and does block; two counts typed into prose that the code already computes (the PAST rungs, the registry size). Content re-verified from scratch: every claims.yaml source re-fetched, all six rulebook dates plus the 27 July 2026 Omnibus entry into force returned verbatim by the European Commission's own pages, and two quotes previously stored with an ellipsis re-retrieved in full. EUR-Lex CELEX 32026R1744 still returns HTTP 202 with an empty body, so the retrieval notes stand. Prerequisites [] is correct and matches the other track openers. Open for the owner, repo-wide not lesson-specific: curriculum/ and programmes/ are empty, so no flagship id resolves anywhere — F09 here, and equally F01-nanolm, F02, F13 elsewhere, in two competing naming conventions."
 measured_seconds: 0.1
 measured_peak_mib: 22

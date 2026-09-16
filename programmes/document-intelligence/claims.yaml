@@ -1,0 +1,145 @@
+# Every factual claim README.md makes about the world, with a primary source and the date the
+# source was read. Claims made inside a lesson live in that lesson's own claims.yaml.
+#
+# Nothing in README.md's "Why this programme, and why now" section is asserted without an entry
+# here. Where the best available reading of a source was a mirror or a law-firm summary rather
+# than the official register — because the official register renders client-side and could not
+# be fetched as text — the entry says so and names the official identifier, rather than citing
+# a page that was not actually read.
+claims:
+  - id: german-b2b-einvoicing-timetable
+    claim: >-
+      Germany's Growth Opportunities Act (Wachstumschancengesetz) made eInvoicing the default
+      method for issuing invoices in domestic B2B transactions from 1 January 2025; from
+      1 January 2027 businesses with turnover above EUR 800,000 may no longer issue paper or
+      unstructured electronic invoices, and from 1 January 2028 that applies to all businesses.
+      Companies must be able to receive eInvoices in the EN 16931 format. The README uses this
+      as evidence that the document layer of regulated operations is being made machine-readable
+      on a published timetable, not as a claim that structured formats remove the need for
+      extraction.
+    where: "README.md — 'The document layer is being made machine-readable by law'"
+    source_url: https://ec.europa.eu/digital-building-blocks/sites/spaces/DIGITAL/pages/467108886/eInvoicing+in+Germany
+    source_title: "European Commission, Digital Building Blocks — eInvoicing in Germany"
+    quote: >-
+      By January 1, 2027, businesses with a turnover exceeding EUR 800,000 will no longer be
+      allowed to issue paper invoices or use unstructured electronic formats. By January 1,
+      2028, this requirement will extend to all businesses.
+    quote_context: "page last updated 14 August 2025"
+    accessed: 2026-09-16
+
+  - id: ai-act-article-14-human-oversight
+    claim: >-
+      EU AI Act Article 14(1) requires high-risk AI systems to be designed and developed,
+      including with appropriate human-machine interface tools, so that they can be effectively
+      overseen by natural persons during the period in which they are in use. The README claims
+      only that human oversight is a design obligation where a system is high risk; it does not
+      claim that every document pipeline is high risk, which depends on the Annex III use case.
+    where: "README.md — 'Human oversight of high-risk AI is a design obligation'"
+    source_url: https://artificialintelligenceact.eu/article/14/
+    source_title: "EU Artificial Intelligence Act, Article 14: Human Oversight (AI Act Explorer)"
+    quote: >-
+      High-risk AI systems shall be designed and developed in such a way, including with
+      appropriate human-machine interface tools, that they can be effectively overseen by
+      natural persons during the period in which they are in use.
+    quote_context: >-
+      The AI Act Explorer reproduces the text of Regulation (EU) 2024/1689. The official text
+      is at https://eur-lex.europa.eu/eli/reg/2024/1689/oj — that page renders client-side and
+      returned no fetchable text on the access date, so the Explorer's rendering of the same
+      article is cited as what was actually read.
+    accessed: 2026-09-16
+
+  - id: digital-omnibus-defers-high-risk-obligations
+    claim: >-
+      The EU Digital Omnibus on Artificial Intelligence, Regulation (EU) 2026/1744, entered into
+      force on 27 July 2026, three days after publication in the Official Journal, and moved the
+      date from which compliance obligations apply for stand-alone high-risk AI systems listed
+      in Annex III to 2 December 2027. The README states this as a deferral rather than a
+      repeal, which is what the source says.
+    where: "README.md — 'Human oversight of high-risk AI is a design obligation'"
+    source_url: https://www.hunton.com/privacy-and-cybersecurity-law-blog/eu-digital-omnibus-on-ai-enters-into-force
+    source_title: "Hunton Andrews Kurth, Privacy & Information Security Law Blog — EU Digital Omnibus on AI Enters Into Force"
+    quote: >-
+      On July 27, 2026, the EU's Digital Omnibus on Artificial Intelligence (Regulation (EU)
+      2026/1744 of the European Parliament and of the Council) (the "Digital Omnibus") entered
+      into force.
+    quote_context: >-
+      A law-firm summary, cited because it is what was read. The official act is Regulation
+      (EU) 2026/1744, published in the Official Journal on 24 July 2026 and available at
+      https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=OJ:L_202601744 — that page returned
+      no fetchable text on the access date. The 2 December 2027 date for Annex III stand-alone
+      systems is stated on the cited page and corroborated by the AI Act Explorer's note on
+      Article 113(c).
+    accessed: 2026-09-16
+
+  - id: vendors-gate-human-review-on-confidence
+    claim: >-
+      Confidence-gated human review is the documented design of a shipping commercial document
+      extraction product: Microsoft's Azure AI Document Intelligence documentation states that
+      field confidence is an estimated probability between 0 and 1 and that, where accuracy is
+      critical, confidence can be used to decide whether to accept a prediction automatically
+      or flag it for human review.
+    where: "README.md — 'Confidence-gated human review is already the documented design'"
+    source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
+    source_title: "Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI Document Intelligence)"
+    quote: >-
+      For scenarios where accuracy is critical, confidence can be used to determine whether to
+      automatically accept the prediction or flag it for human review.
+    quote_context: "page dated 2026-04-08, last updated 2026-07-10"
+    accessed: 2026-09-16
+
+  - id: contract-extraction-weakest-on-normalised-fields
+    claim: >-
+      A May 2026 comparison of frontier LLMs against domain-trained small language models on
+      structured contract extraction reports that performance is strongest on short-text
+      identifiers and extracted text concepts, and weakest on currency fields requiring
+      normalisation or aggregation.
+    where: "README.md — 'The extraction problem is not solved'; MODULES.md module 1 rationale"
+    source_url: https://arxiv.org/abs/2605.05532
+    source_title: "A Few Good Clauses: Comparing LLMs vs Domain-Trained Small Language Models on Structured Contract Extraction (arXiv 2605.05532, submitted 7 May 2026)"
+    quote: >-
+      Performance is strongest on short-text identifiers and extracted text concepts, and
+      weakest on currency fields requiring normalisation or aggregation.
+    accessed: 2026-09-16
+
+  - id: cost-per-document-is-a-benchmark-axis
+    claim: >-
+      A March 2026 benchmark of multi-agent LLM architectures for financial document processing
+      measures systems along five axes — field-level F1, document-level accuracy, end-to-end
+      latency, cost per document and token efficiency — and reports that reflexive architectures
+      achieve the highest field-level F1 (0.943) at 2.3 times the cost of sequential baselines.
+    where: "README.md — 'The extraction problem is not solved'; MODULES.md module 10"
+    source_url: https://arxiv.org/abs/2603.22651
+    source_title: "Benchmarking Multi-Agent LLM Architectures for Financial Document Processing (arXiv 2603.22651, submitted 24 March 2026)"
+    quote: >-
+      reflexive architectures achieve the highest field-level F1 (0.943) but at 2.3x the cost of
+      sequential baselines
+    accessed: 2026-09-16
+
+  - id: long-documents-still-break-commercial-systems
+    claim: >-
+      A July 2026 benchmark of schema-guided enterprise document extraction finds that
+      commercial vision-language models perform well on short documents but often truncate
+      record lists on long ones, while coding agents retain higher accuracy at much higher cost.
+      The README uses this to argue that accuracy and cost are one conversation, not two.
+    where: "README.md — 'The extraction problem is not solved'"
+    source_url: https://arxiv.org/abs/2607.29677
+    source_title: "ExtractBench: A Benchmark for Schema-Guided Enterprise Document Extraction (arXiv 2607.29677, submitted 31 July 2026)"
+    quote: >-
+      Commercial VLMs perform well on short documents but often truncate record lists on long
+      ones, while coding agents retain higher accuracy at much higher cost.
+    accessed: 2026-09-16
+
+  - id: bls-data-scientist-projection
+    claim: >-
+      The US Bureau of Labor Statistics projects employment of data scientists to grow 35
+      percent from 2025 to 2035, much faster than the average for all occupations. This is a
+      claim about the data scientist occupation as BLS defines it, and the README says so
+      explicitly rather than presenting it as a document-AI hiring figure.
+    where: "README.md — 'The labour market for people who can do this is growing'"
+    source_url: https://www.bls.gov/ooh/math/data-scientists.htm
+    source_title: "US Bureau of Labor Statistics, Occupational Outlook Handbook — Data Scientists"
+    quote: >-
+      Employment of data scientists is projected to grow 35 percent from 2025 to 2035, much
+      faster than the average for all occupations.
+    quote_context: "page last modified 27 August 2026"
+    accessed: 2026-09-16

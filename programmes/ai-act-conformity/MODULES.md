@@ -1,0 +1,267 @@
+# Module map — EU AI Act conformity engineering
+
+Nine modules. **One is built.** The other eight are specified here in enough detail to be
+built and argued with, and are marked `SPECIFIED — NOT BUILT`. No directory exists for them;
+`lessons/` holds exactly one lesson, and that is the only one you can run.
+
+Every module is `cpu8`: 8 GiB, 2 vCPU, no GPU, no network, standard library plus numpy. Every
+module is a notebook with scaffolded stubs, public checks, an autograded rubric with partial
+credit, a worked solution and a self-check. Every module ends with an artefact, not a summary.
+
+The spine is the evidence table from the prerequisite lesson
+`lessons/T10-L01-ai-act-conformity-pack`. Each module below fills one or more of the evidence
+ids that lesson defines, so the pack stays machine-checkable as the programme grows.
+
+| # | Module | Evidence ids it fills | Tier | Status |
+|---|--------|----------------------|------|--------|
+| 1 | Article 12 logging and traceability | `automatic_logging_design` | `cpu8` | **BUILT** |
+| 2 | Risk classification as a decision procedure | `risk_classification_record` | `cpu8` | specified |
+| 3 | Annex IV technical documentation, generated | `technical_documentation` | `cpu8` | specified |
+| 4 | Data governance you can test | `data_governance_record` | `cpu8` | specified |
+| 5 | Human oversight as a measurable property | `human_oversight_plan` | `cpu8` | specified |
+| 6 | Accuracy, robustness and cybersecurity evidence | `accuracy_robustness_cybersecurity_report` | `cpu8` | specified |
+| 7 | Post-market monitoring and serious incidents | `post_market_monitoring_plan`, `serious_incident_procedure` | `cpu8` | specified |
+| 8 | The conformity assessment route | `conformity_assessment_record`, `eu_declaration_of_conformity`, `ce_marking_record` | `cpu8` | specified |
+| 9 | The pack under inspection (capstone) | all of the above, re-verified | `cpu8` | specified |
+
+---
+
+## 1. Article 12 logging and traceability — build an audit trail that survives an inspection
+
+`lessons/P01-L01-article-12-logging` · **BUILT** · tier `cpu8` · prerequisite
+`T10-L01-ai-act-conformity-pack`
+
+**The lab.** The student implements, from stubs, five things and then runs an inspection over
+the log they built:
+
+1. `canonical_bytes()` — one deterministic serialisation, because hashing a dict is hashing
+   *one* serialisation of it.
+2. `append_event()` — an append-only chained entry whose SHA-256 digest covers its sequence
+   number, its predecessor's hash and its event, so an edit, a reorder and a deletion each
+   move it.
+3. `verify_chain()` — names the first entry that breaks and why, then checks the head against
+   an anchor published outside the log. A whole-tail rewrite is internally flawless; only the
+   anchor catches it, and the exercise makes the student see that happen.
+4. `retention_status()` — what may be purged, what must be kept, and which sequence numbers
+   have already gone. The Article 19 and 26(6) six-month floor is a floor, not a ceiling, and
+   the boundary is inclusive.
+5. `reconstruct_decision()` and `completeness_report()` — rebuild one inference decision in
+   sequence order, pull in the deployment event it depends on, and report which required
+   fields it is missing.
+
+**What makes it not a lecture.** The event stream contains a clock that stepped backwards
+mid-decision, so ordering by timestamp visibly reverses a decision; a retention boundary two
+entries land exactly on; and a decision whose session never closed. The rubric is 58 points
+across 19 tests and was mutation-tested against 21 plausible-wrong implementations plus one
+differently-shaped right answer.
+
+**The honesty it teaches.** Article 12(3)'s four-item minimum is written for the Annex III
+point 1(a) remote biometric identification systems. The lesson's fictional system scores
+credit applications, so the eight-field list it checks is labelled, field by field, with where
+it came from — including the two that are the lesson's own judgement with no article behind
+them. A field list you cannot argue with is a field list nobody checked.
+
+---
+
+## 2. Risk classification as a decision procedure
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** T10-L01 gave the student a `classify()` that reads flags off a dictionary. This
+module makes them earn those flags. They implement an **interview**: an ordered decision
+procedure that asks the minimum number of questions to reach a tier, records the answer *and
+the question that produced it*, and emits a signed classification record. Then they implement
+`reclassify()` and diff two records across a system change — a new deployment context, a new
+user population — and report which obligations appeared or vanished and on what date.
+
+The graded subtlety is Article 6(3). An Annex III system is **not** high-risk where it does not
+pose a significant risk of harm to health, safety or fundamental rights *and* meets one of four
+conditions — a narrow procedural task, improving a previously completed human activity,
+detecting decision patterns without replacing the prior human assessment, or a preparatory task
+— but a system that performs **profiling of natural persons is always high-risk regardless**,
+and a provider claiming the derogation must document its assessment before placing the system
+on the market. The student implements the derogation, the profiling override that trumps it,
+and the documentation duty that comes with claiming it. The rubric fails an implementation that
+grants the derogation to a profiling system, and one that grants it without recording a
+justification.
+
+**Artefact:** a classification record with its own question trail, appendable to the module 1
+log.
+
+---
+
+## 3. Annex IV technical documentation, generated rather than written
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Annex IV lists what the Article 11 technical documentation must contain: general
+description; elements and development process; monitoring, functioning and control;
+performance metrics; the risk management system; changes through the lifecycle; harmonised
+standards applied; the EU declaration of conformity; and the post-market performance
+evaluation system.
+
+The student builds a generator: a renderer that assembles the document from *typed sources* —
+a model registry, a dataset manifest, the module 1 log, a metrics file — and refuses to emit a
+section it cannot source. They implement `staleness_report()`, which compares every section
+against the modification time and content hash of the artefact it was generated from and names
+the sections that have drifted.
+
+The trap the rubric sets: a section that renders successfully from an *empty* source. A
+document generator that happily produces "Performance metrics: —" is worse than one that
+fails, because it produces a green pack.
+
+**Artefact:** an Annex IV document with a per-section provenance table and a staleness verdict.
+
+---
+
+## 4. Data governance you can test
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Article 10 asks for training, validation and test data that are relevant,
+sufficiently representative and, to the best extent possible, free of errors and complete in
+view of the intended purpose — plus an examination for possible biases.
+
+The student implements four tests over a small synthetic tabular dataset, in numpy: a
+**leakage** check across the three splits (exact and near-duplicate rows, and a target that
+correlates suspiciously with an id column); a **coverage** check against a declared intended
+population, reporting which declared strata are empty or thin; a **drift** check between
+training and test distributions; and a **provenance** check that every split traces to a
+documented source with a licence.
+
+Each test returns a verdict *and* a power statement: with this sample size, how small an
+effect could this test have detected? A bias examination that cannot say what it would have
+missed is not an examination.
+
+**Artefact:** a data governance record with four verdicts and four power statements.
+
+---
+
+## 5. Human oversight as a measurable property
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Article 14 requires high-risk systems to be designed so they can be effectively
+overseen by natural persons, and Article 14(5) requires, for certain systems, that no action
+be taken on the basis of an identification unless separately verified and confirmed by at
+least two natural persons.
+
+The student reads the `verifier_ids` field their module 1 log already records and computes the
+things that distinguish oversight from a rubber stamp: **override rate** by outcome, **time to
+decision** distribution, **four-eyes compliance** where the two-person rule applies, and
+**automation bias** — the override rate as a function of the model's own confidence. A
+reviewer who overrides at 2 % and never disagrees with a high-confidence score is not
+providing oversight, and the module makes that visible as a number rather than a worry.
+
+Then they implement the control: an `oversight_gate()` that blocks an action lacking the
+required verifications, and they run it against the log to find the decisions that would have
+been blocked.
+
+**Artefact:** an oversight plan with measured baselines, and a gate that enforces it.
+
+---
+
+## 6. Accuracy, robustness and cybersecurity evidence
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Article 15 requires an appropriate level of accuracy, robustness and
+cybersecurity, and consistent performance in those respects throughout the lifecycle — and it
+requires the declared accuracy metrics to be stated in the instructions for use.
+
+Three parts, all numpy. **Accuracy:** the student computes a metric *with* a bootstrap
+confidence interval and learns to declare the interval, not the point, because a declared
+accuracy without one cannot be falsified or defended. **Robustness:** they perturb inputs
+(missing fields, unit changes, plausible noise, a stale feature) and report the degradation
+curve, plus the perturbation at which performance crosses the declared floor. **Cybersecurity:**
+they implement a data-poisoning detector over a training set and a rate-limiting analysis for
+model extraction, then write the residual-risk statement the evidence honestly supports.
+
+The rubric fails any implementation that reports a metric without its interval, and any
+robustness report whose declared floor was chosen after seeing the results.
+
+**Artefact:** an Article 15 evidence report whose every number carries its uncertainty.
+
+---
+
+## 7. Post-market monitoring and serious incidents
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Article 72 requires providers to establish and document a post-market monitoring
+system that actively and systematically collects, documents and analyses relevant data on
+performance — data that may be provided by deployers or collected from other sources.
+Article 73 requires serious incidents to be reported.
+
+The student builds the feed on top of the module 1 log: a **windowed monitor** that computes
+the module 6 metrics over rolling windows and raises when a control limit is breached; a
+**deployer ingest** path that merges an external deployer feed into the provider's own view
+and reconciles the two clocks (the module 1 clock-skew entry returns here, at scale); and an
+**incident classifier** with the Article 73 reporting clock, which starts at awareness, not at
+occurrence.
+
+The graded subtlety is the difference between a drifting metric and an incident, and the cost
+of getting it wrong in each direction: a monitor that pages on every wobble is switched off
+within a month, and one that never pages is indistinguishable from no monitor.
+
+**Artefact:** a monitoring plan with computed control limits, and an incident log with clocks.
+
+---
+
+## 8. The conformity assessment route
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** Article 43 sets out which conformity assessment procedure applies. For the
+Annex III **point 1** systems (biometrics) the provider chooses between internal control under
+Annex VI and a notified-body assessment of the quality management system and technical
+documentation under Annex VII. For Annex III **points 2 to 8** — including employment,
+creditworthiness and essential services — it is Annex VI internal control, with no notified
+body involved. Annex I systems fold into their product's own procedure instead.
+
+The student implements `assessment_route()` as a decision procedure over the module 2
+classification record, then `readiness()`, which checks whether the evidence the chosen route
+requires is actually present, in date, and traceable — reusing the module 1 completeness
+checker rather than inventing a second one. Then they generate the **EU declaration of
+conformity** (Article 47) and the **CE marking record** (Article 48) from the pack, and
+implement the check that refuses to emit a declaration while any required item is missing.
+
+The trap: a substantial modification resets the route. The student implements
+`is_substantial_modification()` and runs it over a change log, and the rubric fails an
+implementation that emits a declaration for a system whose modification should have sent it
+back through assessment.
+
+**Artefact:** a route decision, a readiness verdict, and a declaration that cannot be emitted
+while the pack is incomplete.
+
+---
+
+## 9. The pack under inspection (capstone)
+
+`SPECIFIED — NOT BUILT` · tier `cpu8`
+
+**The lab.** A complete evidence pack for a fictional system is handed to the student —
+already assembled, already green — along with an inspector's question list. Six of the
+artefacts are wrong in ways the earlier modules taught them to detect: a log with a purged
+window, a document section generated from an empty source, an accuracy figure with no
+interval, an oversight record where one reviewer approved 400 cases in an hour, a declaration
+emitted after a substantial modification, and a monitoring feed whose control limits were
+recomputed after the breach.
+
+The student's job is to find all six with the tools they built, write the findings, and then
+**fix the pack** so that every check they wrote comes back green for the right reason. The
+rubric grades the findings, the fixes, and — the part that matters — whether any of their
+"fixes" merely silenced a check.
+
+**Artefact:** an inspection report and a repaired pack, both reproducible from the tools built
+in modules 1 to 8.
+
+---
+
+## What "specified, not built" means here
+
+Each of the eight has a lab that can be built against this repository's constraints: pure
+standard library plus numpy, CPU only, under 8 GiB, under ten minutes, no network, no gated
+data. Each names its evidence ids, its graded subtlety and the artefact a student walks away
+with. None of them has a directory, a `meta.yaml`, a rubric or a measured runtime, and none of
+them should be described as available until it has all four and has passed the four gates.

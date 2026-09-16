@@ -32,11 +32,17 @@ the notebook computes from the foot geom rather than a number anyone typed.
 ### The foot is deliberately not centred on the ankle
 
 The footprint runs from −0.08 m (heel) to +0.16 m (toe) in the foot frame, so the toe margin is
-about twice the heel margin. This is the model's load-bearing asymmetry. The notebook measures
-the largest forward push the controller survives and the largest backward one, and compares
-their ratio against the ratio of the two margins. Those are independent measurements of the
-same geometry, and they agree — which is the evidence that the support polygon is a mechanism
-rather than a picture in a textbook.
+about twice the heel margin. This is the model's load-bearing asymmetry, and it is what makes
+section 10 worth running: the notebook measures the largest push each of three controllers
+survives forwards and backwards, and the two directions behave completely differently. Forwards,
+where there is room, the controllers separate. Backwards, where there is not, all three stop at
+the same rung however they are built.
+
+That asymmetry is the result the lesson is built on — **not** a numerical agreement between the
+push ratio and the margin ratio. The notebook does not claim one and does not compute one: the
+ladder is coarse, and the three controllers' forward-to-backward ratios straddle the margin
+ratio rather than reproducing it. What the geometry predicts here is the *shape* of the result —
+that control quality cashes in on one side and not the other — and that is what gets measured.
 
 Making the foot symmetric would delete that result and cost the lesson its sharpest measurement.
 
@@ -64,6 +70,11 @@ be shifted at most ≈0.083 m heelward or ≈0.157 m toeward of the mass, worth 
 30 N·m of ankle torque. Beyond that the foot rotates off the floor instead of the body rotating
 upright.
 
-That gap — a motor offering 60 N·m to a foot that will accept about 16 — is the section the
-model exists to make measurable. The notebook sweeps a constant ankle torque and watches where
-the measured centre of pressure stops moving, rather than repeating the arithmetic above.
+That gap — a motor offering 60 N·m to a foot that will accept a small fraction of it — is the
+section the model exists to make measurable. The notebook sweeps a constant ankle torque and
+watches where the measured centre of pressure stops moving, rather than repeating the arithmetic
+above, and it comes back with a ceiling *below* the 16 N·m that arithmetic predicts. The
+prediction assumes the mass holds still; the body actually leans as the torque goes on, carrying
+the centre of mass toward the edge it is about to tip over. The measured number is the one the
+lesson uses, and the shortfall against the prediction is itself one of the things the student is
+asked to explain.

@@ -44,3 +44,16 @@ A lesson ships only when all 12 gates below are green. Gates 1-8 are machine-che
   engine's real API. Built with `clang`/`make`, graded by a test binary.
 - **C#** lessons are deferred until a .NET runner exists in CI. Authoring a C# exercise that
   has never been executed would violate gate 9.
+
+## Known trap: compiled lessons and absolute library paths
+
+A C/C++ lesson links against `libmujoco` inside the virtualenv, and the linker bakes that
+ABSOLUTE path into the binary. Move the checkout, or rebuild the venv somewhere else, and the
+binary still points at the old path: `dyld: Library not loaded`. `make` will not save you —
+the binary is newer than its source, so it looks up to date.
+
+`tools/execute.py` therefore deletes compiled artefacts before gating any `language: c` or
+`language: cpp` lesson. A STUDENT who moves their checkout hits the same trap and has no such
+guard, so every compiled lesson must tell them, in its "common mistakes" section, to run
+`make clean` after moving or rebuilding. Authors: check this before marking a compiled lesson
+`reviewed`.

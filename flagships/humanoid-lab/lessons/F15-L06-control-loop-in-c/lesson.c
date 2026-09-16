@@ -261,6 +261,7 @@ typedef struct {
   int n_target;
   double qpos[MAXU], qvel[MAXU];
   int n_qpos, n_qvel;
+  int unlimited;   // clear every actuator's ctrllimited flag before computing (ctrldump)
 } Options;
 
 static void emit(const char* key, double v) { printf("@ %s=%.17g\n", key, v); }
@@ -401,6 +402,13 @@ static int cmd_addrdump(const Options* o) {
 // ---------------------------------------------------------------------------------------
 static int cmd_ctrldump(const Options* o) {
   mjModel* m = load_model(o->model);
+  // --unlimited turns every actuator on this loaded model into an unlimited one. Both shipped
+  // models limit both actuators, so without this the `if (m->actuator_ctrllimited[i])` in
+  // pd_ctrl can never be observed: clamping unconditionally would behave identically and no
+  // check could tell the two apart.
+  if (o->unlimited) {
+    for (int i = 0; i < (int)m->nu; ++i) m->actuator_ctrllimited[i] = 0;
+  }
   mjData* d = mj_makeData(m);
   reset_start(m, d);
   for (int i = 0; i < o->n_qpos && i < (int)m->nq; ++i) d->qpos[i] = o->qpos[i];
@@ -433,6 +441,7 @@ typedef struct {
 } Check;
 
 static const mjModel* g_m;          // the pinned arm, for the check bodies
+static mjModel* g_m_rw;             // the same model, writable, so a check can clear a flag
 static const mjModel* g_mfloat;     // the floating-base arm
 static mjData* g_d;
 
@@ -530,12 +539,32 @@ static void check_pd_ctrl(void) {
           "command must be 10*0.1 - 2*0.2 = %g; you returned %g. The damping term is "
           "SUBTRACTED, and it uses qvel, not the change in error.", want, ctrl[0]);
 
-  // An unlimited actuator must not be clamped to a meaningless range. Checked by asking for
-  // a command that would be clipped if ctrllimited were ignored.
+  // An unlimited actuator must not be clamped to a meaningless range. The shipped model
+  // limits both actuators — that is the premise of every check above — so the flag is cleared
+  // here for the length of one call and put straight back. A law that clamps unconditionally
+  // comes back pinned to a range that no longer applies, and nothing else in this file can
+  // see that.
   for (int i = 0; i < (int)g_m->nu; ++i) {
     require(g_m->actuator_ctrllimited[i],
             "this check assumes the teaching model limits every actuator; actuator %d is "
             "unlimited, so the model has changed underneath the lesson", i);
+  }
+  require(g_m_rw != NULL, "the self-test needs a writable handle on the model");
+  {
+    mjtByte saved[MAXU];
+    for (int i = 0; i < (int)g_m->nu; ++i) {
+      saved[i] = g_m_rw->actuator_ctrllimited[i];
+      g_m_rw->actuator_ctrllimited[i] = 0;
+    }
+    reset_start(g_m, g_d);
+    pd_ctrl(g_m, g_d, target, 40.0, 3.0, ctrl);
+    for (int i = 0; i < (int)g_m->nu; ++i) g_m_rw->actuator_ctrllimited[i] = saved[i];
+    require(fabs(ctrl[0] - 32.0) < 1e-9 && fabs(ctrl[1] - (-48.0)) < 1e-9,
+            "with ctrllimited cleared, the law must hand back its RAW commands 40*0.8 = 32 "
+            "and 40*(-1.2) = -48; you returned %g and %g. Clamp only when "
+            "m->actuator_ctrllimited[i] is set — an unlimited actuator's ctrlrange is "
+            "meaningless, and clamping to it throttles the controller silently.",
+            ctrl[0], ctrl[1]);
   }
 }
 
@@ -625,6 +654,7 @@ static int cmd_selftest(const Options* o) {
   mjModel* m = load_model(o->model);
   mjData* d = mj_makeData(m);
   g_m = m;
+  g_m_rw = m;
   g_d = d;
 
   // The floating-base companion model, if it is next to the one we were given. It is never
@@ -676,7 +706,8 @@ static void usage(void) {
       "  ctrldump    one control vector, computed from a state given on the command line\n\n"
       "options:\n"
       "  --model F --kp K --kd D --ticks N --trace-every N\n"
-      "  --target a,b --qpos a,b --qvel a,b\n");
+      "  --target a,b --qpos a,b --qvel a,b\n"
+      "  --unlimited     (ctrldump) clear every actuator's ctrllimited flag first\n");
 }
 
 // Parse "0.8,-1.2" into out[]; returns how many numbers were read.
@@ -731,6 +762,7 @@ int main(int argc, char** argv) {
     else if (!strcmp(k, "--target")) { NEEDVAL(); o.n_target = parse_list(v, o.target, MAXU); }
     else if (!strcmp(k, "--qpos")) { NEEDVAL(); o.n_qpos = parse_list(v, o.qpos, MAXU); }
     else if (!strcmp(k, "--qvel")) { NEEDVAL(); o.n_qvel = parse_list(v, o.qvel, MAXU); }
+    else if (!strcmp(k, "--unlimited")) { o.unlimited = 1; }
     else if (!strcmp(k, "--help") || !strcmp(k, "-h")) { usage(); return 0; }
     else {
       fprintf(stderr, "unknown option %s\n", k);

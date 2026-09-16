@@ -47,7 +47,8 @@ print("as of", AS_OF.isoformat())
 # date below is sourced in `claims.yaml`. Read the table the code prints, not this sentence.
 #
 # The one thing to carry out of it: **"high-risk was delayed" is not "the AI Act was
-# delayed"**. Three of these rungs are already behind us.
+# delayed"**. Count the rungs the next cell marks `PAST` — that is how much of the Act is
+# already binding on the day this pack is assembled.
 
 # %%
 # date -> what starts to bind on it. Sourced in claims.yaml; nothing here is typed from memory.
@@ -71,8 +72,8 @@ print(f"\n{sum(date.fromisoformat(d) <= AS_OF for d in MILESTONES)} of "
 # ## 2. The registry
 #
 # A conformity pack starts from a description of each system, in enough detail to decide what
-# applies. `assets/systems.yaml` holds eight fictional systems in that shape. Load it and
-# look at one.
+# applies. `assets/systems.yaml` holds a small registry of fictional systems in that shape.
+# Load it, read the count the next cell prints, and look at one entry in full.
 
 # %%
 def registry_path() -> Path:
@@ -475,7 +476,9 @@ def _check_conformity_report() -> None:
 # Run it over the whole registry. Every number, every date and every name below is computed
 # from the rulebook and the registry by the three functions you just wrote.
 #
-# Watch which systems end up blocking. It is not the ones with the longest list of gaps.
+# Watch which systems end up blocking. The length of a row's gap list does not decide it:
+# one of the blocking rows has the longest list in the registry, and the row with the next
+# longest does not block at all, because every one of its gaps is dated 2027.
 
 # %%
 def summarise(as_of: date = AS_OF) -> dict:

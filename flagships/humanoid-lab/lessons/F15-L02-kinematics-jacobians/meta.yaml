@@ -42,7 +42,7 @@ datasets:
       lesson quotes for xpos, xipos, site_xpos and cdof were read from the vendored header
       include/mujoco/mjdata.h inside the installed package; see claims.yaml.
 points: 44
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "independent-review 2026-09-16: 26 rubric mutants written, 21 caught at first pass; 5 scored 100% (Jacobian sized off nq, invisible on an all-hinge model; history kept in a mutable default argument; bare damping instead of lambda squared; the tol argument ignored; a swallowed LinAlgError reported as converged). Five hidden cases added and all 26 now caught, reference still 44/44, partial credit preserved (mutant scores 20-42). Verified all six MuJoCo doc and header quotes verbatim against primary sources; recomputed the 0.635 m reach, 1.38 m shoulder height and (0.807, 0.644, 0.000) home singular values from the shipped model; prerequisite F15-L01-first-contact resolves; longest prose run 36 lines. Fixed a typed literal feeding a printed number in section 1 and stale section cross-references in claims.yaml, SOURCE.md and arm.xml."
 measured_seconds: 0.2
 measured_peak_mib: 55

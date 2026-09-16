@@ -1,0 +1,59 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — the base rate, the AUC, both operating points, the cost ratio, the
+# accuracy of the null detector — and are therefore not claims. They do not appear here.
+#
+# Two things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# because a reviewer should be able to see that the omission was a decision.
+claims:
+  - id: milford-haven-alarm-flood
+    claim: >-
+      The UK Health and Safety Executive's information sheet on alarm handling, written after
+      the 1994 explosion and fires at the Texaco Milford Haven refinery, records that in the
+      last eleven minutes before the explosion two operators had to recognise, acknowledge and
+      act on 275 alarms, and names "too many alarms, poorly prioritised" as a key factor from
+      HSE's own investigation. The lesson uses this as the reason a false alarm is not merely
+      a small recurring cost: an alarm system that raises more alarms than a human can act on
+      stops being an alarm system.
+    where: "lesson.py section 7 (put a price on every cell of the matrix)"
+    source_url: https://www.hse.gov.uk/pubns/chis6.pdf
+    source_title: "Better alarm handling — HSE information sheet, Chemicals Sheet No 6 (CHIS6)"
+    quote: >-
+      In the last 11 minutes before the explosion the two operators had to recognise,
+      acknowledge and act on 275 alarms.
+    accessed: 2026-09-16
+
+  - id: alarm-rate-target
+    claim: >-
+      The same HSE information sheet sets an alarm rate target, attributed to page 37 of the
+      EEMUA guide that HSE contributed to and recommends: during normal operation the
+      long-term average should be no more than one alarm every ten minutes, and no more than
+      ten displayed in the first ten minutes after a major plant upset. The lesson quotes the
+      first figure only, as evidence that the budget for credible alarms is small, countable
+      and set by human attention rather than by a model's confidence.
+    where: "lesson.py section 7 (the false-alarm bullet)"
+    source_url: https://www.hse.gov.uk/pubns/chis6.pdf
+    source_title: "Better alarm handling — HSE information sheet, Chemicals Sheet No 6 (CHIS6)"
+    quote: >-
+      the long-term average alarm rate during normal operation should be no more than one
+      every ten minutes; and no more than ten displayed in the first ten minutes following a
+      major plant upset
+    quote_context: "Step 1: find out if you have a problem — 'Alarm rate targets' box, citing page 37 of the EEMUA guide"
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. THE COST FIGURES ARE A SCENARIO, NOT A MEASUREMENT. `SCENARIO` in lesson.py prices a
+#    planned intervention at 9,000, an unplanned failure at 180,000 and a false alarm at
+#    6,000, and section 9 runs two more price sets. No source is cited for any of them
+#    because none is claimed: the notebook says in section 7 that "the numbers below are a
+#    scenario, not a measurement: they are here to be edited", and the whole argument of the
+#    lesson is that the operating point moves when they change. Quoting an industry-average
+#    downtime cost here would have been worse than useless — it would have taught a student
+#    to inherit a number that the lesson exists to tell them to go and measure.
+#
+# 2. THE FLEET IS SYNTHETIC AND SAYS SO. `generate_fleet` is in the notebook, is seeded, and
+#    is read by the student before it is run. meta.yaml declares it under `datasets:` with
+#    kind `synthetic` and `downloads: false`. Nothing in the lesson claims that this fleet's
+#    base rate, P-F intervals, shock rate or severity spread describe any real population of
+#    machines, and the header says so in the first screen. What transfers is the method.

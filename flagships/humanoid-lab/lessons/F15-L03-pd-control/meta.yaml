@@ -72,7 +72,61 @@ points: 32
 # of running it: test_pd_torque_does_not_touch_the_live_mujoco_views handed pd_torque
 # Q_TARGET, which is [0, 0], so the classic `q -= q_target` mutation subtracted zero and the
 # test written expressly to catch it passed. It now uses a non-zero target, and catches it.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
+#
+# --- Independent review, 2026-09-16 -------------------------------------------------------
+#
+# Second, independent mutation pass: 20 mutants, run from /tmp against the shipped rubric.
+# 16 were caught as authored. FOUR slipped at 32/32 and each was a real rubric defect; all
+# four are now caught, and the reference still scores 32/32.
+#
+#  1. A LOOSENED TOLERANCE. test_stability_limit_comes_from_measured_error decided "held the
+#     pose" using lesson.SSE_TOL — a constant in the file being graded. A student who cannot
+#     find a ceiling can widen SSE_TOL until every finite gain passes. It survived because
+#     the hidden grid was four pure decades wide and contained no gain in the band where the
+#     loop is finite but no longer holding: at [30, 300, 3000, 30000] the only failure is
+#     30000, which fails by DIVERGING, and no tolerance can hide a divergence. Fixed twice
+#     over: the grid now carries 15000, which on this model rings at ~0.5 rad without
+#     diverging, and the rubric owns HOLD_TOL, which the returned ceiling must also clear.
+#  2. A DIVERGED GAIN COUNTED AS USABLE. stability_limit with the diverged flag dropped from
+#     its filter passed, because on that grid the diverged episode's truncated error history
+#     happened to read large. Now probed directly with a synthetic two-record list whose
+#     higher gain diverged with a tiny recorded error.
+#  3. STEADY-STATE ERROR READ OFF THE FINAL SAMPLE. steady_state_error returning err[-1]
+#     instead of the tail mean scored full marks: at a settled gain the last sample IS the
+#     droop. It is wrong exactly where this lesson lives — a ringing gain whose final sample
+#     crosses the target is certified as stable, pushing the ceiling through the real one.
+#     Now probed with a synthetic +-0.5 rad oscillation that ends on 0.0.
+#  4. AN EPISODE THAT STOPS ONE STEP SHORT. `range(n - 1)` with `used = n`, and
+#     `int(t_sim // timestep)` (floating-point division of 3.0 by 0.002 gives 1499.0), both
+#     passed: over 1500 steps the fabricated zero row moves the measured droop by 0.3%, far
+#     inside the ratio band. Now caught by a reported-steps check and by a four-timestep
+#     episode, whose one-row tail is exactly the row an off-by-one never writes — the
+#     reference reports 0.547 rad there, the mutant exactly 0.0.
+#
+# The other 16: flipped error sign, damping added not subtracted, in-place write through the
+# live qpos view, subtracted bias, bias cached in a mutable default argument, bias read at
+# the target pose, gravity term returned without the PD term, sweep dropping kd, sweep not
+# sorting, sweep off-by-one dropping its last gain, sweep relabelling diverged runs as clean
+# zeros, steady-state error meaned over joints instead of worst-joint, divided by the full
+# episode length, taken as RMS over the whole episode, and pd_torque forgetting to return.
+# Final: 20 of 20 caught, every one with partial credit intact (3 to 30 of 32, never 0 and
+# never full marks). Points unchanged at 32 — the new cases went into existing rubric entries.
+#
+# Also fixed in review: the section 9 markdown block ran 41 lines against gate 3's ~40. The
+# "what you built" close now sits AFTER the summary cell it refers to, which reads better and
+# leaves the longest block at 33 lines.
+#
+# Verified in review, unchanged: all four claims.yaml sources resolve and support their
+# claims (MuJoCo LICENSE reads "Apache License / Version 2.0, January 2004"; the Computation
+# chapter reads "The bias force c includes Coriolis, centrifugal and gravitational forces.
+# Their sum is computed using the Recursive Newton-Euler (RNE) algorithm with acceleration
+# set to 0." and gives "inverse: tau = M v_dot + c - J^T f"; the XML reference gives
+# integrator default "Euler" and timestep default "0.002"; mjdata.h line 295 declares
+# "mjtNum* qfrc_bias;  // C(qpos,qvel)"). Both CC0 URLs return 200. The prerequisite
+# F15-L01-first-contact resolves to a real lesson directory. No prose in lesson.py points a
+# student at a solutions/ path. Every figure the notebook prints is computed by its own run:
+# droop ratio 0.9998, sign-error ratio 2.00x, improvement 6950x, ceiling 4860 N m / rad.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: 20-mutant rubric pass, 4 defects found and fixed, all four gates re-run green"
 measured_seconds: 1.1
-measured_peak_mib: 90
+measured_peak_mib: 91

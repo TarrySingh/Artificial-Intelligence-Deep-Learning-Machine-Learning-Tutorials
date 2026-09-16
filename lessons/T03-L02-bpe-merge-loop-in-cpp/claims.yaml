@@ -55,8 +55,8 @@ claims:
     claim: >-
       OpenAI's tiktoken, described in its README as a fast BPE tokeniser for OpenAI's models,
       is likewise not C++: its repository root holds a Cargo.toml declaring a Rust crate named
-      "tiktoken" with a cdylib/rlib crate type and a pyo3 dependency, i.e. a Rust core behind
-      Python bindings.
+      "tiktoken" with a cdylib/rlib crate type and a pyo3 dependency — optional, switched on by
+      the crate's own "python" feature — i.e. a Rust core behind Python bindings.
     where: "lesson.py section 8 (the honest footnote)"
     source_url: https://github.com/openai/tiktoken/blob/main/Cargo.toml
     source_title: "openai/tiktoken — Cargo.toml"

@@ -1,0 +1,1114 @@
+# %% [markdown]
+# # P03-L01 · Alarm economics: why the best model is not the best threshold
+#
+# **You will build:** a degradation feature for a fleet of rotating machines, a threshold
+# sweep that turns that feature into alarms, and an expected-cost function that prices every
+# alarm you raise and every failure you miss. Then you will find the two operating points the
+# same curve supports — the one that maximises accuracy, and the one that minimises cost —
+# and measure how far apart they are.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** `T00-L01-the-8gb-track` (the profiler and the tier gate). Python,
+# numpy indexing, and the idea of a confusion matrix. No machine learning is used here: the
+# detector is a threshold on one number, deliberately, so that nothing about the *model* can
+# be blamed for what you are about to see.
+#
+# By the end you will be able to:
+#
+# 1. Implement a causal degradation feature from raw vibration bursts, without leaking future
+#    samples into the present.
+# 2. Convert a health index and a threshold into machine-level alarm outcomes under a
+#    lead-time requirement.
+# 3. Sweep thresholds to produce ROC and precision/recall curves from the same counts.
+# 4. Implement an expected-cost function over false alarms, missed failures and planned
+#    interventions, and locate the cost-optimal threshold.
+# 5. Explain, from your own measured numbers, why the accuracy-optimal threshold is the wrong
+#    one to ship, and what changes it.
+#
+# A note on this dataset before anything else: **it is synthetic, and the generator is in this
+# notebook.** Nothing is downloaded. That is a deliberate choice — a run-to-failure dataset
+# with known failure times, known defect onsets and a controlled base rate is the only way to
+# check your own threshold logic against ground truth you can see. `meta.yaml` declares it as
+# synthetic. Everything you conclude here about *method* transfers; nothing you conclude about
+# *these particular numbers* describes any real plant.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import sys
+import time
+from typing import Any, Callable, NamedTuple
+
+import numpy as np
+
+import matplotlib
+_INTERACTIVE = "ipykernel" in sys.modules
+if not _INTERACTIVE:
+    # Headless: a script run (including this repository's execution gate) must never try to
+    # open a window. In Jupyter the default inline backend is already the right one.
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402  (backend must be chosen before this import)
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__,
+      "· matplotlib", matplotlib.__version__)
+
+# The fleet. 300 machines, sampled hourly for 15 days, with a short vibration burst captured
+# each hour. Eighteen of them fail inside the window; the rest do not. That 6% base rate is
+# the single most important number in this notebook, and section 7 is about why.
+N_MACHINES = 300
+N_HOURS = 360
+BURST_LEN = 64
+N_FAILURES = 18
+SEED = 20260916
+
+# Feature settings, fixed for the whole lesson so that only the THRESHOLD varies.
+BASELINE_HOURS = 72     # each machine is normalised against its own first three days
+WINDOW = 11             # hours of causal smoothing
+
+# The maintenance contract. An alarm is only useful if it leaves time to act.
+LEAD_HOURS = 48
+
+
+def safe_ratio(numerator: Any, denominator: Any, when_zero: float = 0.0) -> Any:
+    """Elementwise division that returns `when_zero` wherever the denominator is zero.
+
+    Given to you. The curve exercises are about the definitions, not about numpy's
+    divide-by-zero flags. A rate with no denominator is undefined, and a NaN left in its place
+    spreads silently through every curve, area and mean computed downstream — so it is
+    replaced explicitly, by a value the caller chooses.
+    """
+    num = np.asarray(numerator, dtype=float)
+    den = np.asarray(denominator, dtype=float)
+    out = np.full(np.broadcast(num, den).shape, float(when_zero))
+    np.divide(num, den, out=out, where=den != 0)
+    return out[()]   # a 0-d result comes back as a scalar, an array as an array
+
+
+def _show(fig: "matplotlib.figure.Figure") -> None:
+    """Display a figure in Jupyter, or close it cleanly in a headless script run."""
+    if _INTERACTIVE:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
+    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The fleet, and what a sensor actually hands you
+#
+# Below is the generator. Read it — you are allowed to know exactly how the world you are
+# about to model works, which is the one advantage a synthetic dataset gives you and the
+# reason this lesson uses one.
+#
+# Four things in it matter later:
+#
+# - Every machine has its **own** baseline vibration level. A 4 mm/s machine is not sick; it
+#   is a bigger machine. Any threshold applied to raw amplitude across a fleet is really a
+#   threshold on machine size.
+# - Some healthy machines **drift** — a foundation settles, a duty point moves, a season
+#   changes. They never fail. They are the nuisance-alarm population.
+# - Every machine takes occasional **impulsive shocks**: a forklift hits the skid, a relief
+#   valve lifts. One hour of huge amplitude, then nothing.
+# - The failing machines vary in **how visible the defect is before it matters**, on purpose.
+#   A fleet in which every fault is obvious makes every threshold look equally good.
+
+# %%
+def generate_fleet(seed: int = SEED, n_machines: int = N_MACHINES, n_hours: int = N_HOURS,
+                   burst_len: int = BURST_LEN, n_failures: int = N_FAILURES,
+                   lead_hours: int = LEAD_HOURS) -> tuple[np.ndarray, np.ndarray]:
+    """Deterministic synthetic run-to-failure data for a fleet of rotating machines.
+
+    Returns `(bursts, fail_hour)`:
+      * `bursts` has shape (n_machines, n_hours, burst_len). Each row is one hour's
+        acceleration burst in arbitrary units, zero-mean, so its RMS is its amplitude.
+      * `fail_hour[i]` is the hour machine i failed, or -1 if it survived the window. Hours
+        after a failure are filled with zeros: a broken machine stops sending data.
+
+    Same seed, same fleet, on any machine. Nothing is downloaded.
+    """
+    rng = np.random.default_rng(seed)
+    t = np.arange(n_hours, dtype=float)
+
+    # Per-machine size: a lognormal spread of baseline amplitudes around 2 units.
+    level = np.repeat((2.0 * np.exp(rng.normal(0.0, 0.22, n_machines)))[:, None], n_hours,
+                      axis=1)
+
+    # Slow drift. One machine in ten is a "nuisance" unit whose level wanders five times as
+    # fast as the rest. It still never fails.
+    drift = rng.normal(0.0, 0.0007, n_machines)
+    nuisance = rng.random(n_machines) < 0.10
+    drift = np.where(nuisance, rng.normal(0.0, 0.0038, n_machines), drift)
+    level *= 1.0 + drift[:, None] * t[None, :]
+    level = np.maximum(level, 0.2)
+
+    # Failures. Each gets a failure hour, a P-F interval (the hours between the defect
+    # becoming detectable and the functional failure) and a severity, where severity is the
+    # amplitude ratio the defect reaches `lead_hours` BEFORE it fails — that is, at the last
+    # moment an alarm would still have been useful. Half the failures are given a severity
+    # between 1.6 and 2.3 and half between 3.0 and 7.0, so the fleet spans obvious faults and
+    # faults that sit inside the healthy population's own noise until nearly the end.
+    fail_hour = np.full(n_machines, -1, dtype=int)
+    idx = rng.permutation(n_machines)[:n_failures]
+    half = n_failures // 2
+    severity = np.concatenate([np.linspace(1.60, 2.30, half),
+                               np.linspace(3.00, 7.00, n_failures - half)])
+    for k, machine in enumerate(idx):
+        fh = int(rng.integers(150, n_hours))
+        pf = int(rng.integers(150, 240))
+        onset = max(60, fh - pf)
+        span = fh - onset
+        # A quadratic P-F curve: flat for a long time, then steepening. `peak` is solved for
+        # so that the ratio at (fh - lead_hours) is exactly the severity chosen above.
+        peak = 1.0 + (severity[k] - 1.0) / (((span - lead_hours) / span) ** 2.0)
+        frac = np.clip((t - onset) / span, 0.0, 1.0)
+        level[machine] *= 1.0 + (peak - 1.0) * np.where(t >= onset, frac ** 2.0, 0.0)
+        fail_hour[machine] = fh
+
+    # Impulsive shocks: 1% of machine-hours get a 2x-4x transient that is not degradation.
+    shock = rng.random((n_machines, n_hours)) < 0.010
+    level = level * np.where(shock, rng.uniform(2.0, 4.0, (n_machines, n_hours)), 1.0)
+
+    bursts = rng.normal(0.0, 1.0, (n_machines, n_hours, burst_len)) * level[:, :, None]
+    for machine in idx:
+        bursts[machine, fail_hour[machine] + 1:, :] = 0.0
+    return bursts, fail_hour
+
+
+BURSTS, FAIL_HOUR = generate_fleet()
+FAILED = FAIL_HOUR >= 0
+print(f"bursts {BURSTS.shape} = {BURSTS.nbytes / 1024**2:.0f} MiB  ·  dtype {BURSTS.dtype}")
+print(f"{FAILED.sum()} of {N_MACHINES} machines failed inside the window "
+      f"({100 * FAILED.mean():.1f}% base rate)")
+print(f"first failure at hour {FAIL_HOUR[FAILED].min()}, last at hour {FAIL_HOUR[FAILED].max()}")
+
+# %% [markdown]
+# Here is what one hour of data looks like for a machine that is about to fail and one that is
+# not. This is the raw material: a few dozen samples of acceleration, no label attached.
+
+# %%
+_sick = int(np.flatnonzero(FAILED)[np.argmax(FAIL_HOUR[FAILED])])
+_well = int(np.flatnonzero(~FAILED)[0])
+_fig, _axes = plt.subplots(1, 2, figsize=(10, 2.6), sharey=True)
+for _ax, _m, _title in ((_axes[0], _well, f"machine {_well}: survives the window"),
+                        (_axes[1], _sick, f"machine {_sick}: fails at hour {FAIL_HOUR[_sick]}")):
+    _ax.plot(BURSTS[_m, FAIL_HOUR[_sick] - 12], lw=0.8)
+    _ax.set_title(_title, fontsize=9)
+    _ax.set_xlabel("sample")
+_axes[0].set_ylabel("acceleration")
+_fig.suptitle(f"one hourly burst, taken at hour {FAIL_HOUR[_sick] - 12}", fontsize=10)
+_fig.tight_layout()
+_show(_fig)
+print("by eye these are two noisy traces. The whole job is to turn each of them into ONE")
+print("number per hour that rises when a bearing is degrading and does not otherwise.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `burst_rms()`
+#
+# The standard first move in vibration monitoring is to collapse a burst into its root mean
+# square: the square root of the mean of the squared samples. It is proportional to the energy
+# in the signal, and it is what a hand-held meter reports.
+#
+# The trap is that `np.std` looks like the same thing and is not. Standard deviation subtracts
+# the mean first. On a burst with any DC component — a bias on the accelerometer's amplifier,
+# a slow thermal ramp — the two answers differ, and the one the instrument is calibrated
+# against is the RMS.
+
+# %%
+def burst_rms(bursts: np.ndarray) -> np.ndarray:
+    """Root mean square of each burst, along the LAST axis.
+
+    Works for any shape: the output has the input's shape with the last axis removed, so a
+    (machines, hours, samples) array becomes (machines, hours).
+
+    Do not subtract the mean. `np.std` does; RMS does not.
+
+    Example:
+        >>> burst_rms(np.array([3.0, 4.0]))          # sqrt((9 + 16) / 2)
+        np.float64(3.5355339059327378)
+        >>> burst_rms(np.array([[3.0, 4.0], [0.0, 0.0]])).tolist()
+        [3.5355339059327378, 0.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_burst_rms() -> None:
+    one = burst_rms(np.array([3.0, 4.0]))
+    assert np.isclose(one, 3.5355339059327378), (
+        f"burst_rms([3, 4]) came back {one!r}; expected sqrt((9 + 16)/2) = 3.5355. A value of "
+        "0.5 means you used np.std, which subtracts the mean before squaring"
+    )
+    offset = burst_rms(np.array([10.0, 10.0]))
+    assert np.isclose(offset, 10.0), (
+        f"burst_rms([10, 10]) came back {offset!r}, not 10.0 — a constant signal has RMS "
+        "equal to that constant and standard deviation zero. This is the np.std trap"
+    )
+    shaped = burst_rms(np.zeros((4, 5, 6)))
+    assert shaped.shape == (4, 5), (
+        f"burst_rms on a (4, 5, 6) array returned shape {shaped.shape}; reduce the LAST axis "
+        "only, with axis=-1"
+    )
+    assert np.isclose(burst_rms(np.array([0.0, 0.0])), 0.0), "an all-zero burst has RMS 0.0"
+    print("exercise 1 looks right — burst_rms collapses a burst to its amplitude")
+
+
+# %%
+_try("exercise 1", _check_burst_rms)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `causal_rolling_median()`
+#
+# Per-hour RMS is far too jumpy to threshold directly: 64 samples is a small estimate, and the
+# impulsive shocks in the generator throw single hours several times higher than the truth.
+# Smoothing fixes that, but *how* you smooth decides whether your result is real.
+#
+# Two rules, and both of them are the exercise:
+#
+# - **Median, not mean.** One shock inside an 11-hour mean drags the average up for eleven
+#   hours. Inside a median it does nothing at all, as long as it is outnumbered.
+# - **Causal, not centred.** At hour `t` you may use hours `t - window + 1 .. t`, and nothing
+#   later. A centred window uses the future. Offline it looks like a better filter; online it
+#   is unavailable, and if you tune a threshold against it you have tuned against information
+#   the plant will not have. The first `window - 1` hours therefore use a *growing* window of
+#   whatever history exists, not a padded one.
+
+# %%
+def causal_rolling_median(x: np.ndarray, window: int) -> np.ndarray:
+    """Rolling median along the last axis, looking only backwards.
+
+    Output `y` has the same shape as `x`, and
+
+        y[..., t] = median(x[..., max(0, t - window + 1) : t + 1])
+
+    so the first `window - 1` positions average over however much history exists rather than
+    over padding. Raise `ValueError` if `window` is not a positive integer.
+
+    Example:
+        >>> causal_rolling_median(np.array([0.0, 10.0, 0.0, 0.0, 0.0]), 3).tolist()
+        [0.0, 5.0, 0.0, 0.0, 0.0]
+        >>> causal_rolling_median(np.array([1.0, 2.0, 3.0]), 1).tolist()
+        [1.0, 2.0, 3.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_causal_rolling_median() -> None:
+    spike = causal_rolling_median(np.array([0.0, 10.0, 0.0, 0.0, 0.0]), 3)
+    assert np.allclose(spike, [0.0, 5.0, 0.0, 0.0, 0.0]), (
+        f"expected [0, 5, 0, 0, 0], got {np.asarray(spike).tolist()}. A first element of 5.0 "
+        "means position 0 saw x[1], i.e. the window is centred and reads the future; a 3.33 "
+        "anywhere means you took a mean, not a median"
+    )
+    identity = causal_rolling_median(np.array([1.0, 2.0, 3.0]), 1)
+    assert np.allclose(identity, [1.0, 2.0, 3.0]), (
+        "a window of 1 must return the series unchanged"
+    )
+    grown = causal_rolling_median(np.array([4.0, 0.0, 0.0, 9.0]), 3)
+    assert np.allclose(grown, [4.0, 2.0, 0.0, 0.0]), (
+        f"expected [4, 2, 0, 0], got {np.asarray(grown).tolist()} — at t=1 the window holds "
+        "exactly two values, so the median is their mean; padding with x[0] would give 4.0"
+    )
+    two_d = causal_rolling_median(np.array([[0.0, 8.0, 0.0], [5.0, 5.0, 5.0]]), 3)
+    assert two_d.shape == (2, 3) and np.allclose(two_d[1], [5.0, 5.0, 5.0]), (
+        f"on a 2-D input the smoothing runs along the LAST axis per row; got {two_d!r}"
+    )
+    for bad in (0, -3):
+        try:
+            causal_rolling_median(np.array([1.0, 2.0]), bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"window={bad} must raise ValueError, not be tolerated")
+    print("exercise 2 looks right — causal median smoothing, no future leakage")
+
+
+# %%
+_try("exercise 2", _check_causal_rolling_median)
+
+# %% [markdown]
+# Run the next cell once exercise 2 works. It puts a single shock into a flat signal and
+# smooths it both ways, so you can see what the choice of statistic costs you.
+
+# %%
+def _show_median_versus_mean() -> None:
+    hours = np.arange(60)
+    signal = np.full(60, 1.0)
+    signal[30] = 4.0
+    med = causal_rolling_median(signal, WINDOW)
+    mean = np.array([signal[max(0, t - WINDOW + 1):t + 1].mean() for t in hours])
+    fig, ax = plt.subplots(figsize=(9, 2.6))
+    ax.plot(hours, signal, lw=0.8, color="0.7", label="raw (one shock at hour 30)")
+    ax.plot(hours, mean, lw=1.4, label=f"causal mean, window {WINDOW}")
+    ax.plot(hours, med, lw=1.8, label=f"causal median, window {WINDOW}")
+    ax.set_xlabel("hour")
+    ax.set_ylabel("amplitude")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    _show(fig)
+    print(f"after the shock, the mean stays above 1.05 for "
+          f"{int((mean[30:] > 1.05).sum())} hours; the median for "
+          f"{int((med[30:] > 1.05).sum())}.")
+    print("every one of those elevated hours is an opportunity to raise an alarm about a")
+    print("forklift. That is what a nuisance alarm is, and section 6 puts a price on it.")
+
+
+_try("median vs mean", _show_median_versus_mean)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `health_index()`
+#
+# Now compose the feature. Three steps, in this order:
+#
+# 1. `burst_rms` on the raw bursts, giving one amplitude per machine-hour.
+# 2. `causal_rolling_median` with `window`, giving a smoothed amplitude.
+# 3. Divide each machine's smoothed series by **that machine's own baseline**: the median of
+#    its *raw* (unsmoothed) RMS over the first `baseline_hours` hours.
+#
+# Step 3 is what makes the number comparable across a fleet of different-sized machines: a
+# health index of 1.0 means "as it was when we started watching", whatever its absolute
+# amplitude. Use the raw RMS for the baseline, not the smoothed series — the smoother's
+# growing window makes its first few values depend on `window`, and a baseline that moves when
+# you retune your filter is a baseline that will silently retune every threshold you set.
+
+# %%
+def health_index(bursts: np.ndarray, baseline_hours: int = BASELINE_HOURS,
+                 window: int = WINDOW) -> np.ndarray:
+    """Dimensionless per-machine health index, shape (machines, hours).
+
+    smoothed RMS at hour t, divided by the median RAW RMS over hours [0, baseline_hours).
+    A healthy machine sits near 1.0 for its whole life. Raise `ValueError` if
+    `baseline_hours` is not positive.
+
+    Example, with one machine whose amplitude doubles after hour 2:
+        >>> b = np.array([[[1.0], [1.0], [2.0], [2.0]]])   # (1 machine, 4 hours, 1 sample)
+        >>> health_index(b, baseline_hours=2, window=1).round(2).tolist()
+        [[1.0, 1.0, 2.0, 2.0]]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_health_index() -> None:
+    doubling = np.array([[[1.0], [1.0], [2.0], [2.0]]])
+    got = health_index(doubling, baseline_hours=2, window=1)
+    assert got.shape == (1, 4), f"expected shape (1, 4), got {got.shape}"
+    assert np.allclose(got, [[1.0, 1.0, 2.0, 2.0]]), (
+        f"expected [[1, 1, 2, 2]], got {np.asarray(got).round(3).tolist()} — divide by the "
+        "per-machine baseline, keeping one baseline per machine (shape (machines, 1))"
+    )
+    # A step in the middle of the baseline window: the raw median and the smoothed median
+    # disagree, and the exercise asks for the raw one.
+    step = np.array([[[1.0]] * 4 + [[9.0]] * 4])
+    raw_based = health_index(step, baseline_hours=8, window=3)
+    assert np.isclose(raw_based[0, 0], 0.2), (
+        f"health_index[0, 0] came back {raw_based[0, 0]:.3f}; with a raw baseline of "
+        "median([1,1,1,1,9,9,9,9]) = 5.0 the first value is 1/5 = 0.2. A value of 1.0 means "
+        "the baseline was taken from the SMOOTHED series, whose median here is 1.0"
+    )
+    flat = health_index(np.full((3, 40, 8), 7.0), baseline_hours=10, window=5)
+    assert np.allclose(flat, 1.0), (
+        "a machine whose amplitude never changes must sit at exactly 1.0 for its whole life"
+    )
+    for bad in (0, -1):
+        try:
+            health_index(doubling, baseline_hours=bad, window=1)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"baseline_hours={bad} must raise ValueError")
+    print("exercise 3 looks right — a fleet-comparable, causal health index")
+
+
+# %%
+_try("exercise 3", _check_health_index)
+
+# %% [markdown]
+# With the feature built, look at the fleet. Grey traces are machines that survive; coloured
+# traces are the eighteen that fail, plotted up to the hour they failed.
+
+# %%
+HEALTH: np.ndarray | None = None
+
+
+def _plot_fleet_health() -> None:
+    global HEALTH
+    HEALTH = health_index(BURSTS)
+    fig, ax = plt.subplots(figsize=(9, 3.4))
+    for m in np.flatnonzero(~FAILED)[:120]:
+        ax.plot(HEALTH[m], color="0.8", lw=0.5)
+    for m in np.flatnonzero(FAILED):
+        ax.plot(np.arange(FAIL_HOUR[m] + 1), HEALTH[m, :FAIL_HOUR[m] + 1], lw=1.2)
+    ax.set_xlabel("hour")
+    ax.set_ylabel("health index (1.0 = as first observed)")
+    ax.set_title("300 machines, one causal health index each; coloured traces end in failure",
+                 fontsize=10)
+    fig.tight_layout()
+    _show(fig)
+    healthy_worst = HEALTH[~FAILED].max(axis=1)
+    print(f"worst health index ever reached by a machine that did NOT fail: "
+          f"{healthy_worst.max():.2f}")
+    print(f"  (median over survivors {np.median(healthy_worst):.2f}, "
+          f"90th percentile {np.percentile(healthy_worst, 90):.2f})")
+    print("so any threshold below that worst value will alarm on a machine that was fine.")
+
+
+_try("fleet health", _plot_fleet_health)
+
+# %% [markdown]
+# ## 5. From a number to a decision
+#
+# A health index is not a decision. The decision is: *at which hour, if any, do we pull this
+# machine out of service?* Three exercises turn the index into that decision and then into a
+# confusion matrix — with one complication that separates predictive maintenance from ordinary
+# binary classification.
+#
+# **An alarm that arrives too late is not a true positive.** If the bearing fails at hour 300
+# and your alarm fires at hour 295, you did not prevent anything; you narrated it. The plant
+# needs `LEAD_HOURS` of warning to get a crew, a part and a production slot. So a failing
+# machine counts as caught only if the alarm fires at least `LEAD_HOURS` before the failure.
+# Anything later — or never — is a missed failure, and is charged as one.
+#
+# That gives four outcomes per machine over the whole window:
+#
+# | | alarm in time | no alarm in time |
+# |---|---|---|
+# | **machine failed** | true positive: planned intervention | false negative: unplanned failure |
+# | **machine survived** | false positive: false alarm | true negative: nothing happened |
+
+# %%
+def alarm_times(health: np.ndarray, threshold: float) -> np.ndarray:
+    """Hour of each machine's FIRST alarm at this threshold, or -1 if it never alarms.
+
+    An alarm fires at the first hour whose health index is greater than OR EQUAL TO the
+    threshold. Returns an integer array of shape (machines,).
+
+    Example:
+        >>> h = np.array([[1.0, 1.5, 2.0], [1.0, 1.0, 1.0]])
+        >>> alarm_times(h, 1.5).tolist()
+        [1, -1]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+class Counts(NamedTuple):
+    """The four outcomes. Each field is an int for one threshold, or an array over many."""
+
+    tp: Any    # failures caught with at least LEAD_HOURS of warning
+    fp: Any    # alarms on machines that never failed
+    fn: Any    # failures not caught in time, whether alarmed late or not at all
+    tn: Any    # survivors that never alarmed
+
+
+def classify_outcomes(alarm_idx: np.ndarray, fail_hour: np.ndarray,
+                      lead_hours: int = LEAD_HOURS) -> Counts:
+    """Count the four outcomes over a fleet, at one threshold.
+
+    `alarm_idx[i]` is machine i's first alarm hour or -1; `fail_hour[i]` is its failure hour
+    or -1. A failing machine is a true positive when it alarmed and
+    `fail_hour[i] - alarm_idx[i] >= lead_hours`; exactly `lead_hours` of warning counts as in
+    time. Every other failing machine is a false negative. A surviving machine is a false
+    positive if it alarmed at all, and a true negative otherwise. Raise `ValueError` if
+    `lead_hours` is negative.
+
+    Example, four machines, lead_hours=10:
+        >>> classify_outcomes(np.array([5, 95, -1, 20]), np.array([100, 100, 100, -1]), 10)
+        Counts(tp=1, fp=1, fn=2, tn=0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_decision() -> None:
+    h = np.array([[1.0, 1.5, 2.0], [1.0, 1.0, 1.0]])
+    got = alarm_times(h, 1.5)
+    assert np.asarray(got).tolist() == [1, -1], (
+        f"alarm_times gave {np.asarray(got).tolist()}, expected [1, -1]. A 2 means you used "
+        "> instead of >=; a 0 for the second machine means argmax returned 0 for a row with "
+        "no crossing at all — you have to test whether any crossing happened"
+    )
+    assert np.asarray(alarm_times(h, 1.0)).tolist() == [0, 0], (
+        "at a threshold of 1.0 both machines alarm in their first hour"
+    )
+    assert np.asarray(alarm_times(h, 9.0)).tolist() == [-1, -1], (
+        "no machine reaches 9.0, so every entry is -1, not the number of hours"
+    )
+
+    counts = classify_outcomes(np.array([5, 95, -1, 20]), np.array([100, 100, 100, -1]), 10)
+    assert isinstance(counts, Counts), "classify_outcomes must return a Counts"
+    assert (int(counts.tp), int(counts.fp), int(counts.fn), int(counts.tn)) == (1, 1, 2, 0), (
+        f"expected Counts(tp=1, fp=1, fn=2, tn=0), got {counts}. Machine 1 alarmed at hour 95 "
+        "with only 5 hours of warning, so it is a MISSED failure, not a catch"
+    )
+    edge = classify_outcomes(np.array([90]), np.array([100]), 10)
+    assert int(edge.tp) == 1, (
+        "exactly lead_hours of warning counts as in time: compare with >=, not >"
+    )
+    quiet = classify_outcomes(np.array([-1, -1]), np.array([-1, -1]), 10)
+    assert (int(quiet.tp), int(quiet.fp), int(quiet.fn), int(quiet.tn)) == (0, 0, 0, 2), (
+        f"two healthy machines with no alarms are two true negatives, got {quiet}"
+    )
+    try:
+        classify_outcomes(np.array([1]), np.array([10]), -1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a negative lead_hours must raise ValueError")
+    print("exercise 4 and 5 look right — alarms, lead time, and the four outcomes")
+
+
+# %%
+_try("exercises 4 and 5", _check_decision)
+
+# %% [markdown]
+# ## 6. Exercises 6-8 — sweep the threshold, then draw the curves everybody draws
+#
+# One threshold gives one confusion matrix. A sweep gives a curve. Build the sweep, then the
+# two standard curves — and notice, when you have them, that neither one tells you which
+# point on it to use.
+
+# %%
+THRESHOLDS = np.round(np.arange(1.00, 4.01, 0.05), 2)
+
+
+def sweep_thresholds(health: np.ndarray, fail_hour: np.ndarray, thresholds: np.ndarray,
+                     lead_hours: int = LEAD_HOURS) -> Counts:
+    """Run the whole decision rule at every threshold.
+
+    Return a `Counts` whose four fields are integer arrays of the same length as
+    `thresholds`, so `counts.tp[k]` is the number of failures caught at `thresholds[k]`.
+    `alarm_times` and `classify_outcomes` already do the work for one threshold.
+
+    Example:
+        >>> h = np.array([[1.0, 3.0], [1.0, 1.0]])
+        >>> c = sweep_thresholds(h, np.array([1, -1]), np.array([2.0, 4.0]), lead_hours=0)
+        >>> c.tp.tolist(), c.fn.tolist()
+        ([1, 0], [0, 1])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def roc_points(counts: Counts) -> tuple[np.ndarray, np.ndarray]:
+    """Return `(false_positive_rate, true_positive_rate)` from a swept `Counts`.
+
+    tpr = tp / (tp + fn), fpr = fp / (fp + tn). Where a denominator is zero the rate is
+    defined as 0.0 rather than a NaN — a fleet with no failures in it has no recall to
+    report, and a NaN would silently poison every curve drawn from it.
+
+    Example:
+        >>> fpr, tpr = roc_points(Counts(tp=np.array([3]), fp=np.array([1]),
+        ...                              fn=np.array([1]), tn=np.array([9])))
+        >>> fpr.tolist(), tpr.tolist()
+        ([0.1], [0.75])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def pr_points(counts: Counts) -> tuple[np.ndarray, np.ndarray]:
+    """Return `(recall, precision)` from a swept `Counts`.
+
+    recall = tp / (tp + fn); precision = tp / (tp + fp). A threshold so high that nothing is
+    flagged has no false alarms either, so precision there is defined as 1.0 by convention.
+    Recall with no failures in the fleet is 0.0, as in `roc_points`.
+
+    Example:
+        >>> rec, prec = pr_points(Counts(tp=np.array([3, 0]), fp=np.array([1, 0]),
+        ...                              fn=np.array([1, 4]), tn=np.array([9, 10])))
+        >>> rec.tolist(), prec.tolist()
+        ([0.75, 0.0], [0.75, 1.0])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_curves() -> None:
+    h = np.array([[1.0, 3.0], [1.0, 1.0]])
+    swept = sweep_thresholds(h, np.array([1, -1]), np.array([2.0, 4.0]), lead_hours=0)
+    assert isinstance(swept, Counts), "sweep_thresholds must return a Counts"
+    assert np.asarray(swept.tp).tolist() == [1, 0], (
+        f"tp over the two thresholds should be [1, 0], got {np.asarray(swept.tp).tolist()}"
+    )
+    assert np.asarray(swept.fn).tolist() == [0, 1], (
+        "the failing machine stops being caught once the threshold passes its peak"
+    )
+    totals = (np.asarray(swept.tp) + np.asarray(swept.fp)
+              + np.asarray(swept.fn) + np.asarray(swept.tn))
+    assert np.all(totals == 2), (
+        f"every threshold must account for all 2 machines exactly once, got {totals.tolist()}"
+    )
+
+    demo = Counts(tp=np.array([3, 0]), fp=np.array([1, 0]), fn=np.array([1, 4]),
+                  tn=np.array([9, 10]))
+    fpr, tpr = roc_points(demo)
+    assert np.allclose(fpr, [0.1, 0.0]) and np.allclose(tpr, [0.75, 0.0]), (
+        f"expected fpr [0.1, 0.0] and tpr [0.75, 0.0], got {np.asarray(fpr).tolist()} and "
+        f"{np.asarray(tpr).tolist()} — roc_points returns (fpr, tpr) in that order"
+    )
+    rec, prec = pr_points(demo)
+    assert np.allclose(rec, [0.75, 0.0]), f"recall should be [0.75, 0.0], got {rec}"
+    assert np.allclose(prec, [0.75, 1.0]), (
+        f"precision should be [0.75, 1.0], got {np.asarray(prec).tolist()}. The second "
+        "threshold flags nothing at all: that is precision 1.0 by convention, not 0.0 and "
+        "certainly not a NaN"
+    )
+    empty = roc_points(Counts(tp=np.array([0]), fp=np.array([0]), fn=np.array([0]),
+                              tn=np.array([0])))
+    assert np.all(np.isfinite(empty[0])) and np.all(np.isfinite(empty[1])), (
+        "an all-zero Counts must give 0.0 rates, not NaN — guard the division"
+    )
+    print("exercises 6-8 look right — the sweep and both curves")
+
+
+# %%
+_try("exercises 6-8", _check_curves)
+
+# %% [markdown]
+# Draw them. The area under the ROC curve is printed from your own points, so the sentence
+# "this detector is good" below is a measurement rather than a claim.
+
+# %%
+COUNTS: Counts | None = None
+
+
+def _plot_curves() -> None:
+    global COUNTS
+    COUNTS = sweep_thresholds(HEALTH, FAIL_HOUR, THRESHOLDS)
+    fpr, tpr = roc_points(COUNTS)
+    rec, prec = pr_points(COUNTS)
+    order = np.argsort(fpr)
+    auc = float(np.trapezoid(np.asarray(tpr)[order], np.asarray(fpr)[order]))
+    fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6))
+    axes[0].plot([0, 1], [0, 1], ls=":", color="0.6", lw=1)
+    axes[0].plot(fpr, tpr, marker="o", ms=2.5, lw=1.2)
+    axes[0].set_xlabel("false positive rate")
+    axes[0].set_ylabel("true positive rate")
+    axes[0].set_title(f"ROC · AUC = {auc:.3f}", fontsize=10)
+    axes[1].plot(rec, prec, marker="o", ms=2.5, lw=1.2, color="tab:orange")
+    axes[1].set_xlabel("recall")
+    axes[1].set_ylabel("precision")
+    axes[1].set_title("precision / recall", fontsize=10)
+    for ax in axes:
+        ax.set_xlim(-0.02, 1.02)
+        ax.set_ylim(-0.02, 1.05)
+    fig.tight_layout()
+    _show(fig)
+    print(f"AUC = {auc:.3f} over {len(THRESHOLDS)} thresholds from "
+          f"{THRESHOLDS[0]:.2f} to {THRESHOLDS[-1]:.2f}")
+    print("that is a good detector by the usual standard, and it is the SAME detector at")
+    print("every point on that curve. The curve is a menu. It does not tell you what to order.")
+
+
+_try("curves", _plot_curves)
+
+# %% [markdown]
+# ## 7. Exercises 9-11 — put a price on every cell of the matrix
+#
+# Here is the move the curves cannot make for you. Each of the four outcomes has a different
+# cost, and they are not within an order of magnitude of each other:
+#
+# - A **planned intervention** is a scheduled swap in a scheduled window. It costs parts,
+#   labour and a production slot you chose.
+# - An **unplanned failure** is the same parts and labour, plus an unplanned outage, plus
+#   collateral damage, plus whatever the line downstream was doing.
+# - A **false alarm** is a crew sent to open a machine that turns out to be fine. It is cheap
+#   once. It is not cheap three hundred times, and it is not only money. The UK Health and
+#   Safety Executive's information sheet on alarm handling, written after the 1994 Texaco
+#   Milford Haven refinery explosion, records that "in the last 11 minutes before the
+#   explosion the two operators had to recognise, acknowledge and act on 275 alarms", and sets
+#   a target that "the long-term average alarm rate during normal operation should be no more
+#   than one every ten minutes". An alarm nobody believes is worse than no alarm, and the
+#   budget for believable ones is small and countable.
+# - A **true negative** is free.
+#
+# The numbers below are a **scenario**, not a measurement: they are here to be edited. Your
+# plant's finance team owns the real ones, and the whole point of the next three exercises is
+# that the answer moves when they do.
+
+# %%
+class CostModel(NamedTuple):
+    """What each outcome costs, in currency units. True negatives are free."""
+
+    planned: float       # a caught failure, repaired in a planned window
+    unplanned: float     # a failure that happened
+    false_alarm: float   # an intervention on a machine that was fine
+
+
+SCENARIO = CostModel(planned=9_000.0, unplanned=180_000.0, false_alarm=6_000.0)
+
+
+def expected_cost(counts: Counts, costs: CostModel) -> np.ndarray:
+    """Total expected cost of operating at each threshold.
+
+    tp * planned + fn * unplanned + fp * false_alarm. True negatives contribute nothing.
+    Works elementwise, so a `Counts` of ints gives a scalar and a `Counts` of arrays gives an
+    array — the swept counts and a single confusion matrix go through the same function.
+
+    Example:
+        >>> expected_cost(Counts(tp=2, fp=3, fn=1, tn=94),
+        ...               CostModel(planned=10.0, unplanned=100.0, false_alarm=1.0))
+        np.float64(123.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def accuracy(counts: Counts) -> np.ndarray:
+    """(tp + tn) / (tp + fp + fn + tn), elementwise, and 0.0 where the fleet is empty.
+
+    Example:
+        >>> accuracy(Counts(tp=2, fp=3, fn=1, tn=94))
+        np.float64(0.96)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+class OperatingPoint(NamedTuple):
+    """One chosen threshold, and what choosing it implies."""
+
+    index: int
+    threshold: float
+    cost: float
+    accuracy: float
+    counts: Counts
+
+
+def best_operating_point(thresholds: np.ndarray, counts: Counts, costs: CostModel,
+                         objective: str) -> OperatingPoint:
+    """Pick a threshold. `objective` is "cost" (minimise) or "accuracy" (maximise).
+
+    On a tie, take the LOWEST index, which is the lowest threshold — the more cautious of two
+    equally scored choices. `numpy.argmin` and `numpy.argmax` already do that.
+
+    `counts` in the returned OperatingPoint is a `Counts` of plain ints for the chosen
+    threshold alone. Raise `ValueError` for any other `objective`, and for a `counts` whose
+    fields are not the same length as `thresholds`.
+
+    Example:
+        >>> c = Counts(tp=np.array([2, 1]), fp=np.array([8, 0]),
+        ...            fn=np.array([0, 1]), tn=np.array([90, 98]))
+        >>> m = CostModel(planned=10.0, unplanned=1000.0, false_alarm=1.0)
+        >>> best_operating_point(np.array([1.0, 2.0]), c, m, "cost").threshold
+        1.0
+        >>> best_operating_point(np.array([1.0, 2.0]), c, m, "accuracy").threshold
+        2.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_economics() -> None:
+    one = Counts(tp=2, fp=3, fn=1, tn=94)
+    cheap = CostModel(planned=10.0, unplanned=100.0, false_alarm=1.0)
+    cost = expected_cost(one, cheap)
+    assert np.isclose(cost, 123.0), (
+        f"expected 2*10 + 1*100 + 3*1 = 123.0, got {cost!r}. If you got 217.0 you charged "
+        "for the 94 true negatives; nothing happening is free"
+    )
+    assert np.isclose(accuracy(one), 0.96), (
+        f"accuracy of tp=2, fp=3, fn=1, tn=94 is (2+94)/100 = 0.96, got {accuracy(one)!r}"
+    )
+    swept = Counts(tp=np.array([2, 1]), fp=np.array([8, 0]), fn=np.array([0, 1]),
+                   tn=np.array([90, 98]))
+    costs_over = expected_cost(swept, cheap)
+    assert np.allclose(costs_over, [28.0, 110.0]), (
+        f"the same function must work on arrays: expected [28, 110], got "
+        f"{np.asarray(costs_over).tolist()}"
+    )
+    model = CostModel(planned=10.0, unplanned=1000.0, false_alarm=1.0)
+    by_cost = best_operating_point(np.array([1.0, 2.0]), swept, model, "cost")
+    by_acc = best_operating_point(np.array([1.0, 2.0]), swept, model, "accuracy")
+    assert isinstance(by_cost, OperatingPoint), "return an OperatingPoint"
+    assert np.isclose(by_cost.threshold, 1.0), (
+        f"with an unplanned failure costing 100x a planned one, the cheap threshold is 1.0, "
+        f"not {by_cost.threshold} — are you maximising instead of minimising?"
+    )
+    assert np.isclose(by_acc.threshold, 2.0), (
+        f"the accurate threshold here is 2.0 (99 of 100 right), not {by_acc.threshold}"
+    )
+    assert int(by_cost.counts.fp) == 8 and int(by_acc.counts.fp) == 0, (
+        "OperatingPoint.counts holds the confusion matrix AT the chosen threshold, sliced out "
+        f"of the swept arrays; got fp={by_cost.counts.fp} and fp={by_acc.counts.fp}"
+    )
+    tie = Counts(tp=np.array([1, 1]), fp=np.array([1, 1]), fn=np.array([1, 1]),
+                 tn=np.array([1, 1]))
+    assert best_operating_point(np.array([1.0, 2.0]), tie, model, "cost").index == 0, (
+        "two thresholds that score identically: take the lower one"
+    )
+    for bad in ("recall", "", "COST"):
+        try:
+            best_operating_point(np.array([1.0, 2.0]), swept, model, bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"objective={bad!r} must raise ValueError")
+    try:
+        best_operating_point(np.array([1.0]), swept, model, "cost")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError(
+            "1 threshold against 2 counts must raise ValueError — a silent mismatch here "
+            "reports the wrong threshold for the right confusion matrix"
+        )
+    print("exercises 9-11 look right — costs, accuracy and the chooser")
+
+
+# %%
+_try("exercises 9-11", _check_economics)
+
+# %% [markdown]
+# ## 8. The result
+#
+# Everything is in place. The cell below asks your own code for the two operating points and
+# prints what each one implies. Read the table before you read the paragraph after it.
+
+# %%
+def _show_the_gap() -> None:
+    by_cost = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "cost")
+    by_acc = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "accuracy")
+    print(f"{'operating point':22s} {'thr':>5s} {'caught':>7s} {'missed':>7s} "
+          f"{'false al.':>10s} {'accuracy':>9s} {'cost':>12s}")
+    for name, op in (("cost-optimal", by_cost), ("accuracy-optimal", by_acc)):
+        c = op.counts
+        print(f"{name:22s} {op.threshold:5.2f} {int(c.tp):7d} {int(c.fn):7d} "
+              f"{int(c.fp):10d} {op.accuracy:9.4f} {op.cost:12,.0f}")
+    gap = by_acc.cost / by_cost.cost
+    print(f"\nthe accuracy-optimal threshold is {by_acc.threshold - by_cost.threshold:+.2f} "
+          f"away and costs {gap:.2f}x as much.")
+    print(f"it scores {100 * (by_acc.accuracy - by_cost.accuracy):.1f} accuracy points higher "
+          f"and lets {int(by_acc.counts.fn) - int(by_cost.counts.fn)} more machines fail "
+          "unplanned.")
+
+
+_try("the gap", _show_the_gap)
+
+# %%
+def _plot_cost_curve() -> None:
+    by_cost = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "cost")
+    by_acc = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "accuracy")
+    costs = expected_cost(COUNTS, SCENARIO)
+    accs = accuracy(COUNTS)
+    fig, ax = plt.subplots(figsize=(9, 3.6))
+    ax.plot(THRESHOLDS, np.asarray(costs) / 1000.0, lw=1.6, color="tab:red", label="cost")
+    ax.axvline(by_cost.threshold, color="tab:red", ls="--", lw=1,
+               label=f"cost-optimal {by_cost.threshold:.2f}")
+    ax.axvline(by_acc.threshold, color="tab:blue", ls="--", lw=1,
+               label=f"accuracy-optimal {by_acc.threshold:.2f}")
+    ax.set_xlabel("alarm threshold (health index)")
+    ax.set_ylabel("expected cost, thousands")
+    twin = ax.twinx()
+    twin.plot(THRESHOLDS, accs, lw=1.2, color="tab:blue", alpha=0.7)
+    twin.set_ylabel("accuracy", color="tab:blue")
+    ax.legend(fontsize=8, loc="upper left")
+    fig.tight_layout()
+    _show(fig)
+
+
+_try("cost curve", _plot_cost_curve)
+
+# %% [markdown]
+# The two vertical lines are the whole lesson. They come from one detector, one health index
+# and one set of counts. Nothing about the *model* differs between them. What differs is the
+# question asked of the same curve.
+#
+# Accuracy is dominated by the true negatives, and there are hundreds of them: with a 6% base
+# rate, a threshold so high it never alarms already scores in the nineties. Cost is dominated
+# by the false negatives, because one of them costs twenty planned interventions. Optimising
+# the first buys you a number to put in a slide; optimising the second buys you the outcome
+# the plant is paying for.
+#
+# Two details worth noticing in your own table before moving on:
+#
+# - The cost-optimal point **still misses some failures**, and that is correct. Catching the
+#   last few would mean dropping the threshold into the healthy population's noise, and the
+#   false alarms bought on the way down cost more than the failures they prevent. "Catch
+#   everything" is not the goal either.
+# - The accuracy-optimal point has a **near-perfect false-alarm record**. It is a genuinely
+#   quiet, well-behaved alarm system. It is also the expensive one.
+
+# %% [markdown]
+# ## 9. The threshold belongs to the economics, not to the model
+#
+# If the operating point came from the cost model rather than the detector, then changing the
+# cost model — with the detector untouched — must move it. Run this.
+
+# %%
+def _show_scenarios() -> None:
+    scenarios = {
+        "critical (gas compressor)": CostModel(9_000.0, 1_200_000.0, 6_000.0),
+        "this lesson's scenario": SCENARIO,
+        "spare pump, offshore crew": CostModel(9_000.0, 30_000.0, 12_000.0),
+    }
+    print(f"{'cost model':28s} {'unplanned':>11s} {'false al.':>10s} {'thr':>6s} "
+          f"{'caught':>7s} {'missed':>7s} {'alarms':>7s}")
+    for name, model in scenarios.items():
+        op = best_operating_point(THRESHOLDS, COUNTS, model, "cost")
+        c = op.counts
+        print(f"{name:28s} {model.unplanned:11,.0f} {model.false_alarm:10,.0f} "
+              f"{op.threshold:6.2f} {int(c.tp):7d} {int(c.fn):7d} {int(c.tp + c.fp):7d}")
+    print("\nsame health index, same sweep, same counts. Only the prices changed, and the")
+    print("threshold moved with them. This is why a threshold cannot be inherited from a")
+    print("paper, a vendor default or the last plant you worked at.")
+
+
+_try("scenarios", _show_scenarios)
+
+# %% [markdown]
+# ## 10. Common mistakes
+#
+# - **Thresholding raw amplitude across a fleet.** A big machine vibrates more. Without
+#   per-machine normalisation you have built a size detector.
+# - **Smoothing with a centred window.** It is the single easiest way to get a result that
+#   cannot be reproduced online. Everything must be causal, including the baseline.
+# - **Counting a late alarm as a catch.** An alarm with no lead time prevents nothing. If
+#   your metric does not know about `LEAD_HOURS`, it will happily reward a detector that
+#   announces failures as they happen.
+# - **Optimising accuracy on a rare event.** At a 6% base rate, "never alarm" already scores
+#   94%. Any metric that treats one missed failure and one false alarm as the same mistake is
+#   the wrong metric.
+# - **Reading the operating point off the ROC curve.** The ROC curve is invariant to the base
+#   rate and knows nothing about cost. Two plants with identical ROC curves and different
+#   economics need different thresholds.
+# - **Quoting a cost-optimal threshold without the cost model.** The threshold is a function
+#   of the prices. Ship them together, or you have shipped a number with no meaning.
+# - **Assuming "catch everything" is the target.** Below some threshold the false alarms cost
+#   more than the failures. The optimum knowingly accepts some failures, and being able to say
+#   which ones and why is the difference between a model and a decision.
+#
+# One of those is worth measuring rather than believing. The cell below prints what "never
+# alarm" scores on this fleet.
+
+# %%
+def _show_the_null_detector() -> None:
+    null = Counts(tp=0, fp=0, fn=int(FAILED.sum()), tn=int((~FAILED).sum()))
+    null_cost, null_acc = float(expected_cost(null, SCENARIO)), float(accuracy(null))
+    best = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "cost")
+    print(f"a detector that never alarms at all: accuracy {null_acc:.4f}, "
+          f"cost {null_cost:,.0f}")
+    print(f"your cost-optimal threshold:          accuracy {best.accuracy:.4f}, "
+          f"cost {best.cost:,.0f}")
+    verdict = ("BEATS it" if null_acc > best.accuracy else
+               "loses to it" if null_acc < best.accuracy else "ties with it")
+    print(f"\non accuracy the useless detector {verdict}, "
+          f"by {abs(null_acc - best.accuracy) * 100:.1f} points.")
+    print(f"on money it costs {null_cost / best.cost:.1f}x as much.")
+    print("only one of those two comparisons would have appeared in a report that quoted")
+    print("accuracy, and it is the one that points the wrong way.")
+
+
+_try("null detector", _show_the_null_detector)
+
+# %% [markdown]
+# ## 11. Self-check
+#
+# 1. Your health index uses a centred 11-hour median instead of a causal one. On this
+#    historical dataset the ROC curve improves slightly. In production the detector will:
+#    - (a) behave the same, since the filter is symmetric
+#    - (b) be unimplementable at hour `t`, because five of its inputs have not happened yet
+#    - (c) be fine, but slower
+#
+# 2. A colleague reports 96% accuracy on this fleet and proposes to ship that threshold. The
+#    strongest single objection is:
+#    - (a) 96% is not high enough for industrial use
+#    - (b) with a 6% base rate, refusing to ever alarm already scores about 94%, so the
+#          number is nearly uninformative about whether anything was detected
+#    - (c) accuracy should have been computed per hour rather than per machine
+#
+# 3. An alarm fires 12 hours before a failure when the crew needs 48. Under this lesson's
+#    accounting it is counted as:
+#    - (a) a true positive, because the machine really was failing
+#    - (b) a false negative, because nothing was prevented
+#    - (c) a false positive, because the alarm was wrong
+#
+# 4. The cost-optimal threshold on this fleet still allows some machines to fail. The reason
+#    is:
+#    - (a) the detector is not good enough; a better model would reach zero misses
+#    - (b) the remaining failures only become visible inside the healthy population's noise,
+#          so catching them costs more in false alarms than the failures cost
+#    - (c) a rounding error in the threshold grid
+#
+# 5. The same detector is deployed at a second plant where an unplanned failure costs ten
+#    times as much and a false alarm costs the same. The right response is:
+#    - (a) keep the threshold; the detector has not changed
+#    - (b) retrain the model on the second plant's data before doing anything
+#    - (c) re-run the cost sweep with the new prices and expect a lower threshold
+#
+# Answers, with the reasoning, are published in the course solution bundle.
+
+# %% [markdown]
+# One last cell, and it is the deliverable. A threshold on its own is a number somebody will
+# later "round off"; a threshold with the prices it was derived from is an argument. Print the
+# handover note.
+
+# %%
+def _handover() -> None:
+    op = best_operating_point(THRESHOLDS, COUNTS, SCENARIO, "cost")
+    print("ALARM SETTING — hand this to the reliability engineer, all four lines together")
+    print(f"  threshold          health index >= {op.threshold:.2f} "
+          f"(causal median of {WINDOW} h, normalised to each machine's first "
+          f"{BASELINE_HOURS} h)")
+    print(f"  lead requirement   {LEAD_HOURS} h of warning, or it is not a catch")
+    print(f"  derived from       planned {SCENARIO.planned:,.0f} · unplanned "
+          f"{SCENARIO.unplanned:,.0f} · false alarm {SCENARIO.false_alarm:,.0f}")
+    print(f"  expected outcome   {int(op.counts.tp)} caught, {int(op.counts.fn)} missed, "
+          f"{int(op.counts.fp)} false alarms per {N_MACHINES} machines per "
+          f"{N_HOURS} h, at {op.cost:,.0f}")
+    print("  re-derive whenever any of those three prices changes.")
+
+
+_try("handover note", _handover)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You now have the pieces a condition-monitoring programme is actually assembled from: a
+# causal feature, a decision rule with a lead-time requirement, a sweep, and a cost function
+# that turns a curve into a choice. Module 5 of this programme replaces the fixed threshold
+# with a remaining-useful-life estimate and asks the same economic question of a distribution
+# rather than a point. Module 7 asks what happens to all of this when the plant network will
+# not let your model talk to anything.
+#
+# The habit to carry forward is the one this lesson is built around: **the model and the
+# operating point are two separate deliverables, and only one of them is yours to choose
+# without asking what things cost.**
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_burst_rms),
+                          ("exercise 2", _check_causal_rolling_median),
+                          ("exercise 3", _check_health_index),
+                          ("exercises 4 and 5", _check_decision),
+                          ("exercises 6-8", _check_curves),
+                          ("exercises 9-11", _check_economics)):
+        _try(_name, _check)
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

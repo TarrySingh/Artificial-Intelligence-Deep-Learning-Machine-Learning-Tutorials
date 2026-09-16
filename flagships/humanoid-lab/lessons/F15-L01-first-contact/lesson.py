@@ -257,11 +257,15 @@ def _check_com_height() -> None:
         "float(); do not return the whole 3-vector."
     )
     reference = float(data.subtree_com[0][2])
+    mass = model.body_mass
     assert abs(got - reference) < 1e-9, (
-        f"com_height gave {got:.6f}, MuJoCo's own whole-body COM is {reference:.6f} — if you "
-        "are close but high you used data.xpos (frame origins) instead of data.xipos; if you "
-        f"got {float(data.qpos[2]):.6f} you returned the root height; if you landed between "
-        "the two you took an unweighted mean instead of weighting by model.body_mass."
+        f"com_height gave {got:.6f}, MuJoCo's own whole-body COM is {reference:.6f}. Each "
+        "near miss names a different mistake, and all three are measured from this pose: "
+        f"{float(data.qpos[2]):.6f} is the root height in qpos[2]; "
+        f"{float((mass * data.xpos[:, 2]).sum() / mass.sum()):.6f} weights data.xpos, the "
+        "frame origins, where data.xipos belongs; "
+        f"{float(data.xipos[:, 2].mean()):.6f} is an unweighted mean of xipos, with "
+        "model.body_mass left out."
     )
     squat = mujoco.MjData(model)
     mujoco.mj_resetDataKeyframe(model, squat, 0)
@@ -340,6 +344,20 @@ def _check_real_time_factor() -> None:
         f"real_time_factor came out at {report['real_time_factor']:.4f} — a value that small "
         "means the ratio is upside down, or that you timed a reload instead of the stepping."
     )
+    assert not isinstance(report["steps"], float), (
+        f"steps came back as {type(report['steps']).__name__} — it counts mj_step calls, so "
+        "it must be a whole number. math.ceil gives an int; numpy's np.ceil gives a float "
+        "that still compares equal here and then breaks range() downstream."
+    )
+    # A second measurement on the same `data`: if the reset ran, the clock reads exactly what
+    # this call's own steps bought, and nothing of the previous call survives.
+    again = real_time_factor(model, data, 0.207)
+    assert abs(data.time - again["steps"] * model.opt.timestep) < 1e-9, (
+        f"a second call left data.time at {data.time}, not the "
+        f"{again['steps'] * model.opt.timestep} its own {again['steps']} steps bought — the "
+        "clock still carries the first run, so mujoco.mj_resetData never ran and every "
+        "measurement after the first times an already-fallen pose."
+    )
     print(f"exercise 3 looks right: {report['sim_seconds']:.3f} s simulated in "
           f"{report['wall_seconds']:.4f} s wall, RTF {report['real_time_factor']:.1f}x")
 
@@ -390,7 +408,8 @@ def _check_fall_profile() -> None:
 # - **Hard-coding the timestep.** This model overrides MuJoCo's documented default (sourced
 #   in `claims.yaml`). Read `model.opt.timestep` and your code survives the next model.
 # - **`data.xpos` for the centre of mass.** `xpos` is the body frame origin; `xipos` is where
-#   that body's mass actually sits. The gap is centimetres, which is plenty to be wrong by.
+#   that body's mass actually sits. The cell below measures the gap on this model; it is not
+#   a rounding error.
 # - **Forgetting kinematics.** Writing `data.qpos` does not update `data.xipos`. Until
 #   `mj_forward` or `mj_step` runs, you are reading the previous pose.
 # - **`time.time` for benchmarking.** Use `time.perf_counter`: monotonic, higher resolution,
@@ -400,6 +419,10 @@ def _check_fall_profile() -> None:
 # Watch the last two mistakes happen, measured rather than asserted. Nothing here is typed.
 _stale = mujoco.MjData(MODEL)
 mujoco.mj_forward(MODEL, _stale)
+_frame_gap = np.abs(_stale.xpos[:, 2] - _stale.xipos[:, 2])
+print(f"xpos vs xipos in z: worst body {_frame_gap.max():.4f} m, mean "
+      f"{_frame_gap[_frame_gap > 0].mean():.4f} m over the "
+      f"{int((_frame_gap > 0).sum())} bodies where the two differ at all")
 _torso_before = float(_stale.xipos[1][2])
 _stale.qpos[2] += 1.0                    # lift the robot a metre, then read derived state at once
 print(f"wrote qpos[2] += 1.0 -> torso xipos z still reads {float(_stale.xipos[1][2]):.4f} "

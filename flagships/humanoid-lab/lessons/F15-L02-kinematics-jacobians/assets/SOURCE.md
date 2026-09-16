@@ -23,7 +23,7 @@ branch to fail.
 exercise perturb `qpos[i]` directly. It is also a privilege the lesson is explicit about
 losing: on a model with a free or ball joint, `qpos` carries a four-number quaternion where
 `qvel` carries a three-number angular velocity, and `qpos[i] += eps` no longer means "move
-dof *i*". Section 8 loads a four-line MJCF string with a ball joint and prints its `nq` and
+dof *i*". Section 9 loads a short MJCF string with a ball joint and prints its `nq` and
 `nv` rather than asking anyone to take that on trust.
 
 **The arms are asymmetric.** Eight degrees of freedom move the right palm; the two left-arm
@@ -40,7 +40,7 @@ arm cannot move its palm along its own axis at any joint velocity, so the transl
 Jacobian loses rank there. Measured on the shipped model, its singular values at home are
 approximately (0.807, 0.644, 0.000): the third is not small, it is zero.
 
-That is what makes the damping term in section 7 load-bearing rather than decorative. The
+That is what makes the damping term in sections 10 and 11 load-bearing rather than decorative. The
 inverse-kinematics solver starts every solve from the home pose, so with `lam = 0` the normal
 equations are singular and NumPy raises `LinAlgError` on the first iteration — the notebook
 runs that and prints the exception. Nudge the elbow a ten-thousandth of a radian off full

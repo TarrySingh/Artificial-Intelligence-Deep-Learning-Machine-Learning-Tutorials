@@ -268,6 +268,14 @@ claims:
       Fetched 2026-09-16. Also listed on the same date: RTX A6000 (48 GB) $0.53/hr and RTX
       6000 Ada (48 GB) $0.84/hr on Secure Cloud. Cited as one vendor's list price on one date,
       not as a market rate.
+    rechecked: >-
+      Re-fetched 2026-09-16 during the independent review. The two figures the lesson actually
+      uses re-rendered unchanged: RTX 4090 $0.74/hr and RTX 5090 $0.99/hr on Secure Cloud. The
+      Community Cloud row for the RTX 4090 rendered $0.74/hr on the re-fetch rather than the
+      $0.34/hr recorded above, so that sub-figure could not be reproduced and should be treated
+      as unverified; nothing in lesson.py or its computed output depends on it. This is what a
+      live pricing page does, and it is the reason the lesson prints the access date next to
+      the ladder rather than presenting the prices as durable facts.
 
   - id: no-verified-retail-gpu-price
     claim: >-

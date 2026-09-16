@@ -59,6 +59,10 @@ def main() -> int:
             if skipping and (line.startswith((" ", "\t")) or not line.strip()):
                 continue
             skipping = False
+            # Comments in meta.yaml are MAINTAINER notes — review narratives, tooling caveats,
+            # curriculum decisions. A student receives the fields, not the workshop floor.
+            if line.lstrip().startswith("#"):
+                continue
             meta.append(line)
         (dest / "meta.student.yaml").write_text("\n".join(meta) + "\n")
         # gate 7 assertion: nothing from EXCLUDE may exist in the bundle

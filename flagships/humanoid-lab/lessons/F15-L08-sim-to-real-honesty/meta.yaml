@@ -42,8 +42,8 @@ datasets:
     notes: >-
       Free, ungated, commercial use permitted, no registration. Declared here because it is
       the only third-party dependency on the lesson's required path.
-points: 32
+points: 34
 status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "AI Atlas review pass, 2026-09-16 — all 12 gates re-checked; rubric orphan and mj_setConst hole closed, claims.yaml section references corrected"
-measured_seconds: 14.7
-measured_peak_mib: 54
+reviewed_by: "Independent review, 2026-09-16 — 28 rubric mutants run; 7 scored 100% and were closed by a new test_rollout_reports_a_fall_honestly row (+2 pts, 32 -> 34) plus exact-RMS and simulated-step-count hidden cases; 6 claims.yaml sources re-fetched against primary pages; the one typed number in prose ('triples the wobble') is now computed by the section 6 sweep"
+measured_seconds: 15.0
+measured_peak_mib: 55

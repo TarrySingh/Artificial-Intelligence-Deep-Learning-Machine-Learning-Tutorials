@@ -1,0 +1,246 @@
+# Every factual claim this lesson makes about the world, with a source and the date the
+# source was read. Numbers a student sees in output — the coverage percentages, the retention
+# split, the entry ages, the rung counts — are computed by the code they run from the event
+# stream in lesson.py. They are not claims and do not appear here.
+#
+# This lesson is engineering material about the data structures a record-keeping duty implies.
+# It is not legal advice, and nothing here substitutes for the Official Journal text or for
+# professional advice on a specific system.
+#
+# SOURCING RULE used here, inherited from the prerequisite lesson T10-L01: a `quote` field
+# contains text actually retrieved from `source_url` on the `accessed` date. Where the
+# authoritative text could not be retrieved it is recorded under `authoritative_text_url` with
+# a `retrieval_note`, and the claim is carried by sources that were retrieved. No quote in
+# this file is reconstructed from memory or stitched together across an ellipsis.
+claims:
+  - id: article-12-1-automatic-recording
+    claim: >-
+      Article 12(1) of the AI Act requires that high-risk AI systems technically allow for the
+      automatic recording of events (logs) over the lifetime of the system. "Technically
+      allow" and "over the lifetime" are why this lesson's log is a data structure with an
+      append operation rather than a file a human writes to: the capability has to be in the
+      system, and it has to span the system's life rather than a rotation window.
+    where: "lesson.py section 1 (the DUTIES table, art12_1_automatic) and exercise 1"
+    source_url: https://artificialintelligenceact.eu/article/12/
+    source_title: "EU Artificial Intelligence Act — Article 12: Record-Keeping (reproduction of the OJ text)"
+    quote: >-
+      High-risk AI systems shall technically allow for the automatic recording of events (logs)
+      over the lifetime of the system.
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-16
+    note: >-
+      Secondary source: a reproduction of the Official Journal text of Regulation (EU)
+      2024/1689, used here for article text and numbering, both cross-checkable against
+      EUR-Lex CELEX 32024R1689.
+
+  - id: article-12-2-three-purposes
+    claim: >-
+      Article 12(2) requires the logging capabilities to record events relevant for
+      (a) identifying situations that may result in the high-risk AI system presenting a risk,
+      (b) facilitating the post-market monitoring referred to in Article 72, and
+      (c) monitoring the operation of high-risk AI systems referred to in Article 26(5). It
+      names three PURPOSES and enumerates no fields, which is the whole reason this lesson has
+      to make, label and defend a modelling choice about which fields it calls required.
+    where: "lesson.py section 1 (art12_2_traceable) and section 6 (where the field list comes from)"
+    source_url: https://artificialintelligenceact.eu/article/12/
+    source_title: "EU Artificial Intelligence Act — Article 12: Record-Keeping (reproduction of the OJ text)"
+    quote: >-
+      (a) identifying situations that may result in the high-risk AI system presenting a risk;
+      (b) facilitating the post-market monitoring referred to in Article 72;
+      (c) monitoring the operation of high-risk AI systems referred to in Article 26(5).
+    accessed: 2026-09-16
+
+  - id: article-12-3-four-item-minimum-is-for-annex-iii-1a
+    claim: >-
+      Article 12(3) sets a minimum list of logged items for the high-risk AI systems referred
+      to in point 1(a) of Annex III — the remote biometric identification systems — and that
+      list is: (a) recording of the period of each use of the system (start date and time and
+      end date and time of each use); (b) the reference database against which input data has
+      been checked by the system; (c) the input data for which the search has led to a match;
+      and (d) the identification of the natural persons involved in the verification of the
+      results, as referred to in Article 14(5). It is a minimum for THAT category, not a
+      universal field list for every high-risk system.
+    where: "lesson.py section 1 (art12_3_minimum), section 6 (FIELD_SOURCES), section 8 common mistakes, self-check question 5"
+    source_url: https://artificialintelligenceact.eu/article/12/
+    source_title: "EU Artificial Intelligence Act — Article 12: Record-Keeping (reproduction of the OJ text)"
+    quote: >-
+      (a) recording of the period of each use of the system (start date and time and end date
+      and time of each use); (b) the reference database against which input data has been
+      checked by the system; (c) the input data for which the search has led to a match;
+      (d) the identification of the natural persons involved in the verification of the
+      results, as referred to in Article 14(5).
+    accessed: 2026-09-16
+    note: >-
+      This is the claim the lesson is most careful about, because the tempting wrong lesson is
+      to present these four items as "the Article 12 required fields". The fictional system in
+      the lesson scores credit applications, which is Annex III territory but not point 1(a),
+      so section 6 states plainly that applying 12(3)'s shape to it is the lesson's own
+      engineering judgement, and FIELD_SOURCES labels each of the eight fields with where it
+      came from — including the two that are modelling choices with no article behind them.
+
+  - id: article-19-provider-retention-six-months
+    claim: >-
+      Article 19(1) requires providers of high-risk AI systems to keep the logs referred to in
+      Article 12(1), automatically generated by their high-risk AI systems, to the extent
+      those logs are under their control, for a period of at least six months unless provided
+      otherwise in applicable Union or national law, in particular in Union law on the
+      protection of personal data. This is the floor the lesson's retention check enforces,
+      and the reason the lesson insists Article 12 alone is not a retention design.
+    where: "lesson.py section 1 (art19_provider_keep), RETENTION_MINIMUM_DAYS, exercise 3, section 8 common mistakes, self-check question 2"
+    source_url: https://artificialintelligenceact.eu/article/19/
+    source_title: "EU Artificial Intelligence Act — Article 19: Automatically Generated Logs (reproduction of the OJ text)"
+    quote: >-
+      Providers of high-risk AI systems shall keep the logs referred to in Article 12(1),
+      automatically generated by their high-risk AI systems, to the extent such logs are under
+      their control.
+    quote_continuation: >-
+      at least six months, unless provided otherwise in the applicable Union or national law,
+      in particular in Union law on the protection of personal data.
+    accessed: 2026-09-16
+    note: >-
+      The two quoted fragments are consecutive parts of the same paragraph as retrieved on the
+      access date; they are stored separately rather than joined with an ellipsis, per the
+      sourcing rule at the top of this file. The "unless provided otherwise" clause is why the
+      lesson treats six months as a FLOOR and refuses to call a longer retention
+      non-compliant: other law routinely runs longer, and data-protection law can pull the
+      other way.
+
+  - id: article-26-6-deployer-retention-six-months
+    claim: >-
+      Article 26(6) requires deployers of high-risk AI systems to keep the logs automatically
+      generated by that system, to the extent those logs are under their control, for a period
+      appropriate to the intended purpose of the system and of at least six months, unless
+      provided otherwise in applicable Union or national law. Provider and deployer therefore
+      carry the same six-month floor over different slices of the same log, which is why the
+      lesson's retention report is written to be run by either party.
+    where: "lesson.py section 1 (art26_6_deployer_keep) and section 8 common mistakes"
+    source_url: https://artificialintelligenceact.eu/article/26/
+    source_title: "EU Artificial Intelligence Act — Article 26: Obligations of Deployers of High-Risk AI Systems (reproduction of the OJ text)"
+    quote: >-
+      Deployers of high-risk AI systems shall keep the logs automatically generated by that
+      high-risk AI system to the extent such logs are under their control, for a period
+      appropriate to the intended purpose of the high-risk AI system, of at least six months,
+      unless provided otherwise in applicable Union or national law.
+    accessed: 2026-09-16
+
+  - id: article-50-applied-2026-08-02
+    claim: >-
+      Article 50's transparency obligations applied from 2 August 2026, the AI Act's general
+      application date. Article 50 is a transparency duty and not a record-keeping one: the
+      lesson's timetable marks that rung PAST while noting that logging was not among the
+      duties it switched on.
+    where: "lesson.py section 1 (ARTICLE_12_TIMETABLE, the 2026-08-02 rung)"
+    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+    source_title: "European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)"
+    quote: "Article 50 of the AI Act applies as from 2 August 2026."
+    corroborating_source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    corroborating_source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    corroborating_quote: >-
+      The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026,
+      with some exceptions
+    accessed: 2026-09-16
+
+  - id: digital-omnibus-identity-in-force-2026-07-27
+    claim: >-
+      Regulation (EU) 2026/1744, the Digital Omnibus on AI, amends Regulation (EU) 2024/1689
+      among others as regards the simplification of the implementation of harmonised rules on
+      artificial intelligence. It was published in the Official Journal, L series, on 24 July
+      2026 and entered into force on 27 July 2026, the third day following publication. This
+      is the instrument that moved the Chapter III dates the lesson's timetable prints.
+    where: "lesson.py section 1 (the timetable preamble)"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: "entered into force on 27 July 2026"
+    corroborating_source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
+    corroborating_source_title: "NicFab — Digital Omnibus on AI: Regulation (EU) 2026/1744 published in the Official Journal"
+    corroborating_quote: >-
+      Amending Regulations (EU) 2024/1689, (EU) 2018/1139 and (EU) 2023/1230 as regards the
+      simplification of the implementation of harmonised rules on artificial intelligence
+      (Digital Omnibus on AI)
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+    eli: http://data.europa.eu/eli/reg/2026/1744/oj
+    retrieval_note: >-
+      Carried over from lessons/T10-L01-ai-act-conformity-pack/claims.yaml, whose two
+      independent reviewers each recorded on 2026-09-16 that EUR-Lex returned HTTP 202 with a
+      zero-byte body for CELEX 32026R1744 on the HTML view, the TXT view and the ELI URL,
+      through two different HTTP clients. This lesson did not re-attempt the authoritative
+      text; it cites the same two retrieved sources, which agree. Re-quote from the Official
+      Journal PDF before the programme ships if a verbatim citation of the enacting text is
+      wanted.
+    accessed: 2026-09-16
+
+  - id: chapter-iii-annex-iii-applies-2027-12-02
+    claim: >-
+      After the Digital Omnibus amendment, the Chapter III duties — which include Article 12
+      record-keeping — apply from 2 December 2027 to the AI systems classified as high-risk
+      under Article 6(2) and Annex III, the stand-alone high-risk systems in areas such as
+      employment and creditworthiness. The lesson's fictional credit-scoring system is in that
+      category, which is why its timetable prints that rung as still ahead on 2026-09-16.
+    where: "lesson.py section 1 (ARTICLE_12_TIMETABLE, the 2027-12-02 rung)"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      Starting on 2 December 2027, high-risk AI systems will be subject to strict obligations
+      before they can be put on the market
+    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
+    corroborating_quote: "from 2 December 2027 as regards AI systems classified as high-risk"
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+    retrieval_note: "See digital-omnibus-identity-in-force-2026-07-27 for the EUR-Lex retrieval failure."
+    accessed: 2026-09-16
+
+  - id: chapter-iii-annex-i-applies-2028-08-02
+    claim: >-
+      The same Chapter III duties apply from 2 August 2028 to AI systems classified as
+      high-risk under Article 6(1) and Annex I — AI embedded as a safety component of a
+      product already covered by EU product-safety law. The lesson's timetable prints both
+      rungs because the Article 12 logging design a team builds now is governed by whichever
+      of the two routes its system takes.
+    where: "lesson.py section 1 (ARTICLE_12_TIMETABLE, the 2028-08-02 rung)"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      For systems integrated into products such as lifts or toys, the rules will apply from
+      2 August 2028
+    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
+    corroborating_quote: "from 2 August 2028 as regards AI systems classified as high-risk"
+    accessed: 2026-09-16
+
+  - id: article-14-5-verifier-identification
+    claim: >-
+      Article 12(3)(d)'s requirement to log the natural persons involved in verification is a
+      cross-reference to Article 14(5), which sits in the human oversight article. This is why
+      the lesson's "verifier_ids" field is presented as an Article 12(3)(d) item rather than a
+      free-standing choice, and why the programme's human-oversight module reads that same
+      field out of the same log rather than inventing a second record.
+    where: "lesson.py section 6 (FIELD_SOURCES, verifier_ids); MODULES.md module 5"
+    source_url: https://artificialintelligenceact.eu/article/12/
+    source_title: "EU Artificial Intelligence Act — Article 12: Record-Keeping (reproduction of the OJ text)"
+    quote: >-
+      the identification of the natural persons involved in the verification of the results,
+      as referred to in Article 14(5).
+    accessed: 2026-09-16
+
+# --- Explicitly NOT claimed -------------------------------------------------------------
+# The eight-field list in FIELD_SOURCES, the decision to model six months as 183 days, the
+# rule that a missing sequence number alone makes a retention report non-compliant, the
+# two-pass definition of what belongs in a decision's trace, and the entry shape
+# {seq, event, prev_hash, entry_hash} are all this lesson's MODELLING CHOICES for a teaching
+# exercise. Section 6 says so about the field list at the point where it is introduced, the
+# RETENTION_MINIMUM_DAYS comment says so about the 183, and the opening cell says so about the
+# lesson as a whole. None of them is a claim about what any authority would accept.
+#
+# The lesson makes no claim at all about cryptographic sufficiency. A SHA-256 hash chain whose
+# head is published is tamper-EVIDENT, which is what Article 12 traceability needs and what
+# the exercises demonstrate. It is not a signature, not a timestamping authority and not
+# proof of authorship, and the lesson does not say or imply that it is.
+#
+# --- Author verification, 2026-09-16 ----------------------------------------------------
+# Every source_url above was fetched on this date. Article 12 returned paragraphs 1, 2 and 3
+# with all four sub-points of (3) verbatim, including the "referred to in point 1(a) of Annex
+# III" scoping that this lesson's honesty turns on. Article 19 returned the six-month floor
+# and the "unless provided otherwise" clause. Article 26 returned paragraph 6 with the same
+# floor for deployers. The Commission's AI Act page returned 27 July 2026, 2 December 2027 and
+# 2 August 2028, and the Article 50 FAQ returned the 2 August 2026 application sentence.
+# EUR-Lex CELEX 32026R1744 was not re-attempted; see the retrieval note.

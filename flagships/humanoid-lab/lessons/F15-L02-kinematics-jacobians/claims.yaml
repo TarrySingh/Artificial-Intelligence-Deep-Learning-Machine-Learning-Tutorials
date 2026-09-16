@@ -170,7 +170,7 @@ claims:
       Jacobian pseudo-inverse with a solve of (J J^T + lambda^2 I) — was published by C. W.
       Wampler in "Manipulator Inverse Kinematic Solutions Based on Vector Formulations and
       Damped Least-Squares Methods", IEEE Transactions on Systems, Man and Cybernetics, 1986.
-    where: "lesson.py section 7 (where this step comes from) and self-check question 4"
+    where: "lesson.py section 10 (where this step comes from) and self-check question 4"
     source_url: https://doi.org/10.1109/TSMC.1986.289285
     source_kind: primary (the paper itself, addressed by its DOI)
     quote: "Manipulator Inverse Kinematic Solutions Based on Vector Formulations and Damped Least-Squares Methods"
@@ -190,7 +190,7 @@ claims:
       which introduced the singularity-robust inverse as an alternative to the Jacobian
       pseudo-inverse. The two 1986 papers are the standard joint citation for the step this
       lesson implements.
-    where: "lesson.py section 7 (where this step comes from)"
+    where: "lesson.py section 10 (where this step comes from)"
     source_url: https://doi.org/10.1115/1.3143764
     source_kind: primary (the paper itself, addressed by its DOI)
     quote: "Inverse kinematic solutions with singularity robustness for robot manipulator control"
@@ -205,7 +205,7 @@ claims:
       verification on the access date and is therefore not cited.
     note: >-
       WHY THE LESSON DOES NOT LEAN ON THESE CITATIONS. Everything the student is asked to
-      believe about damping is measured in section 7 on the shipped model: with lambda = 0 the
+      believe about damping is measured in section 11 on the shipped model: with lambda = 0 the
       normal equations at the home pose are singular and NumPy raises; a ten-thousandth of a
       radian off that pose, the undamped step asks for a joint velocity of order 10^2 rad
       while the damped step stays near zero. The citations record where the idea comes from,

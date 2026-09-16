@@ -1,0 +1,96 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson generates its own corpus, so it has no dataset entry and nothing to license. The
+# two cost constants in section 8 (SECONDS_PER_REVIEWED_CELL, REVIEWER_COST_PER_HOUR) are
+# labelled in the notebook as placeholders for the reader's own rates. The lesson asserts
+# nothing about what they are in any organisation, so they are not claims either — and
+# everything derived from them is derived in front of the student.
+claims:
+  - id: precision-recall-f1-definitions
+    claim: >-
+      Precision is the number of true positives over true positives plus false positives, and
+      recall is true positives over true positives plus false negatives; F1 is the case of the
+      F-beta measure at beta = 1, where precision and recall are weighted equally, and it
+      reaches its best value at 1 and its worst at 0. These are the formulas `score_field`
+      implements, and the reason the lesson's F1 is a harmonic rather than an arithmetic mean.
+    where: "lesson.py section 5 (exercise 3 docstring and _check_score); tests/test_lesson.py::test_score_field_counts_and_ratios"
+    source_url: https://scikit-learn.org/stable/modules/model_evaluation.html
+    source_title: "scikit-learn User Guide — Metrics and scoring: quantifying the quality of predictions"
+    quote: >-
+      With beta = 1, F_beta and F_1 are equivalent, and the recall and the precision are
+      equally important.
+    quote_context: "section 'Precision, recall and F-measures'"
+    accessed: 2026-09-16
+
+  - id: confidence-gates-human-review
+    claim: >-
+      Routing an extraction to a human on the strength of its confidence score is the documented
+      design of at least one production document-extraction service: Microsoft's Azure AI
+      Document Intelligence tells operators that a field confidence is an estimated probability
+      between 0 and 1 and that it can be used to decide whether to accept a prediction
+      automatically or flag it for human review. The review queue in section 7 is that policy
+      written out and measured, rather than an invention of this lesson.
+    where: "lesson.py section 7 (exercise 5, review_queue) and section 8 (quality/cost curve)"
+    source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
+    source_title: "Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI Document Intelligence)"
+    quote: >-
+      For scenarios where accuracy is critical, confidence can be used to determine whether to
+      automatically accept the prediction or flag it for human review.
+    quote_context: "page dated 2026-04-08, last updated 2026-07-10"
+    accessed: 2026-09-16
+
+  - id: normalisation-heavy-fields-are-the-weak-ones
+    claim: >-
+      Field type predicts extraction difficulty, and the fields that need normalisation are
+      among the hardest: a May 2026 comparison of frontier LLMs and domain-trained small models
+      on structured contract extraction reports that performance is strongest on short-text
+      identifiers and weakest on currency fields requiring normalisation or aggregation. That is
+      the empirical reason this lesson makes `normalise_value` the first exercise rather than a
+      footnote, and the reason the confusion analysis is grouped by field TYPE.
+    where: "lesson.py section 3 (exercise 1 preamble) and section 6 (confusion by field type)"
+    source_url: https://arxiv.org/abs/2605.05532
+    source_title: "A Few Good Clauses: Comparing LLMs vs Domain-Trained Small Language Models on Structured Contract Extraction (arXiv 2605.05532, submitted 7 May 2026)"
+    quote: >-
+      Performance is strongest on short-text identifiers and extracted text concepts, and
+      weakest on currency fields requiring normalisation or aggregation.
+    accessed: 2026-09-16
+
+  - id: cost-per-document-is-an-evaluation-axis
+    claim: >-
+      Cost per document is reported alongside accuracy in current document-processing
+      benchmarks, not treated as an afterthought: a March 2026 benchmark of multi-agent LLM
+      architectures for financial document processing measures systems along five axes —
+      field-level F1, document-level accuracy, end-to-end latency, cost per document and token
+      efficiency — and reports the most accurate architecture costing 2.3 times the sequential
+      baseline. The quality/cost table in section 8 puts a student on the same two axes.
+    where: "lesson.py section 8 (the quality/cost curve) and the closing section"
+    source_url: https://arxiv.org/abs/2603.22651
+    source_title: "Benchmarking Multi-Agent LLM Architectures for Financial Document Processing (arXiv 2603.22651, submitted 24 Mar 2026)"
+    quote: >-
+      measured along five axes: field-level F1, document-level accuracy, end-to-end latency,
+      cost per document and token efficiency.
+    accessed: 2026-09-16
+
+  - id: human-oversight-is-a-legal-requirement-in-the-eu
+    claim: >-
+      For AI systems the EU AI Act classes as high risk, human oversight is a design obligation
+      rather than a convention: Article 14(1) requires that such systems be designed and
+      developed so that they can be effectively overseen by natural persons while in use. This
+      lesson does not claim that every document-extraction system is high risk — that
+      classification depends on the use case in Annex III — only that where it is, a review
+      queue with a measured budget is the mechanism the obligation asks for.
+    where: "lesson.py section 7 preamble (why a review queue exists at all); README.md"
+    source_url: https://artificialintelligenceact.eu/article/14/
+    source_title: "EU Artificial Intelligence Act, Article 14: Human Oversight (AI Act Explorer)"
+    quote: >-
+      High-risk AI systems shall be designed and developed in such a way, including with
+      appropriate human-machine interface tools, that they can be effectively overseen by
+      natural persons during the period in which they are in use.
+    quote_context: >-
+      The AI Act Explorer reproduces the consolidated text of Regulation (EU) 2024/1689. The
+      official text is at https://eur-lex.europa.eu/eli/reg/2024/1689/oj — that page renders
+      client-side and could not be fetched as text on the access date, so the Explorer's
+      rendering of the same article is cited as what was actually read.
+    accessed: 2026-09-16

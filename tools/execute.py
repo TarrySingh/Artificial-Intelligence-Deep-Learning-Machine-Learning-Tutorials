@@ -37,6 +37,19 @@ def main() -> int:
     meta = read_meta(meta_path)
     tier = meta.get("tier", "cpu8")
     budget = float(meta.get("budget_seconds", 600))
+    # A compiled lesson must build FRESH. make sees a binary newer than its source and calls
+    # it up to date, even when the library path baked into it is dead — which is exactly what
+    # happened when this tree moved and every C binary still pointed at the old venv's
+    # libmujoco. Deleting the artefacts is cheaper than trusting a timestamp.
+    if meta.get("language", "python") in {"c", "cpp"}:
+        for pat in ("lesson_bin", "solutions/lesson_bin", "*.o", "solutions/*.o"):
+            for stale in lesson.glob(pat):
+                stale.unlink(missing_ok=True)
+        for d in (lesson / "build", lesson / "solutions" / "build"):
+            if d.is_dir():
+                import shutil as _sh
+                _sh.rmtree(d, ignore_errors=True)
+
     target = lesson / "solutions" / "lesson_solution.py"
     if not target.exists():
         target = lesson / "lesson.py"

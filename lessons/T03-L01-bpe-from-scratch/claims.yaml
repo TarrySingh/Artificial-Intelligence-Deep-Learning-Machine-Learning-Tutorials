@@ -20,7 +20,7 @@ claims:
       Latin text is cheaper in bytes than Cyrillic, Arabic, Devanagari or Han text before any
       tokenizer is involved at all. The notebook does not ask the student to accept the octet
       widths: it measures len(s.encode("utf-8")) against len(s) for each sample and prints both.
-    where: "lesson.py section 1 (bytes are not characters) and section 9 (the byte floor)"
+    where: "lesson.py section 2 (bytes are not characters) and section 10 (the measured table, tokens==bytes column)"
     source_url: https://www.rfc-editor.org/rfc/rfc3629
     source_title: "RFC 3629 — UTF-8, a transformation format of ISO 10646"
     quote: >-
@@ -35,7 +35,7 @@ claims:
       of Rare Words with Subword Units" (arXiv:1508.07909, v1 submitted 31 August 2015, latest
       version v5 dated 10 June 2016), which adapts a compression algorithm to subword
       segmentation and makes open-vocabulary translation possible.
-    where: "lesson.py section 3 (the merge loop) and the closing section"
+    where: "lesson.py section 4 (the algorithm, and the rule that makes it reproducible) and the closing section"
     source_url: https://arxiv.org/abs/1508.07909
     source_title: "Neural Machine Translation of Rare Words with Subword Units"
     quote: >-
@@ -49,7 +49,7 @@ claims:
       GPT-2 is tokenised with a byte-level version of byte pair encoding over a vocabulary of
       50,257 entries. Byte-level here means the merge alphabet is the 256 byte values rather
       than a set of characters.
-    where: "lesson.py section 2 (why byte-level) and self-check question 2"
+    where: "lesson.py section 3 (why start from bytes) and self-check question 2"
     source_url: https://huggingface.co/openai-community/gpt2
     source_title: "openai-community/gpt2 — model card"
     quote: >-
@@ -66,7 +66,7 @@ claims:
       byte-level vocabulary can spell any input at all and never needs to emit an unknown
       token — which is the property this lesson's exercise 5 verifies by round-tripping five
       scripts through a vocabulary trained only on English.
-    where: "lesson.py section 2 (why byte-level removes the unknown token), exercise 5, self-check question 2"
+    where: "lesson.py section 3 (why byte-level removes the unknown token), section 9 (exercise 5, the round-trip property), self-check question 2"
     source_url: https://github.com/openai/gpt-2/blob/master/src/encoder.py
     source_title: "openai/gpt-2 — src/encoder.py, bytes_to_unicode()"
     quote: >-
@@ -82,7 +82,7 @@ claims:
       speakers of many supported languages pay more for equivalent requests while getting
       worse results. Ahia, Kumar, Gonen, Kasai, Mortensen, Smith and Tsvetkov analysed a
       commercial API across 22 typologically diverse languages and reported this directly.
-    where: "lesson.py section 8 (the token tax) and section 10 (what the tax actually is)"
+    where: "lesson.py section 10 (the measured tax table) and section 12 (the tax is the corpus, not the algorithm)"
     source_url: https://arxiv.org/abs/2305.13707
     source_title: "Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models"
     quote: >-
@@ -98,7 +98,7 @@ claims:
       services, processing time and latency, and the amount of content that fits in the
       model's context. This is the three-part cost the lesson's closing section names.
       Published at NeurIPS 2023 (arXiv:2305.15425, v1 17 May 2023).
-    where: "lesson.py section 10 (three costs, not one) and self-check question 4"
+    where: "lesson.py section 10 (the measured tax table: price, latency, context) and self-check question 4"
     source_url: https://arxiv.org/abs/2305.15425
     source_title: "Language Model Tokenizers Introduce Unfairness Between Languages"
     quote: >-
@@ -114,7 +114,7 @@ claims:
       units its own note defines as millions of tokens, and the same page describes the
       context window in tokens. This is what turns a tokenizer's behaviour into a bill: the
       token count the student measures in this lesson is the unit of account.
-    where: "lesson.py section 8 (why a token count is a price) and section 10"
+    where: "lesson.py section 10 (why a token count is a price) and self-check question 4"
     source_url: https://platform.claude.com/docs/en/about-claude/pricing
     source_title: "Pricing — Claude Platform documentation"
     quote: "MTok = Million tokens."
@@ -132,7 +132,7 @@ claims:
       implementation, and ships a ByteLevel pre-tokenizer that encodes each byte value to a
       unique visible character, giving an alphabet of exactly 256 characters. That 256-symbol
       alphabet is the same starting point the student's own trainer uses.
-    where: "lesson.py section 9 (checking your trainer against a real one)"
+    where: "lesson.py section 11 (checking your trainer against a real one)"
     source_url: https://huggingface.co/docs/tokenizers/en/api/pre-tokenizers
     source_title: "Pre-tokenizers — HuggingFace tokenizers documentation"
     quote: >-

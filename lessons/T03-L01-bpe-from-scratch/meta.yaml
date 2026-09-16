@@ -15,7 +15,7 @@ objectives:
   - "Demonstrate that the measured penalty is a property of the training corpus rather than of the algorithm, by retraining the identical code on a balanced corpus and re-measuring"
 datasets: []            # none: the training corpus and every sample sentence are original text embedded in lesson.py, so the lesson runs offline with nothing downloaded and no third-party licence to honour
 points: 37
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
-measured_seconds: 2.1
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "independent-review 2026-09-16: mutation-tested the rubric with 22 mutants (5 scored 100% and were fixed: in-place merge, stop rule at <=MIN_COUNT, strict decode, decode swallowing UnicodeDecodeError, token_tax iterating sorted(samples)); 22/22 caught after tightening; all 8 claims.yaml sources re-fetched and verified; claims.yaml where: fields and two lesson.py forward references realigned to the real section numbering; four gates re-run green"
+measured_seconds: 2.2
 measured_peak_mib: 24

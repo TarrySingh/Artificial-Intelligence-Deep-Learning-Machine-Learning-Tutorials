@@ -117,11 +117,12 @@ _m, _d = load_arm()
 _sid = mujoco.mj_name2id(_m, mujoco.mjtObj.mjOBJ_SITE, PALM_SITE)
 mujoco.mj_forward(_m, _d)
 print(f"palm at qpos=0                 : {_d.site_xpos[_sid]}")
+_before = np.array(_d.site_xpos[_sid])               # a COPY, so it survives the refresh below
 _d.qpos[:] = READY                                   # the write, with no refresh
 print(f"after writing a new qpos       : {_d.site_xpos[_sid]}   <- unchanged, and wrong")
 mujoco.mj_forward(_m, _d)                            # the refresh
 print(f"after mujoco.mj_forward        : {_d.site_xpos[_sid]}   <- now it means something")
-_moved = float(np.linalg.norm(_d.site_xpos[_sid] - np.array([0.0, -0.19, 0.745])))
+_moved = float(np.linalg.norm(_d.site_xpos[_sid] - _before))
 print(f"the write moved it by {_moved:.3f} m, none of which you could see until the stage ran")
 
 # %% [markdown]

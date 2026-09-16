@@ -111,11 +111,18 @@ def rows(text: str, tag: str) -> list:
 
 
 def make_test():
-    """Run `make test` — the C self-test. Returns (exit code, combined output)."""
-    proc = subprocess.run(
-        ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
-         f"SRC={C_SRC}", f"BIN={BIN}", "test"],
-        capture_output=True, text=True, timeout=600)
+    """Run the C self-test — what `make test` runs. Returns (exit code, combined output).
+
+    The binary is built with make and then invoked directly, so its OWN exit code survives:
+    make reports any failed recipe as 2, which would make a real failure (the binary's 1)
+    indistinguishable from an unfinished stub (the binary's 2). 0 = all three checks pass,
+    1 = at least one real failure, 2 = at least one exercise is still a stub.
+    """
+    ok, out = build(verbose=False)
+    if not ok:
+        return 1, out
+    proc = subprocess.run([str(LESSON_DIR / BIN), "selftest", "--model", MODEL_REL],
+                          cwd=LESSON_DIR, capture_output=True, text=True, timeout=600)
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
@@ -648,6 +655,13 @@ def report() -> None:
 #   undo that. Allocate once, step many times.
 # - **Quoting a speed-up you did not measure.** The ratio below is a property of this model,
 #   this machine and this loop.
+# - **A binary that outlived its library path — run `make clean`.** The linker bakes the
+#   ABSOLUTE path of `libmujoco` into `lesson_bin`. Move this checkout, rename a parent
+#   directory, or rebuild the virtualenv somewhere else, and the binary still asks the loader
+#   for the old path. macOS says `dyld: Library not loaded`; Linux says `error while loading
+#   shared libraries`. `make` will not rescue you: the binary is newer than `lesson.c`, so it
+#   looks up to date and make does nothing. The fix is `make clean`, then `make test`. This
+#   one is not hypothetical — it broke this lesson's own build the day the tree moved.
 
 # %%
 # The first mistake, made concrete — no C needed. This is the address confusion, in Python,
@@ -751,6 +765,12 @@ def _check_self_check(answers: dict = None) -> None:
         f"questions {wrong} are still wrong. Each one names the section that answers it "
         "above — go back to the measurement you ran there rather than guessing a letter.")
     print("self-check: all five right")
+
+
+# %%
+# Mark them. Edit SELF_CHECK above and re-run this cell until all five come back right.
+if _IS_MAIN:
+    _check_self_check()
 
 
 # %% [markdown]

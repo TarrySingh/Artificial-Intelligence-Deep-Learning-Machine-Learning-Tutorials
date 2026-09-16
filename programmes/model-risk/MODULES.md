@@ -1,0 +1,232 @@
+# Module map — Model risk, AI assurance and audit analytics
+
+Ten modules. **One is built. Nine are specified and not yet written.** Every row says which.
+
+A module is one lesson directory in the standard layout (`meta.yaml`, `lesson.py`,
+`solutions/`, `tests/`, `claims.yaml`), except the two compiled modules, which add a `Makefile`
+and a test binary. Every module is tier `cpu8` — 8 GiB, 2 vCPU, no GPU, no network, under ten
+minutes — and each row states the budget its `meta.yaml` will declare.
+
+| # | Module | Status | Language | Budget |
+|---|---|---|---|---|
+| 1 | A validation suite that would survive an audit | **BUILT** | python | 90 s |
+| 2 | The model inventory, and a tiering you can defend | specified | python | 90 s |
+| 3 | Conceptual soundness, reviewed mechanically | specified | python | 120 s |
+| 4 | Discrimination testing, and how sure you are of it | specified | python | 180 s |
+| 5 | Calibration and stability, at depth | specified | python | 180 s |
+| 6 | Reproducing the first line's number, exactly | specified | **C** | 120 s |
+| 7 | The challenger, built from scratch | specified | python | 240 s |
+| 8 | Explainability evidence that reproduces | specified | python | 240 s |
+| 9 | Monitoring a portfolio that does not fit in memory | specified | **C** | 180 s |
+| 10 | The validation report and the committee pack | specified | python | 120 s |
+
+---
+
+## Module 1 — A validation suite that would survive an audit
+
+**Status: BUILT.** `lessons/P04-L01-validation-suite/` · id `P04-L01-validation-suite` ·
+python · tier `cpu8` · budget 90 s · **measured under 1 s and under 40 MiB** · 110 rubric points ·
+prerequisite `T00-L01-the-8gb-track`.
+
+**The lab.** The student implements six functions in pure numpy against deterministic synthetic
+data generated in the notebook and declared synthetic in the notebook's output and in the
+report it produces:
+
+1. `reliability_table()` — equal-width bins over `[0, 1]`, empty bins kept and reported as
+   `nan` rather than as a rate, and a malformed extract rejected rather than silently binned.
+2. `expected_calibration_error()` — the support-weighted mean absolute gap over that table.
+3. `population_stability_index()` — against edges cut once on the baseline, floored on both
+   sides so a bin that empties out is the finding rather than an infinity, with per-bin
+   contributions that sum to the total.
+4. `subgroup_table()` — per-group calibration under a minimum-support rule that suppresses
+   metrics without deleting groups, and a signed gap so a finding has a direction.
+5. `challenger_decision()` — a written promotion rule with absolute gates evaluated before
+   improvement tests, inclusive boundaries, and a PASS/FAIL reason reported for every rule
+   whether it passed or not.
+6. `render_validation_report()` — the markdown validation report, generated from those results
+   and from nothing else.
+
+Then the notebook runs the suite end to end and prints the report. The closing demonstration
+scores a drifted population against edges re-cut on itself and shows it reading as perfectly
+stable, forever.
+
+**What it is graded on.** 32 rubric cases, 110 points, partial credit throughout. The rubric was
+mutation-tested against 32 plausible-wrong implementations — all 32 caught, scoring 84% to 98% —
+and against 4 controls, each a correct answer written a different way, all still scoring 100%.
+The full list is in the lesson's `meta.yaml`.
+
+---
+
+## Module 2 — The model inventory, and a tiering you can defend
+
+**Status: specified.** python · tier `cpu8` · budget 90 s · prerequisite: module 1.
+
+Inventory and risk classification is the *first* of the PRA's five SS1/23 principles, and the
+2026 interagency guidance is explicitly risk-based — tailored to a firm's model risk profile.
+Neither is possible without knowing what you have.
+
+**The lab.** The student implements: a model record schema with required fields and a validator
+that names every record that fails it; `tier(record, policy)` computing a risk tier from
+materiality, complexity, exposure and the reversibility of the decision, with the policy passed
+in and the boundary cases graded; a `reconcile(inventory, runtime_registry)` that produces three
+lists — in the inventory and running, in the inventory and not running, and running while
+absent from the inventory — because the third list is the one that ends careers; and a tier
+distribution report generated from the result. Synthetic inventory, generated in the notebook.
+
+---
+
+## Module 3 — Conceptual soundness, reviewed mechanically
+
+**Status: specified.** python · tier `cpu8` · budget 120 s.
+
+The interagency guidance pairs validating conceptual soundness with outcomes analysis. Module 1
+built the outcomes half. This is the other half, and the point of the lab is that much of what
+is usually done by reading can be done by running.
+
+**The lab.** Given a documented model specification (a dict of the documented formula, variable
+list, stated monotonic directions and stated domain) and an implementation, the student builds:
+a monotonicity prober that searches for a counterexample to each documented direction; a domain
+prober that finds inputs inside the stated domain on which the implementation raises or returns
+something impossible; a variable reconciliation between documented and used features; and a
+`soundness_findings()` that returns a severity-rated finding register. A deliberate discrepancy
+is planted between the documented specification and the implementation, and the student's own
+code has to find it.
+
+---
+
+## Module 4 — Discrimination testing, and how sure you are of it
+
+**Status: specified.** python · tier `cpu8` · budget 180 s.
+
+Module 1 hands the student `auc_by_ranks()`. This module makes them build it, and then makes
+the harder point: a metric without an interval is not a test.
+
+**The lab.** Implement AUC by the Mann-Whitney rank identity with correct average-rank tie
+handling; implement the KS statistic and Gini; implement a bootstrap confidence interval and a
+*paired* bootstrap for the difference between two models scored on the same records — which is
+not the same thing as two independent intervals, and the lab measures how often treating them as
+independent gives the wrong answer. Out-of-time holdout testing closes it: the same model scored
+on a later period, with the interval widened for the sample it actually had.
+
+---
+
+## Module 5 — Calibration and stability, at depth
+
+**Status: specified.** python · tier `cpu8` · budget 180 s.
+
+Module 1 fixes one binning scheme so the exercise is gradeable. Real binning choices move the
+answer, and a validator has to know by how much.
+
+**The lab.** Implement equal-frequency binning alongside equal-width, and measure how the ECE of
+one fixed model moves as the scheme and the bin count change — the student produces the
+sensitivity table rather than reading one. Implement a grouping-based goodness-of-fit statistic
+and its degrees of freedom. Implement a per-driver characteristic stability index so a
+population shift can be attributed to the input that moved, not just observed at the score.
+Close by bootstrapping the null distribution of PSI under no drift at all, so the student can
+see what their threshold's false-alarm rate actually is on their sample size.
+
+---
+
+## Module 6 — Reproducing the first line's number, exactly
+
+**Status: specified.** **C** · tier `cpu8` · budget 120 s. Build: `clang` and `make`, no cmake.
+
+Two teams compute the same portfolio aggregate and disagree in the sixth decimal place. This
+module is why, and it is in C because the point is floating-point precision and summation order,
+which a numpy one-liner hides.
+
+**The lab.** The student implements, in C: naive left-to-right summation, pairwise summation,
+and Kahan compensated summation over a generated array of millions of exposures spanning many
+orders of magnitude; then measures the error of each against an exact reference accumulated in
+higher precision. They then implement `reproduce()` — given two summation orders, decide whether
+a stated difference between two teams' figures is explained by floating-point accumulation or
+is a real discrepancy that needs a finding raised. Graded by a test binary.
+
+Per `QUALITY.md`, this module's common-mistakes section must tell the student to run
+`make clean` after moving or rebuilding their checkout, and `tools/execute.py` deletes compiled
+artefacts before gating it.
+
+---
+
+## Module 7 — The challenger, built from scratch
+
+**Status: specified.** python · tier `cpu8` · budget 240 s.
+
+Module 1 hands the student a challenger's scores. A benchmark model you did not build is not a
+benchmark; it is another vendor claim.
+
+**The lab.** Implement logistic regression by iteratively reweighted least squares in numpy —
+the design matrix, the weighted normal equations, the convergence test, and the separation case
+that makes coefficients run away. Implement a simple monotonic scorecard as a second, more
+conservative challenger. Then compare all three against the champion using module 4's paired
+bootstrap and module 1's decision rule, and write the comparison that survives the obvious
+question: *was the challenger given the same data, the same period and the same treatment of
+missing values?* The lab plants one asymmetry and grades whether the student's own code detects
+it.
+
+---
+
+## Module 8 — Explainability evidence that reproduces
+
+**Status: specified.** python · tier `cpu8` · budget 240 s.
+
+Explanation is an evidence artefact under the EU AI Act's high-risk regime, whose Annex III
+obligations apply from 2 December 2027 and which covers creditworthiness assessment of natural
+persons. An explanation that cannot be regenerated is not evidence.
+
+**The lab.** Implement permutation importance with a repeat count and a reported spread — and
+demonstrate, by building two correlated features, why it attributes almost nothing to either.
+Implement one-dimensional and two-dimensional partial dependence. Implement a local additive
+attribution by exact enumeration over a small feature set, so the student sees the exponential
+cost and understands what sampling-based tools are approximating. Close with a
+`reproducibility_check()` that regenerates the whole explanation pack from the seed and asserts
+byte equality — and the lab plants one source of non-determinism for the student's check to find.
+
+---
+
+## Module 9 — Monitoring a portfolio that does not fit in memory
+
+**Status: specified.** **C** · tier `cpu8` · budget 180 s. Build: `clang` and `make`.
+
+The monthly monitoring run does not get a bigger machine. This module is in C because the point
+is bounded memory and a single pass, and because the tier gate from `T00-L01` is what proves it.
+
+**The lab.** The student implements, in C, a single-pass streaming monitor over a generated score
+file far larger than the buffer it is allowed: fixed-bin counting against baseline edges loaded
+from a file, a running PSI, a reservoir sample for the tail, and a breach flag with its
+triggering bin. The exercise is graded on producing the same PSI as an in-memory reference to
+within tolerance *while* holding peak RSS under a declared ceiling that the harness measures —
+so a student who quietly reads the whole file fails the gate rather than the assertion.
+`make clean` guidance as in module 6.
+
+---
+
+## Module 10 — The validation report and the committee pack
+
+**Status: specified.** python · tier `cpu8` · budget 120 s.
+
+Module 1 generates a report. This module generates the document a committee actually receives,
+and then makes it prove itself.
+
+**The lab.** Extend the generator with a findings register carrying severity, owner, due date and
+status; a remediation tracker that ages open findings and escalates the overdue ones; an
+executive summary assembled from the findings rather than written above them; and a limitations
+section built from the things the suite could not measure — the suppressed subgroups, the bins
+with no observations, the intervals that were too wide to conclude anything. The graded
+centrepiece is `trace_gate(report, findings)`: every figure appearing in the document must be
+traceable to a computed result, and the gate fails the document if one is not. The lab hands the
+student a report with one hand-typed number in it.
+
+---
+
+## What is deliberately not here
+
+- **No policy templates, no committee terms of reference, no maturity model.** Those are useful
+  and they are not analytics; a lesson about them would be a lesson a student reads.
+- **No module on generative or agentic AI model risk.** The 2026 interagency guidance places
+  those outside its own scope, and this programme is not going to invent a settled practice that
+  does not exist yet and teach it as though it does. When there is something to build and a
+  source to cite, it becomes module 11.
+- **No third-party or vendor model module yet.** The guidance does address vendor products, and
+  this is a real gap in the map rather than a deliberate exclusion. It is the most likely
+  addition.

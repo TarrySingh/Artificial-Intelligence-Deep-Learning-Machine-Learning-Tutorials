@@ -1,0 +1,206 @@
+# P03 · Module map
+
+Nine modules. **One is built.** The other eight are specifications for later waves: they have
+a title, a lab, a tier and a stated dependency, and they have no code. Nothing in this file
+describes a notebook that exists unless it says BUILT.
+
+| # | status | id | module |
+|---|---|---|---|
+| 1 | **BUILT** | `P03-L01-alarm-economics` | Alarm economics — why the best model is not the best threshold |
+| 2 | specified | `P03-L02-sensor-physics` | Sensor physics and signal conditioning |
+| 3 | specified | `P03-L03-vibration-features` | Feature engineering for vibration and temperature |
+| 4 | specified | `P03-L04-labelling-run-to-failure` | Labelling run-to-failure data |
+| 5 | specified | `P03-L05-remaining-useful-life` | Remaining useful life, and its error bars |
+| 6 | specified | `P03-L06-thresholds-from-distributions` | Threshold setting from an RUL distribution |
+| 7 | specified | `P03-L07-ot-network-deployment` | Deployment on an OT network |
+| 8 | specified | `P03-L08-drift-and-the-alarm-audit` | Drift, retraining, and the alarm audit |
+| 9 | specified | `P03-L09-capstone` | Capstone: a monitoring programme for one asset class |
+
+Every module is tier **`cpu8`** — at most 8 GiB, no GPU, under ten minutes, and in practice
+far less. That is a constraint on the design, not a warning to the student: a module that will
+not fit gets rewritten, per gate 10 of [`QUALITY.md`](../../QUALITY.md).
+
+---
+
+## 1. Alarm economics — why the best model is not the best threshold — **BUILT**
+
+`lessons/P03-L01-alarm-economics` · tier `cpu8`, budget 90 s, **measured 0.7 s / 191 MiB** ·
+Python · prerequisite `T00-L01-the-8gb-track`
+
+**The lab.** You generate a deterministic synthetic fleet — 300 machines, 360 hourly vibration
+bursts each, 18 of them running to failure — from a generator you read first. Then, in eleven
+graded stubs, you build:
+
+- `burst_rms`, `causal_rolling_median` and `health_index`: a degradation feature that is
+  robust to impulsive shocks, comparable across machines of different sizes, and causal, with
+  the rubric proving causality by changing the tail of the input and re-reading the head;
+- `alarm_times` and `classify_outcomes`: the decision rule, including the lead-time
+  requirement that makes a late alarm a missed failure rather than a hit;
+- `sweep_thresholds`, `roc_points`, `pr_points`: the sweep and the two curves everybody draws,
+  and the AUC you compute from your own points;
+- `expected_cost`, `accuracy`, `best_operating_point`: the price of every cell of the
+  confusion matrix, and the two operating points the same counts support.
+
+**What it demonstrates.** On this fleet the cost-optimal threshold is 1.50 and the
+accuracy-optimal one is 2.80. The second scores 4.3 accuracy points higher, accepts seven more
+unplanned failures, and costs 2.71x as much — from one detector with an ROC AUC of 0.947.
+Re-pricing the same counts under a safety-critical and a low-consequence cost model moves the
+threshold to 1.15 and 2.80 without touching a line of the detector. The lesson ends by
+printing a handover note that carries the threshold and the three prices together, because
+one without the other is a number with no meaning.
+
+**Why it is module 1.** The programme opens at the end of the pipeline on purpose. A student
+who has priced a confusion matrix reads every later module differently: a feature is not
+"better", it moves an operating point; a model is not "accurate", it is cheap or expensive.
+
+---
+
+## 2. Sensor physics and signal conditioning — *specified*
+
+`lessons/P03-L02-sensor-physics` · tier `cpu8` · Python + one C exercise · depends on module 1
+
+**The lab.** Build the measurement chain in numpy and watch it lie to you. Synthesise a known
+vibration signal; sample it below Nyquist and identify the alias by frequency rather than by
+eye; add an anti-alias filter and measure what it costs in phase; integrate acceleration to
+velocity and watch the DC offset ramp away until you high-pass it; apply a window and measure
+the difference between the amplitude you put in and the amplitude a periodogram reports. The
+C exercise implements a fixed-point IIR high-pass of the kind that runs on the sensor itself
+and measures the error against the float64 reference, because on a real edge device that
+difference is the signal conditioning.
+
+**Why it matters.** Every feature in module 3 is computed on the output of this chain. A
+student who has aliased a bearing defect frequency into the noise floor once will never again
+accept a sampling rate as a given.
+
+**Data.** Synthetic, generated in the lesson, declared in `meta.yaml`.
+
+---
+
+## 3. Feature engineering for vibration and temperature — *specified*
+
+`lessons/P03-L03-vibration-features` · tier `cpu8` · Python · depends on modules 1 and 2
+
+**The lab.** Implement the standard condition indicators on a synthetic gearbox and bearing:
+RMS, crest factor, kurtosis, band energy around shaft orders, and the envelope spectrum that
+makes a bearing defect frequency visible when the raw spectrum does not. Then order-track a
+run-up so the features survive a speed that is not constant. The temperature half is the part
+usually skipped: a bearing temperature is a function of load and ambient before it is a
+function of health, so you fit and remove that dependence and show that the residual detects a
+fault the raw temperature does not.
+
+Each feature is scored with module 1's cost function rather than with an accuracy — the
+deliverable is a ranking of features by the money they save at their own best threshold.
+
+**Data.** Synthetic, plus a real vibration corpus to be selected with a verified licence and
+direct URL before the module is built. No module ships with an unnamed dataset.
+
+---
+
+## 4. Labelling run-to-failure data — *specified*
+
+`lessons/P03-L04-labelling-run-to-failure` · tier `cpu8` · Python · depends on module 3
+
+**The lab.** The least glamorous module and the one that decides everything downstream. From a
+maintenance work-order log — free text, inconsistent dates, jobs closed weeks after the work —
+derive failure times, and measure how much three defensible labelling policies disagree.
+Separate a failure from a suspension (a unit removed for an unrelated reason, which is
+censored data and not a negative example), implement right-censoring properly, and then re-run
+module 1's threshold sweep under each labelling policy to see the cost-optimal threshold move
+because of a bookkeeping decision.
+
+**Why it matters.** A student who has watched the optimum move under a relabelling will ask to
+see the work-order log before they ask to see the sensor data.
+
+**Data.** Synthetic work-order log with an injected disagreement structure, generated in the
+lesson.
+
+---
+
+## 5. Remaining useful life, and its error bars — *specified*
+
+`lessons/P03-L05-remaining-useful-life` · tier `cpu8` · Python · depends on module 4
+
+**The lab.** Fit a degradation model to run-to-failure trajectories and produce an RUL
+*distribution*, not a point: an exponential degradation fit with parameter uncertainty,
+updated as evidence arrives, giving a predictive interval that narrows towards failure.
+Evaluate it with prognostic metrics that respect asymmetry — a late RUL estimate is not the
+same error as an early one — and plot the alpha-lambda accuracy cone. Then show that the
+common RMSE-on-RUL benchmark rewards a model that is dangerously late.
+
+**Data.** NASA's Prognostics Center of Excellence Prognostics Data Repository, Turbofan Engine
+Degradation Simulation (C-MAPSS) sets, which the repository describes as simulated "under
+different combinations of operational conditions and fault modes" and offers with the note
+that "users employ the data at their own risk". Sourced in [`claims.yaml`](claims.yaml); the
+exact licence line and direct download URL are recorded in the module's own `meta.yaml` before
+it ships.
+
+---
+
+## 6. Threshold setting from an RUL distribution — *specified*
+
+`lessons/P03-L06-thresholds-from-distributions` · tier `cpu8` · Python · depends on modules 1 and 5
+
+**The lab.** Module 1 asked the economic question of a point estimate. Ask it of a
+distribution. Implement the expected cost of intervening at time *t* given a predictive RUL
+distribution and a maintenance calendar with real slots in it, and find the optimal
+intervention time rather than the optimal threshold. Show that the answer is not the mean RUL,
+and that it moves with the width of the distribution as well as its centre — a confident wrong
+answer and an uncertain right one are priced differently. Then handle the constraint that makes
+this an operations problem rather than a statistics one: the workshop has finite capacity, and
+two machines cannot both be pulled on Thursday.
+
+**Data.** Carried forward from module 5.
+
+---
+
+## 7. Deployment on an OT network — *specified*
+
+`lessons/P03-L07-ot-network-deployment` · tier `cpu8` · Python + C · depends on module 6
+
+**The lab.** Build the model to fit the network it has to live on. Implement the inference path
+twice — once in Python and once in C against a fixed memory budget with no heap allocation
+after start-up — and measure the agreement between them on the same inputs, because the
+disagreement *is* the deployment risk. Implement a store-and-forward buffer that survives a
+link outage without losing or duplicating a reading, and quantify what a one-way data diode
+costs you: no feedback path means no online labels, which means module 8's drift detection has
+to work unsupervised. Parse a stored protocol trace rather than talking to a live bus; nothing
+in this module opens a socket.
+
+**Why it matters.** The reason models die in industry is rarely accuracy. It is that the plant
+network will not carry them, and the person who says so is right.
+
+**Data.** Synthetic protocol trace and synthetic outage log, generated in the lesson.
+
+---
+
+## 8. Drift, retraining, and the alarm audit — *specified*
+
+`lessons/P03-L08-drift-and-the-alarm-audit` · tier `cpu8` · Python · depends on module 7
+
+**The lab.** Three kinds of drift, distinguished by their fix. A sensor recalibration shifts
+the feature and not the machine: detect it and re-baseline. A change of duty point shifts the
+operating regime: condition on it. Genuine fleet ageing shifts the base rate: re-price, since
+the base rate is an input to module 1's cost function. Implement unsupervised drift detection
+on the feature distribution, then the audit that closes the loop — every alarm raised, what
+was found, and the running estimate of the three prices, so that the threshold is re-derived
+from the plant's own history rather than from the numbers someone guessed at kick-off.
+
+**Data.** Synthetic fleet with injected recalibration, regime change and ageing, generated in
+the lesson.
+
+---
+
+## 9. Capstone: a monitoring programme for one asset class — *specified*
+
+`lessons/P03-L09-capstone` · tier `cpu8` · Python · depends on all of the above
+
+**The deliverable.** Not a model. A monitoring programme for one asset class, submitted as a
+runnable notebook plus a one-page specification, and graded on both: the feature and why it is
+causal; the labelling policy and what it censors; the alarm rule with its lead time; the three
+prices and where they came from; the chosen operating point with the failures it deliberately
+gives up named; the deployment constraint it respects; and the re-derivation trigger. An
+autograded rubric checks the runnable half; the specification is checked against a structured
+checklist the student can run themselves before submitting.
+
+**The pass condition** is the one the programme has argued for throughout: a threshold
+defended in currency, with the failures it accepts named out loud.

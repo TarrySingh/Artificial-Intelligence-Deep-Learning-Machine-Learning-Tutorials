@@ -165,7 +165,7 @@ if __name__ == "__main__":
         _b = len(_s.encode("utf-8"))
         print(f"{_name:22} {len(_s):6d} {_b:12d} {_b / len(_s):11.2f}")
     print("\nThat last column is the encoding alone: no vocabulary, no training data, no")
-    print("model. It is the floor, and by section 9 you will have measured who sits on it.")
+    print("model. It is the floor, and by section 10 you will have measured who sits on it.")
 
 # %% [markdown]
 # ## 3. Why start from bytes: the unknown token, and what replaces it
@@ -207,7 +207,7 @@ if __name__ == "__main__":
     print("the same text through a byte-level vocabulary:")
     print(f"  recovered        {_demo['byte_level_recovered']!r}")
     print(f"  cost             {_demo['byte_level_tokens']} tokens, and nothing is lost")
-    print("\nExpensive is not the same as wrong — but by section 9 you will have measured")
+    print("\nExpensive is not the same as wrong — but by section 10 you will have measured")
     print("how expensive, and for whom.")
 
 # %% [markdown]

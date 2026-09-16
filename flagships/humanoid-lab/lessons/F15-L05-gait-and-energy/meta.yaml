@@ -41,7 +41,7 @@ datasets:
     notes: >-
       Free, ungated, commercial use permitted, no registration. The only third-party dependency
       on the lesson's required path besides numpy.
-points: 35
+points: 44
 # Authored 2026-09-16. Design notes, because two of these decisions are the lesson:
 #
 # The baseline gait WALKS rather than falls. An earlier draft used a falling baseline, which
@@ -57,6 +57,22 @@ points: 35
 # better the baseline by 1.5x against a measured 3.03x on the authoring machine, so a student
 # whose hardware finds a different local optimum still scores full marks.
 #
+# Independent review 2026-09-16 (mutation test, 24 broken copies of the reference solution;
+# 20 caught, 4 rubric defects, 2 equivalent mutants — details in tests/test_lesson.py's module
+# docstring). The margin test turned out NOT to catch the mistake its own hint named: a search
+# that always varies `start` instead of the incumbent still reached 2.04x against the 1.5x
+# threshold. Rather than tighten a hardware-dependent number, the descent is now also graded on
+# a synthetic deterministic landscape where the incumbent must move, and the rollout cap is
+# graded by counting rollouts rather than by trusting the count the search reports. The
+# `leg_phase` and `horizon` arguments were ungraded entirely, which left objective 4 resting on
+# nothing; three tests now cover them. Rubric grew 35 -> 44 points.
+#
+# Also changed in review: each `_check_*` now runs at the foot of its own section in both
+# lesson.py and the reference, instead of every check firing from one cell at the very end. A
+# student filling in exercise 1 gets a verdict on exercise 1 there and then, which is gate 5's
+# actual intent. Section 7 now prints the score returned by section 6's search rather than
+# running a second one off-screen, so the lesson is 47 rollouts cheaper as well.
+#
 # The energy metric is deliberately NOT the literature's c_mt. This lesson integrates
 # |tau * omega|, charging for braking as well as driving; Collins et al. count only positive
 # actuator work. The comparison table in section 7 prints that caveat rather than implying the
@@ -66,7 +82,7 @@ points: 35
 # Budget: the whole lesson is roughly 200 rollouts at about 5 ms each. The rollout cap
 # (MAX_ROLLOUTS = 120) is enforced in the graded function and is itself a rubric line, so a
 # student who writes an unbounded search fails a test rather than a deadline.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
-measured_seconds: 1.4
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-16: 24-mutant rubric mutation test (22 caught, 2 equivalent), 4 rubric defects found and closed (leg_phase ungraded, horizon ungraded, incumbent-not-carried, self-reported rollout count), claims.yaml sources re-fetched and quotes verified against Collins et al. 2005 and mjdata.h at tag 3.13.0, prerequisites F15-L01/F15-L03 confirmed to resolve, per-section instant feedback restored; all four gates green at 44/44."
+measured_seconds: 1.1
 measured_peak_mib: 51

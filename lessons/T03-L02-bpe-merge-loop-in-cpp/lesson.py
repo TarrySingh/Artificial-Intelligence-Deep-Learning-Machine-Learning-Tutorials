@@ -424,6 +424,15 @@ def _check_apply_merge() -> None:
     assert cpp_apply_merge([5, 1, 2], 1, 2, 300) == [5, 300], (
         "symbols before a match must be copied through, in order."
     )
+    # The other half of the contract: the LENGTH your function returns. It is easy to rewrite
+    # the sequence perfectly and still hand back the wrong number.
+    reported = run_cpp(["merge", "--seq", "7,7,7,7,7", "--a", "7", "--b", "7", "--new-id", "300"])
+    assert reported["length"] == len(reported["seq"]), (
+        f"apply_merge rewrote [7,7,7,7,7] to {reported['seq']} — which is right — but returned "
+        f"a length of {reported['length']} instead of {len(reported['seq'])}. Return the WRITE "
+        "cursor. The read cursor, and seq.size() taken before the resize(), are both the "
+        "length you started with."
+    )
     seq = corpus_symbols(limit=20_000)
     a, b, _ = best_pair_py(count_pairs_py(seq))
     mine = cpp_apply_merge(seq, a, b, 999)
@@ -464,6 +473,18 @@ def _check_train() -> None:
     assert cpp["final_symbols"] == ref["final_symbols"], (
         f"identical merges but different final lengths ({cpp['final_symbols']} against "
         f"{ref['final_symbols']}) — train is recording merges it never applies."
+    )
+    # The boundary of the stop rule, which a corpus this size never exercises: every pair in
+    # "ab ab cd cd" occurs exactly MIN_COUNT times, so both merges are worth making.
+    _edge_path = LESSON_ROOT / "build" / f"stoprule_{CPP_BIN.name}.txt"
+    _edge_path.parent.mkdir(parents=True, exist_ok=True)
+    _edge_path.write_bytes(b"ab ab cd cd")
+    edge = cpp_train(_edge_path, 5)["merges"]
+    assert edge == [(97, 98, 257, 2), (99, 100, 258, 2)], (
+        f"in 'ab ab cd cd' every pair occurs exactly MIN_COUNT ({MIN_COUNT}) times, so both "
+        f"merges should be made; got {edge}. An empty list means your stop rule is "
+        "`count <= kMinCount` where the spec says `count < kMinCount` — a pair seen exactly "
+        "kMinCount times still buys compression."
     )
     print(f"exercise 4 looks right: {len(cpp['merges'])} merges identical to Python, "
           f"{cpp['symbols']} symbols down to {cpp['final_symbols']}")
@@ -622,6 +643,19 @@ if __name__ == "__main__":
 #   harness. The binary times the loop and nothing else; match that in anything you report.
 # - **Benchmarking a `-O0` build.** Unoptimised C++ can lose to Python outright. The Makefile
 #   uses `-O2`; if you compile by hand, match it.
+# - **Wrapping a function body in `catch (...)` and returning a default.** An empty merge list
+#   is a plausible-looking answer, so the grader reports a wrong answer where it would have
+#   reported "not written yet" — and the `NOT_IMPLEMENTED` signal the notebook relies on to
+#   tell those two apart never reaches it. Let the exception out.
+# - **A binary left over from before you moved or rebuilt your checkout.** `make` decides what
+#   is stale by comparing timestamps, and a binary built yesterday in the old location is still
+#   newer than its source — so `make` reports "up to date" and hands you the old executable.
+#   On the compiled lessons that link a shared library (`libmujoco`, in the humanoid track) the
+#   symptom is louder, because the linker bakes the library's ABSOLUTE path into the binary:
+#   move the checkout, or rebuild the virtualenv somewhere else, and the binary dies at startup
+#   with `dyld: Library not loaded`, naming a path that no longer exists. Rebuilding does not
+#   help; `make` still thinks there is nothing to do. **The fix is `make clean`**, then build
+#   again — run it as a reflex after moving the checkout or rebuilding the environment.
 
 # %%
 def apply_merge_advancing_by_one(seq: list, a: int, b: int, new_id: int) -> list:

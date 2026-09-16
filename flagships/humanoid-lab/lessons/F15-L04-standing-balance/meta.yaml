@@ -46,7 +46,7 @@ datasets:
       lesson quotes for xfrc_applied, subtree_com, subtree_linvel and mjContact were read from
       the vendored header include/mujoco/mjdata.h inside the installed package; see
       claims.yaml.
-points: 36
+points: 42
 # Authored 2026-09-16. Four claims were DROPPED during authoring because measurement refuted
 # them. They are recorded here because a later reader will be tempted by each one again:
 #
@@ -84,7 +84,58 @@ points: 36
 # clear of the controller's measured limit, which lies between 110 and 115 N: the last
 # surviving rung is 100 N and the first failing rung is 130 N, so a shift of more than 10% in
 # anyone's machine would be needed to flip a grade.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
+#
+# REVIEW 2026-09-16 (independent). The rubric was mutation-tested: 36 broken copies of the
+# reference solution were graded, each carrying one mistake a real student makes. 16 scored
+# 100% and every one of them was in exercise 4 (14) or exercise 2 (2). All 36 are caught now:
+#
+#  - Exercise 4 (rollout) was graded on `survived` and `steps` alone. The other three keys
+#    were checked only by inequalities loose enough to admit a peak_tilt that was really a
+#    mean, a final value, or a max that had lost its abs(); a min_margin that was really the
+#    last margin; a margin_at_push_end read at the START of the push window; a push window one
+#    step long or one step late; a horizon one step short; a fall noticed a step late; a
+#    mutable default argument pooling margins across every call; and a try/except that turned
+#    a crashed episode into a survival. This mattered more than the count suggests: sections
+#    10-12 draw their conclusions from exactly those three numbers, and the authoring notes
+#    above record a claim already lost once to a tilt read at the wrong moment.
+#    Fixed by pinning WHEN each number is taken — a push window instrumented through the
+#    controller, peak_tilt checked against the controller's own view of the episode, a
+#    margin_at_push_end that has to move with the push, a step count that has to equal the
+#    number of controller calls, and a full independent replay of the documented episode
+#    (test_rollout_reproduces_the_documented_episode) that compares all five keys bit for bit.
+#  - Exercise 2 (support_margin) used none but axis-aligned polygons, and every expected
+#    value in the rubric was clean to two decimal places. A "margin" that was really an
+#    axis-aligned bounding box, doing no geometry at all, scored 100%; so did one that rounded
+#    its answer to 2 dp. Fixed with a right triangle whose nearest edge is the sloping one and
+#    whose answer is 0.2/sqrt(2).
+#
+# Rubric 36 -> 42 points: two new entries on exercise 4, which is the measurement instrument
+# the last three sections depend on and which held 14 of the 16 survivors.
+#
+# One deliberate piece of looseness, recorded so nobody "tightens" it later: the instrumented
+# push-window check counts the pushed steps and requires them contiguous, but does NOT require
+# the first one to be step PUSH_START_STEP. Setting xfrc_applied after calling the controller
+# instead of before shifts that index by one and is physically identical — both happen before
+# mj_step — so pinning the index would fail correct work. The window's true position is pinned
+# instead by the replay oracle, which compares trajectories rather than index conventions, and
+# which does catch a window genuinely shifted a step late.
+#
+# Also corrected in review: assets/SOURCE.md claimed the notebook "compares the ratio of the
+# forward and backward pushes against the ratio of the two margins" and that "they agree". The
+# notebook computes no such ratio, and the three controllers' ratios (2.5, 2.0, 1.5 on a
+# 20 N ladder) straddle the margin ratio of 1.89 rather than reproducing it. Rewritten to the
+# result the lesson actually measures. The same file stated the foot "will accept about 16"
+# N*m, which is the weight-times-margin prediction; the measured ceiling is 13 N*m heelward,
+# and the lesson itself explains why the prediction runs high. Rewritten.
+#
+# Checked and found sound: all 12 claims/sources in claims.yaml resolve and support what is
+# claimed of them (the Tedrake CoP-in-convex-hull sentence, the MuJoCo xfrc_applied, ctrlrange,
+# mj_subtreeVel and mj_contactForce quotes, the Wensing et al. title and authors), and every
+# mjdata.h line number quoted is exactly right in the installed MuJoCo 3.13.0. Both
+# prerequisites resolve to real lessons. Objectives are all measurable verbs. No prose block
+# runs over 28 lines before the next runnable cell (gate 3 allows ~40). No stub is a blank.
+# No student-facing prose points at solutions/.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-16: rubric mutation-tested with 36 mutants (16 initially uncaught, all 36 now caught); 2 rubric entries added, 3 strengthened; 2 false claims in assets/SOURCE.md corrected"
 measured_seconds: 1.1
 measured_peak_mib: 52

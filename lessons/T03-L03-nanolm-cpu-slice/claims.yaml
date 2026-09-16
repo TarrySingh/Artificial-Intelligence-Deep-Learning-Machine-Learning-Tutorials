@@ -97,6 +97,29 @@ claims:
       San Diego, 2015". The submission date on that record is 22 Dec 2014, consistent with
       "December 2014" above. The beta1/beta2/epsilon defaults remain deliberately unclaimed.
 
+  - id: mlp-parameter-share
+    claim: >-
+      In a standard transformer block the position-wise feed-forward sub-layer holds roughly
+      two thirds of the block's parameters. "Attention Is All You Need" sizes its base model
+      with d_model = 512 and inner feed-forward dimensionality d_ff = 2048, so the two
+      feed-forward matrices carry 2 * d_model * d_ff = 2,097,152 weights against the four
+      attention projections' 4 * d_model^2 = 1,048,576 — exactly a 2:1 split, hence two
+      thirds of 3,145,728. The word "roughly" is doing real work: the share moves with the
+      d_ff/d_model ratio an implementation chooses, and biases and norms are excluded.
+    where: "lesson.py section 17, the 'The MLP sub-layer' bullet."
+    source_url: https://arxiv.org/abs/1706.03762
+    source_title: "Vaswani et al., Attention Is All You Need (arXiv:1706.03762), section 3.3 and Table 3"
+    source_kind: primary (the paper itself)
+    quote: "d_model = 512, d_ff = 2048"
+    accessed: 2026-09-16
+    corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
+    corroborating_note: >-
+      Added at independent review on 2026-09-16. The bullet was previously the one sentence of
+      prose in this lesson making a quantitative statement about models other than the one the
+      student builds, and it carried no source. The arithmetic above is stated here rather than
+      printed by the notebook because it describes an architecture this lesson does not build,
+      so there is no cell that could compute it honestly.
+
 # --- reviewer verification, 2026-09-16 -----------------------------------------------------
 # Every claim above was re-checked against its primary source at review, independently of the
 # author's fetches:
@@ -124,3 +147,47 @@ claims:
 # Section 5 now measures a sweep of sentinels instead (-1e9 and -1e3 leak exactly 0; -100
 # leaks 4.33e-44; -50 leaks 2.24e-22; -30 leaks 1.09e-13), so the real cliff is shown rather
 # than asserted, and every figure in that passage is computed by the cell the student runs.
+
+# --- second independent review, 2026-09-16 -------------------------------------------------
+# Sources re-fetched at this review, independently again: gutenberg.org/ebooks/1041 returns
+# "Shakespeare's Sonnets", "Shakespeare, William, 1564-1616", eBook 1041, released Sep 1 1997,
+# copyright status "Public domain in the USA." — quote exact. arxiv.org/abs/1706.03762 returns
+# the title, the eight authors in the stated order and a 12 June 2017 v1 date; the rendered
+# full text gives section 3.2.1's and section 3.2.3's sentences verbatim as quoted, and
+# section 3.3 / Table 3 give d_model = 512 and d_ff = 2048, which is the new
+# mlp-parameter-share claim above. All four pre-existing claims VERIFIED and unchanged.
+#
+# The rubric in tests/test_lesson.py was mutation-tested against 32 broken implementations of
+# the reference solution. Four of them scored a full 40/40 and were rubric defects; each is
+# now caught:
+#   1. cross_entropy written as -log(softmax(logits)[target]). Every stability case in the
+#      rubric shifted all logits together, and softmax is shift-stable, so nothing failed.
+#      The real failure is a confidently WRONG prediction, where the target's probability
+#      underflows to 0.0 and log(0) is -inf. test_cross_entropy_survives_huge_logits now
+#      scores logits [0, 1000] against target 0 and requires a finite 1000.0 nats.
+#   2. attention_forward caching Q under "K" and K under "Q". Q @ K^T is symmetric in which
+#      is which, so the forward pass was bit-perfect; and the backward tests deliberately
+#      build their own canonical cache, so nothing read the student's labels at all. A
+#      student scored 40/40 with a model whose every query/key gradient was wrong.
+#   3. attention_forward caching "mask": None. The contract test checked only that the key
+#      was present. Exercise 5 indexes that mask, so the student's own backward pass would
+#      raise. test_attention_cache_contract now verifies the CONTENTS of X, Wq, Wk, Wv, Q, K,
+#      V and mask, not just their presence and shapes.
+#   4. make_batch with an upper bound of len(data) - context_len - 1 whose ValueError is
+#      swallowed by a try/except returning a default. The off-by-one bound was previously
+#      caught only because it CRASHED on the deliberately tight 20-character corpus; catching
+#      the exception restored a silently wrong answer at full marks. The rubric now measures
+#      reach positively: over 240 draws from a 12-character corpus at context_len 10 the
+#      start positions seen must be exactly {0, 1}, so a bound one short is caught by the
+#      window it never draws rather than by an exception it may not raise.
+# The reference solution still scores 40/40 after all four fixes.
+#
+# Two mutants survive and are EQUIVALENT, not defects — both were measured, not argued:
+#   * masking with a -1e9 sentinel instead of -np.inf. max|A(-inf) - A(-1e9)| = 0.000e+00 in
+#     float64, exactly as the note above records. The lesson teaches this explicitly in
+#     section 5 and in common mistake 3, so the rubric accepting it is correct behaviour.
+#   * dropping the np.where(mask, d_scores, 0.0) line from attention_backward. A is exactly
+#     0.0 at masked positions, so d_scores = A * (dA - (dA*A).sum(-1)) is already 0 there;
+#     max|masked - unmasked| = 0.000e+00. The line is defensive, not load-bearing.
+# The remaining 26 mutants were caught, scoring 21/40 to 38/40 — partial credit throughout,
+# and in every case the failing check's message named the actual mistake.

@@ -1,0 +1,126 @@
+# Every factual claim this programme's README.md and MODULES.md make about the world, with a
+# primary source and the date the source was read. Each source below was fetched and read on
+# the access date; none of these entries rests on a search-result summary.
+#
+# Per-lesson claims live in the lesson's own claims.yaml. Numbers a student sees in notebook
+# output are computed by code they run and are not claims.
+claims:
+  - id: interagency-mrm-guidance-2026-fed
+    claim: >-
+      On 17 April 2026 the Federal Reserve Board issued SR 26-2, "Revised Guidance on Model
+      Risk Management", jointly with the OCC and the FDIC. It supersedes SR 11-7 of 4 April
+      2011 and SR 21-8 of 9 April 2021, and the Federal Reserve states it is expected to be
+      most relevant to banking organizations with over 30 billion US dollars in total assets
+      that it regulates. This is the regulatory event that makes the programme current: the
+      foundational US model risk document changed in 2026, for the first time since 2011.
+    where: "README.md — 'Why this programme, and why now'"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "SR 26-2: Revised Guidance on Model Risk Management — Board of Governors of the Federal Reserve System, 17 April 2026"
+    quote: >-
+      clarify model risk management principles and to emphasize a risk-based approach to model
+      risk management that is tailored to a banking organization's model risk profile and the
+      size and complexity of its operations
+    quote_context: "the agencies' stated reason for updating the guidance"
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026-occ
+    claim: >-
+      The OCC carries the same 17 April 2026 interagency guidance as Bulletin 2026-13, "Model
+      Risk Management: Revised Guidance". It applies to national banks, federal savings
+      associations, and federal branches and agencies; it rescinds OCC Bulletin 2011-12 (Sound
+      Practices for Model Risk Management), OCC Bulletin 1997-24 (Credit Scoring Models), OCC
+      Bulletin 2021-19 (BSA/AML model risk management) and the Model Risk Management booklet of
+      the Comptroller's Handbook. It names model validation and monitoring — including
+      validating conceptual soundness and outcomes analyses — among the practices it covers,
+      which is the spine of this programme's module map. It also places generative and agentic
+      AI models outside its own scope, which is why this programme treats those under the
+      AI-assurance modules rather than pretending the banking guidance already covers them.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 2 and module 3 rationale"
+    source_url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    source_title: "OCC Bulletin 2026-13, Model Risk Management: Revised Guidance, 17 April 2026"
+    quote: >-
+      Generative AI and agentic AI models are novel and rapidly evolving. As such, they are not
+      within the scope of this guidance.
+    quote_context: >-
+      The bulletin separately describes the guidance as covering "model validation and
+      monitoring, including validating conceptual soundness and outcomes analyses", and states
+      that it "does not set forth enforceable standards or prescriptive requirements".
+    accessed: 2026-09-16
+
+  - id: pra-ss1-23-five-principles
+    claim: >-
+      The UK Prudential Regulation Authority's supervisory statement SS1/23, "Model risk
+      management principles for banks", was published on 17 May 2023 and took effect on
+      17 May 2024. It sets out five principles: model identification and model risk
+      classification; governance; model development, implementation and use; independent model
+      validation; and model risk mitigants. Model identification and risk classification is the
+      first of them, which is why this programme's second module is inventory and tiering
+      rather than metrics.
+    where: "README.md — 'Who signs, and where'; MODULES.md — module 2"
+    source_url: https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss
+    source_title: "SS1/23 – Model risk management principles for banks, Bank of England / Prudential Regulation Authority"
+    quote: "Model identification and model risk classification"
+    quote_context: "the first of the statement's five principles; the fourth is 'Independent model validation'"
+    accessed: 2026-09-16
+
+  - id: eu-ai-act-high-risk-timeline
+    claim: >-
+      The EU AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026,
+      with exceptions. Following the AI Omnibus, the obligations for high-risk use cases in the
+      sensitive areas of Annex III apply from 2 December 2027, and those for high-risk AI
+      systems embedded in regulated products under Annex I from 2 August 2028. Credit scoring
+      and creditworthiness assessment of natural persons sit in Annex III, so a bank's credit
+      models face both a prudential model-risk regime and a product-safety-style AI regime, on
+      different clocks. That is the second reason this programme exists.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 8 rationale"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — Shaping Europe's digital future, European Commission"
+    quote: >-
+      the rules for high-risk use cases in certain sensitive areas (Annex III) have been
+      extended to 2 December 2027
+    quote_context: >-
+      The same page states the Act "entered into force on 1 August 2024 and became applicable
+      on 2 August 2026, with some exceptions", and that Annex I systems have a transition
+      period until 2 August 2028.
+    accessed: 2026-09-16
+
+  - id: bls-financial-risk-specialists
+    claim: >-
+      The US Bureau of Labor Statistics Occupational Outlook Handbook records that financial
+      risk specialists held about 66,000 jobs in 2025, that overall employment of financial
+      analysts is projected to grow 7 percent from 2025 to 2035 — much faster than the average
+      for all occupations — and that the median annual wage for financial and investment
+      analysts was 102,740 US dollars in May 2025. Financial risk specialists are the
+      occupation code that model validation and model risk roles in US banks sit under. This is
+      the only labour-market figure this README states, and it is a government projection for a
+      whole occupation, not a claim about demand for this programme's graduates specifically.
+    where: "README.md — 'Who this is for'"
+    source_url: https://www.bls.gov/ooh/business-and-financial/financial-analysts.htm
+    source_title: "Financial Analysts: Occupational Outlook Handbook, U.S. Bureau of Labor Statistics (page last modified 27 August 2026)"
+    quote: "Financial risk specialists held about 66,000 jobs in 2025."
+    accessed: 2026-09-16
+
+  - id: iso-42001-adoption-aws
+    claim: >-
+      ISO/IEC 42001, the AI management system standard, is being adopted through accredited
+      certification by named companies. Amazon Web Services announced on 25 November 2024 that
+      it was the first major cloud service provider to hold accredited ISO/IEC 42001
+      certification for AI services, covering Amazon Bedrock, Amazon Q Business, Amazon
+      Textract and Amazon Transcribe. This is the assurance-side counterpart to the banking
+      guidance: the evidence a validation function produces is increasingly also the evidence an
+      external auditor asks for.
+    where: "README.md — 'Why this programme, and why now' (company adoption)"
+    source_url: https://aws.amazon.com/blogs/machine-learning/aws-achieves-iso-iec-420012023-artificial-intelligence-management-system-accredited-certification
+    source_title: "AWS achieves ISO/IEC 42001:2023 Artificial Intelligence Management System accredited certification, AWS Machine Learning Blog, 25 November 2024"
+    quote: >-
+      AWS is excited to be the first major cloud service provider to announce ISO/IEC 42001
+      accredited certification for AI services
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -------------------------------------------------------------------
+# * No salary, vacancy-count or "demand is rising" figure is quoted from a job board or a
+#   recruitment blog. Those aggregate figures move weekly, are not primary, and could not be
+#   verified against a source that will still say the same thing next quarter. The one
+#   labour-market figure above is a BLS occupational projection, cited as exactly that.
+# * No claim is made that this programme leads to a job, a certification, or a regulatory
+#   qualification. It teaches the analytics a validation function runs; nothing more.

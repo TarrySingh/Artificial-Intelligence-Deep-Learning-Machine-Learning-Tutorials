@@ -389,7 +389,8 @@ def python_rollout_cost(model, data, scratch, controls) -> float:
         True
 
     Returns:
-        A single float — the summed stage cost over the plan.
+        A single float — the summed stage cost over the plan. A plain Python float, not a
+        numpy scalar: start `total` at 0.0 and it stays one, or wrap the result in float().
     """
     # YOUR CODE HERE
     raise NotImplementedError
@@ -400,9 +401,10 @@ def _check_python_rollout() -> None:
     plan = [max(-1.0, min(1.0, rng.gauss(0.0, 0.6))) for _ in range(40)]
     model, data, scratch = fresh()
     mine = python_rollout_cost(model, data, scratch, plan)
-    assert isinstance(mine, float), (
-        f"python_rollout_cost returned {type(mine).__name__} — sum into a plain float and "
-        "return it; a numpy array is not a cost")
+    assert type(mine) is float, (
+        f"python_rollout_cost returned {type(mine).__name__} — sum into a plain Python float "
+        "and return it. A numpy scalar subclasses float, so isinstance() would not catch it; "
+        "float(total) is the fix")
     assert abs(float(data.qpos[1]) - math.pi) < 1e-12, (
         "the live `data` moved — you stepped it instead of `scratch`; copy first")
 
@@ -459,6 +461,12 @@ def rollout_budget(samples: int, horizon: int, control_hz: float,
           "max_samples"               int, the largest WHOLE number of samples that still
                                       fits: floor(steps_per_second / (control_hz * horizon)).
                                       Round DOWN — 308.6 affordable samples means 308.
+
+    `steps_per_tick` and `max_samples` count whole things, so return them as `int`. A float
+    that happens to compare equal (8000.0 == 8000) is not the same answer.
+
+    Do not guard the arithmetic with `try`/`except`. If the throughput is zero there is no
+    budget to report, and a zeroed dict would read exactly like one.
     """
     # YOUR CODE HERE
     raise NotImplementedError
@@ -478,6 +486,19 @@ def _check_budget() -> None:
     assert b["realtime"] is True, (
         "8 ms of planning fits inside a 10 ms tick, so realtime must be True — compare "
         "plan_seconds_per_tick against tick_seconds")
+    assert type(b["steps_per_tick"]) is int and type(b["max_samples"]) is int, (
+        f"steps_per_tick came back as {type(b['steps_per_tick']).__name__} and max_samples as "
+        f"{type(b['max_samples']).__name__} — both count whole things, so both are ints. "
+        "8000.0 == 8000 is True, so the equality checks above cannot warn you about this")
+    try:
+        _bad = rollout_budget(200, 40, 100.0, 0.0)
+    except ZeroDivisionError:
+        pass
+    else:
+        raise AssertionError(
+            f"a throughput of 0 returned {_bad} instead of raising — do not wrap the "
+            "arithmetic in try/except. A zeroed budget reads like a real one and hides the "
+            "bad throughput that produced it")
     assert b["max_samples"] == 250, (
         f"max_samples was {b['max_samples']}, expected 1e6/(100*40) = 250 — floor it to a "
         "whole number of samples")
@@ -601,6 +622,18 @@ def report() -> None:
 #   (`claims.yaml`). Read `model->opt.timestep` and your horizon stays honest.
 # - **Quoting a speed-up you did not measure.** The ratio between C++ and Python here is a
 #   property of this model, this machine and this loop. Measure it; do not repeat it.
+# - **A stale binary after moving or rebuilding your checkout.** The linker bakes the ABSOLUTE
+#   path of `libmujoco` into `lesson_bin`. Move the repository, rename a parent directory, or
+#   rebuild the virtualenv somewhere else, and the binary still points at where the library
+#   used to be: every command dies with `dyld: Library not loaded` (Linux: `error while
+#   loading shared libraries`) before a line of your code runs. `make` will not rescue you —
+#   the binary is newer than `lesson.cpp`, so it looks up to date and make does nothing. The
+#   fix is one line:
+#
+#       make clean && make
+#
+#   Run it after any move, rename or virtualenv rebuild. If a command that worked yesterday
+#   fails today with a library path in the message, this is why — the C++ you wrote is fine.
 
 # %%
 # The second mistake, made concrete. There is no C++ here: this is the same exp() your

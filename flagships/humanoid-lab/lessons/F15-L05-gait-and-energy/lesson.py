@@ -189,6 +189,12 @@ def _check_gait_targets() -> None:
           f"rad, knees {cycle[:, 1].min():+.2f}..{cycle[:, 1].max():+.2f} rad")
 
 
+# Run the check for THIS exercise, right here. The guard is what lets the autograder
+# import this file without every check firing: it imports under the name "lesson", while
+# a notebook cell and `python lesson.py` both run as "__main__".
+if __name__ == "__main__":
+    _check_gait_targets()
+
 # %% [markdown]
 # ## 3. Energy is the integral of torque times velocity
 #
@@ -346,6 +352,9 @@ def _check_rollout_and_cot() -> None:
           f"{cost_of_transport(r['energy'], r['distance']):.4f}")
 
 
+if __name__ == "__main__":
+    _check_rollout_and_cot()
+
 # %% [markdown]
 # ## 5. Phase is not a detail
 #
@@ -372,6 +381,9 @@ def _check_phase_matters() -> None:
     print("  difference is WHEN each leg moves relative to the other, and it decides whether")
     print("  the machine walks or falls over. Phase is the gait.")
 
+
+if __name__ == "__main__":
+    _check_phase_matters()
 
 # %% [markdown]
 # ## 6. Exercise 4 — a search you can afford
@@ -411,6 +423,11 @@ def coordinate_search(start: dict, grid: dict = SEARCH_GRID, passes: int = 2,
 
     Build the model once with `load_walker()` and reuse it; `rollout` resets it each time.
 
+    Call `rollout` and `gait_score` by name, looked up when you call them — do not capture
+    either in a default argument. The autograder swaps them for instruments to count the
+    rollouts you really spend and to check that you tune each parameter against the improvement
+    you just accepted, and a search that closed over the originals cannot be measured at all.
+
     Example (the shape of the return, not a particular gait):
         >>> best, score, used = coordinate_search(BASELINE_GAIT, passes=1)
         >>> sorted(best) == sorted(PARAM_KEYS), used <= MAX_ROLLOUTS
@@ -424,7 +441,13 @@ def coordinate_search(start: dict, grid: dict = SEARCH_GRID, passes: int = 2,
     raise NotImplementedError
 
 
-def _check_search() -> None:
+def _check_search() -> float:
+    """Run the search once, check it, print the comparison, and hand back its score.
+
+    Section 7 prints that score beside the published figures. Returning it here means the
+    number in that table is the one you just watched being measured, rather than a second
+    search that happened off-screen.
+    """
     model, data = load_walker()
     base = rollout(model, data, BASELINE_GAIT)
     base_score = gait_score(base)
@@ -455,7 +478,11 @@ def _check_search() -> None:
         f"only a {base_score / score:.2f}x improvement — the grid holds much better gaits than "
         "that, so check you carry each accepted improvement into the next parameter."
     )
+    return score
 
+
+if __name__ == "__main__":
+    SEARCH_SCORE = _check_search()
 
 # %% [markdown]
 # ## 7. Against the literature, honestly
@@ -496,6 +523,9 @@ def compare_against_published(measured_cot: float) -> None:
     print("  and they did not. Efficient walking is hard, and the honest version of that")
     print("  sentence names the accounting difference instead of hiding inside it.")
 
+
+if __name__ == "__main__":
+    compare_against_published(SEARCH_SCORE)
 
 # %% [markdown]
 # ## 8. Common mistakes
@@ -561,6 +591,9 @@ def _check_objective_matters() -> None:
     print("  Write down the metric you actually care about before you optimise anything.")
 
 
+if __name__ == "__main__":
+    _check_objective_matters()
+
 # %% [markdown]
 # ## 9. Self-check
 #
@@ -587,8 +620,8 @@ def _check_objective_matters() -> None:
 #          gait for straining hard while standing still
 #    - (d) the right answer, scaled by the timestep
 #
-# 4. You measure a cost of transport near 0.6 and read that humans walk at `c_mt` near 0.05.
-#    The honest comparison is:
+# 4. Suppose your search lands near a cost of transport of 0.6, and you read that humans walk
+#    at `c_mt` near 0.05 (Collins et al. 2005, in `claims.yaml`). The honest comparison is:
 #    - (a) your gait is exactly twelve times worse than a human
 #    - (b) the two are the same shape but not the same accounting — you charged for negative
 #          work and the published figure counts only positive actuator work, so the gap is
@@ -631,6 +664,9 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+if __name__ == "__main__":
+    _check_self_check()
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -645,12 +681,6 @@ def _check_self_check(answers: dict = None) -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_gait_targets()
-    _check_rollout_and_cot()
-    _check_phase_matters()
-    _check_search()
-    _model, _data = load_walker()
-    _best, _score, _ = coordinate_search(BASELINE_GAIT, passes=2)
-    compare_against_published(_score)
-    _check_objective_matters()
-    _check_self_check()
+    print("F15-L05 complete: every check above ran where its exercise is, not in one cell at")
+    print("the end. If you got here with no traceback, the gait, the energy account, the cost")
+    print("of transport and the budgeted search are all your own and all measured.")

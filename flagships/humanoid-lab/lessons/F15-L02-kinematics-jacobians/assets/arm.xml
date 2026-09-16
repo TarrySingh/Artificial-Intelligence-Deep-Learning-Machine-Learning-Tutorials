@@ -16,8 +16,8 @@
      lets a student finite-difference the forward kinematics by writing qpos[i] += eps
      directly. On a model with a free or ball joint the mapping breaks — qpos carries a
      4-number quaternion where qvel carries a 3-number angular velocity — and the shortcut
-     silently produces a wrong Jacobian. The lesson says so, and section 8 loads a
-     two-line model with a ball joint to show nq != nv rather than assert it.
+     silently produces a wrong Jacobian. The lesson says so, and section 9 loads a
+     short model with a ball joint to show nq != nv rather than assert it.
 
   2. THE TWO ARMS ARE DELIBERATELY ASYMMETRIC. The right arm has six joints (three at the
      shoulder, an elbow, two at the wrist) and, with the two waist joints, eight degrees of

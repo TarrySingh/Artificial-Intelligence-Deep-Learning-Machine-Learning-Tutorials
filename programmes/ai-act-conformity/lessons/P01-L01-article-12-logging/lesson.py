@@ -1,0 +1,1017 @@
+# %% [markdown]
+# # P01-L01 · Article 12 logging and traceability: an audit trail that survives an inspection
+#
+# **You will build:** the log a high-risk AI system has to keep — append-only, tamper-evident,
+# retained for as long as the law requires, queryable back to one decision — and the
+# completeness checker that names the required fields that decision is missing.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, no download, no network
+# · **Prerequisites:** `T10-L01-ai-act-conformity-pack`
+#
+# T10-L01 built the evidence *table*: which obligations apply to which system, and which
+# evidence ids are still missing. One of those ids was `automatic_logging_design`, and there
+# it was a single boolean. This lesson opens that boolean and builds the thing behind it.
+#
+# By the end you will be able to:
+#
+# 1. Implement a canonical serialisation and an append-only hash chain, so any edit, reorder
+#    or deletion inside a log becomes detectable.
+# 2. Implement `verify_chain()` so it names the first entry that breaks, and explain why a
+#    published head hash catches a rewrite that internal consistency never will.
+# 3. Implement a retention check reporting what may be purged, what must be kept, and which
+#    sequence numbers have already been deleted.
+# 4. Reconstruct one inference decision end to end, in sequence order, including the
+#    deployment event it depends on.
+# 5. Implement `completeness_report()` so it names the required fields a reconstructed
+#    decision is missing, and justify why the field list is a modelling choice.
+#
+# > **This is engineering, not legal advice.** It is an exercise in the data structures a
+# > record-keeping duty implies: ordering, integrity, retention, reconstruction. The article
+# > numbers and dates below are sourced in `claims.yaml` with their URLs and access dates. The
+# > list of fields this lesson calls "required" is *its own modelling choice*, argued for in
+# > section 6 — it is not a statement about what any authority would accept. For a real system,
+# > read the Official Journal text and take professional advice.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import copy
+import hashlib
+import json
+import sys
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Callable, NamedTuple
+
+import numpy as np
+
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+# The date this inspection is run. Fixed, so every number below is reproducible: an audit
+# report that changes silently with the calendar is not an artefact anyone can review.
+AS_OF = date(2026, 9, 16)
+GENESIS_HASH = "0" * 64        # what the first entry's prev_hash points at
+print("as of", AS_OF.isoformat(), "· genesis", GENESIS_HASH[:8] + "…")
+
+
+def parse_ts(value: str) -> datetime:
+    """Parse an ISO-8601 timestamp, accepting either a trailing 'Z' or '+00:00'."""
+    return datetime.fromisoformat(value.replace("Z", "+00:00"))
+
+
+def entry_date(entry: dict) -> date:
+    """The calendar date of a log entry's event, in UTC. Given to you; not graded."""
+    return parse_ts(entry["event"]["ts"]).date()
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other four.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. What Article 12 actually asks for
+#
+# Three provisions between them decide what this log has to be. Each is quoted verbatim in
+# `claims.yaml` against its source URL; the table below is keyed to them.
+#
+# The one that surprises engineers is the third. Article 12 says *keep a log*; it does not
+# say for how long. The retention period lives in Article 19 for providers and Article 26(6)
+# for deployers, and both say **at least six months**. A logging design that satisfies
+# Article 12 and rotates its files weekly is not compliant — it is two articles short.
+
+# %%
+DUTIES = {
+    "art12_1_automatic": ("Article 12(1)",
+                          "technically allow automatic recording of events over the lifetime"),
+    "art12_2_traceable": ("Article 12(2)",
+                          "record events relevant to risk, post-market monitoring, operation"),
+    "art12_3_minimum": ("Article 12(3)",
+                        "the four-item minimum: use period, reference database, matched input, "
+                        "verifiers"),
+    "art19_provider_keep": ("Article 19(1)",
+                            "providers keep the Article 12(1) logs for at least six months"),
+    "art26_6_deployer_keep": ("Article 26(6)",
+                              "deployers keep the logs under their control for at least "
+                              "six months"),
+}
+
+# Six months, modelled as a fixed number of days so the arithmetic is reproducible. A real
+# policy pins it to a calendar rule and to whatever sectoral law runs longer; this lesson says
+# which number it used rather than leaving it implicit.
+RETENTION_MINIMUM_DAYS = 183
+
+print(f"{'duty':24s} {'article':16s} what it requires")
+for _key, (_article, _what) in DUTIES.items():
+    print(f"{_key:24s} {_article:16s} {_what}")
+print(f"\nretention floor modelled as {RETENTION_MINIMUM_DAYS} days, so the window opens on "
+      f"{(AS_OF - timedelta(days=RETENTION_MINIMUM_DAYS)).isoformat()}")
+
+# %% [markdown]
+# ### Which timetable this sits on
+#
+# The Digital Omnibus on AI moved the Chapter III high-risk duties — Article 12 among them —
+# but it moved neither Article 50 nor the articles already binding. The rungs below are the
+# same ladder T10-L01 printed, narrowed to the three that decide when *this* log must exist.
+
+# %%
+ARTICLE_12_TIMETABLE = {
+    "2026-08-02": "Article 50 transparency duties applied — logging was NOT among them",
+    "2027-12-02": "Chapter III, incl. Article 12, for Annex III stand-alone high-risk systems",
+    "2028-08-02": "Chapter III, incl. Article 12, for Annex I product-embedded high-risk systems",
+}
+for _iso, _what in sorted(ARTICLE_12_TIMETABLE.items()):
+    _state = "PAST" if date.fromisoformat(_iso) <= AS_OF else "->"
+    print(f"{_iso:12s} {_state:4s} {_what}")
+print(f"\n{sum(date.fromisoformat(d) <= AS_OF for d in ARTICLE_12_TIMETABLE)} of "
+      f"{len(ARTICLE_12_TIMETABLE)} already binding on {AS_OF.isoformat()} — which is why a log "
+      "built now is built against a deadline, not after one")
+
+# %% [markdown]
+# ## 2. The event stream
+#
+# A fictional credit-scoring system emits events. Nothing is loaded from disk and nothing is
+# downloaded: the stream below is constructed in this cell, so the whole lesson is
+# reproducible from the file you are reading.
+#
+# Look at the ages. They straddle the retention floor on purpose, and one timestamp is two
+# days *earlier* than the event it follows — a clock that stepped backwards mid-decision.
+# That entry is why every query in this lesson orders by sequence number and never by time.
+
+# %%
+_RNG = np.random.default_rng(12)
+_AS_OF_DT = datetime(2026, 9, 16, 12, 0, 0, tzinfo=timezone.utc)
+SYSTEM_ID = "loan-copilot"
+
+
+def _ts(age_days: int, hour: int = 9, minute: int = 0) -> str:
+    """An ISO-8601 UTC timestamp exactly `age_days` calendar days before AS_OF."""
+    stamp = _AS_OF_DT.replace(hour=hour, minute=minute) - timedelta(days=age_days)
+    return stamp.isoformat().replace("+00:00", "Z")
+
+
+def _score() -> float:
+    """A deterministic match score, so two runs of this notebook agree to the last digit."""
+    return float(np.round(_RNG.uniform(0.61, 0.97), 4))
+
+
+def _event(age: int, hour: int, event_type: str, actor: str, payload: dict,
+           decision_id: str | None = None) -> dict:
+    """One event. `decision_id` sits in the envelope; everything else sits in the payload."""
+    event = {"ts": _ts(age, hour), "event_type": event_type, "actor": actor,
+             "system_id": SYSTEM_ID, "payload": payload}
+    if decision_id is not None:
+        event["decision_id"] = decision_id
+    return event
+
+
+EVENT_STREAM = [
+    _event(240, 8, "model_deployed", "mlops:release",
+           {"model_version": "loan-risk-2025.11", "training_run": "TR-882",
+            "approved_by": "u:ehsan"}),
+    _event(200, 9, "inference_requested", "svc:scoring",
+           {"use_start": _ts(200, 9), "model_version": "loan-risk-2025.11",
+            "input_reference": "APP-44017", "reference_database": "credit-bureau-nl-2025Q4"},
+           decision_id="D-1001"),
+    _event(200, 9, "match_found", "svc:scoring",
+           {"input_reference": "APP-44017", "match_score": _score(),
+            "reference_database": "credit-bureau-nl-2025Q4"}, decision_id="D-1001"),
+    _event(200, 10, "human_verification", "ui:caseworker",
+           {"verifier_ids": ["u:marlies"]}, decision_id="D-1001"),
+    _event(200, 10, "decision_recorded", "svc:scoring",
+           {"outcome": "refer", "use_end": _ts(200, 10, 14)}, decision_id="D-1001"),
+    # D-1002: no reference_database was ever logged, and nobody verified the result.
+    _event(183, 9, "inference_requested", "svc:scoring",
+           {"use_start": _ts(183, 9), "model_version": "loan-risk-2025.11",
+            "input_reference": "APP-44120"}, decision_id="D-1002"),
+    _event(183, 9, "decision_recorded", "svc:scoring",
+           {"outcome": "decline", "use_end": _ts(183, 9, 41)}, decision_id="D-1002"),
+    _event(150, 8, "model_deployed", "mlops:release",
+           {"model_version": "loan-risk-2026.04", "training_run": "TR-913",
+            "approved_by": "u:ehsan"}),
+    _event(40, 9, "inference_requested", "svc:scoring",
+           {"use_start": _ts(40, 9), "model_version": "loan-risk-2026.04",
+            "input_reference": "APP-51882", "reference_database": "credit-bureau-nl-2026Q2"},
+           decision_id="D-1003"),
+    _event(40, 9, "match_found", "svc:scoring",
+           {"input_reference": "APP-51882", "match_score": _score(),
+            "reference_database": "credit-bureau-nl-2026Q2"}, decision_id="D-1003"),
+    _event(40, 11, "human_verification", "ui:caseworker",
+           {"verifier_ids": ["u:marlies", "u:tomasz"]}, decision_id="D-1003"),
+    # The clock stepped back: this event happened last, and carries the earliest timestamp.
+    _event(42, 11, "decision_recorded", "svc:scoring",
+           {"outcome": "approve", "use_end": _ts(42, 11, 18)}, decision_id="D-1003"),
+    # D-1004: the session never closed. No use_end, no outcome.
+    _event(3, 9, "inference_requested", "svc:scoring",
+           {"use_start": _ts(3, 9), "model_version": "loan-risk-2026.04",
+            "input_reference": "APP-52990", "reference_database": "credit-bureau-nl-2026Q3"},
+           decision_id="D-1004"),
+    _event(3, 10, "human_verification", "ui:caseworker",
+           {"verifier_ids": ["u:tomasz"]}, decision_id="D-1004"),
+]
+
+_DECISIONS = sorted({e["decision_id"] for e in EVENT_STREAM if "decision_id" in e})
+print(f"{len(EVENT_STREAM)} events · {len(_DECISIONS)} decisions {_DECISIONS} · "
+      f"{sum('decision_id' not in e for e in EVENT_STREAM)} system-level events")
+print(json.dumps(EVENT_STREAM[1], indent=2))
+
+# %% [markdown]
+# ## 3. Exercise 1 — canonical bytes, and the chain
+#
+# Hashing a dict is not hashing an object; it is hashing *one* serialisation of it. If two
+# machines serialise the same event differently, the same event gets two hashes and the chain
+# fails for no reason. So the first stub is the canonical form, and the second uses it.
+#
+# The trap in the second: an entry's hash must cover its **sequence number, its predecessor's
+# hash and its event**. Hash the event alone and the log is a bag of receipts — every entry
+# still verifies after you reorder or delete some of them.
+
+# %%
+def canonical_bytes(obj: Any) -> bytes:
+    """Serialise `obj` to the one byte string this log agrees to hash.
+
+    Two dictionaries with the same items in a different insertion order must produce
+    identical bytes, at every level of nesting, or the chain breaks on a whim. The bytes must
+    also round-trip: `json.loads(canonical_bytes(x).decode("utf-8")) == x`.
+
+    `json.dumps` has the two keyword arguments you need — one sorts keys, one removes the
+    whitespace that pretty-printing adds.
+
+    Example:
+        >>> canonical_bytes({"b": 1, "a": 2}) == canonical_bytes({"a": 2, "b": 1})
+        True
+        >>> canonical_bytes({"a": 2, "b": 1})
+        b'{"a":2,"b":1}'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def append_event(log: list, event: dict) -> dict:
+    """Append `event` to `log` as a chained entry, in place, and return that entry.
+
+    The entry is a dict with exactly these four keys:
+      "seq"        int, the entry's position: 0 for the first, len(log) for each next one
+      "event"      the event dict, unchanged
+      "prev_hash"  GENESIS_HASH when the log is empty, else the previous entry's "entry_hash"
+      "entry_hash" the SHA-256 hex digest of canonical_bytes of the dict
+                   {"seq": seq, "prev_hash": prev_hash, "event": event}
+
+    Hashing all three fields together is what makes the chain tamper-EVIDENT rather than
+    merely hashed: change an event, and that entry's hash moves; move an entry, and its seq
+    and prev_hash move with it.
+
+    Example:
+        >>> log = []
+        >>> first = append_event(log, {"ts": "2026-01-01T00:00:00Z", "event_type": "boot"})
+        >>> first["seq"], first["prev_hash"] == GENESIS_HASH, len(first["entry_hash"])
+        (0, True, 64)
+        >>> len(log)
+        1
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def build_log(events: list) -> list:
+    """Chain a whole event stream. Given to you — it is just append_event in a loop."""
+    log: list = []
+    for event in events:
+        append_event(log, event)
+    return log
+
+
+def _check_chain() -> None:
+    assert canonical_bytes({"b": 1, "a": 2}) == canonical_bytes({"a": 2, "b": 1}), (
+        "canonical_bytes must not depend on insertion order — pass sort_keys=True to json.dumps"
+    )
+    assert isinstance(canonical_bytes({"a": 1}), bytes), (
+        "canonical_bytes returns bytes, not str — .encode('utf-8') the dumped string"
+    )
+    nested = canonical_bytes({"x": {"b": 1, "a": 2}}) == canonical_bytes({"x": {"a": 2, "b": 1}})
+    assert nested, "sort_keys sorts every level; a hand-rolled sort of the top level does not"
+    round_trip = json.loads(canonical_bytes({"a": [1, 2], "b": "é"}).decode("utf-8"))
+    assert round_trip == {"a": [1, 2], "b": "é"}, (
+        f"canonical_bytes did not round-trip: got {round_trip!r} — this must stay JSON, not "
+        "become repr() or str(sorted(...))"
+    )
+
+    log: list = []
+    first = append_event(log, {"ts": "2026-01-01T00:00:00Z", "event_type": "boot"})
+    assert set(first) == {"seq", "event", "prev_hash", "entry_hash"}, (
+        f"an entry has exactly those four keys, yours has {sorted(first)}"
+    )
+    assert first["seq"] == 0 and first["prev_hash"] == GENESIS_HASH, (
+        "the first entry is seq 0 and points at GENESIS_HASH"
+    )
+    assert len(log) == 1 and log[0] is first, (
+        "append_event appends to `log` in place AND returns the entry it appended"
+    )
+    second = append_event(log, {"ts": "2026-01-01T00:00:01Z", "event_type": "boot"})
+    assert second["seq"] == 1 and second["prev_hash"] == first["entry_hash"], (
+        "each entry's prev_hash is the PREVIOUS entry's entry_hash, not its own and not genesis"
+    )
+
+    other = build_log([{"ts": "2026-01-01T00:00:00Z", "event_type": "different"},
+                       {"ts": "2026-01-01T00:00:01Z", "event_type": "boot"}])
+    assert other[1]["entry_hash"] != second["entry_hash"], (
+        "two logs whose SECOND events are identical but whose first events differ produced the "
+        "same second hash — your digest does not cover prev_hash, so the chain proves nothing "
+        "about what came before"
+    )
+    variant = build_log([{"ts": "2026-01-01T00:00:00Z", "event_type": "boot"},
+                         {"ts": "2026-01-01T00:00:01Z", "event_type": "shutdown"}])
+    assert variant[1]["entry_hash"] != second["entry_hash"], (
+        "two logs whose FIRST events are identical but whose second events differ produced the "
+        "same second hash — your digest does not cover the event, so no edit to it is ever "
+        "detectable"
+    )
+    print("exercise 1 looks right — canonical bytes, and a chain that covers seq and history")
+
+
+# %%
+_try("exercise 1", _check_chain)
+
+# %% [markdown]
+# ## 4. Exercise 2 — `verify_chain()`
+#
+# An inspector does not ask whether your log is intact; they ask you to *show* that it is.
+# The verifier below is that demonstration. It checks, entry by entry in order, that
+#
+# 1. the sequence numbers run 0, 1, 2, … with no gap — a gap is a deletion;
+# 2. each `prev_hash` matches the previous entry's `entry_hash`;
+# 3. each `entry_hash` still equals the digest of its own contents.
+#
+# Then it does the thing that makes the whole exercise worth doing. A determined editor can
+# rewrite an entry *and* every hash after it, and the three checks above go green. What they
+# cannot rewrite is a head hash you published somewhere they do not control — an anchor. So
+# `verify_chain` takes an optional expected head and compares the last entry against it.
+#
+# A head mismatch on an otherwise consistent chain tells you the log was rewritten but not
+# *where*, so that verdict reports no sequence number at all.
+
+# %%
+class ChainVerdict(NamedTuple):
+    """The verifier's answer: is the chain intact, and if not, where and why."""
+
+    intact: bool
+    first_bad_seq: int | None   # None when intact, and None for a head mismatch
+    reason: str                 # "" when intact
+
+
+def verify_chain(log: list, expected_head: str | None = None) -> ChainVerdict:
+    """Verify a chained log, optionally against a head hash published outside it.
+
+    Walk the entries in list order. For the entry at index `i`, in this order:
+      1. `entry["seq"] != i`                      -> the reason must contain "sequence"
+      2. `entry["prev_hash"]` is not GENESIS_HASH (for i == 0) or the previous entry's
+         `entry_hash` (otherwise)                 -> the reason must contain "prev_hash"
+      3. `entry["entry_hash"]` is not the digest of {"seq", "prev_hash", "event"} recomputed
+         the way append_event computes it         -> the reason must contain "entry_hash"
+    Return at the FIRST break, with `first_bad_seq` set to `i`.
+
+    Those three words are graded, and each reason may contain only its own: a gap, a broken
+    link and an edited event send an inspector to three different places, so a verifier that
+    reports the wrong cause is worse than one that reports none. Deleting an entry breaks the
+    link as well as the numbering — check the numbering first and say so.
+
+    If every entry passes and `expected_head` is not None, compare it against the last
+    entry's `entry_hash` — or against GENESIS_HASH when the log is empty. On a mismatch
+    return `intact=False`, `first_bad_seq=None`, and a reason containing "head".
+
+    Otherwise return `ChainVerdict(True, None, "")`.
+
+    Example:
+        >>> log = build_log([{"ts": "2026-01-01T00:00:00Z", "event_type": "boot"}])
+        >>> verify_chain(log)
+        ChainVerdict(intact=True, first_bad_seq=None, reason='')
+        >>> log[0]["event"]["event_type"] = "tampered"
+        >>> verify_chain(log).first_bad_seq
+        0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_verify_chain() -> None:
+    clean = build_log(EVENT_STREAM)
+    verdict = verify_chain(clean)
+    assert isinstance(verdict, ChainVerdict), "return a ChainVerdict, not a bool or a tuple"
+    assert verdict.intact and verdict.first_bad_seq is None and verdict.reason == "", (
+        f"the freshly built log must verify, got {verdict!r}"
+    )
+    assert verify_chain([]).intact, "an empty log is vacuously intact"
+
+    # deepcopy, because build_log stores the event objects themselves: editing an entry in
+    # place would edit the shared EVENT_STREAM and poison every cell below.
+    edited = build_log(copy.deepcopy(EVENT_STREAM))
+    edited[4]["event"]["payload"]["outcome"] = "approve"
+    verdict = verify_chain(edited)
+    assert not verdict.intact and verdict.first_bad_seq == 4, (
+        f"editing the event at seq 4 must be caught AT seq 4, got {verdict!r} — recompute each "
+        "entry's digest from its own contents rather than trusting the stored value"
+    )
+    assert "entry_hash" in verdict.reason, (
+        f"the reason for an edited event must name entry_hash, got {verdict.reason!r}"
+    )
+
+    deleted = build_log(EVENT_STREAM)
+    del deleted[6]
+    verdict = verify_chain(deleted)
+    assert not verdict.intact and verdict.first_bad_seq == 6, (
+        f"deleting an entry leaves a gap in the sequence at index 6, got {verdict!r}"
+    )
+    assert "sequence" in verdict.reason and "prev_hash" not in verdict.reason, (
+        f"the reason was {verdict.reason!r} — a deletion breaks the link as well as the "
+        "numbering, so check the numbering FIRST and report the gap. Blaming prev_hash sends "
+        "an inspector looking for a forgery that is not there"
+    )
+
+    relinked = build_log(EVENT_STREAM)
+    relinked[3]["prev_hash"] = GENESIS_HASH
+    verdict = verify_chain(relinked)
+    assert not verdict.intact and verdict.first_bad_seq == 3 and "prev_hash" in verdict.reason, (
+        f"re-pointing an entry at genesis must break the link check at seq 3, got {verdict!r}"
+    )
+
+    head = clean[-1]["entry_hash"]
+    assert verify_chain(clean, expected_head=head).intact, (
+        "the real head hash must satisfy the anchor check"
+    )
+    # The whole point: a rewritten tail is internally perfect and still fails the anchor.
+    rewritten = build_log(EVENT_STREAM[:5] + [dict(EVENT_STREAM[5], event_type="rewritten")]
+                          + EVENT_STREAM[6:])
+    assert verify_chain(rewritten).intact, (
+        "a log rewritten from seq 5 onwards is internally consistent — that is the attack"
+    )
+    verdict = verify_chain(rewritten, expected_head=head)
+    assert not verdict.intact and "head" in verdict.reason, (
+        f"the rewritten log must fail against the published head, got {verdict!r}"
+    )
+    assert verdict.first_bad_seq is None, (
+        "a head mismatch does not localise the tampering — report first_bad_seq=None, because "
+        "any entry from the first rewritten one onwards could be the culprit"
+    )
+    print("exercise 2 looks right — edits, deletions, relinks and whole-tail rewrites all caught")
+
+
+# %%
+_try("exercise 2", _check_verify_chain)
+
+# %% [markdown]
+# ### See the anchor earn its keep
+#
+# Run this once exercise 2 works. The same tampering is judged twice: once by a verifier that
+# only has the log, and once by a verifier that also has a head hash published the day the log
+# was sealed.
+
+# %%
+def _show_anchor() -> None:
+    sealed = build_log(EVENT_STREAM)
+    published_head = sealed[-1]["entry_hash"]
+    forged = build_log(EVENT_STREAM[:4]
+                       + [dict(EVENT_STREAM[4],
+                               payload=dict(EVENT_STREAM[4]["payload"], outcome="approve"))]
+                       + EVENT_STREAM[5:])
+    print(f"the log was sealed at head {published_head[:16]}…")
+    print(f"the forged log's head is   {forged[-1]['entry_hash'][:16]}…")
+    print(f"\nwithout the anchor: {verify_chain(forged)}")
+    print(f"with the anchor:    {verify_chain(forged, expected_head=published_head)}")
+    print("\nthe forgery rewrote one outcome and re-hashed the nine entries after it, so the")
+    print("log is internally flawless. Only a hash the forger could not reach says otherwise —")
+    print("which is why a head hash belongs in a place the system's operators do not own.")
+
+
+_try("anchor demo", _show_anchor)
+
+# %% [markdown]
+# ## 5. Exercises 3 and 4 — retention, and reconstructing one decision
+#
+# Two queries an inspector actually runs. Both take an unchained log, so you can work on them
+# before or after exercise 1: `plain_log()` below builds entries with empty hashes.
+#
+# **Retention.** Articles 19 and 26(6) set a floor, not a ceiling. Keeping a log longer than
+# six months is allowed and other law often demands it; deleting inside the window is the
+# breach. So the report says what *may* go, what *must* stay, and which sequence numbers have
+# already gone. Two traps: the boundary is inclusive — an entry exactly at the floor is still
+# retained — and the entries are not in timestamp order, so you cannot find a cut-off index.
+
+# %%
+def plain_log(events: list) -> list:
+    """Wrap events as entries WITHOUT hashing them. Given to you; not graded.
+
+    Good enough for the two queries below, which never look at a hash.
+    """
+    return [{"seq": i, "event": e, "prev_hash": "", "entry_hash": ""}
+            for i, e in enumerate(events)]
+
+
+def retention_status(log: list, as_of: date,
+                     minimum_days: int = RETENTION_MINIMUM_DAYS) -> dict:
+    """Report what this log may purge, what it must keep, and what has already gone.
+
+    An entry's age in days is `(as_of - entry_date(entry)).days`, using the helper given in
+    the setup cell. An entry is EXPIRED when its age is strictly greater than `minimum_days`,
+    and RETAINED otherwise — landing exactly on the floor keeps it.
+
+    Return a dict with exactly these keys:
+      "as_of"        `as_of.isoformat()`
+      "minimum_days" the floor used
+      "oldest_ts"    the smallest `event["ts"]` in the log, or None when the log is empty
+      "newest_ts"    the largest, or None. The log is NOT in timestamp order: scan it.
+      "retained"     sorted list of the seq numbers still inside the window
+      "expired"      sorted list of the seq numbers past it. Together with "retained" this
+                     covers every entry exactly once.
+      "missing_seq"  sorted list of the seq numbers absent from the log between 0 and the
+                     largest seq present. A gap is a deletion; [] for an empty log.
+      "compliant"    True when "missing_seq" is empty.
+
+    Example:
+        >>> log = plain_log([{"ts": "2026-09-16T09:00:00Z", "event_type": "boot"}])
+        >>> r = retention_status(log, date(2026, 9, 16))
+        >>> r["retained"], r["expired"], r["compliant"]
+        ([0], [], True)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_retention() -> None:
+    log = plain_log(EVENT_STREAM)
+    report = retention_status(log, AS_OF)
+    assert set(report) == {"as_of", "minimum_days", "oldest_ts", "newest_ts", "retained",
+                           "expired", "missing_seq", "compliant"}, (
+        f"keys were {sorted(report)} — return exactly the eight documented names"
+    )
+    assert sorted(report["retained"] + report["expired"]) == list(range(len(log))), (
+        "retained and expired must partition every entry exactly once"
+    )
+    assert report["expired"] == [0, 1, 2, 3, 4], (
+        f"expired came back {report['expired']} — the entries older than "
+        f"{RETENTION_MINIMUM_DAYS} days are seqs 0 to 4"
+    )
+    assert 5 in report["retained"] and 6 in report["retained"], (
+        "seqs 5 and 6 sit EXACTLY on the retention floor, so they are retained: compare with "
+        "> (past the floor), not >= (at or past it)"
+    )
+    assert report["oldest_ts"] == min(e["ts"] for e in EVENT_STREAM), (
+        "oldest_ts is the minimum timestamp in the log, not the timestamp of the first entry"
+    )
+    assert report["newest_ts"] == max(e["ts"] for e in EVENT_STREAM), (
+        "newest_ts is the maximum timestamp — one entry's clock stepped backwards, so the last "
+        "entry in sequence order is not the latest in time"
+    )
+    assert report["missing_seq"] == [] and report["compliant"], (
+        f"the shipped stream is contiguous, so nothing is missing: got {report['missing_seq']}"
+    )
+
+    punched = [e for e in log if e["seq"] not in (2, 9)]
+    holed = retention_status(punched, AS_OF)
+    assert holed["missing_seq"] == [2, 9], (
+        f"two entries were removed, so seqs 2 and 9 are missing: got {holed['missing_seq']}"
+    )
+    assert not holed["compliant"], "a log with a gap in it is not compliant"
+
+    late = [e for e in log if e["seq"] not in (len(log) - 3, len(log) - 2)]
+    assert retention_status(late, AS_OF)["missing_seq"] == [len(log) - 3, len(log) - 2], (
+        f"got {retention_status(late, AS_OF)['missing_seq']} — the gaps run up to the LARGEST "
+        "seq present, not up to len(log). Two entries removed from near the end shorten the "
+        "list, so range(len(log)) stops before the second gap and misses it"
+    )
+
+    empty = retention_status([], AS_OF)
+    assert empty["oldest_ts"] is None and empty["missing_seq"] == [] and empty["compliant"], (
+        f"an empty log has no timestamps, no gaps and nothing to answer for: got {empty}"
+    )
+
+    # A log whose ages run young, ancient, young. Neither end of the list is an extreme, and
+    # no cut-off index splits it: both facts have to come out of a scan.
+    mixed = plain_log([{"ts": _ts(1), "event_type": "a", "payload": {}},
+                       {"ts": _ts(400), "event_type": "b", "payload": {}},
+                       {"ts": _ts(2), "event_type": "c", "payload": {}}])
+    report = retention_status(mixed, AS_OF)
+    assert report["oldest_ts"] == _ts(400) and report["newest_ts"] == _ts(1), (
+        f"oldest/newest came back {report['oldest_ts']}/{report['newest_ts']} — they are the "
+        "min and max over the whole log, not the first and last entries"
+    )
+    assert report["expired"] == [1] and report["retained"] == [0, 2], (
+        f"expired={report['expired']} retained={report['retained']} — only the 400-day-old "
+        "entry is past the floor, and it sits in the middle: decide per entry, never by "
+        "splitting the list at an index"
+    )
+    print("exercise 3 looks right — boundary inclusive, timestamps scanned, gaps found")
+
+
+# %% [markdown]
+# **Reconstruction.** "Show me how this decision was made" means every event carrying that
+# decision id *and* the deployment event for the model version those events name. Without the
+# second half you can say what the system decided and not what decided it.
+#
+# Order by `seq`, never by `ts`. One of the fixtures proves why.
+
+# %%
+def reconstruct_decision(log: list, decision_id: str) -> list:
+    """Return the entries that reconstruct one decision, sorted by seq.
+
+    Two passes:
+      1. Select every entry whose event has `event["decision_id"] == decision_id`. Entries
+         with no "decision_id" key at all are system-level events; do not crash on them.
+      2. Collect the model versions those entries name in `event["payload"]["model_version"]`,
+         then add every entry whose `event["event_type"]` is "model_deployed" and whose
+         `payload["model_version"]` is one of them.
+
+    Return the union, sorted by "seq". Sequence order is the authority here: the log holds a
+    decision whose closing event carries a timestamp two days before its opening one, and
+    sorting by "ts" reverses it. An unknown decision id returns [].
+
+    Example:
+        >>> trace = reconstruct_decision(plain_log(EVENT_STREAM), "D-1002")
+        >>> [e["seq"] for e in trace]
+        [0, 5, 6]
+        >>> reconstruct_decision(plain_log(EVENT_STREAM), "D-9999")
+        []
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_reconstruct() -> None:
+    log = plain_log(EVENT_STREAM)
+    assert reconstruct_decision(log, "D-9999") == [], "an unknown decision id returns []"
+
+    seqs = [e["seq"] for e in reconstruct_decision(log, "D-1002")]
+    assert seqs == [0, 5, 6], (
+        f"D-1002 is seqs 5 and 6 plus the deployment of loan-risk-2025.11 at seq 0, got {seqs} "
+        "— a trace without the deployment event cannot say what decided the case"
+    )
+    seqs = [e["seq"] for e in reconstruct_decision(log, "D-1003")]
+    assert seqs == [7, 8, 9, 10, 11], (
+        f"D-1003 must come back in sequence order, got {seqs} — seq 11's timestamp is two days "
+        "earlier than seq 8's, so sorting by ts puts the outcome before the request"
+    )
+    assert all("entry_hash" in e and "seq" in e for e in reconstruct_decision(log, "D-1001")), (
+        "return the log ENTRIES, not the bare events — an auditor wants the sequence number "
+        "and the hash alongside the payload"
+    )
+    print("exercise 4 looks right — the right entries, the deployment context, sequence order")
+
+
+# %%
+_try("exercise 3", _check_retention)
+_try("exercise 4", _check_reconstruct)
+
+# %% [markdown]
+# ## 6. Exercise 5 — completeness, and where the field list comes from
+#
+# Article 12(2) says to record events "relevant for" three purposes and stops there. The only
+# enumerated list in the article is Article 12(3)'s four-item minimum, and that minimum is
+# written for one category — the remote biometric identification systems of Annex III point
+# 1(a). Our fictional system scores credit applications, so nothing obliges it to that list.
+#
+# An engineer still has to pick an enumeration, because "relevant" is not a schema. This
+# lesson picks 12(3)'s four items, adds the system and model identity a trace is useless
+# without, and the outcome that Article 26(5) monitoring needs. **That choice is the lesson's,
+# not the legislator's**, and the table below labels each field with where it came from so a
+# reviewer can argue with it. A field list you cannot argue with is a field list nobody
+# checked.
+
+# %%
+FIELD_SOURCES = {
+    "system_id": "Article 12(1) — the log covers a system's lifetime, so name the system",
+    "model_version": "modelling choice — a decision you cannot tie to an artefact is not traced",
+    "use_start": "Article 12(3)(a) — start date and time of each use",
+    "use_end": "Article 12(3)(a) — end date and time of each use",
+    "reference_database": "Article 12(3)(b) — the reference database the input was checked on",
+    "input_reference": "Article 12(3)(c) — the input data for which the search led to a match",
+    "verifier_ids": "Article 12(3)(d) — the natural persons who verified the result",
+    "outcome": "modelling choice, via Article 26(5) — monitoring needs to know what happened",
+}
+REQUIRED_FIELDS = tuple(FIELD_SOURCES)
+
+print(f"{len(REQUIRED_FIELDS)} required fields: "
+      f"{sum('Article 12(3)' in v for v in FIELD_SOURCES.values())} come from the four-item "
+      "Article 12(3) minimum, whose point (a) supplies two of them; "
+      f"{sum('modelling choice' in v for v in FIELD_SOURCES.values())} are this lesson's own "
+      "choice")
+for _field, _why in FIELD_SOURCES.items():
+    print(f"  {_field:20s} {_why}")
+
+# %% [markdown]
+# A field counts as present when *some* entry in the trace carries it with a real value.
+# "Real" is doing work there: `None`, `""`, `"   "` and `[]` are the shapes a half-built
+# pipeline writes when it has nothing to say, and counting them is how a log passes an
+# inspection it should have failed.
+#
+# Look in the envelope as well as the payload. `system_id` is never in a payload.
+
+# %%
+def completeness_report(trace: list, required: tuple = REQUIRED_FIELDS) -> dict:
+    """Report which required fields a reconstructed trace does and does not carry.
+
+    A field is PRESENT when at least one entry in `trace` carries it, either as a key of
+    `entry["event"]` or as a key of `entry["event"]["payload"]`, with a value that is not
+    None, not a string that is empty or blank after stripping, and not an empty list, tuple
+    or dict. A value of 0 or False is a real value and counts.
+
+    Return a dict with exactly these keys:
+      "decision_id" the decision_id of the first entry in the trace that has one, else None
+      "present"     sorted list of the required fields that are present
+      "missing"     sorted list of the rest
+      "coverage"    len(present) / len(required), and 1.0 when `required` is empty — nothing
+                    required is vacuously complete, not a division by zero
+      "complete"    True when "missing" is empty
+      "first_seq"   the smallest "seq" in the trace, or None when the trace is empty
+      "last_seq"    the largest, or None
+
+    Example:
+        >>> trace = reconstruct_decision(plain_log(EVENT_STREAM), "D-1002")
+        >>> report = completeness_report(trace)
+        >>> report["decision_id"], report["missing"]
+        ('D-1002', ['reference_database', 'verifier_ids'])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_completeness() -> None:
+    log = plain_log(EVENT_STREAM)
+    report = completeness_report(reconstruct_decision(log, "D-1001"))
+    assert set(report) == {"decision_id", "present", "missing", "coverage", "complete",
+                           "first_seq", "last_seq"}, (
+        f"keys were {sorted(report)} — return exactly the seven documented names"
+    )
+    assert report["decision_id"] == "D-1001", (
+        f"decision_id came back {report['decision_id']!r} — seq 0 is the deployment event and "
+        "has no decision_id, so take the first entry that does have one"
+    )
+    assert report["complete"] and report["missing"] == [] and report["coverage"] == 1.0, (
+        f"D-1001 carries all eight required fields, got missing={report['missing']}"
+    )
+    assert (report["first_seq"], report["last_seq"]) == (0, 4), (
+        f"D-1001's trace spans seqs 0 to 4, got {report['first_seq']} to {report['last_seq']}"
+    )
+    assert "system_id" in report["present"], (
+        "system_id sits in the event envelope, never in a payload — look in both"
+    )
+
+    report = completeness_report(reconstruct_decision(log, "D-1002"))
+    assert report["missing"] == ["reference_database", "verifier_ids"], (
+        f"D-1002 was never verified and names no reference database: got {report['missing']}"
+    )
+    assert abs(report["coverage"] - 0.75) < 1e-9, (
+        f"six of eight fields is a coverage of 0.75, got {report['coverage']}"
+    )
+
+    report = completeness_report(reconstruct_decision(log, "D-1004"))
+    assert report["missing"] == ["outcome", "use_end"], (
+        f"D-1004's session never closed, so it has no use_end and no outcome: "
+        f"got {report['missing']}"
+    )
+
+    blank = plain_log([{"ts": "2026-09-01T09:00:00Z", "event_type": "x", "system_id": "  ",
+                        "decision_id": "D-X",
+                        "payload": {"outcome": None, "verifier_ids": [], "use_start": ""}}])
+    report = completeness_report(blank, required=("system_id", "outcome", "verifier_ids",
+                                                  "use_start"))
+    assert report["present"] == [], (
+        f"a blank string, a None and an empty list are not values: got {report['present']}"
+    )
+    falsy = plain_log([{"ts": "2026-09-01T09:00:00Z", "event_type": "x", "decision_id": "D-Y",
+                        "payload": {"outcome": 0}}])
+    assert completeness_report(falsy, required=("outcome",))["present"] == ["outcome"], (
+        "an outcome of 0 is a recorded outcome — test for None and emptiness, not for falsiness"
+    )
+    assert completeness_report([], required=())["coverage"] == 1.0, (
+        "an empty requirement list is vacuously satisfied, not a ZeroDivisionError"
+    )
+    print("exercise 5 looks right — envelope and payload, and no credit for empty values")
+
+
+# %%
+_try("exercise 5", _check_completeness)
+
+# %% [markdown]
+# ## 7. The inspection
+#
+# Everything below is produced by the five functions you wrote. Nothing in it is typed into
+# this notebook: the coverage percentages, the retention split and the ages all come out of
+# the log you built.
+
+# %%
+def coverage_matrix(reports: list, required: tuple = REQUIRED_FIELDS) -> np.ndarray:
+    """A boolean decisions x fields matrix. Given to you; not graded."""
+    return np.array([[field in r["present"] for field in required] for r in reports], dtype=bool)
+
+
+def inspect(as_of: date = AS_OF) -> dict:
+    """Run the whole inspection over the chained log and print what an inspector would read."""
+    log = build_log(EVENT_STREAM)
+    head = log[-1]["entry_hash"]
+    verdict = verify_chain(log, expected_head=head)
+    retention = retention_status(log, as_of)
+    reports = [completeness_report(reconstruct_decision(log, d)) for d in _DECISIONS]
+
+    print(f"system {SYSTEM_ID} · {len(log)} entries · inspected {as_of.isoformat()}")
+    print(f"chain: intact={verdict.intact} head={head[:16]}…")
+    print(f"retention: {len(retention['retained'])} inside the "
+          f"{retention['minimum_days']}-day window, {len(retention['expired'])} past it, "
+          f"{len(retention['missing_seq'])} deleted · compliant={retention['compliant']}")
+
+    ages = np.array([(as_of - entry_date(e)).days for e in log])
+    print(f"entry ages in days: min {ages.min()} · median {int(np.median(ages))} · "
+          f"max {ages.max()}")
+
+    print(f"\n{'decision':10s} {'seqs':>10s} {'coverage':>9s}  missing")
+    for report in reports:
+        span = f"{report['first_seq']}-{report['last_seq']}"
+        print(f"{str(report['decision_id']):10s} {span:>10s} {report['coverage']:8.0%}  "
+              f"{', '.join(report['missing']) or '-'}")
+
+    matrix = coverage_matrix(reports)
+    per_field = matrix.mean(axis=0)
+    print(f"\nper-field coverage across {matrix.shape[0]} decisions:")
+    for field, rate in sorted(zip(REQUIRED_FIELDS, per_field), key=lambda p: (p[1], p[0])):
+        print(f"  {field:20s} {rate:6.0%} {'#' * int(round(rate * 20))}")
+    print(f"\noverall field coverage {matrix.mean():.1%}; "
+          f"{int((~matrix).sum())} of {matrix.size} required cells are empty")
+    print("\nThis is engineering evidence, not legal advice.")
+    return {"verdict": verdict, "retention": retention, "reports": reports}
+
+
+_try("the inspection", inspect)
+
+# %% [markdown]
+# ## 8. Common mistakes
+#
+# - **Hashing the event and not the entry.** A digest that omits `seq` and `prev_hash` gives
+#   you a bag of receipts: every entry still verifies after you reorder or delete some.
+# - **Serialising with `str()` or `repr()`.** Dict ordering, float formatting and Python
+#   versions all leak in. Pin one canonical form and hash that.
+# - **Trusting internal consistency.** A chain verifies itself perfectly after a whole-tail
+#   rewrite. Publish the head hash where the operator cannot reach it, then verify against it.
+# - **Ordering an audit trail by timestamp.** Clocks skew, step and get set by hand. The
+#   sequence number is the only order the log itself guarantees.
+# - **Implementing Article 12 and stopping.** The retention floor is Article 19 for providers
+#   and Article 26(6) for deployers. A perfect log rotated weekly is not compliant.
+# - **Treating the retention floor as a ceiling.** Six months is a minimum; other law routinely
+#   requires longer, and deleting early is the breach. Keeping longer is not.
+# - **Punching holes in a chained log to honour a deletion request.** A gap is indistinguishable
+#   from tampering, so the whole log stops being evidence. Seal the old chain, record the
+#   cut-over, and start a new one — and check what the data-protection rules actually require
+#   before deleting anything, because the two duties interact.
+# - **Counting empty values.** `None`, `""` and `[]` are what a half-built pipeline writes.
+#   Count them and the pack goes green on a decision nobody can reconstruct.
+# - **Calling the field list "the requirement".** Article 12(3)'s four items are a minimum for
+#   one Annex III category. Every other enumeration, this lesson's included, is a defended
+#   choice — so defend it in writing, next to the list.
+#
+# The fourth one is worth watching rather than believing. The cell below sorts the same trace
+# two ways.
+
+# %%
+def _show_clock_skew() -> None:
+    trace = reconstruct_decision(plain_log(EVENT_STREAM), "D-1003")
+    print(f"{'by seq':>8s}  {'event_type':20s} ts")
+    for entry in trace:
+        print(f"{entry['seq']:>8d}  {entry['event']['event_type']:20s} {entry['event']['ts']}")
+    print(f"\n{'by ts':>8s}  {'event_type':20s} ts")
+    for entry in sorted(trace, key=lambda e: e["event"]["ts"]):
+        print(f"{entry['seq']:>8d}  {entry['event']['event_type']:20s} {entry['event']['ts']}")
+    print("\nsorted by time, the decision is recorded before it is requested and before anyone")
+    print("verified it. Nothing in the log is wrong; the clock was. Order by seq.")
+
+
+_try("clock-skew demo", _show_clock_skew)
+
+# %% [markdown]
+# ## 9. Self-check
+#
+# 1. An auditor is given a log whose every `prev_hash` and `entry_hash` checks out. What have
+#    they established?
+#    - (a) the log has not been altered since it was written
+#    - (b) the log is internally consistent, which a full rewrite of the tail also produces
+#    - (c) the log is complete, because a deletion would have broken a hash
+#    - (d) nothing at all, because hashes are reversible
+#
+# 2. A provider implements Article 12 faithfully and rotates its log files every 30 days. The
+#    problem is:
+#    - (a) none; Article 12 sets no retention period
+#    - (b) Article 19 requires providers to keep those logs for at least six months
+#    - (c) Article 12(3) requires 12 months
+#    - (d) the rotation is fine, but the files must be encrypted
+#
+# 3. One decision's closing event carries a timestamp two days before its opening event. The
+#    right response when reconstructing that decision is:
+#    - (a) drop the entry, since its timestamp is impossible
+#    - (b) correct the timestamp to the time the entry was written
+#    - (c) order by sequence number, and keep the wrong timestamp in the record
+#    - (d) re-hash the entry with a corrected timestamp so the chain stays clean
+#
+# 4. A retention job deletes the entries at seq 40-60 from a chained log because they have
+#    passed the six-month floor. The next verification:
+#    - (a) passes; those entries were outside the window
+#    - (b) fails on the sequence gap, and the log stops being usable as evidence
+#    - (c) passes, because only `entry_hash` is checked
+#    - (d) fails, but only if a head hash was published
+#
+# 5. Article 12(3)'s four-item minimum is quoted at you as "the required fields for any
+#    high-risk AI system". What is wrong with that?
+#    - (a) nothing; it applies to every high-risk system
+#    - (b) it is written for the Annex III point 1(a) systems, so any other enumeration is a
+#          defended engineering choice rather than a quotation
+#    - (c) it was removed by the Digital Omnibus
+#    - (d) it applies only to deployers, never to providers
+#
+# Mark them in the next cell. The key is not written in this file — only a salted hash of it —
+# so you find out which are wrong without reading the answers off the page. The reasoning for
+# each is published in the course solution bundle.
+
+# %%
+# Salted hashes of the answers, not the answers. Nothing here tells you which letter is right.
+_SELF_CHECK_KEY = {
+    1: "b5963884652d9a9d",
+    2: "08bcfafb64592e18",
+    3: "e7b6beff73ea0738",
+    4: "8f44b2cdf0724d6b",
+    5: "9339d2906ac66b43",
+}
+
+_SELF_CHECK_HINT = {
+    1: "re-read the paragraph in section 4 about what an anchor adds, and look at what the "
+       "anchor demo printed for a forged log verified without one.",
+    2: "look at the DUTIES table in section 1 and count how many articles are in it.",
+    3: "run the clock-skew demo in section 8 and read the two orderings.",
+    4: "ask what verify_chain's first check does with a gap, and read the common mistake about "
+       "honouring a deletion request.",
+    5: "re-read the first paragraph of section 6: which category is 12(3) written for?",
+}
+
+
+def check_self_check(answers: dict) -> None:
+    """Mark your self-check answers. Pass a dict of question number -> letter.
+
+    Example:
+        >>> check_self_check({1: "a"})          # doctest: +SKIP
+          q1  not 'a' — re-read the paragraph in section 4 ...
+          q2  no answer given
+        ...
+    """
+    right = 0
+    for question in sorted(_SELF_CHECK_KEY):
+        given = str(answers.get(question, "")).strip().lower()
+        digest = hashlib.sha256(f"P01-L01:q{question}:{given}".encode()).hexdigest()[:16]
+        if digest == _SELF_CHECK_KEY[question]:
+            right += 1
+            print(f"  q{question}  correct")
+        elif not given:
+            print(f"  q{question}  no answer given")
+        else:
+            print(f"  q{question}  not {given!r} — {_SELF_CHECK_HINT[question]}")
+    print(f"\n{len(_SELF_CHECK_KEY)} questions, {right} right")
+
+
+# Put your own letters in, then run this cell:
+# check_self_check({1: "a", 2: "a", 3: "a", 4: "a", 5: "a"})
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# An append-only log whose integrity you can demonstrate rather than assert, a retention
+# report that distinguishes a purge from a deletion, a query that rebuilds one decision with
+# the deployment that produced it, and a completeness checker whose field list is argued for
+# in writing. That is the object behind T10-L01's `automatic_logging_design` boolean.
+#
+# The next modules in this programme hang off the same log. Annex IV technical documentation
+# cites it as the record-keeping design; the human-oversight module reads `verifier_ids` out
+# of it; post-market monitoring streams from it. Build it badly once and every later artefact
+# inherits the damage.
+#
+# **Again, and finally: this is engineering, not legal advice.**
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_chain),
+                          ("exercise 2", _check_verify_chain),
+                          ("exercise 3", _check_retention),
+                          ("exercise 4", _check_reconstruct),
+                          ("exercise 5", _check_completeness)):
+        _try(_name, _check)
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
+    # and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
