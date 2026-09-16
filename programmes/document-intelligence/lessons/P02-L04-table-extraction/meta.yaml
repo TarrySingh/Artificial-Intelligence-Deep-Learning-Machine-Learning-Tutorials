@@ -1,0 +1,193 @@
+id: P02-L04-table-extraction
+title: Table extraction — structure and content are two different scores, and one number reports neither
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P02-L01-extraction-evaluation
+  - P02-L02-layout-reading-order
+  - P02-L03-sequence-labelling
+objectives:
+  - "Implement ink_runs, one projection profile, and use it on both axes of a page — rows on y, columns on x"
+  - "Reconstruct cells and colspans from token geometry, and measure what feeding a spanning header to the column profile costs"
+  - "Implement merge_continuations so a row whose wrap crosses a page break comes back as one row"
+  - "Implement content F1 over the multiset of cell texts and a TEDS-like tree-edit similarity, including its structure-only variant"
+  - "Produce, on this corpus, a case where content is perfect while structure is wrong and a case where the reverse holds, and state which score a named downstream consumer must gate on"
+datasets: []            # none: the corpus is 24 two-page tables laid out deterministically
+                        # inside the lesson (build_corpus, seed 20260916) and declared
+                        # SYNTHETIC. There is no PDF library, OCR engine or table model in this
+                        # environment, so nothing is downloaded and nothing is licensed.
+points: 94              # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-16 as module 4 of the document-intelligence programme. All four gates run
+# from the repo root on the venv interpreter; the measured figures at the foot of this file
+# were written back by tools/execute.py and never typed.
+#
+# LESSON ID AND DIRECTORY. MODULES.md specifies module 4 in full — "Table extraction: structure
+# and content are two different scores", the projection-profiling lab, the spanning header, the
+# row split across a page break, cell-content F1 and a structure score in the spirit of TEDS,
+# the two cases where the scores disagree, and a closing rule for which one a downstream
+# consumer needs — but assigns it no lesson id (its status table carries "—" for modules 2 to
+# 11). The authoring brief named the directory bare, as `P02-L04`; the owner has since renamed it
+# to `P02-L04-table-extraction` so that the whole programme uses the descriptive slug that
+# `P02-L01-extraction-evaluation` and `P02-L02-layout-reading-order` established.
+#
+# WHY THE CORPUS IS SYNTHETIC. There is no PDF library and no OCR engine here, so there is
+# nothing to lay out FROM. build_corpus() places word boxes directly from a fixed seed: 24
+# tables, 2 pages each, 1752 boxes, a colspan-3 header over three money columns, 12 gold rows
+# per table, and two wrapped supplier names per table — one of whose wraps falls across the
+# page break by construction. Every student sees the same geometry and the same numbers.
+#
+# TWO DELIBERATE DEVIATIONS FROM THE SPEC, both stated in the notebook:
+#  1. `teds_like` is NOT TEDS. It is a two-level alignment over rows and then cells, with no
+#     rowspan and no thead/tbody split, so it is a restricted tree edit distance rather than
+#     Zhang-Shasha over the full tree. Its cost is therefore not bounded by max(|Ta|,|Tb|) — a
+#     one-row table against a ten-row one exceeds it — so the score is clamped at 0, and the
+#     rubric grades the clamp. MODULES.md asked for a structure score "in the spirit of TEDS";
+#     section 9 says exactly where the spirit ends. The substitution rule IS the published one,
+#     quoted in claims.yaml and provided as given code so the citation stays honest.
+#  2. The lesson regenerates its own token geometry rather than importing module 2's. A student
+#     bundle is one lesson directory, so a cross-lesson import would not survive the build.
+#
+# A RESULT THE LESSON DID NOT PLAN AND DOES NOT HIDE. The section 11 matrix was written
+# expecting no single score to catch every defect. Measured, TEDS catches all six. The section
+# was rewritten around what the run actually showed: TEDS flags everything and reads 0.986 for
+# TWO unrelated bugs (columns inferred off all ink, and the spanning header collapsed to
+# colspan 1), so it cannot say which you have. The pair (content F1, TEDS-Struct) is
+# near-orthogonal and classifies each defect as content-only, structure-only, both, or
+# order-only — which is module 1's "turn one F1 into a work order", one level up. Self-check
+# question 5 and its answer were rewritten after that measurement, not before it.
+# A second unplanned result is now section 11's closing cell: shifting every column index by
+# seven leaves all three scores at 1.000, because a tree carries position by sibling order and
+# colspan and has no column index at all. That is the gap GriTS was proposed for, and it is
+# cited rather than glossed.
+# A third is in the section 6 sweep. At col_gap 5 the profile reports the correct FIVE columns
+# on all 24 tables and rebuilds none of them, because column_spans pools ink from every body
+# row — one row's word gap sits under another row's word — while cells_in_band clusters a
+# single band with nothing to pool. The sweep gained a cells-per-row column so the reader can
+# see the damage the column count hides, and self-check question 2 was rewritten around it.
+#
+# TWO NUMBERS THAT ARE NOT CLAIMS. ROW_GAP and COL_GAP, and the page geometry they live in,
+# are properties of this corpus. The notebook says so and then measures the window that works
+# (COL_GAP in [6, 26], from a widest-intra-cell-gap of 6 and a narrowest-inter-column gap of
+# 27) rather than asserting a typical value for real scans. Nothing here claims a real document
+# has these dimensions, so they are not entries in claims.yaml.
+#
+# MUTATION TESTING. 24 plausible-wrong variants of the reference solution were built in a
+# scratch directory outside the lesson and graded, plus 3 controls. These are MEASURED scores,
+# not predicted ones. 23 of the 24 died; the 24th is proved EQUIVALENT below rather than
+# excused. Every mutant loses the points for the behaviour it breaks and keeps the rest, so
+# partial credit survives all of them and ranges 72 to 90 out of 94:
+#   1. ink_runs cutting on a gap of exactly min_gap                  -> 89/94
+#   2. ink_runs comparing with the previous high edge, not a max     -> 85/94
+#   3. ink_runs not sorting its input                                -> 85/94
+#   4. row_bands comparing with the previous box's bottom edge       -> 90/94
+#   5. row_bands sorting a band by x only, no text tie-break         -> 89/94
+#   6. row_bands returning bands in input order                      -> 89/94
+#   7. cells_in_band assigning box by box, then grouping             -> 76/94
+#   8. cells_in_band taking the nearest column instead of overlap    -> 72/94
+#   9. cells_in_band using <= / >= for overlap (touching counts)     -> 90/94
+#  10. cells_in_band joining member texts with no separator          -> 72/94
+#  11. cells_in_band dropping a cell that overlaps no column         -> 90/94
+#  12. merge_continuations putting the tail's text in front          -> 77/94
+#  13. merge_continuations merging in place                          -> 90/94
+#  14. merge_continuations dropping an unmatched column              -> 89/94
+#  15. merge_continuations keying on presence, not non-blank text    -> 89/94
+#  16. content_f1 comparing sets instead of multisets                -> 89/94
+#  17. content_f1 counting cells that normalise to empty             -> 90/94
+#  18. content_f1 returning the arithmetic mean of P and R           -> 89/94
+#  19. row_distance not forwarding structure_only to cell_sub_cost   -> 80/94
+#  20. row_distance aligning position by position, no insert/delete  -> 90/94
+#  21. teds_like forgetting the row node in the edit cost            -> 90/94
+#  22. teds_like normalising by the SMALLER tree                     -> 90/94
+#  23. teds_like not clamping the score at zero                      -> 90/94
+# Mutants 7, 8, 10, 12 and 19 lose far more than their own case is worth, because the two
+# corpus-level cases at the foot of the rubric run the whole pipeline over 24 tables and
+# notice. That is the bug's real blast radius, not a grading accident. Mutant 8 is the
+# instructive one: taking the nearest column instead of every overlapping one is a one-line
+# change that leaves every cell's TEXT perfect, so content F1 never moves — and it still costs
+# 22 marks, because the colspan-3 header stops coming back and neither the rebuild nor the
+# structure score forgives that.
+#
+# THREE RUBRIC DEFECTS the first pass did not catch, now fixed. Each mutant below scored 94/94
+# against the rubric as first authored, and the fix is an extra hidden case inside an existing
+# entry — the total is still 94 and no points were added:
+#   * row_bands carrying the PREVIOUS box's bottom edge instead of a running maximum. The
+#     tall-box case had only two boxes, so "previous" and "running maximum" were the same
+#     number. A third box — tall, then short, then one that only the tall box still reaches —
+#     separates them.                                          94/94 -> 90/94
+#   * cells_in_band treating a touching edge as an overlap. The fallback case had a cell
+#     touching ONE column, where inclusive bounds and the nearest-column fallback agree on the
+#     answer. A cell touching BOTH columns is where they diverge: strict bounds give colspan 1,
+#     inclusive bounds invent a spanning cell.                  94/94 -> 90/94
+#   * content_f1 counting cells that normalise to empty, and content_f1 returning the
+#     arithmetic mean of precision and recall. Both slipped through symmetric cases — a blank
+#     on both sides cancels, and P = R = 0.5 makes the two means agree. Asymmetric cases (a
+#     blank on one side only; P 0.5 against R 1.0) kill both.   94/94 -> 90/94 and 89/94
+#
+# ONE VARIANT IS EQUIVALENT, not a hole, and no case was invented to pretend otherwise:
+# `merge_continuations` with the header exemption deleted outright still scores 94/94. It
+# cannot differ. At input row i the output holds at most i rows, so for any i < n_header_rows
+# the "there is no body row above this one" guard has already fired and the row is copied
+# through regardless; and the first row that can merge is at index n_header_rows + 1, whose
+# target is the body row at index n_header_rows, never a header. Measured as well as argued:
+# identical output on all 24 corpus tables and on 20,000 random row sets with 0 to 6 rows,
+# 0 to 3 header rows, blank and non-blank key cells and colspans 1 to 2. The exemption stays in
+# the reference because it states the intent, and the docstring keeps it because a student
+# whose "no row above" guard is shaped differently does need it.
+#
+# Three variants are deliberate CONTROLS — differently shaped and equally correct: ink_runs
+# rewritten as an append-or-extend walk, row_distance rewritten with a full (n+1)x(m+1) numpy
+# matrix instead of two rolling rows, and content_f1 rewritten on collections.Counter. All
+# three score 94/94, so the rubric rejects wrong answers without rejecting right ones it did
+# not expect.
+#
+# ---------------------------------------------------------------------------------------
+# INDEPENDENT REVIEW, 2026-09-16. All four gates re-run from the repo root on the venv
+# interpreter, nothing taken on trust: execute.py PASS (7.3s, 30 MiB), grade --solution
+# 94/94, grade on the stubs 0/94, jupytext converts. Prerequisites re-resolved: all four
+# ids exist on disk (T00-L01-the-8gb-track, P02-L01-extraction-evaluation,
+# P02-L02-layout-reading-order, P02-L03-sequence-labelling — the last two are `reviewed`). Every claims.yaml
+# source was re-fetched: the TEDS formula and the td-substitution sentence read verbatim on
+# ar5iv 1911.10683, the ICDAR Task B sentence verbatim on arxiv 2106.14616, and both GriTS
+# quotes verbatim on arxiv.org/abs/2203.12555 (the ar5iv rendering cited paraphrases them —
+# the substance is unchanged in every version, but the abs page is the better citation).
+#
+# 32 mutants + 3 controls were written fresh in a scratch directory outside the lesson and
+# GRADED, not predicted. 28 died on the rubric as authored, scoring 72 to 90 out of 94, so
+# partial credit survived every one; a further mutant (cells_in_band accumulating into a
+# mutable default argument) never terminated — the grader has no per-test timeout, which is
+# a tools/ matter and was left alone. Two mutants scored 94/94 and were REAL DEFECTS:
+#   * merge_continuations keying the merge on `col` instead of `(col, colspan)`. It joins a
+#     continuation's colspan-1 cell into a colspan-3 cell that starts at the same column and
+#     rewrites the span to 1. Differed from the reference on 25,488 of 200,000 random row
+#     sets, and the corpus never reaches it because the only rows with that shape are the two
+#     header rows, which n_header_rows exempts.            94/94 -> 89/94
+#   * merge_continuations sorting the merged row on `col` instead of `(col, colspan)`. Same
+#     blind spot, milder symptom: the row comes back in the wrong order. Differed on 14,495
+#     of the same 200,000.                                 94/94 -> 89/94
+# Both are now killed by one extra hidden case inside test_merge_continuations_folds_the_tail
+# — no points added, the total is still 94 — plus a matching public check and a docstring
+# sentence saying the match is on the pair, so the hidden case is fair rather than a trap.
+#
+# TWO MORE 94/94 VARIANTS ARE EQUIVALENT, and are reported as such rather than dressed up as
+# defects: cells_in_band returning its unsorted list, and cells_in_band sorting on `col`
+# alone. `ink_runs` emits disjoint runs left to right, so the cells are already in
+# (col, colspan) order before the sort and the sort cannot move anything. Measured, not just
+# argued: 0 differences from the reference on 200,000 random bands with 1-4 columns, 0-6
+# boxes, and min_gap in {1, 4, 8, 16, 30}. The author's own equivalence claim — the header
+# exemption deleted — was re-run against the tightened rubric and still scores 94/94.
+# The three controls still score 94/94, so the new case did not narrow the rubric onto one
+# implementation shape.
+#
+# ONE PROSE FIX. Self-check question 1 quoted "TEDS-Struct 0.11 on this corpus"; no cell in
+# the lesson computes 0.11, and the pair the section 10 table actually prints for the
+# shattered-grid variant is 1.000 / 0.367. The question now points at the measured pair
+# instead of naming a number nobody ran.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16 — four gates re-run green; 32 mutants + 3 controls graded; 2 rubric defects in merge_continuations found and fixed inside the existing 94 points; 2 survivors proved equivalent over 200,000 random inputs; claims.yaml sources re-fetched and verbatim."
+
+measured_seconds: 7.3
+measured_peak_mib: 30

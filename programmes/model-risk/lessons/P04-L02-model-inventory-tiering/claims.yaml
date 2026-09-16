@@ -1,0 +1,105 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# Both sources below were fetched and read in full on the access date — the SS1/23 entries
+# from the supervisory statement PDF itself, not from the landing page and not from a search
+# summary. Three deliberate NON-claims are recorded at the foot of this file: the point
+# weights, the tier cuts and the escalation rule in POLICY are a teaching policy the notebook
+# passes in, and the lesson never says any regulator sets them.
+claims:
+  - id: pra-ss1-23-principle-1-inventory-and-tiering
+    claim: >-
+      Model identification and model risk classification is the FIRST of the five principles
+      in the PRA's supervisory statement SS1/23, and it asks for three things together: a
+      definition of a model that sets the scope of the framework, a model inventory, and a
+      risk-based tiering approach. That ordering — inventory and tiering before governance,
+      before development, before independent validation — is why this module sits at number 2
+      in the programme, immediately after the validation suite, and why the notebook says in
+      its opening cell that identification comes before measurement.
+    where: "lesson.py header (the paragraph beginning 'Module 1 measured one model'); section 4 preamble"
+    source_url: https://www.bankofengland.co.uk/-/media/boe/files/prudential-regulation/supervisory-statement/2023/ss123.pdf
+    source_title: "SS1/23 – Model risk management principles for banks, Prudential Regulation Authority, May 2023 (effective 17 May 2024)"
+    quote: >-
+      Firms should have an established definition of a model that sets the scope for MRM, a
+      model inventory and a risk-based tiering approach to categorise models to help identify
+      and manage model risk.
+    quote_context: >-
+      The full text of Principle 1, from section 4 of the statement. The other four principles
+      are, in order, Governance; Model development, implementation and use; Independent model
+      validation; and Model risk mitigants.
+    accessed: 2026-09-16
+
+  - id: pra-ss1-23-tiering-materiality-and-complexity
+    claim: >-
+      A tiering approach is expected to be firm-wide and consistent, and to assign a
+      risk-based materiality and complexity rating to each model; materiality is expected to
+      consider both quantitative size-based measures — the statement names exposure, book or
+      market value, and the number of customers a model applies to — and qualitative factors
+      relating to the model's purpose and its importance to business decisions. That is the
+      shape of the `tier()` exercise: a policy passed in, quantitative exposure bands
+      alongside a qualitative materiality rating, and a complexity rating beside them.
+    where: "lesson.py section 4 (exercise 3 preamble and the POLICY constant); the schema constants in the setup cell"
+    source_url: https://www.bankofengland.co.uk/-/media/boe/files/prudential-regulation/supervisory-statement/2023/ss123.pdf
+    source_title: "SS1/23 – Model risk management principles for banks, Prudential Regulation Authority, May 2023"
+    quote: >-
+      Firms should implement a consistent, firm-wide model tiering approach that assigns a
+      risk-based materiality and complexity rating to each of their models.
+    quote_context: >-
+      Principle 1.3(a). Principle 1.3(b)(i) gives the size-based examples — "exposure, book or
+      market value, or number of customers to which a model applies" — and 1.3(b)(ii) the
+      qualitative half. Principle 1.2(c)(iv) is the source for the inventory carrying
+      governance details including "the dates when validation was last performed, and the
+      frequency of future validation", which are the two fields exercise 5 reads.
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026-risk-based
+    claim: >-
+      The revised US interagency model risk management guidance issued on 17 April 2026 —
+      carried by the Federal Reserve as SR 26-2 and by the OCC as Bulletin 2026-13 — sets out
+      a risk-based approach tailored to a banking organisation's model risk profile. A
+      risk-based approach requires knowing what the profile consists of, which is the
+      inventory; this lesson's opening paragraph makes no stronger claim than that.
+    where: "lesson.py header; meta.yaml objectives"
+    source_url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    source_title: "OCC Bulletin 2026-13, Model Risk Management: Revised Guidance, 17 April 2026"
+    quote: >-
+      set forth a risk-based approach to model risk management, tailored to a banking
+      organization's model risk profile
+    quote_context: >-
+      The bulletin also states the guidance "is expected to be most relevant to banking
+      organizations with over $30 billion in total assets". It contains no verbatim language
+      about model inventories or tiering methodologies, and this lesson therefore attributes
+      neither to it — the inventory-and-tiering expectation above is cited to SS1/23, which
+      states it explicitly.
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * The POLICY weights. materiality 0/2/4, complexity 0/1/2, reversibility 0/1/3, the four
+#   exposure bands and the cuts at 8/5/2 are a TEACHING policy. They are passed into `tier()`
+#   as an argument, the notebook calls them a policy input in three places, and the lesson
+#   nowhere suggests any regulator, standard or paper sets them. No published primary source
+#   states a numeric tiering scheme that could be cited here; SS1/23 states the SHAPE of the
+#   approach — firm-wide, consistent, risk-based, materiality and complexity — and explicitly
+#   leaves the calibration to the firm. The exercise teaches the shape and grades the
+#   boundaries, which is the part that is defensible without a citation.
+#
+# * The escalation rule. "Irreversible, with no human override, is never below tier 2" is
+#   likewise the notebook's own policy, chosen because it makes a graded point about a floor
+#   applied with min() rather than by assignment. It is not attributed to anyone.
+#
+# * Reversibility and human override as tiering attributes. SS1/23's complexity limb names
+#   interpretability, explainability, transparency and bias, not reversibility. The notebook
+#   adds reversibility and human override as attributes of the DECISION the model informs
+#   rather than of the model, states the two as part of its own policy, and claims no
+#   regulatory provenance for them. The programme's MODULES.md specifies this module's tiering
+#   over materiality, complexity, exposure and the reversibility of the decision; human
+#   override is the fifth attribute this lesson adds, and it is declared in meta.yaml.
+#
+# * Synthetic data. The inventory and the runtime registry are generated by
+#   numpy.random.default_rng(20260916) inside the notebook and declared synthetic in
+#   DATA_NOTE, in the notebook's own output, and in section 1 of every report it generates.
+#   They make no claim about any real firm, model or portfolio, so they are not a dataset for
+#   the purposes of gate 11 and meta.yaml declares datasets: [].

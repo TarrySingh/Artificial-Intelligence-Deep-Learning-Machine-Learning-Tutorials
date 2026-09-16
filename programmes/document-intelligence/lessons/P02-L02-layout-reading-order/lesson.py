@@ -1,0 +1,1212 @@
+# %% [markdown]
+# # P02-L02 · Reading order from geometry
+#
+# **You will build:** the front of a document pipeline that has no PDF library in it — a
+# recursive XY-cut segmenter over raw token boxes, a reading-order sort, a running-header
+# detector, and the two scores that disagree about whether any of it worked.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download, no model
+# API · **Prerequisites:** T00-L01 (the 8 GB track), P02-L01 (the extraction harness).
+#
+# In P02-L01 the extractor was handed one short document at a time and the reading order was
+# never in doubt. Real pages are not like that. What an OCR pass or a PDF text layer gives you
+# is a bag of boxes; the order is yours to reconstruct, and every field your extractor reads
+# afterwards depends on getting it right.
+#
+# By the end you will be able to:
+#
+# 1. Implement `find_gaps` and `xy_cut`, the recursive segmentation that turns boxes into
+#    blocks.
+# 2. Implement `order_within_block`, the line clustering that turns a block into a sequence.
+# 3. Implement `detect_header_footer` so running furniture never reaches the extractor.
+# 4. Score a reading order two ways — Kendall's tau over tokens, boundary F1 over blocks — and
+#    show a case where they disagree.
+# 5. Measure, with module 1's own scorer, how much field F1 a wrong reading order costs.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import random
+import re
+import sys
+import time
+from typing import Iterable, Mapping, NamedTuple, Sequence
+
+import numpy as np
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+print("no PDF library and no OCR engine — so this lesson starts where one would have")
+print("stopped: with token boxes, and no idea what order to read them in.\n")
+
+# --- page geometry -----------------------------------------------------------------------
+# All coordinates are page points with the ORIGIN AT THE TOP LEFT, so y increases downwards,
+# which is what every PDF text-extraction and OCR library hands you.
+PAGE_W, PAGE_H = 600.0, 800.0
+CHAR_W, SPACE_W, TOKEN_H = 7.0, 7.0, 10.0   # a token box is 7 points per character, 10 tall
+LINE_PITCH = 24.0        # baseline-to-baseline inside one block  -> vertical gap 14
+BLOCK_SEP = 48.0         # baseline-to-baseline across a block    -> vertical gap 38
+COLUMN_GAP = 50.0        # empty points between two text columns
+COLUMN_Y_OFFSET = 12.0   # the right column's lines do not line up with the left column's
+TABLE_COL_GAP = 20.0     # empty points between two table columns -> deliberately tight
+TABLE_ROW_PITCH = 22.0   # table rows are set tighter than prose  -> vertical gap 12
+BODY_TOP = 110.0
+HEADER_Y, FOOTER_Y = 24.0, 760.0
+
+# Two tokens belong to the same line when their vertical centres are within this distance.
+LINE_TOL = 6.0
+
+# The gap width that separates one block from the next. Section 8 sweeps it; nothing in this
+# lesson asks you to believe this particular value is right.
+DEFAULT_MIN_GAP = 30.0
+MIN_GAP_SWEEP = (8.0, 14.0, 18.0, 24.0, 30.0, 36.0, 44.0, 60.0)
+
+# Header/footer detection: the top and bottom tenth of the page, and the share of pages a
+# repeated line has to appear on before it counts as furniture rather than content.
+HF_BAND = 0.10
+HF_MIN_PAGES_FRACTION = 0.6
+HF_ROW_BUCKET = 8.0
+
+# --- the field schema, unchanged from P02-L01 --------------------------------------------
+SCHEMA: dict[str, str] = {
+    "invoice_id": "id",
+    "invoice_date": "date",
+    "counterparty": "text",
+    "total_amount": "money",
+    "payment_terms_days": "integer",
+}
+
+# The label tokens the stand-in extractor keys on, and the field each one introduces.
+LABELS: dict[str, str] = {
+    "Invoice:": "invoice_id",
+    "Issued:": "invoice_date",
+    "Supplier:": "counterparty",
+    "Total:": "total_amount",
+    "Terms:": "payment_terms_days",
+}
+MAX_TEXT_TOKENS = 4   # how many tokens a free-text value may run to before the extractor stops
+
+MONTH_NAMES = ("January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November", "December")
+MONTH_INDEX = {name.lower(): i + 1 for i, name in enumerate(MONTH_NAMES)}
+COMPANY_SUFFIXES = frozenset({
+    "gmbh", "bv", "nv", "ag", "kg", "ltd", "limited", "inc", "incorporated",
+    "plc", "llc", "sa", "sas", "srl", "spa", "oy", "ab", "as", "co", "kk",
+})
+
+
+def span(box: Mapping, axis: str) -> tuple[float, float]:
+    """(low, high) edge of one token box along `axis`, which is "x" or "y"."""
+    if axis == "x":
+        return (box["x"], box["x"] + box["w"])
+    if axis == "y":
+        return (box["y"], box["y"] + box["h"])
+    raise ValueError(f"axis must be 'x' or 'y', not {axis!r}")
+
+
+def centre(box: Mapping, axis: str) -> float:
+    """Midpoint of one token box along `axis`."""
+    low, high = span(box, axis)
+    return (low + high) / 2.0
+
+
+def mask_digits(text: str) -> str:
+    """Every run of digits replaced by a single '#'. "Page 12 of 30" -> "Page # of #"."""
+    return re.sub(r"\d+", "#", text)
+
+
+def block_index(blocks: Sequence[Sequence[int]]) -> dict[int, int]:
+    """token id -> the index of the block it belongs to."""
+    return {tid: i for i, block in enumerate(blocks) for tid in block}
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on to the next cell,
+    so one broken exercise never hides the feedback on the other five.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The corpus: token boxes, and nothing else
+#
+# Reading order is a first-class failure mode, not a tidying step. A January 2026 paper on key
+# information extraction opens by naming it: the efficacy of multimodal transformers in
+# visually-rich document understanding "is critically constrained by two inherent limitations:
+# the lack of explicit modeling for logical reading order" and visual-token interference
+# (arXiv 2601.05470).
+#
+# `build_corpus()` lays out synthetic pages the way a PDF text layer or an OCR pass would hand
+# them to you — a flat list of token boxes with `text`, `x`, `y`, `w`, `h` and `page`, in an
+# arbitrary order. Three layout families: single column, two columns, and a page with a table.
+# Every page carries a running header and a boilerplate footer.
+#
+# The corpus also records, for each page, the blocks a human would draw and the order a human
+# would read them in. That is the gold you will score against. Run it and look at one page.
+
+# %%
+_COMPANIES = (
+    "Nordwind Logistik GmbH", "Vantor Marine BV", "Helix Pharma Limited",
+    "Caldera Energy PLC", "Brightwater Analytics Ltd", "Orsini Costruzioni SRL",
+    "Kestrel Freight Inc", "Aalto Terveys Oy", "Meridian Custody AG",
+    "Dunbar Reinsurance Ltd", "Petrarca Chimica SpA", "Lindqvist Verkstad AB",
+    "Hollandse Kaasunie NV", "Argent Clearing SA", "Torrent Robotics Inc",
+    "Vesper Maritime AS", "Kaneko Precision KK",
+)
+_CURRENCY_SYMBOLS = ("€", "$", "£")
+_FILLER = ("this", "remittance", "covers", "the", "invoice", "listed", "above", "and", "is",
+           "settled", "under", "our", "standing", "arrangement", "please", "quote", "the",
+           "reference", "when", "replying", "payment", "will", "be", "made", "by", "bank",
+           "transfer", "on", "the", "due", "date", "without", "further", "notice")
+_ITEMS = ("freight", "handling", "storage", "customs", "insurance", "surcharge",
+          "demurrage", "packing")
+_HEADER_WORDS = ("ACME", "CLEARING", "HOUSE")
+# The footer says "Terms: standard" on every page of every document. It is boilerplate, it is
+# not the payment terms of this invoice, and an extractor that reads it will say so anyway.
+_FOOTER_TAIL = ("Terms:", "standard")
+
+
+def _surface_id(year: int, serial: int, style: int) -> str:
+    return f"INV-{year}-{serial:04d}" if style == 0 else f"INV/{year}/{serial:04d}"
+
+
+def _surface_date(year: int, month: int, day: int, style: int) -> str:
+    if style == 0:
+        return f"{year:04d}-{month:02d}-{day:02d}"
+    return f"{day:02d}/{month:02d}/{year:04d}"        # day first: the corpus is European
+
+
+def _surface_money(cents: int, symbol: str, style: int) -> str:
+    whole, part = divmod(cents, 100)
+    if style == 0:
+        return f"{symbol}{whole:,}.{part:02d}"        # 1,234.50 — decimal point
+    grouped = f"{whole:,}".replace(",", ".")
+    return f"{symbol}{grouped},{part:02d}"            # 1.234,50 — decimal comma
+
+
+class _Sheet:
+    """Lays tokens out on one page and remembers the blocks and the reading order."""
+
+    def __init__(self, page: int, counter):
+        self.page, self.counter = page, counter
+        self.tokens: list[dict] = []
+        self.blocks: list[list[int]] = []
+        self.furniture: list[int] = []
+
+    def word(self, text: str, x: float, y: float) -> dict:
+        tok = {"tid": next(self.counter), "text": text, "x": float(x), "y": float(y),
+               "w": CHAR_W * len(text), "h": TOKEN_H, "page": self.page}
+        self.tokens.append(tok)
+        return tok
+
+    def line(self, words: Sequence[str], x0: float, y: float) -> list[dict]:
+        out, x = [], x0
+        for w in words:
+            tok = self.word(w, x, y)
+            out.append(tok)
+            x += tok["w"] + SPACE_W
+        return out
+
+    def furnish(self, n_pages: int) -> None:
+        """The running header and the boilerplate footer, identical on every page."""
+        for tok in self.line(_HEADER_WORDS, 70.0, HEADER_Y):
+            self.furniture.append(tok["tid"])
+        footer = ("Page", str(self.page + 1), "of", str(n_pages)) + _FOOTER_TAIL
+        for tok in self.line(footer, 70.0, FOOTER_Y):
+            self.furniture.append(tok["tid"])
+
+
+def _right_edge(tokens: Iterable[Mapping]) -> float:
+    return max(t["x"] + t["w"] for t in tokens)
+
+
+def _filler_lines(rng: random.Random, n_lines: int) -> list[list[str]]:
+    start = rng.randrange(len(_FILLER))
+    return [[_FILLER[(start + i * 4 + k) % len(_FILLER)] for k in range(4)]
+            for i in range(n_lines)]
+
+
+def _single_column(sheet: _Sheet, rng: random.Random, field_lines: list[list[str]]) -> None:
+    y = BODY_TOP
+    sheet.blocks.append([t["tid"] for t in sheet.line(["REMITTANCE", "ADVICE"], 70.0, y)])
+    y += BLOCK_SEP
+    block: list[int] = []
+    for words in field_lines:
+        block += [t["tid"] for t in sheet.line(words, 70.0, y)]
+        y += LINE_PITCH
+    sheet.blocks.append(block)
+    y += BLOCK_SEP - LINE_PITCH
+    block = []
+    for words in _filler_lines(rng, 3):
+        block += [t["tid"] for t in sheet.line(words, 70.0, y)]
+        y += LINE_PITCH
+    sheet.blocks.append(block)
+
+
+def _two_column(sheet: _Sheet, rng: random.Random, left_lines: list[list[str]],
+                right_lines: list[list[str]]) -> None:
+    y = BODY_TOP
+    left: list[int] = []
+    for words in left_lines:
+        left += [t["tid"] for t in sheet.line(words, 70.0, y)]
+        y += LINE_PITCH
+    # The right column starts exactly COLUMN_GAP points past the widest token on the left, and
+    # its lines are offset vertically, which is why no horizontal cut crosses this page.
+    right_x = _right_edge(sheet.tokens) + COLUMN_GAP
+    y = BODY_TOP + COLUMN_Y_OFFSET
+    right: list[int] = []
+    for words in right_lines:
+        right += [t["tid"] for t in sheet.line(words, right_x, y)]
+        y += LINE_PITCH
+    sheet.blocks.append(left)
+    sheet.blocks.append(right)
+
+
+def _table_page(sheet: _Sheet, rng: random.Random, field_lines: list[list[str]],
+                rows: list[list[str]]) -> None:
+    y = BODY_TOP
+    sheet.blocks.append([t["tid"] for t in sheet.line(["REMITTANCE", "ADVICE"], 70.0, y)])
+    y += BLOCK_SEP
+    block: list[int] = []
+    for words in field_lines:
+        block += [t["tid"] for t in sheet.line(words, 70.0, y)]
+        y += LINE_PITCH
+    sheet.blocks.append(block)
+    y += BLOCK_SEP - LINE_PITCH
+    # Column x positions are fitted to the widest cell in each column, so the empty gap
+    # between two columns is exactly TABLE_COL_GAP — narrower than the gap between columns of
+    # prose, which is the whole difficulty.
+    n_cols = max(len(r) for r in rows)
+    widths = [max((CHAR_W * len(r[c]) for r in rows if c < len(r) and r[c]), default=0.0)
+              for c in range(n_cols)]
+    xs, x = [], 70.0
+    for w in widths:
+        xs.append(x)
+        x += w + TABLE_COL_GAP
+    block = []
+    for row in rows:
+        for c, cell in enumerate(row):
+            if cell:
+                block.append(sheet.word(cell, xs[c], y)["tid"])
+        y += TABLE_ROW_PITCH
+    sheet.blocks.append(block)
+
+
+def build_corpus(n_docs: int = 48, seed: int = 20260916) -> list[dict]:
+    """Deterministic corpus of laid-out documents. Same seed, same pages, same numbers.
+
+    Each document is a dict with:
+      ``pages``        — list of pages, each a list of token boxes in arbitrary order
+      ``furniture``    — token ids of the running header and the boilerplate footer
+      ``gold_blocks``  — per page, the blocks a human would draw, each a list of token ids
+      ``gold_order``   — every body token id in the order a human would read them
+      ``gold``         — the five field values, as the surface strings printed on the page
+    """
+    rng = random.Random(seed)
+    counter = iter(range(10 ** 7))
+    docs = []
+    for i in range(n_docs):
+        family = rng.choices(("single", "two_column", "table"), weights=(30, 40, 30))[0]
+        two_page = rng.random() < 0.34
+        year = rng.choice((2025, 2026))
+        month, day, serial = rng.randint(1, 12), rng.randint(1, 28), rng.randint(1, 9999)
+        cents = rng.randint(1_50, 480_000_00)
+        symbol = rng.choice(_CURRENCY_SYMBOLS)
+        company = rng.choice(_COMPANIES)
+        terms = (rng.choice(("14", "30", "30", "45", "60")) if two_page
+                 else rng.choice(("14", "30", "30", "45", "60", "", "")))
+        inv = _surface_id(year, serial, rng.randrange(2))
+        date = _surface_date(year, month, day, rng.randrange(2))
+        amount = _surface_money(cents, symbol, rng.randrange(2))
+        gold = {"invoice_id": inv, "invoice_date": date, "counterparty": company,
+                "total_amount": amount, "payment_terms_days": terms}
+        n_pages = 2 if two_page else 1
+        sheets = [_Sheet(p, counter) for p in range(n_pages)]
+
+        # Supplier is never the last labelled line on a page: a label always follows it, so the
+        # free-text value has an unambiguous end under the CORRECT reading order.
+        supplier_words = ["Supplier:"] + company.split()
+        if family == "single":
+            lines = [["Invoice:", inv], supplier_words, ["Issued:", date],
+                     ["Total:", amount]]
+            if terms and not two_page:
+                lines.append(["Terms:", terms])
+            _single_column(sheets[0], rng, lines)
+        elif family == "two_column":
+            left = [["REMITTANCE", "ADVICE"], ["Invoice:", inv],
+                    supplier_words[:2], supplier_words[2:], ["Issued:"], [date]]
+            right = [["Total:"], [amount]]
+            if terms and not two_page:
+                right.append(["Terms:", terms])
+            right += _filler_lines(rng, 3)
+            _two_column(sheets[0], rng, left, right)
+        else:
+            lines = [["Invoice:", inv], supplier_words, ["Issued:", date]]
+            if terms and not two_page:
+                lines.append(["Terms:", terms])
+            rows = [["Line", "Description", "Qty", "Amount"]]
+            for r in range(rng.randint(3, 5)):
+                rows.append([str(r + 1), _ITEMS[(serial + r) % len(_ITEMS)],
+                             str(rng.randint(1, 40)),
+                             _surface_money(rng.randint(1_00, 90_000_00), symbol, 0)])
+            rows.append(["", "Total:", "", amount])
+            _table_page(sheets[0], rng, lines, rows)
+
+        if two_page:
+            sheet = sheets[1]
+            y = BODY_TOP
+            block: list[int] = []
+            for words in _filler_lines(rng, 3):
+                block += [t["tid"] for t in sheet.line(words, 70.0, y)]
+                y += LINE_PITCH
+            sheet.blocks.append(block)
+            y += BLOCK_SEP - LINE_PITCH
+            sheet.blocks.append([t["tid"] for t in sheet.line(["Terms:", terms], 70.0, y)])
+
+        for sheet in sheets:
+            sheet.furnish(n_pages)
+        order = [tid for sheet in sheets for block in sheet.blocks for tid in block]
+        docs.append({
+            "doc_id": f"DOC-{i:04d}", "family": family,
+            "pages": [sorted(s.tokens, key=lambda t: t["tid"] % 7) for s in sheets],
+            "furniture": {tid for s in sheets for tid in s.furniture},
+            "gold_blocks": [list(s.blocks) for s in sheets],
+            "gold_order": order, "gold": gold,
+        })
+    return docs
+
+
+CORPUS = build_corpus()
+ALL_PAGES = [page for doc in CORPUS for page in doc["pages"]]
+_n_tok = sum(len(p) for p in ALL_PAGES)
+print(f"{len(CORPUS)} documents, {len(ALL_PAGES)} pages, {_n_tok} token boxes")
+for _fam in ("single", "two_column", "table"):
+    print(f"  {_fam:11s} {sum(1 for d in CORPUS if d['family'] == _fam):3d} documents")
+_demo = next(d for d in CORPUS if d["family"] == "two_column")
+print(f"\nfirst six boxes of {_demo['doc_id']} page 1, as the corpus hands them to you:")
+for _t in _demo["pages"][0][:6]:
+    print(f"  tid={_t['tid']:5d}  x={_t['x']:6.1f} y={_t['y']:6.1f} "
+          f"w={_t['w']:5.1f}  {_t['text']!r}")
+print("\nNothing in that list says what to read first. That is the whole problem.")
+
+
+# %% [markdown]
+# ## 2. The instruments you inherit from P02-L01
+#
+# The normaliser and the scorer are module 1's, reproduced here so this lesson runs on its own.
+# You are not rebuilding them: the point of a harness is that the SAME scorer judges a
+# different pipeline. Section 8 points it at your reading order.
+
+# %%
+class FieldScore(NamedTuple):
+    field: str
+    tp: int
+    fp: int
+    fn: int
+    precision: float
+    recall: float
+    f1: float
+
+
+def normalise_value(value: str, field_type: str) -> str:
+    """P02-L01's normalisation policy, unchanged. Empty in, empty out."""
+    if not isinstance(value, str) or not value.strip():
+        return ""
+    if field_type not in set(SCHEMA.values()):
+        raise ValueError(f"unknown field_type {field_type!r}")
+    raw = " ".join(value.split())
+    fallback = raw.upper()
+    if field_type == "money":
+        body = re.sub(r"[^0-9.,-]", "", raw)
+        last_comma, last_dot = body.rfind(","), body.rfind(".")
+        if last_comma >= 0 and last_dot >= 0:
+            body = (body.replace(".", "").replace(",", ".") if last_comma > last_dot
+                    else body.replace(",", ""))
+        elif last_comma >= 0:
+            body = body.replace(",", ".") if re.search(r",\d{2}$", body) else body.replace(",", "")
+        try:
+            return f"{float(body):.2f}"
+        except ValueError:
+            return fallback
+    if field_type == "date":
+        m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", raw)
+        if m:
+            y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        else:
+            m = re.match(r"^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$", raw)
+            if not m:
+                return fallback
+            d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if not (1 <= mo <= 12 and 1 <= d <= 31):
+            return fallback
+        return f"{y:04d}-{mo:02d}-{d:02d}"
+    if field_type == "integer":
+        m = re.search(r"\d+", raw)
+        return str(int(m.group(0))) if m else fallback
+    if field_type == "id":
+        stripped = re.sub(r"[^A-Za-z0-9]", "", raw)
+        return stripped.upper() if stripped else fallback
+    lowered = raw.lower().replace(".", "").replace(",", "")
+    tokens = re.sub(r"[^a-z0-9]+", " ", lowered).split()
+    while tokens and tokens[-1] in COMPANY_SUFFIXES:
+        tokens.pop()
+    return " ".join(tokens)
+
+
+def score_field(records: Sequence[Mapping], field: str) -> FieldScore:
+    """P02-L01's scorer, normalised mode. A wrong value is one FP and one FN."""
+    field_type = SCHEMA[field]
+    tp = fp = fn = 0
+    for record in records:
+        pred, gold = record["pred"][field], record["gold"][field]
+        has_pred, has_gold = bool(pred.strip()), bool(gold.strip())
+        if has_pred and has_gold and \
+                normalise_value(pred, field_type) == normalise_value(gold, field_type):
+            tp += 1
+            continue
+        fp += has_pred
+        fn += has_gold
+    precision = tp / (tp + fp) if (tp + fp) else 0.0
+    recall = tp / (tp + fn) if (tp + fn) else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0.0
+    return FieldScore(field, tp, fp, fn, precision, recall, f1)
+
+
+def macro_f1(records: Sequence[Mapping]) -> float:
+    """Unweighted mean of the per-field F1 scores over every field in SCHEMA."""
+    return sum(score_field(records, f).f1 for f in SCHEMA) / len(SCHEMA) if SCHEMA else 0.0
+
+
+def extract_fields(stream: Sequence[Mapping]) -> dict[str, str]:
+    """The stand-in extractor. It sees a FLAT TOKEN STREAM and nothing else.
+
+    On a label token it takes the value that follows: one token for an id, a date, an amount
+    or an integer, and up to MAX_TEXT_TOKENS tokens for free text, stopping early at the next
+    label. First occurrence of a label wins. This is exactly as much grammar as a regex over
+    a text layer has, and exactly as much as it takes for a reading-order error to become a
+    field error.
+    """
+    texts = [t["text"] for t in stream]
+    out = {field: "" for field in SCHEMA}
+    for i, text in enumerate(texts):
+        field = LABELS.get(text)
+        if field is None or out[field]:
+            continue
+        if SCHEMA[field] == "text":
+            value = []
+            for nxt in texts[i + 1:i + 1 + MAX_TEXT_TOKENS]:
+                if nxt in LABELS:
+                    break
+                value.append(nxt)
+            out[field] = " ".join(value)
+        elif i + 1 < len(texts) and texts[i + 1] not in LABELS:
+            out[field] = texts[i + 1]
+    return out
+
+
+print("harness imported from module 1: normalise_value, score_field, macro_f1")
+print("new here: extract_fields, which reads a STREAM — so its output depends on the order\n")
+_ok = extract_fields([{"text": t} for t in
+                      ["Invoice:", "INV-2026-0042", "Supplier:", "Vantor", "Marine", "BV",
+                       "Issued:", "2026-03-04", "Total:", "€1,234.50"]])
+_bad = extract_fields([{"text": t} for t in
+                       ["Invoice:", "INV-2026-0042", "Supplier:", "Vantor", "Issued:",
+                        "Marine", "BV", "2026-03-04", "Total:", "€1,234.50"]])
+print("right order ->", _ok)
+print("wrong order ->", _bad)
+print("Same ten tokens. One of them is a payable you would post to the wrong supplier.")
+
+
+# %% [markdown]
+# ## 3. Exercise 1 — `find_gaps`
+#
+# Recursive XY-cut is the oldest working answer to reading order and it is still the baseline:
+# "The XY-Cut algorithm recursively divides documents into smaller regions based on horizontal
+# and vertical projections" (XY-Cut++, arXiv 2504.10258). The projection is one line of code
+# once you have the gaps, so start there.
+#
+# A **gap** is a maximal interval along one axis that no token box overlaps, lying strictly
+# inside the extent of the boxes you were given, and at least `min_gap` wide.
+
+# %%
+def find_gaps(boxes: Sequence[Mapping], axis: str, min_gap: float) -> list[tuple[float, float]]:
+    """Maximal empty intervals along `axis`, at least `min_gap` wide, sorted left to right.
+
+    Sweep the boxes in order of their low edge, carrying the furthest edge reached so far. A
+    gap opens when the next box starts at least `min_gap` past that reach. Boxes that overlap
+    or nest must not open one — which is why you carry a running MAXIMUM rather than comparing
+    each box with the one before it.
+
+    Fewer than two boxes can enclose no interior gap, so return []. A `min_gap` that is not
+    positive would make every touching pair a gap and cut the page to shreds: raise
+    ``ValueError``.
+
+    Examples:
+        >>> a = {"x": 0.0, "w": 10.0, "y": 0.0, "h": 10.0}
+        >>> b = {"x": 60.0, "w": 10.0, "y": 0.0, "h": 10.0}
+        >>> find_gaps([a, b], "x", 20.0)
+        [(10.0, 60.0)]
+        >>> find_gaps([a, b], "x", 80.0)
+        []
+        >>> wide = {"x": 0.0, "w": 100.0, "y": 0.0, "h": 10.0}
+        >>> find_gaps([a, wide, b], "x", 20.0)
+        []
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public checks — run these as often as you like.
+def _check_find_gaps() -> None:
+    a = {"x": 0.0, "w": 10.0, "y": 0.0, "h": 10.0}
+    b = {"x": 60.0, "w": 10.0, "y": 0.0, "h": 10.0}
+    assert find_gaps([a, b], "x", 20.0) == [(10.0, 60.0)], "one gap, reported as (low, high)"
+    assert find_gaps([a, b], "x", 50.0) == [(10.0, 60.0)], "a gap of exactly min_gap counts"
+    assert find_gaps([a, b], "x", 51.0) == [], "a gap narrower than min_gap is not a gap"
+    wide = {"x": 0.0, "w": 100.0, "y": 0.0, "h": 10.0}
+    assert find_gaps([a, wide, b], "x", 20.0) == [], (
+        "a box spanning the gap closes it — carry a running MAX of the right edge, do not "
+        "compare each box only with its immediate predecessor")
+    assert find_gaps([a], "x", 5.0) == [], "one box cannot enclose an interior gap"
+    assert find_gaps([], "y", 5.0) == [], "no boxes, no gaps"
+    try:
+        find_gaps([a, b], "x", 0.0)
+        raise AssertionError("min_gap <= 0 must raise ValueError, not cut everywhere")
+    except ValueError:
+        pass
+    page = CORPUS[0]["pages"][0]
+    assert find_gaps(page, "y", DEFAULT_MIN_GAP), "a real page has at least one horizontal gap"
+    print("exercise 1 looks right")
+
+
+_try("exercise 1", _check_find_gaps)
+
+# %% [markdown]
+# Before you cut anything, look at what the gaps on a real page actually measure. Run this: it
+# prints the widest horizontal and vertical gaps on one page of each layout family.
+
+# %%
+def _show_gap_profile() -> None:
+    print(f"{'family':12s} {'widest y-gap':>13s} {'widest x-gap':>13s}   what that x-gap is")
+    for family, note in (("single", "no columns: just a word space"),
+                         ("two_column", "the PROSE column separator"),
+                         ("table", "a TABLE column separator")):
+        doc = next(d for d in CORPUS if d["family"] == family)
+        body = [t for t in doc["pages"][0] if t["tid"] not in doc["furniture"]]
+        wy = max((h - l for l, h in find_gaps(body, "y", 1.0)), default=0.0)
+        # An x-gap only means anything INSIDE a horizontal band: on a page with a heading
+        # above a table, the heading's tokens span the table's column gaps and hide them.
+        cuts = [h for _, h in find_gaps(body, "y", DEFAULT_MIN_GAP)]
+        bands: list[list[dict]] = [[] for _ in range(len(cuts) + 1)]
+        for token in body:
+            bands[sum(1 for c in cuts if c <= token["y"])].append(token)
+        wx = max((h - l for band in bands for l, h in find_gaps(band, "x", 1.0)), default=0.0)
+        print(f"{family:12s} {wy:13.1f} {wx:13.1f}   {note}")
+    print("\nThe prose column gap and the table column gap differ by more than a factor of")
+    print("two, and one threshold has to serve both: too small and the table is sliced into")
+    print("columns, too large and the two-column page is read straight across. Section 8")
+    print("measures where the window is, on this corpus, with your code.")
+
+
+_try("gap profile", _show_gap_profile)
+
+# %% [markdown]
+# ## 4. Exercise 2 — `xy_cut`
+#
+# Now the recursion. Try a horizontal cut first — documents are stacked in bands before they
+# are split into columns — and fall back to a vertical cut when no band boundary exists. A
+# region with no cut in either direction is a block.
+#
+# The order the blocks come back in **is** the reading order of the blocks: bands top to
+# bottom, columns left to right.
+
+# %%
+def xy_cut(boxes: Sequence[Mapping], min_gap: float) -> list[list[int]]:
+    """Recursive XY-cut. Returns blocks, in reading order, each a list of token ids.
+
+    The procedure, on one region:
+
+    1. Fewer than two boxes: the region is one block.
+    2. Look for horizontal cuts — gaps along ``"y"``. If there are any, split the region into
+       bands, recurse into each band, and concatenate the results in increasing y.
+    3. Otherwise look for vertical cuts — gaps along ``"x"`` — and do the same in increasing x.
+    4. No cut in either direction: the region is one block.
+
+    Splitting is unambiguous because a gap is empty by construction: no box can straddle one.
+    Assign each box to a band by its LOW edge, counting how many cut points lie at or below it.
+
+    The token ids inside a block come back in whatever order you collect them; `xy_cut` decides
+    which blocks, not which tokens. `order_within_block` settles that.
+
+    Examples:
+        >>> top = {"x": 0.0, "w": 10.0, "y": 0.0, "h": 10.0, "tid": 1}
+        >>> bottom = {"x": 0.0, "w": 10.0, "y": 100.0, "h": 10.0, "tid": 2}
+        >>> xy_cut([top, bottom], 30.0)
+        [[1], [2]]
+        >>> xy_cut([top, bottom], 200.0)
+        [[1, 2]]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_xy_cut() -> None:
+    top = {"x": 0.0, "w": 10.0, "y": 0.0, "h": 10.0, "tid": 1}
+    bottom = {"x": 0.0, "w": 10.0, "y": 100.0, "h": 10.0, "tid": 2}
+    assert xy_cut([top, bottom], 30.0) == [[1], [2]], "a wide horizontal gap makes two bands"
+    assert xy_cut([top, bottom], 200.0) == [[1, 2]], "no gap wide enough: one block"
+    left = {"x": 0.0, "w": 10.0, "y": 0.0, "h": 10.0, "tid": 3}
+    right = {"x": 100.0, "w": 10.0, "y": 0.0, "h": 10.0, "tid": 4}
+    assert xy_cut([left, right], 30.0) == [[3], [4]], "left column first, then right"
+    # A page with a band boundary AND a column boundary must cut the band FIRST, or the
+    # header is glued to whichever column it happens to sit above.
+    head = {"x": 0.0, "w": 120.0, "y": 0.0, "h": 10.0, "tid": 5}
+    l2 = {"x": 0.0, "w": 10.0, "y": 100.0, "h": 10.0, "tid": 6}
+    r2 = {"x": 100.0, "w": 10.0, "y": 100.0, "h": 10.0, "tid": 7}
+    assert xy_cut([head, l2, r2], 30.0) == [[5], [6], [7]], (
+        "cut on y before x: the full-width header is its own band, and the two columns below "
+        "it are separate blocks")
+    doc = next(d for d in CORPUS if d["family"] == "two_column")
+    body = [t for t in doc["pages"][0] if t["tid"] not in doc["furniture"]]
+    blocks = xy_cut(body, DEFAULT_MIN_GAP)
+    assert sorted(t for b in blocks for t in b) == sorted(t["tid"] for t in body), \
+        "every token must land in exactly one block — no losses, no duplicates"
+    assert len(blocks) == 2, (
+        f"a two-column page at min_gap={DEFAULT_MIN_GAP} is two blocks, you produced "
+        f"{len(blocks)} — if you got one, the vertical cut never ran; if you got many, you "
+        "are cutting on line spacing")
+    print("exercise 2 looks right")
+
+
+_try("exercise 2", _check_xy_cut)
+
+# %% [markdown]
+# ## 5. Exercise 3 — `order_within_block`
+#
+# A block is still a bag of boxes. Inside it, reading order is lines top to bottom and tokens
+# left to right — but "same line" is a tolerance question, because a comma, a capital and a
+# digit do not share a top edge in any real text layer.
+
+# %%
+def order_within_block(boxes: Sequence[Mapping]) -> list[int]:
+    """Token ids of one block in reading order: lines top to bottom, left to right within.
+
+    Sort the boxes by vertical centre, breaking ties on the left edge and then on token id so
+    the result never depends on the order you were handed. Walk that sequence and start a new
+    line whenever a box's vertical centre is more than ``LINE_TOL`` from the centre of the
+    FIRST box of the current line — comparing against the first box, not the previous one, so
+    a long run of slightly drifting boxes cannot creep a whole line's worth out of alignment.
+    Then sort each line by left edge (ties on token id) and concatenate the lines.
+
+    Examples:
+        >>> mk = lambda tid, x, y: {"tid": tid, "x": x, "w": 10.0, "y": y, "h": 10.0}
+        >>> order_within_block([mk(1, 50, 0), mk(2, 0, 0), mk(3, 0, 40)])
+        [2, 1, 3]
+        >>> order_within_block([mk(1, 50, 0), mk(2, 0, 2)])   # 2 points apart: one line
+        [2, 1]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def reading_order(page: Sequence[Mapping], min_gap: float) -> tuple[list[int], list[list[int]]]:
+    """Given glue: blocks from `xy_cut`, each one ordered by `order_within_block`.
+
+    Returns (token ids in reading order, the blocks that produced them).
+    """
+    by_tid = {t["tid"]: t for t in page}
+    blocks = xy_cut(page, min_gap)
+    ordered_blocks = [order_within_block([by_tid[tid] for tid in block]) for block in blocks]
+    return [tid for block in ordered_blocks for tid in block], ordered_blocks
+
+
+def _check_order_within_block() -> None:
+    def mk(tid, x, y):
+        return {"tid": tid, "x": float(x), "w": 10.0, "y": float(y), "h": 10.0}
+    assert order_within_block([mk(1, 50, 0), mk(2, 0, 0), mk(3, 0, 40)]) == [2, 1, 3], \
+        "left to right inside a line, then down to the next line"
+    assert order_within_block([mk(1, 50, 0), mk(2, 0, 2)]) == [2, 1], \
+        f"centres 2 points apart are one line at LINE_TOL={LINE_TOL}, so sort them by x"
+    assert order_within_block([mk(1, 50, 0), mk(2, 0, 20)]) == [1, 2], \
+        "centres 20 points apart are two lines, so the higher one comes first"
+    assert order_within_block([mk(9, 0, 0)]) == [9], "one box is one line"
+    assert order_within_block([]) == [], "no boxes, no order"
+    doc = next(d for d in CORPUS if d["family"] == "single")
+    body = [t for t in doc["pages"][0] if t["tid"] not in doc["furniture"]]
+    got, _ = reading_order(body, DEFAULT_MIN_GAP)
+    assert got == doc["gold_order"][:len(got)], (
+        "a single-column page must come back in exactly the gold order — if it does not, "
+        "print the two token streams side by side and find the first place they differ")
+    print("exercise 3 looks right")
+
+
+_try("exercise 3", _check_order_within_block)
+
+# %% [markdown]
+# ## 6. Exercise 4 — `detect_header_footer`
+#
+# Running headers and boilerplate footers are not content. They repeat at the same height on
+# every page, which is exactly what makes them detectable without reading them — and the
+# footer on these pages says `Terms: standard`, which your extractor will happily believe.
+
+# %%
+def detect_header_footer(pages: Sequence[Sequence[Mapping]]) -> set[int]:
+    """Token ids that are page furniture — a running header or footer — not body content.
+
+    A token is furniture when BOTH hold:
+
+    * its vertical centre ``y`` lies in the top ``HF_BAND`` or the bottom ``HF_BAND`` of the
+      page — precisely, ``y < HF_BAND * PAGE_H`` or ``y > (1 - HF_BAND) * PAGE_H``, where the
+      page height is ``PAGE_H``; a centre exactly on a band edge is body, and
+    * its key appears on at least ``HF_MIN_PAGES_FRACTION`` of the pages you were given,
+      counting each page once however many times the key occurs on it.
+
+    The key is ``(mask_digits(text.lower()), round(centre(token, "y") / HF_ROW_BUCKET))``.
+    Masking the digits is the whole trick: "Page 1 of 3" and "Page 2 of 3" are the same
+    furniture, and a rule that compares raw text sees a token that occurs on one page only and
+    lets every page number through into the body.
+
+    Examples:
+        >>> mk = lambda tid, text, y, page: {"tid": tid, "text": text, "x": 0.0, "w": 10.0,
+        ...                                  "y": y, "h": 10.0, "page": page}
+        >>> pages = [[mk(1, "Page 1", 760.0, 0), mk(2, "hello", 400.0, 0)],
+        ...          [mk(3, "Page 2", 760.0, 1), mk(4, "world", 400.0, 1)]]
+        >>> sorted(detect_header_footer(pages))
+        [1, 3]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_detect_header_footer() -> None:
+    def mk(tid, text, y, page):
+        return {"tid": tid, "text": text, "x": 0.0, "w": 10.0, "y": y, "h": 10.0, "page": page}
+    pages = [[mk(1, "Page 1", 760.0, 0), mk(2, "hello", 400.0, 0)],
+             [mk(3, "Page 2", 760.0, 1), mk(4, "world", 400.0, 1)]]
+    assert sorted(detect_header_footer(pages)) == [1, 3], (
+        "'Page 1' and 'Page 2' are the same furniture once the digits are masked; 'hello' is "
+        "mid-page and can never be furniture however often it repeats")
+    mid = [[mk(1, "same", 400.0, 0)], [mk(2, "same", 400.0, 1)]]
+    assert detect_header_footer(mid) == set(), "outside the bands, repetition proves nothing"
+    once = [[mk(1, "draft", 24.0, 0)], [mk(2, "final", 24.0, 1)]]
+    assert detect_header_footer(once) == set(), \
+        "a banner on one page in two is below HF_MIN_PAGES_FRACTION and is not furniture"
+    assert detect_header_footer([]) == set(), "no pages, no furniture"
+    got = detect_header_footer(ALL_PAGES)
+    gold = {tid for doc in CORPUS for tid in doc["furniture"]}
+    assert got == gold, (
+        f"on the real corpus you flagged {len(got)} tokens and the gold answer is "
+        f"{len(gold)}. If you are short by a few dozen, you are keying on the raw text and "
+        "the page NUMBERS are slipping through into the body stream.")
+    print("exercise 4 looks right")
+
+
+_try("exercise 4", _check_detect_header_footer)
+
+# %% [markdown]
+# Run this to see what the digit mask is worth, and what the footer costs you if it survives.
+
+# %%
+def _show_furniture_cost() -> None:
+    gold = {tid for doc in CORPUS for tid in doc["furniture"]}
+    naive: set[int] = set()
+    top, bottom = HF_BAND * PAGE_H, (1.0 - HF_BAND) * PAGE_H
+    seen: dict[tuple, set[int]] = {}
+    banded = []
+    for i, page in enumerate(ALL_PAGES):
+        for token in page:
+            y = centre(token, "y")
+            if y < top or y > bottom:
+                key = (token["text"].lower(), round(y / HF_ROW_BUCKET))  # NO digit mask
+                seen.setdefault(key, set()).add(i)
+                banded.append((token["tid"], key))
+    need = HF_MIN_PAGES_FRACTION * len(ALL_PAGES)
+    naive = {tid for tid, key in banded if len(seen[key]) >= need}
+    print(f"gold furniture tokens                      {len(gold):4d}")
+    print(f"found by the rule with digits masked       {len(detect_header_footer(ALL_PAGES)):4d}")
+    print(f"found by the same rule on raw text         {len(naive):4d}"
+          f"   ({len(gold - naive)} missed)")
+    no_terms = sum(1 for d in CORPUS if not d["gold"]["payment_terms_days"])
+    print(f"\ndocuments whose gold payment terms are EMPTY: {no_terms}")
+    print("Every page of every document carries the boilerplate 'Terms: standard' in its")
+    print("footer. Leave the footer in the stream and the extractor answers 'standard' for")
+    print("all of them — a spurious value on the documents above, and a wrong one on any")
+    print("document whose real terms are printed on page 2.")
+
+
+_try("furniture cost", _show_furniture_cost)
+
+# %% [markdown]
+# ## 7. Exercises 5 and 6 — the two scores
+#
+# Reading order is a permutation, so the natural score is a rank correlation. Kendall's tau is
+# what the layout-ordering literature reports: "Tau: Kendall's Tau, measures the rank
+# correlation between two sets of data" (XY-Cut++, arXiv 2504.10258).
+#
+# Tau alone is not enough, because it cannot see blocks. A segmentation that shreds a page
+# into one block per line can still emit a perfect token order. So you will also score the
+# **boundaries**: the places where the reading order steps from one block into the next.
+
+# %%
+def kendall_tau(pred_order: Sequence[int], gold_order: Sequence[int]) -> float:
+    """Kendall's tau-a between two orderings of the same items.
+
+    +1.0 identical, -1.0 exactly reversed, 0.0 no better than a coin. Over every unordered
+    pair of items, count a CONCORDANT pair when the two orderings agree on which of the two
+    comes first and a DISCORDANT pair when they disagree, then
+
+        tau = (concordant - discordant) / (n * (n - 1) / 2)
+
+    There are no ties here — both arguments are permutations of one set of token ids — so tau-a
+    and tau-b agree and you do not need a tie correction.
+
+    Fewer than two items is perfect agreement by definition: return 1.0. Two sequences that do
+    not hold the same ids, each exactly once, are a bug in the caller: raise ``ValueError``.
+
+    Examples:
+        >>> kendall_tau([1, 2, 3], [1, 2, 3])
+        1.0
+        >>> kendall_tau([3, 2, 1], [1, 2, 3])
+        -1.0
+        >>> round(kendall_tau([2, 1, 3], [1, 2, 3]), 4)
+        0.3333
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def boundary_f1(pred_blocks: Sequence[Sequence[int]], gold_blocks: Sequence[Sequence[int]],
+                order: Sequence[int]) -> tuple[float, float, float]:
+    """Precision, recall and F1 of block boundaries, read along one reference `order`.
+
+    Walk `order`. Position ``i`` is a boundary of a segmentation when ``order[i]`` and
+    ``order[i + 1]`` fall in DIFFERENT blocks of it. Do that for `pred_blocks` and for
+    `gold_blocks`, then score the predicted boundary positions against the gold ones:
+    precision over what you proposed, recall over what was there, F1 the harmonic mean.
+
+    Scoring both partitions along one shared order is what makes the two comparable — it is
+    the reason this function takes an order at all rather than comparing the partitions
+    directly.
+
+    If neither side proposes a boundary the page is one block in both and the segmentation is
+    perfect: return ``(1.0, 1.0, 1.0)``. Otherwise guard each denominator with 0.0. A token in
+    `order` that is missing from either partition is a bug in the caller: ``ValueError``.
+
+    Example:
+        >>> boundary_f1([[1, 2], [3, 4]], [[1, 2], [3, 4]], [1, 2, 3, 4])
+        (1.0, 1.0, 1.0)
+        >>> boundary_f1([[1], [2], [3], [4]], [[1, 2], [3, 4]], [1, 2, 3, 4])
+        (0.3333333333333333, 1.0, 0.5)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_scores() -> None:
+    assert kendall_tau([1, 2, 3], [1, 2, 3]) == 1.0, "identical orderings score +1"
+    assert kendall_tau([3, 2, 1], [1, 2, 3]) == -1.0, "a reversed ordering scores -1"
+    assert abs(kendall_tau([2, 1, 3], [1, 2, 3]) - 1 / 3) < 1e-9, \
+        "one swapped pair out of three: (2 - 1) / 3"
+    assert kendall_tau([7], [7]) == 1.0, "a single item is trivially in the right order"
+    assert kendall_tau([], []) == 1.0, "an empty ordering is perfect, not an error"
+    try:
+        kendall_tau([1, 2], [1, 3])
+        raise AssertionError("different id sets must raise ValueError")
+    except ValueError:
+        pass
+    assert boundary_f1([[1, 2], [3, 4]], [[1, 2], [3, 4]], [1, 2, 3, 4]) == (1.0, 1.0, 1.0), \
+        "the same segmentation on both sides scores 1.0 on all three numbers"
+    p, r, f = boundary_f1([[1, 2], [3, 4]], [[1], [2, 3], [4]], [1, 2, 3, 4])
+    assert (p, r, f) == (0.0, 0.0, 0.0), (
+        "a boundary has to be in the RIGHT PLACE: your one boundary (after token 2) is at "
+        "neither gold position (after 1, after 3), so intersect the two sets of POSITIONS "
+        "rather than comparing how many boundaries each side proposed")
+    p, r, f = boundary_f1([[1], [2], [3], [4]], [[1, 2], [3, 4]], [1, 2, 3, 4])
+    assert abs(p - 1 / 3) < 1e-9 and r == 1.0, (
+        "one block per token finds every gold boundary and invents two more: recall 1.0, "
+        "precision 1/3 — this is the case tau cannot see")
+    assert boundary_f1([[1, 2, 3, 4]], [[1, 2, 3, 4]], [1, 2, 3, 4]) == (1.0, 1.0, 1.0), \
+        "no boundary on either side is a perfect score, not a divide by zero"
+    p, r, f = boundary_f1([[1, 2, 3, 4]], [[1, 2], [3, 4]], [1, 2, 3, 4])
+    assert (p, r, f) == (0.0, 0.0, 0.0), "proposing nothing when there was a boundary scores 0"
+    print("exercises 5 and 6 look right")
+
+
+_try("exercises 5 and 6", _check_scores)
+
+# %% [markdown]
+# ## 8. The sweep: one threshold, three different opinions about it
+#
+# You now have a pipeline and two scores. `min_gap` is its only free parameter. Sweep it, and
+# score each setting three ways: token order (tau), segmentation (boundary F1), and the thing
+# you actually care about — the field extraction downstream (macro F1, module 1's scorer).
+
+# %%
+def body_pages(doc: Mapping) -> list[list[dict]]:
+    """Given: each page of `doc` with the running header and footer removed."""
+    return [[t for t in page if t["tid"] not in doc["furniture"]] for page in doc["pages"]]
+
+
+def pipeline_order(doc: Mapping, min_gap: float) -> tuple[list[int], list[list[list[int]]]]:
+    """Given glue: your reading order for a whole document, page by page."""
+    order: list[int] = []
+    per_page: list[list[list[int]]] = []
+    for page in body_pages(doc):
+        page_order, blocks = reading_order(page, min_gap)
+        order.extend(page_order)
+        per_page.append(blocks)
+    return order, per_page
+
+
+def raster_order(doc: Mapping) -> list[int]:
+    """Given: the naive baseline — every token sorted top to bottom, then left to right."""
+    tokens = [t for page in body_pages(doc) for t in page]
+    return [t["tid"] for t in sorted(tokens, key=lambda t: (t["page"], centre(t, "y"), t["x"]))]
+
+
+def stream_of(doc: Mapping, order: Sequence[int]) -> list[dict]:
+    by_tid = {t["tid"]: t for page in doc["pages"] for t in page}
+    return [by_tid[tid] for tid in order]
+
+
+def records_for(order_fn) -> list[dict]:
+    """Run the extractor over every document under one ordering, as P02-L01 records."""
+    return [{"doc_id": doc["doc_id"], "gold": doc["gold"],
+             "pred": extract_fields(stream_of(doc, order_fn(doc)))} for doc in CORPUS]
+
+
+def _show_sweep() -> None:
+    print(f"{'min_gap':>8s} {'blocks/page':>12s} {'tau':>8s} {'boundary F1':>12s} "
+          f"{'macro F1':>9s}")
+    rows = []
+    for min_gap in MIN_GAP_SWEEP:
+        taus, bfs, blocks_per_page = [], [], []
+        for doc in CORPUS:
+            order, per_page = pipeline_order(doc, min_gap)
+            taus.append(kendall_tau(order, doc["gold_order"]))
+            gold_by_page = doc["gold_blocks"]
+            body = body_pages(doc)
+            for p, blocks in enumerate(per_page):
+                ids = {t["tid"] for t in body[p]}
+                page_order = [tid for tid in doc["gold_order"] if tid in ids]
+                bfs.append(boundary_f1(blocks, gold_by_page[p], page_order)[2])
+                blocks_per_page.append(len(blocks))
+        f1 = macro_f1(records_for(lambda d, g=min_gap: pipeline_order(d, g)[0]))
+        rows.append((min_gap, float(np.mean(blocks_per_page)), float(np.mean(taus)),
+                     float(np.mean(bfs)), f1))
+        print(f"{min_gap:8.0f} {rows[-1][1]:12.2f} {rows[-1][2]:8.3f} {rows[-1][3]:12.3f} "
+              f"{f1:9.3f}")
+    def _argmax(col: int) -> str:
+        best = max(r[col] for r in rows)
+        return ", ".join(f"{r[0]:.0f}" for r in rows if abs(r[col] - best) < 1e-9)
+
+    print(f"\nsettings that tie for best, by each score:")
+    print(f"  tau                  {_argmax(2)}")
+    print(f"  boundary F1          {_argmax(3)}")
+    print(f"  downstream macro F1  {_argmax(4)}")
+    print("Only the middle score has a single answer. That is not a defect in the other two;")
+    print("it is what it looks like when a metric is blind to the thing you changed.")
+    small = rows[0]
+    print(f"\nAt min_gap={small[0]:.0f} the page is shredded into {small[1]:.1f} blocks on")
+    print(f"average, yet tau is {small[2]:.3f} and downstream macro F1 is {small[4]:.3f}:")
+    print("the token order survived, so the extractor never noticed. Boundary F1 is")
+    print(f"{small[3]:.3f}, and it is the only one of the three that objected.")
+
+
+_try("sweep", _show_sweep)
+
+# %% [markdown]
+# ## 9. What reading order is worth, in the currency the business uses
+#
+# Four pipelines, one scorer, one number each. The only thing that changes between the first
+# three rows is the order the same tokens are handed to the same extractor.
+#
+# This corpus has a character error rate of exactly zero — the text of every token is perfect —
+# and it will still lose field F1 to order alone. That is the point an April 2026 OCR
+# robustness benchmark makes about real pipelines: "high OCR accuracy does not necessarily
+# translate into strong downstream RAG performance", because structural errors survive a clean
+# character stream (arXiv 2605.00911).
+
+# %%
+def _with_furniture(doc: Mapping, page_index: int) -> list[int]:
+    """The true visual order of one page, furniture included: header, body, footer."""
+    page = doc["pages"][page_index]
+    ids = {t["tid"] for t in page}
+    body = [tid for tid in doc["gold_order"] if tid in ids]
+    furniture = sorted((t for t in page if t["tid"] in doc["furniture"]),
+                       key=lambda t: (centre(t, "y"), t["x"]))
+    head = [t["tid"] for t in furniture if centre(t, "y") < PAGE_H / 2]
+    foot = [t["tid"] for t in furniture if centre(t, "y") >= PAGE_H / 2]
+    return head + body + foot
+
+
+def _show_downstream() -> None:
+    rows = [
+        ("gold reading order, furniture removed", records_for(lambda d: d["gold_order"])),
+        (f"your XY-cut order (min_gap={DEFAULT_MIN_GAP:.0f}), furniture removed",
+         records_for(lambda d: pipeline_order(d, DEFAULT_MIN_GAP)[0])),
+        ("naive top-to-bottom raster order, furniture removed", records_for(raster_order)),
+        ("gold reading order, furniture LEFT IN",
+         records_for(lambda d: [tid for p, page in enumerate(d["pages"])
+                                for tid in _with_furniture(d, p)])),
+    ]
+    ceiling = macro_f1(rows[0][1])
+    print(f"{'pipeline':<52s} {'macro F1':>9s} {'vs ceiling':>11s}")
+    for label, records in rows:
+        f1 = macro_f1(records)
+        print(f"{label:<52s} {f1:9.3f} {f1 - ceiling:+11.3f}")
+    print(f"\nper field, gold order vs naive raster order:")
+    gold_rec, raster_rec = rows[0][1], rows[2][1]
+    print(f"  {'field':<22s} {'gold':>7s} {'raster':>7s} {'delta':>8s}")
+    for field in SCHEMA:
+        a, b = score_field(gold_rec, field).f1, score_field(raster_rec, field).f1
+        print(f"  {field:<22s} {a:7.3f} {b:7.3f} {b - a:+8.3f}")
+    furn_rec = rows[3][1]
+    terms = score_field(furn_rec, "payment_terms_days")
+    print(f"\nWith the footer left in, payment_terms_days scores F1 {terms.f1:.3f} on "
+          f"{terms.fp} false\npositives and {terms.fn} false negatives — the boilerplate "
+          f"'Terms: standard' answering\nfor every document that never stated any.")
+
+
+_try("downstream", _show_downstream)
+
+# %% [markdown]
+# ## 10. Common mistakes
+#
+# - **Comparing each box with the previous one instead of a running maximum.** One wide box
+#   that spans a gap closes it. Sort by low edge, carry the furthest right edge you have seen.
+# - **Cutting on x before y.** A full-width heading above two columns then joins whichever
+#   column it happens to overlap, and the heading's tokens are read in the middle of a column.
+# - **One `min_gap` chosen by eye.** The table column gap and the prose column gap are
+#   different widths on the same page. Sweep it; the table is what fails first.
+# - **Reading tau as if it scored segmentation.** One block per line scores tau 1.0. Tau is
+#   blind to blocks by construction — that is what boundary F1 is for.
+# - **Reading boundary F1 as if it scored order.** A page cut into perfect blocks that are
+#   emitted right-to-left has excellent boundaries and unusable text.
+# - **Keying header detection on raw text.** The page number differs on every page, so it is
+#   seen once, survives the repetition test and lands in the body stream.
+# - **Treating furniture removal as cosmetic.** A boilerplate footer that contains a label is
+#   an extractor input. The table in section 9 prices it.
+# - **Trusting a tolerance you never measured.** `LINE_TOL` decides what "same line" means. On
+#   a real text layer, superscripts and small caps will move it.
+
+# %% [markdown]
+# The fourth one is worth seeing rather than believing. Run it on a single table page.
+
+# %%
+def _show_tau_is_blind_to_blocks() -> None:
+    doc = next(d for d in CORPUS if d["family"] == "table")
+    page = body_pages(doc)[0]
+    ids = {t["tid"] for t in page}
+    gold_page_order = [tid for tid in doc["gold_order"] if tid in ids]
+    for min_gap in (8.0, DEFAULT_MIN_GAP):
+        order, blocks = reading_order(page, min_gap)
+        tau = kendall_tau(order, gold_page_order)
+        p, r, f = boundary_f1(blocks, doc["gold_blocks"][0], gold_page_order)
+        print(f"  min_gap={min_gap:4.0f}   blocks={len(blocks):3d}   tau={tau:+.3f}   "
+              f"boundary P={p:.3f} R={r:.3f} F1={f:.3f}")
+    print(f"\n{doc['doc_id']}: same page, same tokens, the same sequence out of both runs.")
+    print("One score noticed that the page had been cut into confetti; the other could not.")
+
+
+_try("tau is blind to blocks", _show_tau_is_blind_to_blocks)
+
+# %% [markdown]
+# ## 11. Self-check
+#
+# 1. Your XY-cut returns one block per line, and Kendall's tau against the gold order is
+#    1.000. The right conclusion is:
+#    - (a) the segmentation is correct
+#    - (b) the token order is correct and the segmentation is untested by tau
+#    - (c) tau is broken
+#
+# 2. On a two-column page, `find_gaps(boxes, "y", 30)` returns nothing. This is:
+#    - (a) a bug — every page has horizontal white space
+#    - (b) expected, because the two columns' lines interleave vertically, so no horizontal
+#          band crosses the whole page, which is exactly why the vertical cut has to run
+#    - (c) a sign that `min_gap` is too small
+#
+# 3. Raising `min_gap` from 18 to 30 leaves downstream macro F1 unchanged but raises tau. The
+#    most likely explanation on this corpus is:
+#    - (a) the change fixed the table, and no extracted field depends on the table's order
+#    - (b) tau and macro F1 measure the same thing and one of them is miscomputed
+#    - (c) the extractor became more tolerant
+#
+# 4. A colleague proposes dropping header detection because "the header is only three words".
+#    The strongest objection is:
+#    - (a) three words per page is a lot of tokens across a large corpus
+#    - (b) the cost is not the token count but what the furniture SAYS: a footer carrying a
+#          label feeds the extractor a value for a field the document never stated
+#    - (c) headers break Kendall's tau
+#
+# 5. Your reading order scores tau 0.62 on a corpus and your manager asks whether to invest in
+#    a learned reading-order model. The first thing to report is:
+#    - (a) the downstream field F1 under the current order against the gold-order ceiling,
+#          because that difference is the whole size of the prize
+#    - (b) tau on its own
+#    - (c) the number of blocks per page
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# One last cell: the scorecard, five computed lines, the shape a reviewer asks for.
+
+# %%
+def _show_scorecard() -> None:
+    gold_rec = records_for(lambda d: d["gold_order"])
+    mine_rec = records_for(lambda d: pipeline_order(d, DEFAULT_MIN_GAP)[0])
+    raster_rec = records_for(raster_order)
+    taus = [kendall_tau(pipeline_order(d, DEFAULT_MIN_GAP)[0], d["gold_order"]) for d in CORPUS]
+    raster_taus = [kendall_tau(raster_order(d), d["gold_order"]) for d in CORPUS]
+    worst = min(CORPUS, key=lambda d: kendall_tau(raster_order(d), d["gold_order"]))
+    print(f"corpus                  {len(CORPUS)} documents, {len(ALL_PAGES)} pages, "
+          f"{sum(len(p) for p in ALL_PAGES)} token boxes")
+    print(f"XY-cut tau              {np.mean(taus):.3f} mean over documents "
+          f"(min {min(taus):.3f})")
+    print(f"raster baseline tau     {np.mean(raster_taus):.3f} mean over documents "
+          f"(min {min(raster_taus):.3f})")
+    print(f"worst raster document   {worst['doc_id']} ({worst['family']}), "
+          f"tau {min(raster_taus):.3f}")
+    print(f"downstream macro F1     gold {macro_f1(gold_rec):.3f} · "
+          f"XY-cut {macro_f1(mine_rec):.3f} · raster {macro_f1(raster_rec):.3f}")
+
+
+_try("scorecard", _show_scorecard)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You turned a bag of boxes into a reading order, scored it two ways that disagree on purpose,
+# and then priced the disagreement in the only currency that settles the argument — the field
+# F1 of the pipeline downstream, measured with the harness you built in module 1. Module 3
+# puts a learned tagger on top of this token stream; module 4 goes back into the table you
+# were careful not to shred and scores its structure and its content separately.
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_find_gaps),
+                          ("exercise 2", _check_xy_cut),
+                          ("exercise 3", _check_order_within_block),
+                          ("exercise 4", _check_detect_header_footer),
+                          ("exercises 5 and 6", _check_scores)):
+        _try(_name, _check)
+    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure — it prints "not implemented yet" and
+    # the notebook carries on. A check that RAN and came back wrong is a failure, and it ends
+    # this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

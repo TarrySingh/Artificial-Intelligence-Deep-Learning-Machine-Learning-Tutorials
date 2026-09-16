@@ -1,0 +1,92 @@
+# Every factual claim this lesson makes about the world, with a source and the date it was
+# read. Numbers a student sees in output are computed by the code they run and are therefore
+# not claims; they do not appear here.
+#
+# There are only four entries, and that is the point of a lesson built on a signal it
+# generates itself: aliasing, filter response, quantisation error and integration are
+# derivable, and the notebook derives every one of them numerically rather than quoting it.
+# The world only enters this lesson three times - the constant that converts g to m/s^2, the
+# sensor whose published bandwidth bounds the alias search in section 5, and the name of the
+# theorem the folding arithmetic belongs to.
+claims:
+  - id: standard-gravity-is-exact
+    claim: >-
+      The standard acceleration due to gravity is the conventional exact value
+      9.80665 m/s^2, adopted by the 3rd General Conference on Weights and Measures in 1901 as
+      980.665 cm/s^2. It is a defined constant, not a measurement of the local field, which
+      is why the lesson uses it to convert an acceleration expressed in g into m/s^2 without
+      qualification and without a location.
+    where: "lesson.py setup cell (G_N), section 12 (integration to velocity), self-check 5"
+    source_url: https://www.bipm.org/en/committees/cg/cgpm/3-1901/resolution-2
+    source_title: >-
+      BIPM - 3rd meeting of the CGPM (1901), Resolution 2: Declaration on the unit of mass and
+      on the definition of weight; conventional value of g_n
+    quote: >-
+      The value adopted in the International Service of Weights and Measures for the standard
+      acceleration due to gravity is 980.665 cm/s2, value already stated in the laws of some
+      countries.
+    accessed: 2026-09-16
+
+  - id: industrial-accelerometer-sensitivity-and-bandwidth
+    claim: >-
+      A general-purpose industrial IEPE accelerometer of the kind fitted permanently to
+      rotating machinery has a sensitivity of the order of 100 mV/g and a usable frequency
+      range with an upper limit of the order of 10 kHz. The lesson uses 100 mV/g as
+      SENSITIVITY_MV_PER_G and 10 kHz as SENSOR_F_MAX. The second of those is not decoration:
+      section 5 searches backwards through the aliasing fold, the candidate list is infinite
+      in principle, and it is the sensor's own upper limit - not the mathematics - that makes
+      the search finite and lets three sampling rates converge on one answer.
+    where: "lesson.py setup cell (SENSITIVITY_MV_PER_G, SENSOR_F_MAX), section 5 (the alias search), section 11 (the ADC range sweep)"
+    source_url: https://www.pcb.com/products?m=603c01
+    source_title: "PCB Piezotronics - Model 603C01, Platinum low-cost industrial ICP accelerometer"
+    quote: >-
+      Sensitivity: 100 mV/g (10.2 mV/(m/s2)); Measurement Range: +-50 g (+-490 m/s2);
+      Frequency Range: (+-3dB) 30 to 600000 cpm (0.5 to 10000 Hz)
+    quote_context: >-
+      The three specification lines as printed on the product page for model 603C01. One
+      named product, cited to fix an order of magnitude; the lesson makes no claim that these
+      are the only or the typical figures across the market, and its arithmetic does not
+      depend on the exact value. Measured, 2026-09-16, reviewer: what SENSOR_F_MAX does is
+      make the candidate list FINITE. It is the second sampling rate, not the sensor limit,
+      that eliminates the nearest rival - 7255 Hz is a candidate under the 3200 Hz record and
+      lies below 10 kHz, and it dies because it folds to 937 Hz rather than 599 Hz in the
+      2048 Hz record. The intersection returns exactly [5545.0] for any SENSOR_F_MAX from
+      5545 Hz up to 45654 Hz, so any published upper limit in this class gives the same
+      answer; at 50 kHz the list would also admit 45655 Hz, which is the bound earning its
+      keep.
+    accessed: 2026-09-16
+
+  - id: aliasing-is-the-named-distortion
+    claim: >-
+      The distortion produced when a sampled signal contains frequency components that
+      overlap once the spectrum is periodised by sampling is called aliasing distortion, and
+      the sampling result it belongs to is the Nyquist-Shannon sampling theorem. The lesson
+      uses both names. It asserts nothing about the theorem beyond its name: the folding
+      formula abs(f - fs*round(f/fs)) is DEMONSTRATED in section 4 by sampling a known tone
+      at three rates and reading where it lands, and every consequence in the notebook is
+      measured rather than quoted.
+    where: "lesson.py section 4 (exercise 3 and the three-rate table), section 14 (common mistakes)"
+    source_url: https://ptolemy.berkeley.edu/eecs20/week13/nyquistShannon.html
+    source_title: "The Nyquist-Shannon Sampling Theorem - UC Berkeley EECS 20 course notes"
+    quote: >-
+      Notice that in the sampled signal, the frequencies in the vicinity of pi are distorted
+      by the overlapping of frequency component above and below pi/T in the original signal.
+      This distortion is called aliasing distortion.
+    accessed: 2026-09-16
+
+  - id: no-vibration-severity-standard-is-quoted
+    claim: >-
+      NOT A CLAIM - a deliberate omission, recorded so that a reviewer can see it was a
+      decision. Machinery vibration limits are widely written in velocity rather than
+      acceleration, and it would have been natural for section 12 to say so and to name the
+      ISO 20816 series. No primary source for that could be verified: iso.org and the
+      standards resellers carrying the scope text both returned HTTP 403 on 2026-09-16, and
+      the lesson does not cite a source it has not read. Section 12 therefore motivates the
+      integration from physics alone - integration divides every component by 2*pi*f, which
+      reorders the signal, and the notebook measures the reordering - and asserts nothing
+      about what any standard requires.
+    where: "lesson.py section 12 (from acceleration to velocity)"
+    source_url: ""
+    source_title: ""
+    quote: ""
+    accessed: 2026-09-16

@@ -1,0 +1,360 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in the notebook's output are computed by the
+# code they run — the rung counts, the tier counts, the obligation counts, the trail lengths —
+# and are therefore not claims; they do not appear here.
+#
+# Two things this file deliberately does NOT claim are recorded at the bottom, under
+# `not_claimed`. The date on which the Article 6(4) and Article 49(2) derogation duties start
+# to bind is the more important of the two: the lesson encodes it, labels it in the
+# OBLIGATIONS table as "lesson's reading" rather than "sourced", prints how many such dates
+# there are, and says so in section 6's prose. A date you cannot source and do not flag is the
+# defect this programme exists to stop.
+#
+# Retrieval note, 2026-09-16: EUR-Lex returns an empty body for the Digital Omnibus on AI
+# (https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ%3AL_202601744), as it did when
+# T10-L01 was reviewed. Every claim that depends on that Regulation is therefore sourced to
+# the European Commission's own AI Act page and carries a second, independent corroborating
+# source; none of them rests on a single secondary summary.
+
+claims:
+  # --- the classification rules the exercises implement ---------------------------------
+
+  - id: annex-iii-systems-are-high-risk
+    claim: >-
+      Article 6(2) makes the Annex III listing the rule and not a presumption to be argued
+      with: AI systems referred to in Annex III shall be considered to be high-risk. This is
+      why the interview's question 3 opens the derogation question rather than settling the
+      tier, and why `q3_annex_iii_area` is recorded as never decisive.
+    where: "lesson.py section 4 opening prose and section 5; ask_tier() question 3; tests/test_lesson.py::test_ask_tier_q3_is_never_decisive_and_q4_records_the_reason"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote: "AI systems referred to in Annex III shall be considered to be high-risk."
+    accessed: 2026-09-16
+
+  - id: article-6-3-derogation-two-limbs
+    claim: >-
+      The Article 6(3) derogation has two limbs that both have to hold: the system must not
+      pose a significant risk of harm to the health, safety or fundamental rights of natural
+      persons, AND it must meet at least one of four conditions. This is why
+      `derogation_assessment` refuses a system with `significant_risk_of_harm` before it
+      consults the conditions at all, and why meeting a condition alone is never enough.
+    where: "lesson.py section 4 prose; derogation_assessment() steps 3 and 4; tests/test_lesson.py::test_derogation_condition_order_and_none"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote: >-
+      By derogation from paragraph 2, an AI system referred to in Annex III shall not be
+      considered to be high-risk where it does not pose a significant risk of harm to the
+      health, safety or fundamental rights of natural persons, including by not materially
+      influencing the outcome of decision making.
+    accessed: 2026-09-16
+
+  - id: article-6-3-four-conditions-and-their-order
+    claim: >-
+      The four conditions of Article 6(3) are, in the order the article lists them: (a) a
+      narrow procedural task; (b) improving the result of a previously completed human
+      activity; (c) detecting decision-making patterns or deviations from prior patterns
+      without being meant to replace or influence the previously completed human assessment
+      without proper human review; (d) a preparatory task to an assessment relevant to an
+      Annex III use case. DEROGATION_CONDITIONS reproduces that order, and the lesson grades
+      the order because a record that cites whichever condition an implementation happened to
+      test first is a record two reviewers cannot compare.
+    where: "lesson.py section 4 DEROGATION_CONDITIONS; tests/test_lesson.py::test_derogation_condition_order_and_none"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote: >-
+      (a) the AI system is intended to perform a narrow procedural task; (b) the AI system is
+      intended to improve the result of a previously completed human activity; (c) the AI
+      system is intended to detect decision-making patterns or deviations from prior
+      decision-making patterns and is not meant to replace or influence the previously
+      completed human assessment, without proper human review; (d) the AI system is intended
+      to perform a preparatory task to an assessment relevant for the purposes of the use
+      cases listed in Annex III.
+    quote_note: >-
+      Retrieved as four separately quoted points at the source and reassembled here in the
+      article's own order, with the lettering the article uses. No wording was altered.
+    accessed: 2026-09-16
+
+  - id: article-6-3-profiling-override
+    claim: >-
+      The profiling rule is unconditional and overrides the derogation: an AI system referred
+      to in Annex III shall always be considered to be high-risk where the system performs
+      profiling of natural persons. It does not weigh which condition was met, how the
+      provider assessed the risk, or how good the documentation is. This is the whole reason
+      `derogation_assessment` tests `performs_profiling` before the conditions, the risk limb
+      and the paperwork, and it is what `cv-ranker` — a system whose record is otherwise
+      flawless — exists in this lesson to demonstrate.
+    where: "lesson.py section 4 prose, derogation_assessment() step 2, _check_derogation cv-ranker case, self-check question 1; tests/test_lesson.py::test_derogation_profiling_overrides_everything"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote: >-
+      an AI system referred to in Annex III shall always be considered to be high-risk where
+      the AI system performs profiling of natural persons.
+    accessed: 2026-09-16
+
+  - id: article-6-4-document-before-placing
+    claim: >-
+      Article 6(4) attaches a duty to the CLAIM, not to the outcome: a provider who considers
+      that an Annex III system is not high-risk shall document its assessment before that
+      system is placed on the market or put into service, and shall provide the documentation
+      to national competent authorities on request. The word "before" is what makes the
+      lesson's `documented_before_placing` comparison strict, so documenting on the day of
+      placing counts as a gap.
+    where: "lesson.py section 4 prose and DOCUMENTATION_DUTIES; derogation_assessment() documentation gaps; self-check question 2; tests/test_lesson.py::test_derogation_documentation_gaps"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote: >-
+      A provider who considers that an AI system referred to in Annex III is not high-risk
+      shall document its assessment before that system is placed on the market or put into
+      service.
+    accessed: 2026-09-16
+
+  - id: article-49-2-registration-of-derogated-systems
+    claim: >-
+      Registration does not go away with the high-risk classification. Under Article 49(2), a
+      provider who has concluded under Article 6(3) that an Annex III system is not high-risk
+      must, before placing it on the market or putting it into service, register itself and
+      that system in the EU database. This is the second of the two obligations the lesson
+      attaches to its `annex_iii_derogated` tier, and it is why that tier is not the same
+      thing as `minimal`.
+    where: "lesson.py section 6 OBLIGATIONS art49_2_registration; obligations_for(); self-check question 2; tests/test_lesson.py::test_obligations_derogated_is_not_minimal"
+    source_url: https://artificialintelligenceact.eu/article/49/
+    source_title: "Article 49: Registration — EU Artificial Intelligence Act"
+    quote: >-
+      Before placing on the market or putting into service an AI system for which the provider
+      has concluded that it is not high-risk according to Article 6(3), that provider or,
+      where applicable, the authorised representative ... shall register themselves and that
+      system in the EU database.
+    quote_note: >-
+      The ellipsis is in the retrieved text, which elided the intervening clause. The claim
+      this lesson relies on — that a provider claiming the Article 6(3) derogation still
+      registers itself and the system in the EU database before placing it on the market —
+      does not depend on the elided words.
+    accessed: 2026-09-16
+
+  - id: article-6-1-annex-i-safety-component
+    claim: >-
+      Article 6(1) makes an AI system high-risk when it is intended to be used as a safety
+      component of a product covered by the Union harmonisation legislation listed in Annex I,
+      or is itself such a product, AND that product is required to undergo a third-party
+      conformity assessment before being placed on the market. The lesson models this with a
+      single `annex_i_safety_component` flag and asks question 2 before question 3, because
+      the Annex I route carries the later date.
+    where: "lesson.py section 5 QUESTIONS question 2; ask_tier(); SYSTEMS['lift-door-sensor']"
+    source_url: https://artificialintelligenceact.eu/article/6/
+    source_title: "Article 6: Classification Rules for High-Risk AI Systems — EU Artificial Intelligence Act"
+    quote_note: >-
+      Retrieved as a structured summary of paragraph 1 rather than as a continuous quotation:
+      "An AI system is high-risk if: (a) intended as a safety component for a product covered
+      by Union harmonisation legislation in Annex I, AND (b) the product requires third-party
+      conformity assessment for market placement/service deployment." The lesson collapses
+      both limbs into one intake flag and says so in the stub docstring, so it does not assert
+      anything the summary does not carry.
+    accessed: 2026-09-16
+
+  - id: annex-iii-eight-areas
+    claim: >-
+      Annex III lists eight areas of high-risk use: 1 biometrics, 2 critical infrastructure,
+      3 education and vocational training, 4 employment, workers' management and access to
+      self-employment, 5 access to essential private and public services and benefits
+      (including creditworthiness evaluation and credit scoring at point 5(b)), 6 law
+      enforcement, 7 migration, asylum and border control management, and 8 administration of
+      justice and democratic processes.
+    where: "lesson.py section 3 SYSTEMS — the annex_iii_area strings; section 5 question 3 wording"
+    source_url: https://artificialintelligenceact.eu/annex/3/
+    source_title: "Annex III: High-Risk AI Systems Referred to in Article 6(2) — EU Artificial Intelligence Act"
+    quote_note: >-
+      Retrieved as the annex's own enumerated structure rather than as a continuous
+      quotation. The point-and-sub-point labels inside the SYSTEMS fixtures — "employment
+      (Annex III point 4(a))", "creditworthiness (Annex III point 5(b))", "education
+      (Annex III point 3(b))", "workers' management (Annex III point 4(b))" — are the
+      lesson's shorthand for orientation, checked against this listing. The lesson's code
+      never parses them: `ask_tier` asks only whether the field is truthy, so no grading
+      outcome depends on a sub-point label being exactly right.
+    accessed: 2026-09-16
+
+  - id: article-5-1-f-emotion-inference-at-work
+    claim: >-
+      Inferring the emotions of a natural person in the areas of workplace and education
+      institutions is among the practices prohibited by Article 5(1). The lesson's
+      `mood-meter` fixture names this as its prohibited practice, and it is the system that
+      makes the interview return after one question.
+    where: "lesson.py section 3 SYSTEMS['mood-meter']; tests/test_lesson.py::test_ask_tier_minimality_and_order"
+    source_url: https://artificialintelligenceact.eu/article/5/
+    source_title: "Article 5: Prohibited AI Practices — EU Artificial Intelligence Act"
+    quote: >-
+      the placing on the market or putting into service for this specific purpose, or the use
+      of AI systems to infer emotions of a natural person in the areas of workplace and
+      education institutions
+    quote_note: >-
+      Point (f) carries exceptions — for medical or safety reasons — which the lesson does
+      not model, because its fixture is an engagement monitor on a work call and falls under
+      neither. The fixture is fictional and the lesson makes no claim that any real product
+      is prohibited.
+    accessed: 2026-09-16
+
+  # --- the dates ------------------------------------------------------------------------
+
+  - id: entry-into-force-and-general-application
+    claim: >-
+      The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026.
+      2 August 2026 is the GENERAL_APPLICATION constant this lesson compares placing dates
+      against.
+    where: "lesson.py section 1 MILESTONES; section 6 GENERAL_APPLICATION"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote: "The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026"
+    accessed: 2026-09-16
+
+  - id: prohibitions-and-literacy-from-2025-02-02
+    claim: >-
+      The prohibited AI practices and the AI literacy obligations entered into application on
+      2 February 2025. This is the date on both "art4_ai_literacy" and
+      "art5_prohibited_practice" in the OBLIGATIONS table, and it is why every system the
+      lesson classifies — including the minimal one — already owes something today.
+    where: "lesson.py section 1 MILESTONES; section 6 OBLIGATIONS"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote: >-
+      prohibited AI practices and AI literacy obligations entered into application from
+      2 February 2025
+    accessed: 2026-09-16
+
+  - id: gpai-obligations-from-2025-08-02
+    claim: >-
+      The governance rules and the obligations for general-purpose AI models became
+      applicable on 2 August 2025. This is the date on "art53_gpai_model".
+    where: "lesson.py section 1 MILESTONES; section 6 OBLIGATIONS"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote: >-
+      the governance rules and the obligations for GPAI models became applicable on
+      2 August 2025
+    accessed: 2026-09-16
+
+  - id: article-50-applies-from-2026-08-02
+    claim: >-
+      Article 50 applies as from 2 August 2026. The Digital Omnibus deferred the Chapter III
+      high-risk duties; it did not defer Article 50, which is why this lesson's
+      `binding_now` list for a transparency system is non-empty on 2026-09-16 while its
+      Chapter III obligations are still more than a year out.
+    where: "lesson.py section 1 prose and MILESTONES; section 6 OBLIGATIONS art50_*; tests/test_lesson.py::test_obligations_binding_now_and_next_deadline"
+    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+    source_title: "Transparency obligations under Article 50 AI Act — European Commission FAQ"
+    quote: "Article 50 of the AI Act applies as from 2 August 2026."
+    accessed: 2026-09-16
+
+  - id: article-50-2-transitional-to-2026-12-02
+    claim: >-
+      A limited grace period applies only to AI systems placed on the market before
+      2 August 2026, and only for the Article 50(2) marking and detection obligation for
+      AI-generated content: providers of such systems must comply with those obligations only
+      as from 2 December 2026. This is the ART50_MARK_LEGACY date, it applies to marking and
+      to nothing else, and "before" is why the lesson's comparison is strict — a system placed
+      on 2 August 2026 itself gets the standard date.
+    where: "lesson.py section 6 ART50_MARK_LEGACY and obligations_for(); tests/test_lesson.py::test_obligations_legacy_marking_boundary"
+    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+    source_title: "Transparency obligations under Article 50 AI Act — European Commission FAQ"
+    quote: >-
+      A limited grace period is envisaged only for AI systems placed on the market before
+      2 August 2026 and only as regards the marking and detection obligation for AI-generated
+      content (Article 50(2) of the AI Act). Providers of such systems must comply with those
+      obligations only as from 2 December 2026.
+    accessed: 2026-09-16
+
+  - id: annex-iii-high-risk-from-2027-12-02
+    claim: >-
+      Following the Digital Omnibus amendments, the rules for systems used in certain high-risk
+      areas — biometrics, critical infrastructure, education, employment, migration, asylum and
+      border control among them — apply from 2 December 2027. This is the date on
+      "ch3_high_risk_annex_iii".
+    where: "lesson.py section 1 MILESTONES; section 6 OBLIGATIONS ch3_high_risk_annex_iii"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote: >-
+      Rules for systems used in certain high-risk areas — including biometrics, critical
+      infrastructure, education, employment, migration, asylum and border control — will apply
+      from 2 December 2027.
+    corroborating_source_url: https://www.praxikon.com/en/richtsnoeren/regulation-eu-2026-1744-digital-omnibus-on-ai
+    corroborating_source_title: "Regulation (EU) 2026/1744, Digital Omnibus on AI — official AI Act guidance"
+    corroborating_quote: "2 December 2027 for Article 6(2) and Annex III"
+    accessed: 2026-09-16
+
+  - id: annex-i-high-risk-from-2028-08-02
+    claim: >-
+      For AI systems integrated into products — lifts and toys are the Commission's own
+      examples — the rules apply from 2 August 2028. This is the date on
+      "ch3_high_risk_annex_i", and it is why the interview asks the Annex I question before
+      the Annex III one: guessing the route the wrong way round costs eight months in one
+      direction and gives away eight months in the other.
+    where: "lesson.py section 1 MILESTONES; section 6 OBLIGATIONS ch3_high_risk_annex_i; SYSTEMS['lift-door-sensor']"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote: >-
+      For systems integrated into products such as lifts or toys, the rules will apply from
+      2 August 2028.
+    corroborating_source_url: https://www.praxikon.com/en/richtsnoeren/regulation-eu-2026-1744-digital-omnibus-on-ai
+    corroborating_source_title: "Regulation (EU) 2026/1744, Digital Omnibus on AI — official AI Act guidance"
+    corroborating_quote: "2 August 2028 for Article 6(1) and Annex I"
+    accessed: 2026-09-16
+
+  - id: digital-omnibus-identity
+    claim: >-
+      The instrument that moved those two dates is Regulation (EU) 2026/1744, the Digital
+      Omnibus on AI, published in the Official Journal on 24 July 2026 and in force since
+      27 July 2026. The lesson names it only in its prose and in this file; no code path
+      depends on the Regulation number.
+    where: "lesson.py section 1 prose (the ladder was rewritten); this file"
+    source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
+    source_title: "Digital Omnibus on AI: Regulation (EU) 2026/1744 Is Published in the Official Journal — NicFab Blog"
+    corroborating_source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    corroborating_source_title: "AI Act — European Commission, Shaping Europe's digital future"
+    quote_note: >-
+      Recorded from two independent secondary sources because the primary text is
+      unretrievable: EUR-Lex returned an empty body for
+      https://eur-lex.europa.eu/legal-content/EN/TXT/PDF/?uri=OJ%3AL_202601744 on the access
+      date, as it also did when T10-L01 was reviewed. The two dates the lesson actually
+      encodes — 2027-12-02 and 2028-08-02 — are separately sourced above to the Commission's
+      own page and do not rest on this entry.
+    accessed: 2026-09-16
+
+# --- things this lesson deliberately does NOT claim ---------------------------------------
+#
+# Recorded here so a reviewer can check that the lesson's honesty labels match its sources.
+not_claimed:
+  - id: derogation-duty-dates-are-the-lessons-reading
+    what: >-
+      The date on which the Article 6(4) documentation duty and the Article 49(2) registration
+      duty start to bind a system that claims the derogation.
+    why: >-
+      No source retrieved on 2026-09-16 states a date for those two duties in terms. The
+      Commission's page gives the Annex III and Annex I dates for the high-risk rules; the
+      Article 50 FAQ gives the transparency dates; neither addresses the duties that attach to
+      a successful Article 6(3) claim. The lesson's reading is that Article 6 sits in the
+      chapter whose application the Digital Omnibus deferred, so the lesson puts both duties on
+      the Annex III date of 2 December 2027. That inference is recorded in the OBLIGATIONS
+      table as `"basis": "lesson's reading"`, counted and printed by the cell that renders the
+      table, stated in section 6's prose, and repeated in the lesson's opening warning. A
+      student can change the two dates without touching anything the rubric grades.
+    where: "lesson.py section 6 OBLIGATIONS art6_4_derogation_documentation and art49_2_registration"
+
+  - id: prohibited-tier-cancels-chapter-iii
+    what: >-
+      That a prohibited system owes only Article 4 and Article 5 and nothing else.
+    why: >-
+      This is a modelling choice carried over from T10-L01 so the two lessons agree, and it is
+      labelled as one in the `obligations_for` docstring. It is defensible — a system that may
+      not be placed on the market has no conformity route to follow — but it is not a
+      quotation, and Article 99's penalty structure would still apply to it.
+    where: "lesson.py section 6 obligations_for() docstring; tests/test_lesson.py::test_obligations_prohibited_stops"
+
+  - id: the-systems-are-real
+    what: >-
+      That any system, provider, date or justification in SYSTEMS or PANEL describes a real
+      product or organisation.
+    why: >-
+      All nine systems and all four analyst intake forms are invented for this lesson and are
+      declared synthetic in meta.yaml. They are constructed to exercise the decision procedure
+      — one system per branch, plus two that fail the derogation for different reasons and one
+      panel that splits at two different questions — not to characterise anything on the
+      market. No inference about any real product should be drawn from them.
+    where: "lesson.py section 3 SYSTEMS; section 9 PANEL; meta.yaml datasets"

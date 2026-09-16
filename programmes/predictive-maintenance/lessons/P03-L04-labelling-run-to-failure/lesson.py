@@ -1,0 +1,1472 @@
+# %% [markdown]
+# # P03-L04 · Labelling run-to-failure data
+#
+# **You will build:** the bookkeeping layer that sits between a maintenance department's
+# work-order log and a machine-learning table. A date parser for a CMMS export that uses three
+# formats, a classifier that tells a failure from a suspension, three defensible policies for
+# *when a run ended*, a censoring-aware labeller, a split that does not leak a unit across it,
+# and two leakage detectors — one that counts rows that should not exist, and one that fires
+# when a score is too good to be true.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** `T00-L01-the-8gb-track` (the profiler and the tier gate),
+# `P03-L01-alarm-economics` (the threshold sweep and the cost function this module re-runs),
+# `P03-L03-vibration-features` (the health index arrives here already built; this module never
+# touches a raw waveform).
+#
+# By the end you will be able to:
+#
+# 1. Parse a work-order export whose dates arrive in three formats and whose close dates are
+#    weeks after the work, and derive an event hour under a stated policy.
+# 2. Classify a work order as a failure, a suspension or neither, and explain why a suspension
+#    is censored data rather than a negative example.
+# 3. Implement horizon labelling that emits *unknown* rather than *negative* where censoring
+#    makes the label unknowable, and that never emits a row from after the run ended.
+# 4. Split a run-to-failure table by unit and stratified on the event, and measure how many
+#    units a row-level split would have leaked across the boundary.
+# 5. Measure, from your own numbers, how far the cost-optimal threshold moves when nothing
+#    changes but the labelling policy — and how badly a threshold chosen under a leaky policy
+#    performs when it is scored honestly.
+#
+# **The data is synthetic and the generator is in this notebook.** Nothing is downloaded.
+# That is deliberate and it is the whole reason this module can be graded: to show that a
+# labelling policy is wrong you need to know what actually happened, and no real work-order
+# log ships with ground truth attached. `meta.yaml` declares the generator under `datasets:`.
+# The method transfers. The particular numbers describe no real plant.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import sys
+import time
+from datetime import datetime, timedelta
+from typing import Callable, NamedTuple, Sequence
+
+import numpy as np
+
+import matplotlib
+_INTERACTIVE = "ipykernel" in sys.modules
+if not _INTERACTIVE:
+    # Headless: a script run (including this repository's execution gate) must never try to
+    # open a window. In Jupyter the default inline backend is already the right one.
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402  (backend must be chosen before this import)
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__,
+      "· matplotlib", matplotlib.__version__)
+
+# The plant. 240 units, one health-index reading per hour for 40 days. Module 3 built the
+# health index; here it is just a column of numbers that is about 1.0 on a well unit.
+N_UNITS = 240
+N_HOURS = 960
+SEED = 20260916
+
+# Hour 0 of the sensor history, in wall-clock time. The CMMS stamps its work orders in wall
+# clock and the historian indexes by hour; this constant is the only bridge between them, and
+# getting it wrong shifts every label by a constant nobody notices.
+LOG_EPOCH = datetime(2026, 3, 1, 0, 0)
+
+# The three date formats this CMMS export uses, because it has survived three upgrades.
+LOG_FORMATS = ("%Y-%m-%d %H:%M", "%d/%m/%Y %H:%M", "%d %b %Y %H:%M")
+
+# The labelling decisions. HORIZON is the prediction horizon: how far ahead a positive label
+# claims to see. LEAD_HOURS is the maintenance contract from module 1: an alarm that arrives
+# with less warning than this did not prevent anything.
+HORIZON = 48
+LEAD_HOURS = 24
+
+# The run outcomes. A run ends in exactly one of these three, and the difference between the
+# first and the other two is the subject of this notebook.
+FAILURE = "failure"
+SUSPENSION = "suspension"
+CENSORED = "censored"
+IGNORE = "ignore"
+RUN_KINDS = (FAILURE, SUSPENSION, CENSORED)
+
+# The three labelling policies, each defensible, each in use in a real plant somewhere.
+POLICIES = ("closed", "raised", "trip")
+
+
+class WorkOrder(NamedTuple):
+    """One row of the CMMS export, exactly as it arrives."""
+    unit: int
+    job_type: str      # "BM", "PM", "MOD", "DECOM", "INSP", or "" where nobody filled it in
+    text: str          # the fitter's free-text description
+    raised: str        # wall-clock stamp, one of LOG_FORMATS
+    closed: str        # wall-clock stamp, one of LOG_FORMATS — often weeks later
+    trip_hour: int     # the process historian's stop hour for this job, or -1 if none
+
+
+class Run(NamedTuple):
+    """One unit's observation window, after the log has been turned into a decision."""
+    unit: int
+    end_hour: int      # the hour the run stopped being observed
+    kind: str          # one of RUN_KINDS
+
+
+class Prices(NamedTuple):
+    """Module 1's cost model, re-priced for this plant. A scenario, not a measurement."""
+    planned: float
+    unplanned: float
+    false_alarm: float
+
+
+class OperatingPoint(NamedTuple):
+    threshold: float
+    cost: float
+    tp: int
+    fn: int
+    fp: int
+    tn: int
+
+
+class LeakageReport(NamedTuple):
+    post_event_rows: int
+    auc: float
+    suspect: bool
+
+
+# These are this plant's numbers, not module 1's: the units here are small in-line pumps,
+# spared, so an unplanned failure costs a fraction of what it costs on module 1's big
+# machines. Nothing in this module's argument depends on the ratio — section 9 changes the
+# labels and holds the prices fixed, which is the opposite experiment to module 1's.
+SCENARIO = Prices(planned=9_000.0, unplanned=60_000.0, false_alarm=6_000.0)
+THRESHOLDS = np.round(np.arange(1.10, 5.01, 0.05), 2)
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
+    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+def stamp(hour: int) -> str:
+    """Render an hour index as a wall-clock stamp, cycling through the CMMS's three formats.
+
+    Given to you — this is the generator's side of the bridge you are about to build.
+    """
+    when = LOG_EPOCH + timedelta(hours=int(hour))
+    return when.strftime(LOG_FORMATS[int(hour) % len(LOG_FORMATS)])
+
+
+# %% [markdown]
+# ## 1. The log, and the thing it is not
+#
+# A maintenance department does not keep a list of failures. It keeps a list of *jobs*: who
+# was called, what they wrote down, when the job was closed in the system. Failures have to be
+# inferred from that, and the inference is a policy choice with no correct answer.
+#
+# Below is the generator. Read it. Four things in it decide everything downstream:
+#
+# - A unit that **fails** stops. The historian records a trip, an operator raises a job hours
+#   later, and the job is closed anywhere from a day to several weeks after that. Three
+#   different times, all defensible as "when it failed".
+# - A unit that is **suspended** — pulled for a planned overhaul, a modification, a line
+#   reconfiguration — also stops, also generates a work order, and did **not** fail. It is
+#   right-censored: you stopped watching it, so you do not know how long it would have run.
+# - A **no-fault-found** call-out looks exactly like a breakdown in the job-type column and
+#   ends nothing. The generator raises one against about a fifth of the units; exercise 2
+#   prints how many it actually wrote.
+# - After a repair the health index **resets**, and during the stop it reads nonsense. Every
+#   hour at or after the end of a run is data about a machine that no longer exists in the
+#   state you are trying to predict.
+
+# %%
+_BM_PLAIN = ("unit stopped in the night, fitter attended",
+             "called out at 0300, machine would not restart",
+             "operator reports loud noise, unit shut down",
+             "trip on site, attended and rebuilt")
+_BM_KEYWORD = ("drive end bearing seized, shaft sheared",
+               "coupling broken, motor burnt out",
+               "gearbox failed, oil black",
+               "pump tripped on vibration, impeller damaged")
+_PM_PLAIN = ("48 month major inspection, unit out of service",
+             "strip and rebuild per maintenance plan",
+             "statutory shutdown work, unit isolated",
+             "refit with upgraded seal kit")
+_PM_KEYWORD = ("removed for line reconfiguration",
+               "planned overhaul, unit swapped out",
+               "campaign end, unit taken off",
+               "decommission and replace with skid unit")
+_NO_FAULT = ("attended, no fault found, unit restarted",
+             "NFF - reset and returned to service",
+             "operator error, unit restarted without work",
+             "false trip - reset, no work carried out")
+
+
+def generate_plant(seed: int = SEED, n_units: int = N_UNITS, n_hours: int = N_HOURS
+                   ) -> tuple[np.ndarray, list[WorkOrder], list[Run]]:
+    """Deterministic synthetic plant history: health index, work-order log, and the truth.
+
+    Returns `(health, orders, truth)`:
+      * `health` has shape (n_units, n_hours). Roughly 1.0 on a well unit, rising as a defect
+        develops, gross during a stop, and reset to ~1.0 after a repair.
+      * `orders` is the CMMS export, in no particular order, exactly as the maintenance
+        system would hand it over.
+      * `truth` is the run table nobody has in real life: what actually happened, from the
+        generator. It exists so this notebook can score your labelling against reality.
+
+    Same seed, same plant, on any machine. Nothing is downloaded.
+    """
+    rng = np.random.default_rng(seed)
+    t = np.arange(n_hours)
+    health = 1.0 + rng.normal(0.0, 0.045, (n_units, n_hours))
+
+    # Three units in ten drift upwards and never fail: a foundation settles, a duty point
+    # moves, a filter loads up. This is the nuisance-alarm population, and it is the reason a
+    # high health index is not the same thing as a failure.
+    drift = np.where(rng.random(n_units) < 0.30,
+                     rng.uniform(0.0007, 0.0021, n_units),
+                     rng.uniform(0.0, 0.00025, n_units))
+    health += drift[:, None] * t[None, :]
+
+    ids = rng.permutation(n_units)
+    fail_ids = sorted(int(u) for u in ids[:60])
+    susp_ids = sorted(int(u) for u in ids[60:100])
+    orders: list[WorkOrder] = []
+    truth: list[Run] = []
+
+    for u in range(n_units):
+        if u in fail_ids:
+            stop = int(rng.integers(220, n_hours - 120))
+            pf = int(rng.integers(60, 260))            # the P-F interval, unobservable
+            onset = max(4, stop - pf)
+            rise = float(rng.uniform(0.35, 1.5))
+            shape = float(rng.uniform(2.2, 4.0))       # late-rising: most of it at the end
+            ramp = ((np.arange(onset, stop) - onset) / max(1, stop - onset)) ** shape
+            health[u, onset:stop] += rise * ramp
+            repair = HORIZON + int(rng.integers(1, 12))
+            back = min(n_hours, stop + repair)
+            health[u, stop:back] = rng.uniform(6.0, 14.0) + rng.normal(0.0, 0.4, back - stop)
+            health[u, back:] = 1.0 + rng.normal(0.0, 0.045, n_hours - back)  # new bearing
+            raised = stop + int(rng.integers(2, 40))
+            closed = raised + int(rng.integers(20, 520))
+            keyword = bool(rng.random() < 0.5)
+            orders.append(WorkOrder(
+                unit=u,
+                job_type="BM" if (rng.random() > 0.2 or not keyword) else "",
+                text=str(rng.choice(_BM_KEYWORD if keyword else _BM_PLAIN)),
+                raised=stamp(raised), closed=stamp(closed),
+                trip_hour=stop if rng.random() > 0.15 else -1))
+            truth.append(Run(u, stop, FAILURE))
+        elif u in susp_ids:
+            removal = int(rng.integers(240, n_hours - 120))
+            down = int(rng.integers(40, 200))
+            back = min(n_hours, removal + down)
+            health[u, removal:back] = 0.08 + np.abs(rng.normal(0.0, 0.02, back - removal))
+            health[u, back:] = 1.0 + rng.normal(0.0, 0.045, n_hours - back)
+            raised = max(0, removal - int(rng.integers(0, 96)))   # planned work is raised first
+            closed = removal + down + int(rng.integers(10, 360))
+            keyword = bool(rng.random() < 0.5)
+            orders.append(WorkOrder(
+                unit=u,
+                job_type="" if keyword else str(rng.choice(("PM", "MOD", "DECOM"))),
+                text=str(rng.choice(_PM_KEYWORD if keyword else _PM_PLAIN)),
+                raised=stamp(raised), closed=stamp(closed),
+                trip_hour=removal if rng.random() > 0.2 else -1))
+            truth.append(Run(u, removal, SUSPENSION))
+        else:
+            truth.append(Run(u, n_hours, CENSORED))
+
+        # No-fault-found call-outs, scattered over the whole fleet. They are raised as
+        # breakdowns, they end nothing, and a labeller that trusts the job-type column will
+        # invent a failure for every one of them.
+        if rng.random() < 0.22:
+            when = int(rng.integers(20, n_hours - 400))
+            orders.append(WorkOrder(
+                unit=u, job_type="BM" if rng.random() < 0.7 else "INSP",
+                text=str(rng.choice(_NO_FAULT)),
+                raised=stamp(when), closed=stamp(when + int(rng.integers(2, 200))),
+                trip_hour=-1))
+
+    order_of = rng.permutation(len(orders))
+    return health, [orders[int(i)] for i in order_of], truth
+
+
+HEALTH, ORDERS, TRUTH = generate_plant()
+print(f"health index   {HEALTH.shape} float64, {HEALTH.nbytes / 2**20:.1f} MiB")
+print(f"work orders    {len(ORDERS)} rows, {len({o.unit for o in ORDERS})} units mentioned")
+print(f"ground truth   {sum(r.kind == FAILURE for r in TRUTH)} failures, "
+      f"{sum(r.kind == SUSPENSION for r in TRUTH)} suspensions, "
+      f"{sum(r.kind == CENSORED for r in TRUTH)} never-events, out of {len(TRUTH)} units")
+print("first three orders, verbatim:")
+for _o in ORDERS[:3]:
+    print(f"  unit {_o.unit:3d} · {_o.job_type or '(blank)':>6} · raised {_o.raised:<17} "
+          f"closed {_o.closed:<17} trip {_o.trip_hour:>4} · {_o.text}")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `parse_log_hour()`
+#
+# Three formats in one column, because the export has been through three CMMS upgrades. Note
+# the second one: this plant is European and writes **day first**. `04/03/2026` is the fourth
+# of March. Read it month-first and every label on that unit moves by a month, silently,
+# because the result is still a valid date.
+
+# %%
+def parse_log_hour(text: str) -> int:
+    """Turn a CMMS wall-clock stamp into an hour index relative to `LOG_EPOCH`.
+
+    Try each format in `LOG_FORMATS` in order and return the whole number of hours between
+    `LOG_EPOCH` and the parsed time. Surrounding whitespace is the export's, not the
+    student's, so strip it. Raise `ValueError` if no format matches.
+
+    A stamp before `LOG_EPOCH` returns a negative hour rather than raising: an order raised
+    before the sensor history begins is a real thing, and clamping it is a later decision.
+
+    Example:
+        >>> parse_log_hour("2026-03-01 00:00")
+        0
+        >>> parse_log_hour("  04/03/2026 06:00  ")     # day first: 4 March, not 3 April
+        78
+        >>> parse_log_hour("02 Mar 2026 12:00")
+        36
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_parse_log_hour() -> None:
+    zero = parse_log_hour("2026-03-01 00:00")
+    assert zero == 0, f"the epoch itself must be hour 0, got {zero!r}"
+    day_first = parse_log_hour("04/03/2026 06:00")
+    assert day_first == 78, (
+        f"'04/03/2026 06:00' came back as hour {day_first}; expected 78 (4 March, 06:00). "
+        "A value of 774 means you read it month-first — this CMMS writes day first, and "
+        "LOG_FORMATS says so"
+    )
+    assert parse_log_hour("02 Mar 2026 12:00") == 36, (
+        "'02 Mar 2026 12:00' is 36 hours after the epoch; the third format in LOG_FORMATS "
+        "handles it"
+    )
+    assert parse_log_hour("  2026-03-02 00:00  ") == 24, (
+        "the export pads its columns — strip the stamp before parsing it"
+    )
+    early = parse_log_hour("2026-02-27 00:00")
+    assert early == -48, (
+        f"a stamp two days before the epoch is hour -48, got {early}. Do not clamp here and "
+        "do not raise: whether a negative hour is usable is build_runs's decision, not this "
+        "function's"
+    )
+    for bad in ("", "last tuesday", "2026-13-40 99:99"):
+        try:
+            parse_log_hour(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{bad!r} parses as nothing; it must raise ValueError")
+    print("exercise 1 looks right — three formats, day-first, no silent month swap")
+
+
+# %%
+_try("exercise 1", _check_parse_log_hour)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `classify_work_order()`
+#
+# Now the part that decides how many failures this plant had. Three buckets:
+#
+# - **failure** — the unit stopped because it was broken. This ends a run *as an event*.
+# - **suspension** — the unit was taken out of service for a reason that is not a failure.
+#   This ends a run *as censored data*. It is not a failure, and it is emphatically not a
+#   negative example: you stopped watching, so you do not know what would have happened.
+# - **ignore** — the job ended nothing. A no-fault-found call-out is the big one.
+#
+# The rules below are an ordering, and the order is the exercise. A no-fault-found call-out is
+# raised as a breakdown; the job-type column says `BM`; the fitter found nothing. Check the
+# text *first* or you will invent a failure every time somebody's shift was interrupted.
+
+# %%
+NO_FAULT_PHRASES = ("no fault found", "nff", "operator error", "false trip")
+FAILURE_WORDS = ("seized", "sheared", "broken", "burnt", "failed", "damaged",
+                 "tripped on vibration")
+SUSPENSION_WORDS = ("removed for", "planned overhaul", "campaign end", "decommission")
+FAILURE_JOB_TYPES = ("BM",)
+SUSPENSION_JOB_TYPES = ("PM", "MOD", "DECOM")
+
+
+def classify_work_order(job_type: str, text: str) -> str:
+    """Bucket one work order as FAILURE, SUSPENSION or IGNORE. Case-insensitive on the text.
+
+    Apply these rules **in this order** and return as soon as one matches:
+
+    1. any phrase in `NO_FAULT_PHRASES` appears in the text  -> IGNORE
+    2. `job_type` is in `FAILURE_JOB_TYPES`, or any word in `FAILURE_WORDS` appears -> FAILURE
+    3. `job_type` is in `SUSPENSION_JOB_TYPES`, or any word in `SUSPENSION_WORDS`
+       appears -> SUSPENSION
+    4. otherwise -> IGNORE
+
+    Rule 2 outranking rule 3 is deliberate and is the plant's convention: a defect found
+    during planned work is still a defect. Rule 1 outranking rule 2 is the one that matters —
+    a breakdown call-out that found nothing did not end anything.
+
+    Example:
+        >>> classify_work_order("BM", "drive end bearing seized, shaft sheared")
+        'failure'
+        >>> classify_work_order("BM", "attended, no fault found, unit restarted")
+        'ignore'
+        >>> classify_work_order("", "removed for line reconfiguration")
+        'suspension'
+        >>> classify_work_order("INSP", "routine walkdown")
+        'ignore'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_classify_work_order() -> None:
+    got = classify_work_order("BM", "drive end bearing seized, shaft sheared")
+    assert got == FAILURE, f"a breakdown with a seized bearing is a failure, got {got!r}"
+    nff = classify_work_order("BM", "attended, no fault found, unit restarted")
+    assert nff == IGNORE, (
+        f"'attended, no fault found' on a BM order came back {nff!r}. Rule 1 runs BEFORE "
+        "rule 2: a breakdown call-out that found nothing ended nothing, and treating it as a "
+        "failure invents one failure per interrupted shift"
+    )
+    assert classify_work_order("bm", "unit stopped in the night, fitter attended") == FAILURE, (
+        "the job-type column is not reliably upper-case; normalise it before comparing"
+    )
+    assert classify_work_order("", "removed for line reconfiguration") == SUSPENSION, (
+        "a blank job type with a suspension phrase in the text is still a suspension — the "
+        "text is the fallback for the orders nobody coded"
+    )
+    assert classify_work_order("PM", "strip and rebuild per maintenance plan") == SUSPENSION, (
+        "a PM job type with no keyword in the text is a suspension by rule 3"
+    )
+    assert classify_work_order("PM", "gearbox failed, oil black") == FAILURE, (
+        "rule 2 outranks rule 3: a defect found during planned work is still a defect"
+    )
+    assert classify_work_order("INSP", "routine walkdown, nothing to report") == IGNORE, (
+        "an inspection with no keyword anywhere ends nothing"
+    )
+    assert classify_work_order("BM", "NFF - RESET and returned to service") == IGNORE, (
+        "match the text case-insensitively; fitters do not agree about capitals"
+    )
+    counts = {k: 0 for k in (FAILURE, SUSPENSION, IGNORE)}
+    for order in ORDERS:
+        counts[classify_work_order(order.job_type, order.text)] += 1
+    assert counts[FAILURE] == 60, (
+        f"your rules find {counts[FAILURE]} failure orders in this log; the generator wrote "
+        f"60. A count near {60 + counts[IGNORE]} means the no-fault-found call-outs are being "
+        "counted as failures"
+    )
+    assert counts[SUSPENSION] == 40, (
+        f"your rules find {counts[SUSPENSION]} suspension orders; the generator wrote 40"
+    )
+    print(f"exercise 2 looks right — {counts[FAILURE]} failures, {counts[SUSPENSION]} "
+          f"suspensions, {counts[IGNORE]} orders that ended nothing")
+
+
+# %%
+_try("exercise 2", _check_classify_work_order)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `event_hour()`, and three defensible answers
+#
+# The unit stopped at one hour, somebody raised a job at another, and the job was closed at a
+# third. All three are in the export, all three are used in production somewhere, and they
+# disagree by days to weeks.
+#
+# - `"closed"` — the work-order close date. The default in most CMMS reports, because it is
+#   the only date guaranteed to be filled in. It is also the date the *paperwork* finished.
+# - `"raised"` — when somebody wrote the job up. Closer, but it is a human reaction time.
+# - `"trip"` — the process historian's stop hour. Closest to the physics, absent on some jobs,
+#   and falls back to `"raised"` where it is. The handover note at the foot of this notebook
+#   prints how many of this log's orders carry no historian record.
+
+# %%
+def event_hour(order: WorkOrder, policy: str) -> int:
+    """The hour this work order says the run ended, under one labelling policy.
+
+    `policy` must be one of `POLICIES`:
+      * "closed" -> `parse_log_hour(order.closed)`
+      * "raised" -> `parse_log_hour(order.raised)`
+      * "trip"   -> `order.trip_hour` when it is 0 or greater, else the "raised" answer
+
+    Raise `ValueError` for any other policy. Silently defaulting to one of the three is how a
+    typo in a config file becomes a six-week labelling error.
+
+    Example:
+        >>> wo = WorkOrder(7, "BM", "seized", "2026-03-02 00:00", "2026-03-20 00:00", 30)
+        >>> event_hour(wo, "raised"), event_hour(wo, "closed"), event_hour(wo, "trip")
+        (24, 456, 30)
+        >>> event_hour(wo._replace(trip_hour=-1), "trip")
+        24
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_event_hour() -> None:
+    wo = WorkOrder(7, "BM", "seized", "2026-03-02 00:00", "2026-03-20 00:00", 30)
+    assert event_hour(wo, "raised") == 24, f"raised: expected 24, got {event_hour(wo, 'raised')}"
+    assert event_hour(wo, "closed") == 456, f"closed: expected 456, got {event_hour(wo, 'closed')}"
+    assert event_hour(wo, "trip") == 30, (
+        f"trip: expected the historian's 30, got {event_hour(wo, 'trip')}"
+    )
+    assert event_hour(wo._replace(trip_hour=-1), "trip") == 24, (
+        "when trip_hour is -1 the historian has nothing, so 'trip' falls back to the raised "
+        "hour — not to 0, and not to -1"
+    )
+    assert event_hour(wo._replace(trip_hour=0), "trip") == 0, (
+        "hour 0 is a real trip hour. Test `>= 0`, not truthiness — `if order.trip_hour:` "
+        "throws away every trip in the first hour of the history"
+    )
+    for bad in ("close", "TRIP", "", None):
+        try:
+            event_hour(wo, bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"policy {bad!r} must raise ValueError, not fall through")
+    print("exercise 3 looks right — three policies, no silent default")
+
+
+# %%
+_try("exercise 3", _check_event_hour)
+
+# %% [markdown]
+# Run the next cell. It measures how far apart the three policies are on this log — not as an
+# opinion, as hours.
+
+# %%
+def _show_policy_disagreement() -> None:
+    truth_hour = {r.unit: r.end_hour for r in TRUTH}
+    print(f"{'policy':>8}  {'median error':>13}  {'90th pct':>9}  {'worst':>7}  "
+          f"{'late by >1 week':>16}")
+    for policy in POLICIES:
+        errs = []
+        for order in ORDERS:
+            if classify_work_order(order.job_type, order.text) == IGNORE:
+                continue
+            errs.append(abs(event_hour(order, policy) - truth_hour[order.unit]))
+        e = np.array(errs, dtype=float)
+        print(f"{policy:>8}  {np.median(e):>10.0f} h  {np.percentile(e, 90):>7.0f} h  "
+              f"{e.max():>5.0f} h  {100 * np.mean(e > 168):>14.0f}%")
+    print("all three are defensible; only one of them is close to what the machine did")
+
+
+_try("policy disagreement", _show_policy_disagreement)
+
+# %% [markdown]
+# ## 5. Exercise 4 — `build_runs()`, and right-censoring
+#
+# Now turn the log into a run table: one row per unit, whatever the log did or did not say
+# about it. Three ways a run ends, and the third is the one people forget:
+#
+# 1. **Failure.** The event you are trying to predict.
+# 2. **Suspension.** Observation stopped for another reason. Right-censored.
+# 3. **Nothing at all.** No order in the export. The unit ran to the end of the history and is
+#    *also* right-censored — administratively, at the edge of the window. NIST's handbook puts
+#    it plainly: "When not all units on test fail we have censored data."
+#
+# The same handbook names a third possibility, an *interval* you know the failure fell inside.
+# This module derives one event hour per run and does not model interval censoring; the run
+# table below has three kinds, not four.
+#
+# Two traps. The log is not sorted, so "the first order for this unit" is not "the earliest".
+# And a close date can land past the end of the sensor history, which has to be clamped —
+# a bookkeeping decision, made here, in the open, rather than by an out-of-bounds slice later.
+
+# %%
+def build_runs(orders: Sequence[WorkOrder], n_units: int, horizon_end: int,
+               policy: str) -> list[Run]:
+    """Collapse a work-order log into one `Run` per unit, under one labelling policy.
+
+    For each unit, consider only orders that `classify_work_order` calls FAILURE or
+    SUSPENSION, and take the one with the **earliest** `event_hour` under `policy`. Ties go
+    to FAILURE. A unit with no such order ran to `horizon_end` and is CENSORED there.
+
+    Every `end_hour` is clamped into `[0, horizon_end]`: a close date past the end of the
+    sensor history is a real export, and so is an order raised before it starts.
+
+    Returns a list of length `n_units`, ordered by unit id.
+
+    Raise `ValueError` if `n_units` or `horizon_end` is not positive, or if an order names a
+    unit outside `range(n_units)`.
+
+    Example:
+        >>> log = [WorkOrder(1, "PM", "planned overhaul", "2026-03-05 00:00",
+        ...                  "2026-04-01 00:00", 96),
+        ...        WorkOrder(0, "BM", "bearing seized", "2026-03-03 00:00",
+        ...                  "2026-03-09 00:00", 48)]
+        >>> build_runs(log, 3, 500, "trip")
+        [Run(unit=0, end_hour=48, kind='failure'), Run(unit=1, end_hour=96, \
+kind='suspension'), Run(unit=2, end_hour=500, kind='censored')]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_build_runs() -> None:
+    log = [WorkOrder(1, "PM", "planned overhaul", "2026-03-05 00:00", "2026-04-01 00:00", 96),
+           WorkOrder(0, "BM", "bearing seized", "2026-03-03 00:00", "2026-03-09 00:00", 48)]
+    runs = build_runs(log, 3, 500, "trip")
+    assert [r.unit for r in runs] == [0, 1, 2], (
+        f"build_runs returns one Run per unit, ordered by unit id; got "
+        f"{[r.unit for r in runs]}"
+    )
+    assert runs[0] == Run(0, 48, FAILURE), f"unit 0 should be Run(0, 48, 'failure'), got {runs[0]}"
+    assert runs[1] == Run(1, 96, SUSPENSION), f"unit 1 should be a suspension at 96, got {runs[1]}"
+    assert runs[2] == Run(2, 500, CENSORED), (
+        f"unit 2 has no work order at all, so it ran to horizon_end and is censored there; "
+        f"got {runs[2]}. Dropping unmentioned units is the commonest version of this bug — it "
+        "throws away the whole healthy population"
+    )
+    unsorted = [WorkOrder(0, "BM", "gearbox failed", "2026-03-20 00:00", "2026-03-25 00:00", 456),
+                WorkOrder(0, "BM", "coupling broken", "2026-03-04 00:00", "2026-03-06 00:00", 72)]
+    first = build_runs(unsorted, 1, 900, "trip")[0]
+    assert first.end_hour == 72, (
+        f"with two terminating orders on one unit the run ends at the EARLIEST, 72; got "
+        f"{first.end_hour}. The export is not sorted, so orders[0] is not the first event"
+    )
+    nff = [WorkOrder(0, "BM", "attended, no fault found, unit restarted", "2026-03-02 00:00",
+                     "2026-03-03 00:00", -1),
+           WorkOrder(0, "BM", "bearing seized", "2026-03-10 00:00", "2026-03-12 00:00", 216)]
+    assert build_runs(nff, 1, 900, "trip")[0] == Run(0, 216, FAILURE), (
+        "a no-fault-found order must not end the run, even though it is earlier and is coded "
+        "BM — this is exercise 2's rule ordering showing up where it costs you"
+    )
+    clamp = [WorkOrder(0, "BM", "bearing seized", "2026-03-02 00:00", "2026-06-01 00:00", 24)]
+    assert build_runs(clamp, 1, 300, "closed")[0].end_hour == 300, (
+        "a close date past the end of the sensor history clamps to horizon_end, it does not "
+        "index past the end of the array and it does not drop the unit"
+    )
+    early = [WorkOrder(0, "BM", "bearing seized", "2026-02-20 00:00", "2026-02-25 00:00", -1)]
+    assert build_runs(early, 1, 300, "trip")[0].end_hour == 0, (
+        "an order raised before LOG_EPOCH gives a negative hour; clamp it to 0"
+    )
+    for bad_units, bad_end in ((0, 300), (3, 0), (-1, 300)):
+        try:
+            build_runs(log, bad_units, bad_end, "trip")
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                f"n_units={bad_units}, horizon_end={bad_end} must raise ValueError")
+    try:
+        build_runs([WorkOrder(9, "BM", "seized", "2026-03-02 00:00", "2026-03-03 00:00", 5)],
+                   3, 300, "trip")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an order naming a unit outside range(n_units) must raise")
+    print("exercise 4 looks right — earliest terminating order wins, everyone else is censored")
+
+
+# %%
+_try("exercise 4", _check_build_runs)
+
+# %% [markdown]
+# Run this. It builds the run table three times, once per policy, and compares each with the
+# truth the generator kept — the comparison you will never be able to make on a real plant,
+# which is why you are being shown it here.
+
+# %%
+def _show_run_tables() -> None:
+    truth_kind = {r.unit: r.kind for r in TRUTH}
+    truth_hour = {r.unit: r.end_hour for r in TRUTH}
+    # The error is measured over the units that actually had an event. The 140 units nobody
+    # ever raised a job against are censored at the same hour under every policy, and letting
+    # them into the median would hide the disagreement behind a majority of exact zeros.
+    evented = [u for u, k in truth_kind.items() if k != CENSORED]
+    print(f"{'policy':>8}  {'failures':>8}  {'suspensions':>11}  {'censored':>8}  "
+          f"{'kind wrong':>10}  {'median |end - truth| on the ' + str(len(evented)) + ' events':>36}")
+    for policy in POLICIES:
+        runs = build_runs(ORDERS, N_UNITS, N_HOURS, policy)
+        wrong = sum(r.kind != truth_kind[r.unit] for r in runs)
+        err = np.array([abs(runs[u].end_hour - truth_hour[u]) for u in evented], dtype=float)
+        print(f"{policy:>8}  {sum(r.kind == FAILURE for r in runs):>8}  "
+              f"{sum(r.kind == SUSPENSION for r in runs):>11}  "
+              f"{sum(r.kind == CENSORED for r in runs):>8}  {wrong:>10}  "
+              f"{np.median(err):>33.0f} h")
+    print("the three policies agree about WHICH units failed and disagree about WHEN")
+
+
+TRUTH_RUNS = list(TRUTH)
+_RUN_CACHE: dict[str, list[Run]] = {}
+
+
+def runs_for(policy: str) -> list[Run]:
+    """The run table for one policy, built once and kept. Given to you, but it calls YOUR
+    `build_runs`, so nothing below this line works until exercise 4 does."""
+    if policy not in _RUN_CACHE:
+        _RUN_CACHE[policy] = build_runs(ORDERS, N_UNITS, N_HOURS, policy)
+    return _RUN_CACHE[policy]
+
+
+_try("run tables", _show_run_tables)
+
+# %% [markdown]
+# ## 6. Exercise 5 — `horizon_labels()`, where most of the damage is done
+#
+# A run table is not a training set. To get one you pick a **prediction horizon** — how far
+# ahead a positive label claims to see — and walk each unit's hours. Three rules, and the
+# second and third are the ones that get skipped:
+#
+# - An hour **at or after** the run ended is not a row. It is data about a machine that has
+#   already failed, or has been rebuilt. Emitting it is the leak this module is named for.
+# - On a **failing** unit, the last `horizon` hours before the end are positive and everything
+#   earlier is negative.
+# - On a **censored or suspended** unit, hours further back than `horizon` from the end are
+#   negative — the unit demonstrably did not fail in that window — but the last `horizon`
+#   hours are **unknown**, not negative. Nobody watched what happened next.
+#
+# Unknown is encoded as `-1` and dropped downstream. Calling it 0 asserts a survival nobody
+# observed, and on this plant it is the majority of the rows you would get wrong.
+
+# %%
+def horizon_labels(n_hours: int, end_hour: int, kind: str, horizon: int) -> np.ndarray:
+    """Per-hour labels for one unit: 1 = fails within `horizon`, 0 = does not, -1 = unknown.
+
+    For every hour `t` in `range(n_hours)`:
+      * `t >= end_hour`                       -> -1   (the run is over; this row must not exist)
+      * kind is FAILURE and `end_hour - t <= horizon` -> 1
+      * kind is FAILURE and `end_hour - t > horizon`  -> 0
+      * kind is SUSPENSION or CENSORED, `end_hour - t > horizon` -> 0
+      * kind is SUSPENSION or CENSORED, `end_hour - t <= horizon` -> -1  (censored, unknown)
+
+    Returns an `int8` array of shape `(n_hours,)`.
+
+    Raise `ValueError` if `horizon` is not positive, if `kind` is not in `RUN_KINDS`, or if
+    `end_hour` is outside `[0, n_hours]`.
+
+    Example:
+        >>> horizon_labels(8, 6, "failure", 2).tolist()
+        [0, 0, 0, 0, 1, 1, -1, -1]
+        >>> horizon_labels(8, 6, "censored", 2).tolist()
+        [0, 0, 0, 0, -1, -1, -1, -1]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_horizon_labels() -> None:
+    fail = horizon_labels(8, 6, FAILURE, 2)
+    assert fail.tolist() == [0, 0, 0, 0, 1, 1, -1, -1], (
+        f"expected [0, 0, 0, 0, 1, 1, -1, -1], got {fail.tolist()}. A 1 at index 6 means the "
+        "failure hour itself is being labelled — that row is the event, not a prediction of it"
+    )
+    assert fail.dtype == np.int8, f"return an int8 array, got dtype {fail.dtype}"
+    cens = horizon_labels(8, 6, CENSORED, 2)
+    assert cens.tolist() == [0, 0, 0, 0, -1, -1, -1, -1], (
+        f"expected [0, 0, 0, 0, -1, -1, -1, -1], got {cens.tolist()}. Zeros at indices 4 and "
+        "5 claim this unit survived a window nobody watched — that is the censoring bug"
+    )
+    susp = horizon_labels(8, 6, SUSPENSION, 2)
+    assert susp.tolist() == cens.tolist(), (
+        "a suspension censors exactly like an administrative cut-off; the only difference is "
+        "why you stopped watching"
+    )
+    edge = horizon_labels(6, 4, FAILURE, 4)
+    assert edge.tolist() == [1, 1, 1, 1, -1, -1], (
+        f"with horizon == end_hour every observed hour is positive; got {edge.tolist()}. "
+        "`end_hour - t <= horizon` is inclusive at the boundary"
+    )
+    whole = horizon_labels(5, 5, CENSORED, 2)
+    assert whole.tolist() == [0, 0, 0, -1, -1], (
+        f"a unit censored at the end of the window still contributes negatives; got "
+        f"{whole.tolist()}"
+    )
+    none = horizon_labels(4, 0, FAILURE, 2)
+    assert none.tolist() == [-1, -1, -1, -1], "end_hour 0 means no observed rows at all"
+    for bad in (("failure", 0), ("failure", -2)):
+        try:
+            horizon_labels(8, 6, bad[0], bad[1])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"horizon={bad[1]} must raise ValueError")
+    for bad_kind in ("Failure", "broken", ""):
+        try:
+            horizon_labels(8, 6, bad_kind, 2)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"kind={bad_kind!r} must raise ValueError")
+    for bad_end in (-1, 9):
+        try:
+            horizon_labels(8, bad_end, FAILURE, 2)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"end_hour={bad_end} is out of range and must raise")
+    print("exercise 5 looks right — unknown is -1, and no row survives the run's end")
+
+
+# %%
+_try("exercise 5", _check_horizon_labels)
+
+
+# %%
+def label_table(health: np.ndarray, runs: Sequence[Run], horizon: int,
+                labeller: Callable[[int, int, str, int], np.ndarray] | None = None
+                ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Stack every unit's labels into one table, dropping the unknowns.
+
+    Given to you: this is plumbing, and it is the same plumbing for any labeller you hand it.
+    Returns `(units, hours, labels, scores)`, four aligned 1-D arrays.
+    """
+    labeller = horizon_labels if labeller is None else labeller
+    n_hours = health.shape[1]
+    units, hours, labels, scores = [], [], [], []
+    for run in runs:
+        lab = np.asarray(labeller(n_hours, run.end_hour, run.kind, horizon))
+        keep = np.flatnonzero(lab >= 0)
+        units.append(np.full(keep.size, run.unit, dtype=np.int32))
+        hours.append(keep.astype(np.int32))
+        labels.append(lab[keep].astype(np.int8))
+        scores.append(health[run.unit, keep])
+    return (np.concatenate(units), np.concatenate(hours),
+            np.concatenate(labels), np.concatenate(scores))
+
+
+def _show_horizon_choice() -> None:
+    # The yardstick: the median health index over rows that are confidently negative at the
+    # shortest horizon. A positive row below it is one the label calls "about to fail" while
+    # the feature still reads like a well machine — the cost of asking to see further ahead.
+    _, _, base_lab, base_scores = label_table(HEALTH, TRUTH_RUNS, 12)
+    well = float(np.median(base_scores[base_lab == 0]))
+    print(f"a confidently negative hour reads {well:.3f} on this health index\n")
+    print(f"{'horizon':>7}  {'rows':>7}  {'positives':>9}  {'positive rate':>13}  "
+          f"{'positives that read as well':>27}")
+    for horizon in (12, 24, 48, 96, 168, 336):
+        _, _, lab, scores = label_table(HEALTH, TRUTH_RUNS, horizon)
+        hidden = float(np.mean(scores[lab == 1] <= well))
+        print(f"{horizon:>5} h  {lab.size:>7}  {int((lab == 1).sum()):>9}  "
+              f"{100 * float((lab == 1).mean()):>12.2f}%  {100 * hidden:>26.1f}%")
+    print("\nasking to see further ahead does not make the machine sicker earlier. It moves "
+          "rows that\nlook exactly like healthy ones into the positive class, and the horizon "
+          "is therefore a contract\nwith the maintenance planner about how much warning they "
+          "need, not a hyper-parameter to tune")
+
+
+_try("horizon choice", _show_horizon_choice)
+
+# %% [markdown]
+# ## 7. Exercise 6 — `split_by_unit()`
+#
+# A row-level split puts hour 300 of unit 7 in train and hour 301 in test. Those two rows come
+# from the same bearing, minutes apart, and any model at all will score beautifully on the
+# second having seen the first. Split by **unit**, and stratify on the event so that a fold
+# with no failures in it never happens.
+
+# %%
+def split_by_unit(runs: Sequence[Run], test_fraction: float, seed: int
+                  ) -> tuple[np.ndarray, np.ndarray]:
+    """Split units into train and test, stratified on whether the run ended in a failure.
+
+    Draw `round(n * test_fraction)` test units from the failure group and the same fraction
+    from the non-failure group, independently, so both sides carry the fleet's event rate.
+    Use `np.random.default_rng(seed)` so the split is reproducible.
+
+    Returns `(train_units, test_units)`, both sorted `int64` arrays. Every unit appears in
+    exactly one of them.
+
+    Raise `ValueError` if `test_fraction` is not strictly between 0 and 1, or if `runs`
+    contains a duplicate unit id.
+
+    Example:
+        >>> tr, te = split_by_unit([Run(i, 10, "failure" if i < 4 else "censored")
+        ...                         for i in range(8)], 0.5, 1)
+        >>> sorted(tr.tolist() + te.tolist()), len(te), sum(u < 4 for u in te)
+        ([0, 1, 2, 3, 4, 5, 6, 7], 4, 2)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_split_by_unit() -> None:
+    toy = [Run(i, 10, FAILURE if i < 4 else CENSORED) for i in range(8)]
+    train, test = split_by_unit(toy, 0.5, 1)
+    assert sorted(train.tolist() + test.tolist()) == list(range(8)), (
+        f"every unit must land on exactly one side; got train={train.tolist()} "
+        f"test={test.tolist()}"
+    )
+    assert set(train.tolist()).isdisjoint(test.tolist()), "train and test must not overlap"
+    assert test.size == 4, f"half of 8 units is 4 test units, got {test.size}"
+    assert sum(u < 4 for u in test.tolist()) == 2, (
+        f"2 of the 4 failures belong in a half-sized stratified test set; got "
+        f"{sum(u < 4 for u in test.tolist())}. An unstratified shuffle can hand you a test "
+        "set with no failures in it at all"
+    )
+    assert np.all(np.diff(train) > 0) and np.all(np.diff(test) > 0), (
+        "return both sides sorted ascending"
+    )
+    again = split_by_unit(toy, 0.5, 1)
+    assert np.array_equal(again[1], test), "same seed, same split — use default_rng(seed)"
+    other = split_by_unit(toy, 0.5, 99)
+    assert not np.array_equal(other[1], test), (
+        "a different seed must give a different split; an implementation that ignores the "
+        "seed and slices the first k units is not a split, it is a sort"
+    )
+    fleet_train, fleet_test = split_by_unit(TRUTH_RUNS, 0.25, SEED)
+    assert fleet_train.size + fleet_test.size == N_UNITS, "no unit may be dropped"
+    fail_ids = {r.unit for r in TRUTH_RUNS if r.kind == FAILURE}
+    assert len(fail_ids & set(fleet_test.tolist())) == 15, (
+        f"a quarter of this fleet's 60 failures is 15 test failures; got "
+        f"{len(fail_ids & set(fleet_test.tolist()))}"
+    )
+    for bad in (0.0, 1.0, -0.2, 1.5):
+        try:
+            split_by_unit(toy, bad, 1)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"test_fraction={bad} must raise ValueError")
+    try:
+        split_by_unit(toy + [Run(0, 10, CENSORED)], 0.5, 1)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a duplicate unit id must raise ValueError, not be split twice")
+    print("exercise 6 looks right — split by unit, stratified on the event")
+
+
+# %%
+_try("exercise 6", _check_split_by_unit)
+
+# %% [markdown]
+# Run this to price the alternative. It splits the same table by row and counts how many units
+# end up on both sides of the boundary.
+
+# %%
+def _show_row_split_leak() -> None:
+    units, _, labels, _ = label_table(HEALTH, TRUTH_RUNS, HORIZON)
+    rng = np.random.default_rng(SEED)
+    pick = rng.random(units.size) < 0.25
+    both = np.intersect1d(np.unique(units[pick]), np.unique(units[~pick]))
+    train_u, test_u = split_by_unit(TRUTH_RUNS, 0.25, SEED)
+    print(f"row-level split:  {both.size} of {N_UNITS} units appear in BOTH halves "
+          f"({100 * both.size / N_UNITS:.0f}%)")
+    print(f"unit-level split: {np.intersect1d(train_u, test_u).size} units in both halves")
+    print(f"rows: {int(pick.sum())} test rows from a row split, "
+          f"{int(np.isin(units, test_u).sum())} from the unit split, "
+          f"{labels.size} rows in the table")
+
+
+_try("row split leak", _show_row_split_leak)
+
+# %% [markdown]
+# ## 8. Exercises 7 and 8 — measuring a score, and catching one that is too good
+#
+# Two detectors for the same disease, and they catch different strains.
+#
+# The **row audit** is structural: count the labelled rows that sit at or after the unit's
+# actual end of run. It needs a reference run table to audit against, and it finds the quiet
+# leaks — the ones that make a model slightly worse rather than suspiciously better.
+#
+# The **score ceiling** needs nothing but the score. A ranking statistic far above what an
+# honest labelling of the same feature produces is evidence about the labels, not about the
+# model. First you need the statistic, and `sklearn` is not installed, so you write it.
+
+# %%
+def rank_auc(scores: np.ndarray, labels: np.ndarray) -> float:
+    """Area under the ROC curve, by the rank-sum identity, with ties averaged.
+
+    AUC is the probability that a randomly chosen positive outranks a randomly chosen
+    negative, ties counting a half. With `R` the sum of the positives' ranks (1-based, ties
+    sharing their average rank):
+
+        auc = (R - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)
+
+    `labels` must contain only 0 and 1 — raise `ValueError` otherwise, which is what stops an
+    unknown (-1) row being scored as a negative. Raise `ValueError` too if either class is
+    empty, or if the two arrays differ in length.
+
+    Example:
+        >>> rank_auc(np.array([0.1, 0.4, 0.35, 0.8]), np.array([0, 0, 1, 1]))
+        0.75
+        >>> rank_auc(np.array([1.0, 1.0]), np.array([0, 1]))     # a tie is worth a half
+        0.5
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def leakage_report(units: np.ndarray, hours: np.ndarray, labels: np.ndarray,
+                   scores: np.ndarray, reference: Sequence[Run], ceiling: float
+                   ) -> LeakageReport:
+    """Audit a labelled table for horizon leakage, two ways.
+
+    * `post_event_rows` — how many rows sit at an hour at or after that unit's `end_hour` in
+      `reference`. On a plant you supply the best end-of-run table you have; here the notebook
+      supplies the generator's truth, so you can see what the audit is for.
+    * `auc` — `rank_auc(scores, labels)`.
+    * `suspect` — True when `post_event_rows` is above zero **or** `auc >= ceiling`.
+
+    Raise `ValueError` if the four arrays are not all the same length, or if a unit in `units`
+    has no run in `reference`.
+
+    Example:
+        >>> ref = [Run(0, 4, "failure")]
+        >>> leakage_report(np.array([0, 0]), np.array([3, 5]), np.array([1, 0]),
+        ...                np.array([2.0, 1.0]), ref, 0.99)
+        LeakageReport(post_event_rows=1, auc=1.0, suspect=True)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_auc_and_leakage() -> None:
+    got = rank_auc(np.array([0.1, 0.4, 0.35, 0.8]), np.array([0, 0, 1, 1]))
+    assert np.isclose(got, 0.75), (
+        f"expected 0.75 on the worked example, got {got!r}. 0.25 means the positives and "
+        "negatives are the wrong way round"
+    )
+    tie = rank_auc(np.array([1.0, 1.0]), np.array([0, 1]))
+    assert np.isclose(tie, 0.5), (
+        f"one positive tied with one negative is an AUC of 0.5, got {tie!r}. A value of 0 or "
+        "1 means ties are taking their sort position instead of their average rank"
+    )
+    perfect = rank_auc(np.array([5.0, 4.0, 1.0, 0.5]), np.array([1, 1, 0, 0]))
+    assert np.isclose(perfect, 1.0), f"a perfectly separated score is AUC 1.0, got {perfect!r}"
+    many_ties = rank_auc(np.array([2.0, 2.0, 2.0, 1.0]), np.array([1, 1, 0, 0]))
+    assert np.isclose(many_ties, 0.75), (
+        f"expected 0.75 with a three-way tie, got {many_ties!r} — every tied value takes the "
+        "average of the ranks the group spans"
+    )
+    for bad_scores, bad_labels in ((np.array([1.0, 2.0]), np.array([1, -1])),
+                                   (np.array([1.0, 2.0]), np.array([1, 2])),
+                                   (np.array([1.0, 2.0]), np.array([1, 1])),
+                                   (np.array([1.0, 2.0]), np.array([0, 0])),
+                                   (np.array([1.0, 2.0, 3.0]), np.array([0, 1]))):
+        try:
+            rank_auc(bad_scores, bad_labels)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(
+                f"rank_auc({bad_scores.tolist()}, {bad_labels.tolist()}) must raise ValueError")
+
+    ref = [Run(0, 4, FAILURE)]
+    rep = leakage_report(np.array([0, 0]), np.array([3, 5]), np.array([1, 0]),
+                         np.array([2.0, 1.0]), ref, 0.99)
+    assert rep.post_event_rows == 1, (
+        f"hour 5 is at or after unit 0's end of 4, so exactly one row is post-event; got "
+        f"{rep.post_event_rows}. Hour 3 is fine — it is strictly before the end"
+    )
+    assert rep.suspect is True, "a post-event row on its own is enough to make a table suspect"
+    clean = leakage_report(np.array([0, 0]), np.array([1, 2]), np.array([1, 0]),
+                           np.array([2.0, 1.0]), ref, 0.99)
+    assert clean.post_event_rows == 0 and clean.suspect is True, (
+        "with no post-event rows the AUC decides, and 1.0 is at or above a ceiling of 0.99"
+    )
+    lenient = leakage_report(np.array([0, 0]), np.array([1, 2]), np.array([1, 0]),
+                             np.array([2.0, 1.0]), ref, 1.5)
+    assert lenient.suspect is False, (
+        "with no post-event rows and an AUC below the ceiling, nothing is suspect"
+    )
+    boundary = leakage_report(np.array([0, 0]), np.array([1, 2]), np.array([1, 0]),
+                              np.array([2.0, 1.0]), ref, 1.0)
+    assert boundary.suspect is True, "the ceiling comparison is `>=`, not `>`"
+    try:
+        leakage_report(np.array([0, 1]), np.array([1, 2]), np.array([1, 0]),
+                       np.array([2.0, 1.0]), ref, 0.9)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a unit with no run in the reference table must raise ValueError")
+    try:
+        leakage_report(np.array([0, 0, 0]), np.array([1, 2]), np.array([1, 0]),
+                       np.array([2.0, 1.0]), ref, 0.9)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("misaligned arrays must raise ValueError")
+    print("exercises 7 and 8 look right — a tie-aware AUC and two independent leak detectors")
+
+
+# %%
+_try("exercises 7 and 8", _check_auc_and_leakage)
+
+
+# %% [markdown]
+# The next cell is the demonstration. It labels the same health index four ways and audits
+# each. `leaky_labels` is the wrong labeller, written out in full so you can see how ordinary
+# it looks: it marks the hours *around* the event, which is what "label the failures" means to
+# most people the first time they are asked to do it.
+
+# %%
+def leaky_labels(n_hours: int, end_hour: int, kind: str, horizon: int) -> np.ndarray:
+    """The wrong labeller, kept for comparison: a window CENTRED on the event.
+
+    Positive within `horizon` hours either side of the end of the run, negative everywhere
+    else, nothing unknown. Given to you — do not copy it into `horizon_labels`.
+    """
+    t = np.arange(int(n_hours))
+    labels = np.zeros(int(n_hours), dtype=np.int8)
+    if kind == FAILURE:
+        labels[np.abs(t - int(end_hour)) <= int(horizon)] = 1
+    return labels
+
+
+CEILING_MARGIN = 0.05
+
+
+def honest_ceiling(runs: Sequence[Run] = None) -> float:
+    """The score ceiling, derived rather than guessed: an honest labelling of this feature,
+    plus a margin. The margin is a judgement — 0.05 here — and printing both numbers is what
+    lets somebody disagree with it rather than argue with a constant."""
+    units, hours, labels, scores = label_table(HEALTH, TRUTH_RUNS if runs is None else runs,
+                                               HORIZON)
+    return round(rank_auc(scores, labels) + CEILING_MARGIN, 4)
+
+
+def _show_leakage() -> None:
+    clean = label_table(HEALTH, TRUTH_RUNS, HORIZON)
+    clean_auc = rank_auc(clean[3], clean[2])
+    ceiling = honest_ceiling()
+    print(f"honest baseline AUC {clean_auc:.4f} on the truth run table, so the ceiling is "
+          f"{ceiling:.4f} (+{CEILING_MARGIN:.2f}).")
+    print("Nothing below changes the sensor data. Only the bookkeeping changes.\n")
+    print(f"{'labelling':<34}{'rows':>8}{'pos':>8}{'post-event':>12}{'AUC':>9}  verdict")
+    cases = [("horizon, truth run table", TRUTH_RUNS, horizon_labels),
+             ("horizon, trip policy", runs_for("trip"), horizon_labels),
+             ("horizon, raised policy", runs_for("raised"), horizon_labels),
+             ("horizon, closed policy", runs_for("closed"), horizon_labels),
+             ("centred window, truth run table", TRUTH_RUNS, leaky_labels)]
+    seen = {}
+    for name, runs, labeller in cases:
+        units, hours, labels, scores = label_table(HEALTH, runs, HORIZON, labeller)
+        report = leakage_report(units, hours, labels, scores, TRUTH_RUNS, ceiling)
+        seen[name] = report
+        verdict = "SUSPECT" if report.suspect else "clean"
+        print(f"{name:<34}{labels.size:>8}{int((labels == 1).sum()):>8}"
+              f"{report.post_event_rows:>12}{report.auc:>9.4f}  {verdict}")
+    centred = seen["centred window, truth run table"]
+    closed = seen["horizon, closed policy"]
+    print(f"\nthe centred window scores {centred.auc:.4f} against an honest {clean_auc:.4f} "
+          f"on the same feature —\n{centred.auc - clean_auc:+.4f}, bought entirely with "
+          f"{centred.post_event_rows:,} rows recorded after the machine had already stopped.")
+    print(f"the closed policy leaks {closed.post_event_rows:,} rows and scores "
+          f"{closed.auc:.4f}, which is {clean_auc - closed.auc:.4f} BELOW the honest "
+          f"baseline:\na ceiling on its own would have waved it through. Both detectors "
+          "earn their keep, and they catch different things.")
+
+
+_try("leakage table", _show_leakage)
+
+# %% [markdown]
+# ## 9. Exercise 9 — `cost_optimal_threshold()`, and what the bookkeeping cost
+#
+# Module 1 ended with a threshold derived from three prices. Here is the same sweep, with one
+# change: the alarm window for each unit now stops at that unit's `end_hour`, so which hours
+# a detector is even allowed to see is decided by the labelling policy.
+#
+# A failing unit is caught only if it alarmed at least `lead_hours` before the run ended. A
+# censored or suspended unit that alarms is a false alarm; one that does not is a true
+# negative. That last line is a simplification the lesson owes you: a censored unit that
+# alarms *might* have been about to fail. Charging it as a false alarm is the conservative
+# choice and it is a decision, not a fact.
+
+# %%
+def cost_optimal_threshold(health: np.ndarray, runs: Sequence[Run], thresholds: np.ndarray,
+                           prices: Prices, lead_hours: int) -> OperatingPoint:
+    """Sweep thresholds over a run table and return the cheapest operating point.
+
+    For each threshold, for each run, the alarm hour is the first hour `t < end_hour` where
+    `health[unit, t] >= threshold`, or none. Then:
+
+      * kind FAILURE, alarm exists, `end_hour - alarm >= lead_hours` -> true positive
+      * kind FAILURE, otherwise                                      -> false negative
+      * kind SUSPENSION or CENSORED, alarm exists                    -> false positive
+      * kind SUSPENSION or CENSORED, no alarm                        -> true negative
+
+    Cost is `tp * prices.planned + fn * prices.unplanned + fp * prices.false_alarm`; true
+    negatives are free. Return the `OperatingPoint` with the lowest cost, taking the lowest
+    threshold on a tie.
+
+    Raise `ValueError` if `thresholds` is empty or if `lead_hours` is negative.
+
+    Example:
+        >>> h = np.array([[1.0, 1.0, 3.0, 3.0], [1.0, 1.0, 1.0, 1.0]])
+        >>> runs = [Run(0, 4, "failure"), Run(1, 4, "censored")]
+        >>> cost_optimal_threshold(h, runs, np.array([2.0]), Prices(1.0, 100.0, 5.0), 2)
+        OperatingPoint(threshold=2.0, cost=1.0, tp=1, fn=0, fp=0, tn=1)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_cost_optimal_threshold() -> None:
+    h = np.array([[1.0, 1.0, 3.0, 3.0], [1.0, 1.0, 1.0, 1.0]])
+    runs = [Run(0, 4, FAILURE), Run(1, 4, CENSORED)]
+    got = cost_optimal_threshold(h, runs, np.array([2.0]), Prices(1.0, 100.0, 5.0), 2)
+    assert got == OperatingPoint(2.0, 1.0, 1, 0, 0, 1), (
+        f"expected OperatingPoint(2.0, 1.0, 1, 0, 0, 1), got {got}"
+    )
+    late = cost_optimal_threshold(h, runs, np.array([2.0]), Prices(1.0, 100.0, 5.0), 3)
+    assert late.fn == 1 and late.tp == 0, (
+        f"the alarm lands at hour 2 and the run ends at 4, so with lead_hours=3 there was not "
+        f"enough warning and it is a missed failure; got tp={late.tp} fn={late.fn}"
+    )
+    exact = cost_optimal_threshold(h, runs, np.array([2.0]), Prices(1.0, 100.0, 5.0), 2)
+    assert exact.tp == 1, "exactly lead_hours of warning counts as caught: the test is `>=`"
+    post = np.array([[1.0, 1.0, 9.0, 9.0], [1.0, 1.0, 1.0, 1.0]])
+    short = cost_optimal_threshold(post, [Run(0, 2, FAILURE), Run(1, 4, CENSORED)],
+                                   np.array([2.0]), Prices(1.0, 100.0, 5.0), 1)
+    assert short.fn == 1, (
+        f"unit 0's run ends at hour 2, so hours 2 and 3 are post-event and must not be "
+        f"searched for an alarm; got tp={short.tp} fn={short.fn}. Slicing `[:end_hour]` is "
+        "the whole difference between a detector and a leak"
+    )
+    noisy = np.array([[1.0, 1.0, 3.0, 3.0], [4.0, 4.0, 4.0, 4.0]])
+    fa = cost_optimal_threshold(noisy, runs, np.array([2.0]), Prices(1.0, 100.0, 5.0), 2)
+    assert fa.fp == 1 and fa.tn == 0 and np.isclose(fa.cost, 6.0), (
+        f"a censored unit that alarms is a false alarm: expected fp=1, cost 1 + 5 = 6, got "
+        f"fp={fa.fp} tn={fa.tn} cost={fa.cost}"
+    )
+    free = cost_optimal_threshold(np.array([[1.0, 1.0]]), [Run(0, 2, CENSORED)],
+                                  np.array([9.0]), Prices(1.0, 100.0, 5.0), 1)
+    assert np.isclose(free.cost, 0.0), (
+        f"true negatives are free; a fleet of quiet censored units costs 0, got {free.cost}"
+    )
+    sweep = cost_optimal_threshold(h, runs, np.array([2.0, 2.5, 9.0]),
+                                   Prices(1.0, 100.0, 5.0), 2)
+    assert np.isclose(sweep.threshold, 2.0), (
+        f"2.0 and 2.5 both cost 1.0 and 9.0 costs 100.0, so the sweep returns the lowest "
+        f"tied threshold, 2.0; got {sweep.threshold}"
+    )
+    for bad_t, bad_lead in ((np.array([]), 2), (np.array([2.0]), -1)):
+        try:
+            cost_optimal_threshold(h, runs, bad_t, Prices(1.0, 100.0, 5.0), bad_lead)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"thresholds={bad_t}, lead_hours={bad_lead} must raise")
+    print("exercise 9 looks right — the alarm window stops where the run does")
+
+
+# %%
+_try("exercise 9", _check_cost_optimal_threshold)
+
+# %% [markdown]
+# The payoff. For each policy: choose the threshold that policy's own run table says is
+# cheapest, then score that same threshold against the truth. The sensor data never changes.
+# The prices never change. The only thing that changes is the bookkeeping.
+
+# %%
+def _show_policy_economics() -> None:
+    honest_best = cost_optimal_threshold(HEALTH, TRUTH_RUNS, THRESHOLDS, SCENARIO, LEAD_HOURS)
+    print(f"{'labels used to choose':<24}{'threshold':>10}{'cost it claims':>16}"
+          f"{'cost when scored honestly':>27}")
+    rows = []
+    for policy in POLICIES:
+        chosen = cost_optimal_threshold(HEALTH, runs_for(policy), THRESHOLDS, SCENARIO, LEAD_HOURS)
+        honest = cost_optimal_threshold(HEALTH, TRUTH_RUNS, np.array([chosen.threshold]),
+                                        SCENARIO, LEAD_HOURS)
+        rows.append((policy, chosen, honest))
+        print(f"{policy:<24}{chosen.threshold:>10.2f}{chosen.cost:>16,.0f}"
+              f"{honest.cost:>27,.0f}")
+    print(f"{'the truth (unavailable)':<24}{honest_best.threshold:>10.2f}"
+          f"{honest_best.cost:>16,.0f}{honest_best.cost:>27,.0f}")
+    worst = max(rows, key=lambda r: r[2].cost)
+    print(f"\nthe {worst[0]} policy picks {worst[1].threshold:.2f} and reports "
+          f"{worst[1].cost:,.0f}; scored honestly that threshold costs {worst[2].cost:,.0f}, "
+          f"\nwhich is {worst[2].cost / honest_best.cost:.2f}x the best available "
+          f"{honest_best.cost:,.0f} — it accepts {worst[2].fn} unplanned failures against "
+          f"{honest_best.fn}.")
+    print("No model was trained. No feature was changed. A date column did this.")
+
+
+_try("policy economics", _show_policy_economics)
+
+# %%
+def _plot_policy_curves() -> None:
+    fig, ax = plt.subplots(figsize=(7.0, 4.0))
+    for policy, style in zip(("trip", "raised", "closed"), ("-", "--", ":")):
+        costs = [cost_optimal_threshold(HEALTH, runs_for(policy), np.array([t]), SCENARIO,
+                                        LEAD_HOURS).cost for t in THRESHOLDS[::4]]
+        ax.plot(THRESHOLDS[::4], np.array(costs) / 1e6, style, label=f"{policy} policy")
+    truth_costs = [cost_optimal_threshold(HEALTH, TRUTH_RUNS, np.array([t]), SCENARIO,
+                                          LEAD_HOURS).cost for t in THRESHOLDS[::4]]
+    ax.plot(THRESHOLDS[::4], np.array(truth_costs) / 1e6, color="black", lw=2,
+            label="truth (unavailable)")
+    ax.set_xlabel("threshold on the health index")
+    ax.set_ylabel("expected cost, millions")
+    ax.set_title("the same detector, priced under four labellings")
+    ax.legend()
+    fig.tight_layout()
+    if _INTERACTIVE:
+        plt.show()
+    else:
+        plt.close(fig)
+    print("plotted: four cost curves over one unchanged health index")
+
+
+_try("cost curves", _plot_policy_curves)
+
+# %% [markdown]
+# ## 10. Common mistakes
+#
+# - **Treating a suspension as a negative example.** A unit pulled for a planned overhaul did
+#   not survive the next 48 hours in service; nobody watched. Label those hours unknown.
+# - **Dropping units the log never mentions.** They are the healthy population and the entire
+#   denominator of your false-alarm rate. No work order means censored at the window's edge.
+# - **Believing the job-type column.** Exercise 2 counts how many orders in this log ended
+#   nothing despite being raised as breakdowns. Check the free text for a no-fault phrase
+#   *before* you check the code.
+# - **Taking the first order in the file.** Exports are not sorted. Take the earliest.
+# - **Reading `04/03/2026` month-first.** It parses, it is wrong by a month, and nothing
+#   downstream complains.
+# - **Labelling the failure hour itself.** The hour the machine stopped is the event, not a
+#   prediction of it, and its health index is a value no healthy machine ever shows. Any row
+#   at or after `end_hour` is out.
+# - **Splitting rows instead of units.** Two consecutive hours from one bearing on opposite
+#   sides of a split is not a test set.
+# - **`if order.trip_hour:` instead of `>= 0`.** Hour 0 is a real hour.
+# - **Celebrating a high AUC.** Compare it with what an honestly labelled table gives on the
+#   same feature. If it is far higher, audit the labels before you write the slide.
+
+# %%
+def zero_filling_labels(n_hours: int, end_hour: int, kind: str, horizon: int) -> np.ndarray:
+    """The first mistake on the list, written out: 'unknown' recorded as 'did not fail'.
+
+    Given to you, built on top of YOUR horizon_labels so the only difference is the one line
+    that matters. Do not copy it anywhere.
+    """
+    out = np.asarray(horizon_labels(n_hours, end_hour, kind, horizon)).copy()
+    observed = np.arange(int(n_hours)) < int(end_hour)
+    out[(out == -1) & observed] = 0
+    return out
+
+
+def _price_the_censoring_bug() -> None:
+    right = label_table(HEALTH, TRUTH_RUNS, HORIZON)
+    wrong = label_table(HEALTH, TRUTH_RUNS, HORIZON, zero_filling_labels)
+    extra = wrong[2].size - right[2].size
+    positives = int((right[2] == 1).sum())
+    print(f"correct labelling keeps {right[2].size:,} rows; filling the unknowns with zeros "
+          f"adds {extra:,}")
+    print(f"that is {extra / positives:.2f} invented negatives for every genuine positive, "
+          f"and every one of them\nis a claim that a unit survived a window nobody watched")
+    print(f"AUC {rank_auc(right[3], right[2]):.4f} correct, "
+          f"{rank_auc(wrong[3], wrong[2]):.4f} with the unknowns filled in — the damage does "
+          f"not show up\nin the score, which is the entire problem with looking for it there")
+
+
+_try("the censoring bug, priced", _price_the_censoring_bug)
+
+# %% [markdown]
+# ## 11. Self-check
+#
+# 1. A pump is pulled off line for a planned overhaul at hour 500 and the history runs to
+#    hour 960. Labelling hours 452-499 as negative asserts that:
+#    - (a) the pump was healthy at hour 500, which the overhaul report confirms
+#    - (b) the pump would not have failed by hour 548, which nobody observed, because it was
+#          in the workshop
+#    - (c) nothing; negatives are free and more data is better
+#
+# 2. Your CMMS report offers a close date on every work order and a historian trip hour on
+#    five jobs in six. Labelling on the close date because it is complete is:
+#    - (a) right, since a policy that needs a fallback is not a policy
+#    - (b) wrong, because the close date records when the paperwork finished, and the
+#          fallback for a missing trip is the raised date, not the close date
+#    - (c) irrelevant, because the model will learn the offset
+#
+# 3. A labelled table has tens of thousands of rows whose hour is at or after their unit's
+#    end of run. The model built on it scores WORSE than one built without them. The right
+#    conclusion is:
+#    - (a) the rows are harmless, since they did not flatter the score
+#    - (b) the table is leaking, and a score ceiling would not have caught this one because
+#          the leaked rows are post-repair data that looks healthy
+#    - (c) the horizon is too short
+#
+# 4. A first attempt on a new plant scores AUC 0.998 on a held-out set. The first thing to
+#    check is:
+#    - (a) whether the model is over-fitting, by regularising it
+#    - (b) whether a second model does better
+#    - (c) whether the label window includes the failure itself, and whether any unit appears
+#          on both sides of the split
+#
+# 5. Two teams use the same sensor history, the same feature and the same three prices, and
+#    arrive at different alarm thresholds. Before anyone argues about the model, the thing to
+#    reconcile is:
+#    - (a) the random seed
+#    - (b) the labelling policy: which orders ended a run, when, and which units were censored
+#    - (c) the number of thresholds in the sweep
+#
+# Answers, with the reasoning, are published in the course solution bundle.
+
+# %%
+# The deliverable. A labelled dataset with no policy attached is a pile of numbers somebody
+# will re-derive differently next quarter, and the re-derivation will not look like a change
+# to anybody reviewing it. Print the note that ships with the table.
+def _handover() -> None:
+    runs = runs_for("trip")
+    best = cost_optimal_threshold(HEALTH, runs, THRESHOLDS, SCENARIO, LEAD_HOURS)
+    units, hours, labels, scores = label_table(HEALTH, runs, HORIZON)
+    report = leakage_report(units, hours, labels, scores, TRUTH_RUNS, honest_ceiling())
+    print("LABELLING POLICY — ships with the dataset, or the dataset does not ship")
+    # Count the fallback over the orders that actually END a run. The ended-nothing orders
+    # carry no historian record either, but they are discarded before event_hour is ever
+    # called, so counting them here would double the rate the note reports.
+    terminating = [o for o in ORDERS if classify_work_order(o.job_type, o.text) != IGNORE]
+    print(f"  event time         historian trip hour, falling back to the raised date "
+          f"({sum(o.trip_hour < 0 for o in terminating)} of {len(terminating)} "
+          f"run-ending orders)")
+    print(f"  failure vs not     free text checked for a no-fault phrase first, then job "
+          f"type; {sum(1 for o in ORDERS if classify_work_order(o.job_type, o.text) == IGNORE)}"
+          f" orders ended nothing")
+    print(f"  censoring          {sum(r.kind != FAILURE for r in runs)} of {len(runs)} units "
+          f"right-censored, {sum(r.kind == SUSPENSION for r in runs)} of them by suspension")
+    print(f"  horizon            {HORIZON} h positive window, {LEAD_HOURS} h lead required")
+    print(f"  table              {labels.size:,} rows, {int((labels == 1).sum()):,} positive, "
+          f"{report.post_event_rows} post-event, AUC {report.auc:.4f}")
+    print(f"  operating point    health index >= {best.threshold:.2f}, expected cost "
+          f"{best.cost:,.0f} at planned {SCENARIO.planned:,.0f} / unplanned "
+          f"{SCENARIO.unplanned:,.0f} / false alarm {SCENARIO.false_alarm:,.0f}")
+    print("  re-derive whenever the event-time rule changes. It is a labelling change, not a "
+          "config change.")
+
+
+_try("handover note", _handover)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You turned a maintenance department's paperwork into a supervised learning problem, and you
+# measured what each decision on the way cost. The run table, the horizon, the censoring rule
+# and the split are four separate decisions, each defensible, each capable of moving the
+# answer further than any model you could put on top of them.
+#
+# Module 5 takes the run table you just built and fits a remaining-useful-life model to it,
+# where censoring stops being a labelling nicety and becomes the likelihood. Module 8 comes
+# back to the log one more time, to close the loop: every alarm raised, what was found, and
+# the running re-estimate of the prices.
+#
+# The habit to carry forward: **before you ask to see the sensor data, ask to see the
+# work-order log, and ask who decides when a run ended.**
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_parse_log_hour),
+                          ("exercise 2", _check_classify_work_order),
+                          ("exercise 3", _check_event_hour),
+                          ("exercise 4", _check_build_runs),
+                          ("exercise 5", _check_horizon_labels),
+                          ("exercise 6", _check_split_by_unit),
+                          ("exercises 7 and 8", _check_auc_and_leakage),
+                          ("exercise 9", _check_cost_optimal_threshold)):
+        _try(_name, _check)
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

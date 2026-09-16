@@ -1,0 +1,946 @@
+# %% [markdown]
+# # P02-L10-streaming-scanner-in-c · The scanner in C: fixed memory over an unbounded export
+#
+# **You will build:** a streaming field scanner in C that reads a document export of any size
+# in a fixed amount of memory, gets the quoting right, tells a truncated tail from a missing
+# final newline — and a measurement of what that discipline is worth against the obvious
+# Python.
+#
+# **Time:** ~90 minutes · **Runs on:** a laptop CPU, no GPU, no download
+# · **Prerequisites:** `T00-L01-the-8gb-track`, `P02-L01-extraction-evaluation`
+#
+# By the end you will be able to:
+# 1. Implement a chunk-resumable CSV field scanner in C whose answers do not depend on where
+#    the reader happened to split the stream.
+# 2. Implement a declared truncation policy for fields longer than the buffer, and report how
+#    often it fired.
+# 3. Distinguish a truncated final record from a legal final record with no trailing newline,
+#    and say what each contributes to the totals.
+# 4. Measure throughput and peak resident memory against a Python scanner on identical bytes,
+#    and attribute each factor to the language or to the algorithm.
+# 5. Show that peak memory is flat as the export grows by two orders of magnitude.
+#
+# **You edit `lesson.c`, not this file.** This notebook builds your C, feeds it cases, and
+# checks its answers against a Python scanner that is given to you, already working.
+
+# %%
+# Setup: one cell, everything the lesson needs, with versions printed.
+import platform
+import shutil
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+# Work that costs real seconds lives inside `if __name__ == "__main__":` blocks, so the
+# autograder can import this file without re-running the whole lesson. In a notebook
+# __name__ IS "__main__", so every one of those cells runs normally when you run it.
+HERE = Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+IS_REFERENCE = HERE.name == "solutions"
+LESSON_ROOT = HERE.parent if IS_REFERENCE else HERE
+C_SRC = HERE / "lesson.c"                                     # the file you edit
+C_BIN = LESSON_ROOT / "build" / ("lesson_ref" if IS_REFERENCE else "lesson")
+BUILD_DIR = LESSON_ROOT / "build"
+
+COLUMNS = 6                 # doc_id, supplier, invoice_number, amount, currency, notes
+COL_AMOUNT = 3
+COL_CURRENCY = 4
+FIELD_CAP = 128             # must match kFieldCap in lesson.c
+RACE_BYTES = 4 << 20        # the export both languages scan in section 9
+ORACLE_BYTES = 192 << 10    # the slice the correctness checks compare on
+GROWTH_SIZES = (4 << 20, 32 << 20, 128 << 20, 512 << 20)
+
+print("python", sys.version.split()[0], "·", platform.machine(), platform.system())
+print("source", C_SRC.relative_to(LESSON_ROOT))
+_paths = subprocess.run(["make", "-C", str(LESSON_ROOT), f"PYTHON={sys.executable}", "paths"],
+                        capture_output=True, text=True)
+print(_paths.stdout.strip() or _paths.stderr.strip())
+
+# %% [markdown]
+# ## 1. The export, and the one-line scanner that gets it wrong
+#
+# An extraction pipeline's output leaves the building as a flat export: one record per
+# document, one column per field. It is generated here, deterministically from a fixed seed,
+# because this environment has no PDF library and no OCR engine — so the export is synthetic
+# and every byte of it is the same on your machine as on anyone else's.
+#
+# Six columns, no header row: `doc_id, supplier, invoice_number, amount, currency, notes`.
+# Build a small one and look at it.
+
+# %%
+_BUILD_LOG: dict = {}
+
+
+def build_c(force: bool = False) -> Path:
+    """Compile C_SRC to C_BIN via the lesson Makefile. Cached: it builds once per session."""
+    if _BUILD_LOG.get("built") and not force:
+        return C_BIN
+    if shutil.which("make") is None:
+        raise RuntimeError("no `make` on PATH — this lesson needs make and a C11 compiler")
+    proc = subprocess.run(
+        ["make", "-C", str(LESSON_ROOT), f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
+         f"BIN={C_BIN.relative_to(LESSON_ROOT)}", "all"],
+        capture_output=True, text=True,
+    )
+    _BUILD_LOG["stdout"], _BUILD_LOG["stderr"] = proc.stdout, proc.stderr
+    if proc.returncode != 0:
+        raise RuntimeError(
+            "lesson.c did not compile. The compiler's FIRST complaint is usually the real "
+            f"one, and it names a line:\n{proc.stdout}\n{proc.stderr}"
+        )
+    _BUILD_LOG["built"] = True
+    return C_BIN
+
+
+_INT_TAGS = frozenset({
+    "records", "fields", "bytes", "amount_cents", "eur_records", "max_field_len",
+    "field_overflow", "embedded_newlines", "bad_arity", "truncated_tail", "col", "chunk",
+    "field_len", "seen_len", "block_bytes", "peak_rss_raw", "probe_bytes", "rss_before_raw",
+    "rss_after_raw", "probe_checksum",
+})
+
+
+def run_c(args: list) -> dict:
+    """Run the binary and parse its `tag value` output into a dict.
+
+    Exit code 3 means an exercise still has its TODO, and becomes a Python
+    NotImplementedError, so the grader can tell "not written yet" from "written and wrong".
+    """
+    binary = build_c()
+    proc = subprocess.run([str(binary), *args], capture_output=True, text=True, cwd=LESSON_ROOT)
+    if proc.returncode == 3:
+        raise NotImplementedError(proc.stderr.strip() or "an exercise still has its TODO")
+    if proc.returncode != 0:
+        raise RuntimeError(f"{binary.name} {' '.join(args[:2])} exited {proc.returncode}:\n"
+                           f"{proc.stdout}\n{proc.stderr}")
+    out = {"raw": proc.stdout}
+    for line in proc.stdout.splitlines():
+        tag, _, rest = line.partition(" ")
+        if tag in _INT_TAGS:
+            out[tag] = int(rest)
+        elif tag == "scan_seconds":
+            out[tag] = float(rest)
+        elif tag == "field":
+            out[tag] = rest
+    return out
+
+
+def generate_export(nbytes: int, name: str = "export") -> Path:
+    """Write `nbytes` of the synthetic export to build/, using the generator inside the C."""
+    BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    path = BUILD_DIR / f"{name}_{C_BIN.name}_{nbytes}.csv"
+    if not path.exists() or path.stat().st_size != nbytes:
+        run_c(["gen", "--bytes", str(nbytes), "--out", str(path)])
+    return path
+
+
+if __name__ == "__main__":
+    _sample = generate_export(1200, "sample").read_bytes()
+    print(f"{len(_sample)} bytes of export, as they arrive on the wire:\n")
+    print(_sample[:520].decode("utf-8", "replace"))
+
+# %% [markdown]
+# ## 2. Why `line.split(",")` is not a scanner
+#
+# Look at what came out of that cell: supplier names carry a comma inside quotes, some notes
+# span two lines, and one of them contains an escaped `""`. RFC 4180 says fields holding a
+# comma, a line break or a quote are enclosed in double quotes, and a quote inside such a
+# field is written twice (both rules sourced in `claims.yaml`).
+#
+# So splitting on commas and newlines is not a shortcut with a small error — it is a different
+# answer. Run the naive version against the real record count and see the size of the gap.
+
+# %%
+def naive_split(blob: bytes) -> dict:
+    """The one-liner everybody writes first. Counted here so the gap is measured, not claimed."""
+    lines = [line for line in blob.split(b"\n") if line]
+    arities = [len(line.split(b",")) for line in lines]
+    return {"lines": len(lines), "right_arity": sum(1 for a in arities if a == COLUMNS)}
+
+
+if __name__ == "__main__":
+    _blob = generate_export(RACE_BYTES).read_bytes()
+    _naive = naive_split(_blob)
+    print(f"naive split on {len(_blob)} bytes: {_naive['lines']} 'records', of which "
+          f"{_naive['right_arity']} even have {COLUMNS} fields")
+    print("Hold that number. Section 9 prints what a real scanner finds in the same bytes.")
+
+# %% [markdown]
+# ## 3. The specification, in Python
+#
+# Here is the scanner, written the way you would write it in Python — and it is the oracle
+# your C has to match, byte for byte, on every counter. Read it: this is the spec, and it is
+# deliberately given to you working so that nothing about the C exercise is guesswork.
+#
+# Four parser states, one field buffer with a hard cap, ten counters. Nothing else survives a
+# chunk boundary, which is what makes it a *streaming* scanner rather than a parser that
+# happens to be reading a file.
+
+# %%
+FIELD_START, UNQUOTED, QUOTED, QUOTE_SEEN = 0, 1, 2, 3
+
+
+def parse_cents_py(field: bytes):
+    """Money as an integer number of cents, or None. Mirrors parse_cents() in lesson.c.
+
+    Example:
+        >>> parse_cents_py(b"1234.56")
+        123456
+        >>> parse_cents_py(b"1,234.56") is None
+        True
+    """
+    text = field.decode("latin-1")
+    neg = text.startswith("-")
+    if neg:
+        text = text[1:]
+    whole, dot, frac = text.partition(".")
+    if not whole.isdigit() or int(whole) > 900_000_000:
+        return None
+    if dot and (len(frac) != 2 or not frac.isdigit()):
+        return None
+    cents = int(whole) * 100 + (int(frac) if dot else 0)
+    return -cents if neg else cents
+
+
+class PyScanner:
+    """The same state machine as lesson.c, in Python. Given, working, and the oracle."""
+
+    def __init__(self) -> None:
+        self.state = FIELD_START
+        self.col = 0
+        self.field = bytearray()
+        self.seen_len = 0
+        self.stats = dict(records=0, fields=0, bytes=0, amount_cents=0, eur_records=0,
+                          max_field_len=0, field_overflow=0, embedded_newlines=0,
+                          bad_arity=0, truncated_tail=0)
+
+    def _push(self, byte: int) -> None:
+        self.seen_len += 1
+        if len(self.field) < FIELD_CAP:
+            self.field.append(byte)
+        elif self.seen_len == FIELD_CAP + 1:
+            self.stats["field_overflow"] += 1
+
+    def _field_complete(self) -> None:
+        stats = self.stats
+        stats["fields"] += 1
+        if self.seen_len > stats["max_field_len"]:
+            stats["max_field_len"] = self.seen_len
+        if self.col == COL_AMOUNT:
+            cents = parse_cents_py(bytes(self.field))
+            if cents is not None:
+                stats["amount_cents"] += cents
+        elif self.col == COL_CURRENCY and bytes(self.field) == b"EUR":
+            stats["eur_records"] += 1
+        self.col += 1
+        self.field.clear()
+        self.seen_len = 0
+
+    def _record_complete(self) -> None:
+        if self.col != COLUMNS:
+            self.stats["bad_arity"] += 1
+        self.stats["records"] += 1
+        self.col = 0
+
+    def chunk(self, buf: bytes) -> None:
+        """Consume one chunk. Written with the hot path inlined, which is how you would write
+        it if the runtime were the point — no per-byte method call, no attribute lookup."""
+        state, push, done = self.state, self._push, self._field_complete
+        record, stats = self._record_complete, self.stats
+        stats["bytes"] += len(buf)
+        for byte in buf:
+            if state == FIELD_START:
+                if byte == 0x22:
+                    state = QUOTED
+                elif byte == 0x0D:
+                    pass
+                elif byte == 0x2C:
+                    done()
+                elif byte == 0x0A:
+                    done()
+                    record()
+                else:
+                    push(byte)
+                    state = UNQUOTED
+            elif state == UNQUOTED:
+                if byte == 0x2C:
+                    done()
+                    state = FIELD_START
+                elif byte == 0x0A:
+                    done()
+                    record()
+                    state = FIELD_START
+                elif byte != 0x0D:
+                    push(byte)
+            elif state == QUOTED:
+                if byte == 0x22:
+                    state = QUOTE_SEEN
+                else:
+                    if byte == 0x0A:
+                        stats["embedded_newlines"] += 1
+                    push(byte)
+            else:                                        # QUOTE_SEEN
+                if byte == 0x22:
+                    push(0x22)
+                    state = QUOTED
+                elif byte == 0x2C:
+                    done()
+                    state = FIELD_START
+                elif byte == 0x0A:
+                    done()
+                    record()
+                    state = FIELD_START
+                elif byte != 0x0D:
+                    push(byte)
+                    state = UNQUOTED
+        self.state = state
+
+    def finish(self) -> dict:
+        if self.state == QUOTED:
+            self.stats["truncated_tail"] = 1
+        elif self.state == FIELD_START and self.col == 0 and not self.field:
+            pass
+        elif self.col + 1 == COLUMNS:
+            self._field_complete()
+            self._record_complete()
+        else:
+            self.stats["truncated_tail"] = 1
+        self.state, self.col, self.seen_len = FIELD_START, 0, 0
+        self.field.clear()
+        return dict(self.stats)
+
+
+def py_scan(blob: bytes, chunk: int = 1 << 16) -> dict:
+    """Scan bytes in fixed-size chunks and return the counters. The oracle for every check."""
+    scanner = PyScanner()
+    for start in range(0, len(blob), chunk):
+        scanner.chunk(blob[start:start + chunk])
+    return scanner.finish()
+
+
+def py_scan_file(path: Path, chunk: int = 1 << 16) -> dict:
+    """The same scanner, never holding more than one chunk of the file at a time."""
+    scanner = PyScanner()
+    with path.open("rb") as handle:
+        while True:
+            buf = handle.read(chunk)
+            if not buf:
+                break
+            scanner.chunk(buf)
+    return scanner.finish()
+
+
+if __name__ == "__main__":
+    _demo = py_scan(b'DOC-1,"Vantor Logistics, S.A.",INV-9,12.50,EUR,"note\nwith ""quotes"""\n')
+    print("one record, scanned properly:")
+    for _k in ("records", "fields", "amount_cents", "eur_records", "embedded_newlines"):
+        print(f"  {_k:<18} {_demo[_k]}")
+
+# %% [markdown]
+# ## 4. Your C binary, and how this notebook talks to it
+#
+# `lesson.c` compiles to a small command-line tool. The notebook builds it with `make` and
+# calls one sub-command per exercise, so each function is graded on its own: a `field_push`
+# that works still scores while `scan_chunk` is a TODO.
+#
+# Run this cell before writing any C. It should fail — loudly, and by name.
+
+# %%
+def c_selftest() -> str:
+    """`make test` — your binary checking its own four functions. Returns its output."""
+    build_c()
+    proc = subprocess.run(
+        ["make", "-C", str(LESSON_ROOT), f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
+         f"BIN={C_BIN.relative_to(LESSON_ROOT)}", "test"],
+        capture_output=True, text=True,
+    )
+    if "NOT_IMPLEMENTED" in proc.stderr:
+        raise NotImplementedError(proc.stderr.strip().splitlines()[-1])
+    if proc.returncode != 0:
+        raise AssertionError(f"make test failed:\n{proc.stdout}\n{proc.stderr}")
+    return proc.stdout
+
+
+def c_push(text: str) -> dict:
+    """Your field_push, fed one byte at a time. Returns field_len, seen_len, field_overflow."""
+    return run_c(["push", "--text", text])
+
+
+def c_field(values: list, close: bool = False) -> dict:
+    """Your field_complete, fed whole field values directly — it does not need scan_chunk."""
+    return run_c(["field", "--record", "|".join(values), "--close", "1" if close else "0"])
+
+
+def c_scan(text: str, chunk: int = 0) -> dict:
+    """Your scan_chunk + scan_finish over a string, optionally split into chunks of `chunk`."""
+    return run_c(["scan", "--text", text, "--chunk", str(chunk)])
+
+
+def c_scan_file(path: Path, chunk: int = 1 << 16) -> dict:
+    """Your scanner over a real export file, with the binary's own timing and peak RSS."""
+    return run_c(["scanfile", "--file", str(path), "--chunk", str(chunk)])
+
+
+def c_bench(nbytes: int, chunk: int = 1 << 16) -> dict:
+    """Generate `nbytes` of export in memory, a chunk at a time, and scan it. Nothing hits disk."""
+    return run_c(["bench", "--bytes", str(nbytes), "--chunk", str(chunk)])
+
+
+if __name__ == "__main__":
+    try:
+        print(c_selftest())
+    except NotImplementedError as _exc:
+        print("as expected, nothing is implemented yet:", _exc)
+
+# %% [markdown]
+# ## 5. Exercise 1 — `field_push`, the buffer that never grows
+#
+# Open `lesson.c`, find EXERCISE 1, fill it in. Three counters, one rule each: every byte is
+# *seen*, at most `kFieldCap` bytes are *kept*, and an over-long field is *one* overflow.
+# Then run this check.
+
+# %%
+def _check_field_push() -> None:
+    build_c(force=True)
+    exact = c_push("y" * FIELD_CAP)
+    assert (exact["field_len"], exact["seen_len"], exact["field_overflow"]) == (FIELD_CAP, FIELD_CAP, 0), (
+        f"a field of exactly kFieldCap bytes gave {exact} — it fits, so nothing overflowed; "
+        "the comparison is `field_len < kFieldCap`, not `<=`."
+    )
+    over = c_push("y" * (FIELD_CAP + 2))
+    assert over["field_len"] == FIELD_CAP, (
+        f"{FIELD_CAP + 2} bytes left field_len at {over['field_len']} — you are writing past "
+        "the end of a fixed array, which is the bug this whole lesson exists to avoid."
+    )
+    assert over["seen_len"] == FIELD_CAP + 2, (
+        f"seen_len came back {over['seen_len']} — it counts every byte the field HAD, not the "
+        "bytes you kept, or max_field_len will report the cap for every long field."
+    )
+    assert over["field_overflow"] == 1, (
+        f"field_overflow came back {over['field_overflow']} — an over-long field is ONE "
+        "overflow. Counting it on every byte past the cap makes the number a function of how "
+        "long the field was, which is what max_field_len is for."
+    )
+    huge = c_push("z" * (FIELD_CAP * 40))
+    assert huge["field_overflow"] == 1, (
+        f"a field 40x the cap reported {huge['field_overflow']} overflows — the toy case above "
+        "passes with an unguarded `field_overflow++`, and this one does not."
+    )
+    assert c_push("hello")["field"] == "hello", "the bytes that DO fit must be kept, in order"
+    empty = c_push("")
+    assert (empty["field_len"], empty["seen_len"], empty["field_overflow"]) == (0, 0, 0), (
+        "a field nobody pushed to must be empty and must not have overflowed"
+    )
+    print(f"exercise 1 looks right: {FIELD_CAP + 2} bytes in, {over['field_len']} kept, "
+          f"{over['seen_len']} counted, {over['field_overflow']} overflow")
+
+
+if __name__ == "__main__":
+    _check_field_push()
+
+# %% [markdown]
+# ## 6. Exercise 2 — `field_complete`, where a forgotten field pays its way
+#
+# The field is about to be dropped. Everything anyone will ever ask about it has to be folded
+# into a counter *now*. That is the whole of streaming: you get one look.
+#
+# Note what the money rule says. `parse_cents` is given to you and it is strict — it refuses
+# `1,234.56`, because a comma in a money field is a thousands separator in one convention and
+# a decimal point in another, and P02-L01 measured what guessing costs. A refusal adds
+# nothing at all; it does not add zero as a guess.
+
+# %%
+def _check_field_complete() -> None:
+    build_c()
+    good = c_field(["DOC-1", "Acme", "INV-1", "1234.56", "EUR", "ok"])
+    assert good["fields"] == 6 and good["col"] == COLUMNS, (
+        f"six values should complete six fields and leave col at {COLUMNS}, got "
+        f"fields={good['fields']} col={good['col']} — field_complete must advance col once."
+    )
+    assert good["amount_cents"] == 123456, (
+        f"1234.56 came out as {good['amount_cents']} cents — call parse_cents on column "
+        f"{COL_AMOUNT} only, and add its result rather than the raw digits."
+    )
+    assert good["eur_records"] == 1, (
+        f"the currency column held EUR but eur_records is {good['eur_records']} — compare the "
+        f"whole field, on column {COL_CURRENCY} only."
+    )
+    assert good["max_field_len"] == 7, (
+        f"the longest of those six values is 7 bytes; max_field_len says {good['max_field_len']}"
+    )
+    refused = c_field(["DOC-1", "Acme", "INV-1", "1,234.56", "EUR", "ok"])
+    assert refused["amount_cents"] == 0, (
+        f"parse_cents refuses '1,234.56' and you added {refused['amount_cents']} anyway — an "
+        "unparseable amount must add NOTHING. Adding the out-parameter regardless of the "
+        "return value is how a thousands separator becomes a silent 1.23 in the total."
+    )
+    long_note = c_field(["DOC-1", "Acme", "INV-1", "1.00", "EUR", "n" * (FIELD_CAP + 20)])
+    assert long_note["max_field_len"] == FIELD_CAP + 20, (
+        f"a {FIELD_CAP + 20}-byte note reported max_field_len {long_note['max_field_len']} — "
+        "use seen_len, not field_len, or every long field reports the cap."
+    )
+    short = c_field(["DOC-1", "Acme", "INV-1", "1.00", "EUR"], close=True)
+    assert short["bad_arity"] == 1 and short["records"] == 1, (
+        f"five fields then a record end is one record with bad arity, got {short} — "
+        "record_complete is given to you; field_complete must not touch `records` itself."
+    )
+    print(f"exercise 2 looks right: 1234.56 -> {good['amount_cents']} cents, "
+          f"'1,234.56' -> {refused['amount_cents']}, longest field {long_note['max_field_len']}")
+
+
+if __name__ == "__main__":
+    _check_field_complete()
+
+# %% [markdown]
+# ## 7. Exercise 3 — `scan_chunk`, and the property that makes it streaming
+#
+# Now the state machine. The caller may split the export anywhere — between the two quotes of
+# an escaped `""`, between a CR and its LF, in the middle of a supplier name. The `Scanner`
+# struct is the *only* thing that crosses a boundary.
+#
+# So the test that matters is not "does it parse my example". It is: the same bytes, split
+# twenty different ways, must give one answer.
+
+# %%
+_QUOTING_CASES = [
+    ('a,b,c,1.00,EUR,f\n', "the plain case"),
+    ('a,"b,c",d,1.00,EUR,f\n', "a comma inside quotes is data, not a separator"),
+    ('a,"b""c",d,1.00,EUR,f\n', 'an escaped "" is one quote of data'),
+    ('a,"two\nlines",c,1.00,EUR,f\n', "a newline inside quotes does not end the record"),
+    ('a,b,c,1.00,EUR,f\r\na,b,c,2.00,EUR,g\r\n', "CRLF line endings scan like LF"),
+    ('a,,c,1.00,EUR,\n', "empty fields still count"),
+    ('a,"x"y,c,1.00,EUR,f\n', "bytes after a closing quote are kept, not fatal"),
+    ('a,"' + "u" * 20 + '""' + "v" * 20 + '",c,1.00,EUR,f\n',
+     'an escaped "" resolves to ONE byte of data, so the field is 41 bytes and not 42'),
+    ('a,"' + "r" * 20 + "\r\n" + "s" * 20 + '",c,1.00,EUR,f\n',
+     "a CR INSIDE quotes is data, so that field is 42 bytes and not 41 — the CR-is-dropped "
+     "leniency applies outside a quoted field only"),
+]
+
+
+def _check_scan_chunk() -> None:
+    build_c()
+    for text, why in _QUOTING_CASES:
+        got, want = c_scan(text), py_scan(text.encode())
+        for key in ("records", "fields", "amount_cents", "eur_records", "embedded_newlines",
+                    "bad_arity", "bytes", "max_field_len", "field_overflow"):
+            assert got[key] == want[key], (
+                f"{why}: on {text!r} your {key} is {got[key]} and the spec says {want[key]}. "
+                "Work the grammar in the EXERCISE 3 comment one state at a time — the first "
+                "row you disagree with is the bug."
+            )
+    # The property no single case can check: the answer may not depend on the chunking.
+    mixed = ('DOC-1,"Vantor, S.A.",INV-1,12.50,EUR,"a note\nwith ""quotes"""\n'
+             'DOC-2,Plain,INV-2,7.25,USD,ok\n')
+    answers = {tuple(sorted(c_scan(mixed, chunk=k).items(), key=lambda kv: kv[0]))
+               for k in (1, 2, 3, 7, 64, 0)}
+    assert len(answers) == 1, (
+        "the same bytes gave different answers at different chunk sizes. Something you need "
+        "across a boundary is not in the Scanner struct — a local that remembers the previous "
+        "byte, or a `for` loop that peeks at buf[i+1], are the two usual causes. Chunk 1 is "
+        "the honest test: every byte is its own chunk."
+    )
+    real = generate_export(ORACLE_BYTES).read_bytes()
+    mine, spec = c_scan_file(generate_export(ORACLE_BYTES)), py_scan(real)
+    for key in ("records", "fields", "amount_cents", "eur_records", "max_field_len",
+                "field_overflow", "embedded_newlines", "bad_arity"):
+        assert mine[key] == spec[key], (
+            f"on {len(real)} bytes of real export your {key} is {mine[key]} and the Python "
+            f"spec says {spec[key]} — the toy cases pass, so this is a case the toy cases do "
+            "not contain: a long field, a quoted field at a chunk edge, or the very last byte."
+        )
+    print(f"exercise 3 looks right: {mine['records']} records, {mine['fields']} fields, "
+          f"{mine['embedded_newlines']} newlines inside quoted fields, chunk-size invariant")
+
+
+if __name__ == "__main__":
+    _check_scan_chunk()
+
+# %% [markdown]
+# ## 8. Exercise 4 — `scan_finish`, and the difference between "short" and "unterminated"
+#
+# Two files end without a newline. One is fine — RFC 4180 says the last record may or may not
+# have an ending line break (`claims.yaml`). The other ran out of disk half way through a
+# supplier name. The bytes look almost identical; the right answers are opposite.
+#
+# Fill in EXERCISE 4, then run this.
+
+# %%
+_FINISH_CASES = [
+    ("a,b,c,1.00,EUR,f\n", 1, 0, "a trailing newline: one record, nothing pending"),
+    ("a,b,c,1.00,EUR,f", 1, 0, "no trailing newline but all six fields: still a record"),
+    ("a,b,c,1.00,EUR", 0, 1, "five fields and then nothing: a short record, not a record"),
+    ('a,b,c,1.00,EUR,"unterminated', 0, 1, "stopped inside quotes: truncated"),
+    ('a,b,c,1.00,EUR,"done"', 1, 0, "a closing quote is not truncation"),
+    ("", 0, 0, "an empty export has no records and no truncation"),
+    ("a,b,c,1.00,EUR,f\na,b,", 1, 1, "one good record, then the cut"),
+]
+
+
+def _check_scan_finish() -> None:
+    build_c()
+    for text, records, truncated, why in _FINISH_CASES:
+        got = c_scan(text)
+        assert got["records"] == records, (
+            f"{why}: {text!r} should end with {records} record(s), got {got['records']}. "
+            f"A count one too high usually means scan_finish completes a record whenever "
+            f"anything is pending; one too low means it never handles the missing final "
+            f"newline. The rule is col + 1 == {COLUMNS}."
+        )
+        assert got["truncated_tail"] == truncated, (
+            f"{why}: {text!r} should report truncated_tail {truncated}, got "
+            f"{got['truncated_tail']} — an unterminated quoted field and a short record are "
+            "both truncation; a missing final newline is not."
+        )
+        spec = py_scan(text.encode())
+        assert got["fields"] == spec["fields"], (
+            f"{why}: on {text!r} you completed {got['fields']} fields and the Python spec "
+            f"completed {spec['fields']} — the pending field at a cut is dropped, and a field "
+            "already terminated by its own comma is not."
+        )
+    pending = c_scan("a,b,c,1.00,EUR")
+    assert pending["fields"] == 4 and pending["amount_cents"] == 100, (
+        f"the cut landed in the currency field, so the four fields before it were already "
+        f"terminated by their own comma and the amount among them still counts, while the "
+        f"pending EUR does not; got {pending['fields']} fields and "
+        f"{pending['amount_cents']} cents. Section 12 measures what that convention costs."
+    )
+    print(f"exercise 4 looks right: {len(_FINISH_CASES)} tail shapes, "
+          "short records and unterminated quotes both flagged")
+
+
+if __name__ == "__main__":
+    _check_scan_finish()
+
+# %% [markdown]
+# ## 9. The measurement, part one: throughput
+#
+# Same export, same state machine, same answers, two languages. Both read the file in 64 KiB
+# chunks, so neither is being handed an unfair I/O advantage. The correctness check runs
+# first: a speed comparison between two different answers is worthless.
+
+# %%
+def throughput_report(nbytes: int = RACE_BYTES) -> dict:
+    """Scan one export with both implementations and return the measured comparison."""
+    path = generate_export(nbytes)
+    c_result = c_scan_file(path)
+    start = time.perf_counter()
+    py_result = py_scan_file(path)
+    py_seconds = time.perf_counter() - start
+    keys = ("records", "fields", "amount_cents", "eur_records", "max_field_len",
+            "field_overflow", "embedded_newlines", "bad_arity", "truncated_tail")
+    return {
+        "bytes": nbytes,
+        "records": c_result["records"],
+        "identical": all(c_result[k] == py_result[k] for k in keys),
+        "c_seconds": c_result["scan_seconds"],
+        "py_seconds": py_seconds,
+        "c_mb_s": nbytes / c_result["scan_seconds"] / 1e6,
+        "py_mb_s": nbytes / py_seconds / 1e6,
+        "speedup": py_seconds / c_result["scan_seconds"],
+        "naive_lines": naive_split(path.read_bytes())["lines"],
+    }
+
+
+def _check_throughput() -> None:
+    report = throughput_report()
+    assert report["identical"], (
+        "the C and Python scanners disagree on the full export even though the slice in "
+        "section 7 matched — fix correctness before reading any timing."
+    )
+    print(f"export        {report['bytes']} bytes, {report['records']} records")
+    print(f"naive split   {report['naive_lines']} 'records' — wrong by "
+          f"{report['naive_lines'] - report['records']}, because quoted newlines are records "
+          "to it")
+    print(f"python        {report['py_seconds']:.3f} s  ({report['py_mb_s']:.1f} MB/s)")
+    print(f"c             {report['c_seconds']:.3f} s  ({report['c_mb_s']:.1f} MB/s)")
+    print(f"speedup       {report['speedup']:.0f}x on this machine, on identical answers")
+
+
+if __name__ == "__main__":
+    _check_throughput()
+
+# %% [markdown]
+# ## 10. The measurement, part two: memory, and whose win it is
+#
+# Throughput was the language. Memory is not. Below, three processes scan the *same* file and
+# report their own peak resident set: the C scanner, the Python streaming scanner, and the
+# Python one-liner that reads the whole export and splits it. Two of the three are flat in the
+# size of the export. Only one of those two is written in C.
+#
+# The unit of `ru_maxrss` is not the same on every platform, so this lesson does not name it —
+# it measures it, in a separate process that touches a known number of bytes.
+
+# %%
+def rss_scale() -> int:
+    """Bytes per unit of ru_maxrss on this machine, measured rather than assumed."""
+    probe = run_c(["rssunit"])
+    delta = probe["rss_after_raw"] - probe["rss_before_raw"]
+    if delta <= 0:
+        raise RuntimeError("the RSS calibration saw no change; cannot convert peak RSS")
+    return round(probe["probe_bytes"] / delta)
+
+
+NOTEBOOK_PATH = HERE / ("lesson_solution.py" if IS_REFERENCE else "lesson.py")
+
+
+def python_peak_rss(snippet: str, path: Path) -> dict:
+    """Run a snippet in a FRESH interpreter and return its wall time and its own peak RSS.
+
+    A fresh process per measurement is the point: `ru_maxrss` is a high-water mark that never
+    comes down, so two ways of reading a file measured in one process would both report the
+    larger of the two.
+    """
+    code = (
+        "import importlib.util, resource, sys, time\n"
+        "from pathlib import Path\n"
+        "spec = importlib.util.spec_from_file_location('lesson', %r)\n"
+        "lesson = importlib.util.module_from_spec(spec); spec.loader.exec_module(lesson)\n"
+        "path = Path(%r)\n"
+        "t0 = time.perf_counter()\n"
+        "%s\n"
+        "print('__probe_seconds', time.perf_counter() - t0)\n"
+        "print('__probe_peak_rss_raw', resource.getrusage(resource.RUSAGE_SELF).ru_maxrss)\n"
+    ) % (str(NOTEBOOK_PATH), str(path), snippet)
+    proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise RuntimeError(f"probe failed:\n{proc.stdout}\n{proc.stderr}")
+    # Importing the notebook prints its own setup banner, so read only our two tagged lines.
+    out = {}
+    for line in proc.stdout.splitlines():
+        if line.startswith("__probe_seconds "):
+            out["seconds"] = float(line.split(maxsplit=1)[1])
+        elif line.startswith("__probe_peak_rss_raw "):
+            out["peak_rss_raw"] = int(line.split(maxsplit=1)[1])
+    if "peak_rss_raw" not in out:
+        raise RuntimeError(f"probe printed no RSS line:\n{proc.stdout}")
+    return out
+
+
+def memory_report(nbytes: int = RACE_BYTES) -> list:
+    """Three ways to read one export, each process reporting its own peak RSS."""
+    path = generate_export(nbytes)
+    scale = rss_scale()
+    rows = [("c, streaming", c_scan_file(path)["peak_rss_raw"])]
+    rows.append(("python, streaming",
+                 python_peak_rss("result = lesson.py_scan_file(path)", path)["peak_rss_raw"]))
+    rows.append(("python, whole file in memory",
+                 python_peak_rss("blob = path.read_bytes()\n"
+                                 "rows = [ln.split(b',') for ln in blob.split(b'\\n')]\n"
+                                 "print('kept', len(rows))", path)["peak_rss_raw"]))
+    return [{"how": how, "peak_mib": raw * scale / (1 << 20)} for how, raw in rows]
+
+
+if __name__ == "__main__":
+    print(f"ru_maxrss unit measured as {rss_scale()} byte(s) per unit\n")
+    print(f"{'how the export was read':<32} {'peak RSS (MiB)':>15}")
+    for _row in memory_report():
+        print(f"{_row['how']:<32} {_row['peak_mib']:15.1f}")
+    print(f"\nThe export is {RACE_BYTES / (1 << 20):.0f} MiB. The third row carries it, plus a")
+    print("Python list object per line and per field, and it is also WRONG — it splits inside")
+    print("quotes. The second row is Python and is flat. Streaming is an algorithm, not a")
+    print("language; C bought the throughput, the chunk loop bought the memory.")
+
+# %% [markdown]
+# ## 11. The measurement, part three: flat memory over a growing export
+#
+# The headline. The C scanner reads an export generated a chunk at a time, so nothing is ever
+# on disk and nothing is ever wholly in memory. Scan four exports whose sizes span 128x and
+# watch the peak RSS column refuse to move.
+
+# %%
+def growth_report(sizes=GROWTH_SIZES) -> list:
+    """Scan increasingly large generated exports; report throughput and peak RSS for each."""
+    scale = rss_scale()
+    rows = []
+    for nbytes in sizes:
+        result = c_bench(nbytes)
+        rows.append({
+            "mib": nbytes / (1 << 20),
+            "records": result["records"],
+            "seconds": result["scan_seconds"],
+            "mb_s": nbytes / result["scan_seconds"] / 1e6,
+            "peak_mib": result["peak_rss_raw"] * scale / (1 << 20),
+        })
+    return rows
+
+
+def _check_constant_memory() -> None:
+    rows = growth_report()
+    grew = rows[-1]["peak_mib"] - rows[0]["peak_mib"]
+    data_grew = rows[-1]["mib"] - rows[0]["mib"]
+    assert grew < 8, (
+        f"peak RSS rose {grew:.1f} MiB while the export grew {data_grew:.0f} MiB — something "
+        "in your scanner is keeping the data. The usual cause is accumulating fields or "
+        "records somewhere instead of folding them into a counter in field_complete."
+    )
+    print(f"{'export MiB':>11} {'records':>10} {'seconds':>9} {'MB/s':>8} {'peak RSS MiB':>14}")
+    for row in rows:
+        print(f"{row['mib']:11.0f} {row['records']:10d} {row['seconds']:9.3f} "
+              f"{row['mb_s']:8.0f} {row['peak_mib']:14.2f}")
+    print(f"\nData up {rows[-1]['mib'] / rows[0]['mib']:.0f}x, peak RSS up "
+          f"{grew:.2f} MiB. Read the last column DOWN, not across: that flatness is the")
+    print("whole claim. An export that does not fit in memory is not a different problem for")
+    print("this program, it is the same problem for longer.")
+
+
+if __name__ == "__main__":
+    _check_constant_memory()
+
+# %% [markdown]
+# ## 12. What "truncated" costs, measured
+#
+# One more number before you trust this thing. When the stream is cut mid-record, the scanner
+# drops the *pending* field and refuses to count the record — but fields of that record which
+# were already terminated by their own comma have already been folded into the totals. That is
+# a convention, and conventions have prices. Here is this one's, on three bytes' difference.
+
+# %%
+_TRUNCATION_DEMO = 'DOC-1,Acme,INV-1,10.00,EUR,ok\nDOC-2,Beta,INV-2,25.00,EUR,fine\n'
+
+
+def truncation_table(text: str = _TRUNCATION_DEMO) -> list:
+    """Scan the same export cut at every interesting point in its final record."""
+    cuts = [len(text) - k for k in (0, 1, 6, 11, 16, 24)]
+    return [{"bytes": cut, **{k: c_scan(text[:cut])[k]
+                              for k in ("records", "fields", "amount_cents", "truncated_tail")}}
+            for cut in sorted(cuts)]
+
+
+if __name__ == "__main__":
+    print(f"{'bytes kept':>11} {'records':>8} {'fields':>7} {'cents':>7} {'truncated':>10}")
+    for _row in truncation_table():
+        print(f"{_row['bytes']:11d} {_row['records']:8d} {_row['fields']:7d} "
+              f"{_row['amount_cents']:7d} {_row['truncated_tail']:10d}")
+    print("\nWatch the cents column rise while the records column does not. The second")
+    print("invoice's amount is committed the moment its comma arrives, several bytes before")
+    print("its record exists. If your downstream needs record-atomic totals, you hold the")
+    print("record's contributions in a second set of counters and fold them in at")
+    print("record_complete — still constant memory, one more thing to get right. What you may")
+    print("NOT do is ship the number without saying which of the two it is.")
+
+# %% [markdown]
+# ## 13. Common mistakes
+#
+# - **A binary left over from before you moved or rebuilt your checkout.** `make` decides what
+#   is stale by comparing timestamps, and a binary built yesterday in the old location is
+#   still newer than its source — so `make` reports "up to date" and hands you the old
+#   executable. On compiled lessons that link a shared library the symptom is loud, because
+#   the linker bakes the library's ABSOLUTE path into the binary: move the checkout and it
+#   dies at startup with `dyld: Library not loaded`, naming a path that no longer exists.
+#   Rebuilding does not help; `make` still thinks there is nothing to do. **The fix is
+#   `make clean`**, then build again — run it as a reflex after moving the checkout or
+#   rebuilding the environment.
+# - **Remembering something outside the `Scanner` struct.** A local holding the previous byte,
+#   or a peek at `buf[i+1]`, works perfectly until the chunk boundary lands between them. The
+#   chunk-size-1 check in section 7 exists for exactly this.
+# - **Pushing the quote that opens or closes a field.** `"abc"` is three bytes of data. Only a
+#   doubled `""` inside a quoted field pushes one.
+# - **Applying the CR leniency inside quotes.** Dropping a bare CR is right between fields and
+#   wrong inside one: in a quoted field every byte is data, so a CRLF there is two bytes of the
+#   field. The symptom is a field length one byte short and nothing else — which is why the
+#   checks put a CR in the longest field of a record, and again exactly on the cap.
+# - **`char` for the counters.** Symbol counts on a real export exceed a million; `long long`
+#   is what the struct declares, and printing one with `%d` is undefined behaviour.
+# - **Counting overflow per byte instead of per field.** The toy case passes. The real export
+#   then reports more overflows than it has fields, which is nonsense on its face.
+# - **Treating a missing final newline as truncation.** You quietly lose the last record of
+#   every export produced by a tool that does not emit one, which is most of them.
+# - **`getline`, `strtok`, `strdup` in the loop.** All three allocate, and one of them
+#   rewrites its input. The flat line in section 11 is the first casualty.
+# - **Timing the wrong thing.** `make`, generation and file opening are not scanning. The
+#   binary times the scan and nothing else; match that in anything you report.
+# - **Benchmarking a `-O0` build.** Unoptimised C can lose to Python outright. The Makefile
+#   uses `-O2`; if you compile by hand, match it.
+
+# %%
+def overflow_counted_per_byte(text: str) -> dict:
+    """`field_push` with one line changed: the overflow counter fires on every extra byte.
+
+    This is the commonest wrong answer to exercise 1. It is here so you can watch it rather
+    than guess — and so the number in the bullet above is printed, not typed.
+
+    Example:
+        >>> overflow_counted_per_byte("x" * (FIELD_CAP + 3))["field_overflow"]
+        3
+    """
+    kept, seen, overflow = 0, 0, 0
+    for _ in text:
+        seen += 1
+        if kept < FIELD_CAP:
+            kept += 1
+        else:
+            overflow += 1                  # the bug: per byte, not once per field
+    return {"field_len": kept, "seen_len": seen, "field_overflow": overflow}
+
+
+if __name__ == "__main__":
+    print(f"{'field bytes':>12} {'correct':>9} {'per-byte bug':>14}")
+    for _n in (FIELD_CAP, FIELD_CAP + 3, FIELD_CAP * 40):
+        _right = c_push("x" * _n)["field_overflow"]
+        print(f"{_n:12d} {_right:9d} {overflow_counted_per_byte('x' * _n)['field_overflow']:14d}")
+    print("\nThe right-hand column is a measure of how long the field was, which max_field_len")
+    print("already reports. A count of fields is a count of fields.")
+
+# %% [markdown]
+# ## 14. Self-check
+#
+# 1. Your scanner passes every test at a 64 KiB chunk size and fails at a chunk size of 1.
+#    What is the most likely cause?
+#    - (a) the file is corrupt at small reads
+#    - (b) something you need across a boundary lives in a local variable or in a peek at the
+#          next byte, instead of in the `Scanner` struct
+#    - (c) `fread` cannot return one byte
+#    - (d) nothing — a one-byte chunk is not a realistic case
+#
+# 2. An export ends `...,EUR,ok` with no newline. A correct scanner reports:
+#    - (a) one fewer record, and `truncated_tail = 1`
+#    - (b) the final record counted normally, and `truncated_tail = 0`
+#    - (c) an error, because RFC 4180 requires a final line break
+#    - (d) the final record counted, and `bad_arity` incremented
+#
+# 3. The Python streaming scanner and the C scanner both showed flat peak memory; the C one
+#    was far faster. What does that pair of results actually say?
+#    - (a) C is the only way to bound memory on a large file
+#    - (b) memory came from the streaming algorithm, which either language can have, and the
+#          throughput came from the language
+#    - (c) Python's memory was flat only because the file was small
+#    - (d) the two effects have the same cause
+#
+# 4. Your `field_overflow` counter is incremented on every byte past `kFieldCap`. On a real
+#    export, what breaks?
+#    - (a) nothing; it is a different but equally useful number
+#    - (b) the scanner writes past the end of the buffer
+#    - (c) the count stops being a count of fields, and can exceed the number of fields
+#          scanned, which no downstream consumer can interpret
+#    - (d) peak memory grows with the longest field
+#
+# 5. You raise `kFieldCap` from 128 to 1,048,576 so that no field is ever truncated. What have
+#    you actually changed about the memory guarantee?
+#    - (a) nothing — the scanner is still constant memory, at a larger constant
+#    - (b) the scanner becomes linear in the size of the export
+#    - (c) the scanner becomes linear in the number of records
+#    - (d) the guarantee is unaffected because the buffer is on the stack
+#
+# Answers, with reasoning, are published in the course solution bundle.
+
+# %%
+if __name__ == "__main__":
+    # A final sweep of the correctness checks. The measurements above are deliberately not
+    # repeated: they are the slowest cells in the lesson and nothing below them changed.
+    _check_field_push()
+    _check_field_complete()
+    _check_scan_chunk()
+    _check_scan_finish()
+    print("\nall correctness checks green")
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A field scanner that will read an export of any size in a fixed number of bytes, that gets
+# RFC 4180's quoting right, that tells a cut stream from a missing newline, and that reports
+# the truncation policy it applied rather than hiding it. Plus three measured numbers: the
+# throughput the language bought, the memory the algorithm bought, and the flat line that
+# proves the second one. Module 11 asks you to put numbers like these into an evidence pack
+# that a validator can reproduce — and this one is reproducible because every digit above came
+# out of a run you did.

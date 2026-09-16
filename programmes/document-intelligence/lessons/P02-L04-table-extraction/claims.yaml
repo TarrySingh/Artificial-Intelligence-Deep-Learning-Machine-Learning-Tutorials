@@ -1,0 +1,111 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson generates its own corpus, so it has no dataset entry and nothing to license. The
+# page geometry constants (CHAR_W, ROW_PITCH, COL_X, ROW_GAP, COL_GAP and the rest) are
+# properties of that corpus and the notebook says so; the lesson asserts nothing about the
+# dimensions of any real document, so they are not claims either — and the window in which
+# they work is measured in section 6 in front of the student rather than declared.
+claims:
+  - id: teds-definition-and-formula
+    claim: >-
+      The structure score this lesson builds is modelled on TEDS, the Tree-Edit-Distance-based
+      Similarity metric proposed by Zhong, ShafieiBavani and Jimeno Yepes for table
+      recognition, which represents a table as a tree whose leaves are cells and scores a
+      prediction as one minus the tree-edit distance over the larger of the two trees. The
+      lesson's `table_size` (root plus rows plus cells) and its normalisation by
+      `max(table_size(pred), table_size(gold))` come from that definition. The lesson states in
+      section 9 that its own implementation is a restricted, two-level version of the idea and
+      not a reimplementation of the paper.
+    where: "lesson.py section 9 (exercise 7 preamble and the teds_like docstring); tests/test_lesson.py::test_teds_counts_the_row_node"
+    source_url: https://ar5iv.labs.arxiv.org/html/1911.10683
+    source_title: "Image-based table recognition: data, model, and evaluation (Zhong, ShafieiBavani, Jimeno Yepes; arXiv 1911.10683, submitted 25 Nov 2019)"
+    quote: >-
+      TEDS(T_a, T_b) = 1 - EditDist(T_a, T_b) / max(|T_a|, |T_b|)
+    quote_context: >-
+      Section V (evaluation). The same section states that "The root has two children thead and
+      tbody, which group table headers and table body cells, respectively. The children of
+      thead and tbody nodes are table rows (tr). The leaves of the tree are table cells (td)."
+      The lesson's tree has no thead/tbody split, which is one of the two departures it
+      declares. The arXiv abstract page (https://arxiv.org/abs/1911.10683) was fetched first
+      and carries the metric's name and purpose; the ar5iv HTML rendering of the same paper is
+      cited here because it is where the formula itself could actually be read.
+    accessed: 2026-09-16
+
+  - id: teds-substitution-cost-rule
+    claim: >-
+      `cell_sub_cost` is not an invention of this lesson. TEDS charges a full unit for a
+      substitution when the two cells disagree about their span, and otherwise charges by the
+      normalised Levenshtein similarity of their contents. That rule is why a spanning header
+      recovered with colspan 1 instead of 3 costs as much as a completely different cell, and
+      it is why the structure-only variant — which drops the content half and keeps the span
+      half — is a coherent score rather than a convenience.
+    where: "lesson.py section 8 (the cell_sub_cost docstring and the quoted preamble); tests/test_lesson.py::test_row_distance_substitution_cost"
+    source_url: https://ar5iv.labs.arxiv.org/html/1911.10683
+    source_title: "Image-based table recognition: data, model, and evaluation (Zhong, ShafieiBavani, Jimeno Yepes; arXiv 1911.10683, submitted 25 Nov 2019)"
+    quote: >-
+      When the edit is substituting a node n_o with n_s, the cost is 1 if either n_o or n_s is
+      not td. When both n_o and n_s are td, the substitution cost is 1 if the column span or
+      the row span differs. Otherwise, the substitution cost is the normalized Levenshtein
+      similarity between the content of n_o and n_s.
+    quote_context: >-
+      Section V. The lesson implements the colspan half of the span rule only — there is no
+      rowspan in this corpus — and charges 1 minus the normalised similarity, so that identical
+      content costs nothing; the paper's sentence names the similarity rather than its
+      complement. The notebook states the departure.
+    accessed: 2026-09-16
+
+  - id: structure-and-content-are-separate-subtasks
+    claim: >-
+      Treating a table's shape and a table's contents as two things to be scored separately is
+      the standing position of the table-recognition literature, not a framing device invented
+      for this lesson: Smock, Pesala and Abraham introduce GriTS explicitly as a metric that
+      unifies cell topology recognition, cell location recognition and cell content recognition
+      in one framework, which is a statement that they are three distinct subtasks that prior
+      metrics scored apart. Section 10 of this lesson measures the consequence — a degradation
+      that content F1 cannot see and one that the structure-only score cannot see.
+    where: "lesson.py sections 10 and 11 (the variants table and the consumer matrix); tests/test_lesson.py::test_the_two_scores_disagree_on_the_corpus"
+    source_url: https://ar5iv.labs.arxiv.org/html/2203.12555
+    source_title: "GriTS: Grid table similarity metric for table structure recognition (Smock, Pesala, Abraham; arXiv 2203.12555, submitted 23 Mar 2022)"
+    quote: >-
+      GriTS unifies all three subtasks of cell topology recognition, cell location recognition,
+      and cell content recognition within the same framework, which simplifies the evaluation
+      and enables more meaningful comparisons across different types of TSR approaches.
+    quote_context: "abstract"
+    accessed: 2026-09-16
+
+  - id: a-tree-metric-carries-no-column-index
+    claim: >-
+      The closing cell of section 11 shifts every column index in a table by seven and all
+      three scores still read 1.000, because a tree carries position by sibling order and span
+      and has no column index in it. This is not a bug in the lesson's implementation; it is a
+      known property of the tree formulation, and it is the stated motivation for GriTS, which
+      Smock et al. propose in order to evaluate a predicted table in its matrix form instead.
+      The lesson reports the blind spot rather than hiding it, and does not claim GriTS is
+      implemented here.
+    where: "lesson.py section 11 (the column-index blindness cell) and section 12 (common mistakes)"
+    source_url: https://ar5iv.labs.arxiv.org/html/2203.12555
+    source_title: "GriTS: Grid table similarity metric for table structure recognition (Smock, Pesala, Abraham; arXiv 2203.12555, submitted 23 Mar 2022)"
+    quote: >-
+      Unlike prior metrics, GriTS evaluates the correctness of a predicted table directly in
+      its natural form as a matrix.
+    quote_context: "abstract"
+    accessed: 2026-09-16
+
+  - id: table-recognition-is-scored-as-structure-plus-content
+    claim: >-
+      Reconstructing a table from a page is treated in shared-task evaluation as producing both
+      a structure and a content, from components detected on the page — which is exactly the
+      pipeline this lesson makes a student build by hand: profile the ink, band it, cut it into
+      cells, then post-process the continuation rows. The ICDAR 2021 Scientific Literature
+      Parsing competition's report describes the top table-recognition submissions in those
+      terms. The lesson does not claim its own pipeline resembles any competition entry.
+    where: "lesson.py sections 2 to 5 (the pipeline) and the closing section"
+    source_url: https://arxiv.org/abs/2106.14616
+    source_title: "ICDAR 2021 Competition on Scientific Literature Parsing (Jimeno Yepes, Zhong, Burdick; arXiv 2106.14616, submitted 8 June 2021)"
+    quote: >-
+      In Task B, Table Recognition, top submissions rely on methods to identify table components
+      and post-processing methods to generate the table structure and content.
+    quote_context: "abstract"
+    accessed: 2026-09-16

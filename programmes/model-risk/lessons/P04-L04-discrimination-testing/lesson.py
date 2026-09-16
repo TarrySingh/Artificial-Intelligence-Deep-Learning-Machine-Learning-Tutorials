@@ -1,0 +1,1187 @@
+# %% [markdown]
+# # P04-L04 · Discrimination testing, and how sure you are of it
+#
+# **You will build:** the rank identity that makes AUC affordable, the two other rank
+# statistics a scorecard pack reports, a bootstrap interval, a *paired* interval for the
+# difference between two models scored on the same records, the closed-form DeLong covariance
+# that does the same job in one pass, a sample-size check that says when a difference could
+# not have been seen at all — and a coverage scorer that grades your own intervals against a
+# truth you know.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** T00-L01 (the tier gate and the profiler) and P04-L01 (the validation
+# suite, which handed you `auc_by_ranks` rather than making you build it). Pure numpy: there
+# is no scipy here, and no `roc_auc_score`.
+#
+# The data is **synthetic and generated in this notebook**. Every figure you see is computed
+# by code you run.
+#
+# By the end you will be able to:
+#
+# 1. Implement AUC by the Mann-Whitney rank identity, with ties averaged rather than broken.
+# 2. Implement the KS statistic and Gini from the same ranking.
+# 3. Implement a stratified percentile bootstrap interval for a metric with no closed form.
+# 4. Implement a paired comparison of two models, and the DeLong closed form of the same
+#    covariance, and measure how often the independent shortcut misses a real difference.
+# 5. Report the minimum detectable difference, so "not significant" is never filed as
+#    "no difference".
+# 6. Grade an interval's coverage against a distribution whose true AUC is known exactly.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import math
+import sys
+import time
+from typing import Callable, NamedTuple
+
+import numpy as np
+
+SEED = 20260916
+N_DEV = 6000            # development sample: the period the champion was built on
+N_OOT = 1400            # out-of-time sample: a later period, and a much smaller one
+N_BOOT = 2000           # bootstrap replicates
+ALPHA = 0.05            # two-sided significance level, and 1 - ALPHA interval coverage
+POWER = 0.80            # the power the sample-size check is asked to deliver
+MATERIAL_AUC_DIFF = 0.010   # the smallest AUC difference this policy would act on
+SQRT2 = math.sqrt(2.0)
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+DATA_NOTE = (
+    "SYNTHETIC DATA. Every record in this notebook was generated inside it by "
+    f"numpy.random.default_rng({SEED}). No real applicant, account or lending decision is "
+    "represented. The coverage study's samples are drawn from a binormal model whose true "
+    "AUC is known in closed form, which is the only way to grade an interval: you have to "
+    "know the answer it is trying to bracket."
+)
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other six.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-x))
+
+
+def normal_cdf(z: float) -> float:
+    """Standard normal CDF. Given to you: scipy is not installed and this is not the lesson."""
+    return 0.5 * math.erfc(-float(z) / SQRT2)
+
+
+def normal_quantile(q: float) -> float:
+    """Standard normal inverse CDF by bisection. Given to you, exact to ~1e-12."""
+    if not 0.0 < q < 1.0:
+        raise ValueError(f"normal_quantile needs 0 < q < 1, got {q}")
+    lo, hi = -40.0, 40.0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if normal_cdf(mid) < q:
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+def concordance_by_pairs(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    """AUC straight from the definition: every positive against every negative. Given to you.
+
+    This is what the area under the ROC curve MEANS — the probability that a randomly chosen
+    event is scored above a randomly chosen non-event, with a tie counting half. It is also
+    O(n_pos * n_neg), which is why nobody runs it on a real book, and why exercise 1 exists.
+    """
+    y = np.asarray(y_true)
+    p = np.asarray(y_score, dtype=float)
+    pos, neg = p[y == 1], p[y == 0]
+    wins = 0.0
+    for a in pos:
+        wins += float((a > neg).sum()) + 0.5 * float((a == neg).sum())
+    return wins / (pos.size * neg.size)
+
+
+def synthetic_book(rng: np.random.Generator, n: int, champion_decay: float = 0.0) -> dict:
+    """One deterministic synthetic book of accounts. SYNTHETIC — see DATA_NOTE.
+
+    Both models see the same latent driver `z` through a SHARED mis-measurement plus their
+    own private noise. That shared term is what makes their scores correlated, and the
+    correlation is the whole reason a paired comparison is not two separate ones.
+    `champion_decay` adds private noise to the champion only, which is how a later period is
+    made to look worse without touching the challenger.
+    """
+    z = rng.normal(0.0, 1.0, n)
+    y = (rng.random(n) < _sigmoid(-1.30 + 0.95 * z)).astype(np.int64)
+    shared = rng.normal(0.0, 0.30, n)
+    champ_view = z + shared + rng.normal(0.0, 0.55 + champion_decay, n)
+    chal_view = z + shared + rng.normal(0.0, 0.20, n)
+    return {
+        "y": y,
+        "champion": _sigmoid(-1.30 + 0.95 * champ_view),
+        "challenger": _sigmoid(-1.30 + 0.95 * chal_view),
+    }
+
+
+def binormal_sample(rng: np.random.Generator, n_pos: int, n_neg: int, mu: float) -> tuple:
+    """Events ~ N(mu, 1), non-events ~ N(0, 1). Given to you, and the reason is exact truth.
+
+    For this model the true AUC is Phi(mu / sqrt(2)) exactly — see `binormal_true_auc` — so a
+    confidence interval built on a sample from it can be marked right or wrong.
+    """
+    y = np.concatenate([np.ones(n_pos, dtype=np.int64), np.zeros(n_neg, dtype=np.int64)])
+    score = np.concatenate([rng.normal(mu, 1.0, n_pos), rng.normal(0.0, 1.0, n_neg)])
+    return y, score
+
+
+def binormal_true_auc(mu: float) -> float:
+    """The exact AUC of `binormal_sample`. Given to you, and worth one line of derivation.
+
+    AUC = P(X > Y) with X ~ N(mu, 1) and Y ~ N(0, 1) independent, so X - Y ~ N(mu, 2) and
+    P(X - Y > 0) = Phi(mu / sqrt(2)). No simulation, no approximation.
+    """
+    return normal_cdf(mu / SQRT2)
+
+
+_rng = np.random.default_rng(SEED)
+DEV = synthetic_book(_rng, N_DEV)
+OOT = synthetic_book(_rng, N_OOT, champion_decay=0.16)
+print(f"development sample: {N_DEV} records, {int(DEV['y'].sum())} events "
+      f"({DEV['y'].mean():.4f})")
+print(f"out-of-time sample: {N_OOT} records, {int(OOT['y'].sum())} events "
+      f"({OOT['y'].mean():.4f})")
+print("\n" + DATA_NOTE)
+
+# %% [markdown]
+# ## 1. The definition, computed the honest way, and why you cannot use it
+#
+# The area under the ROC curve is a probability: pick one event and one non-event at random,
+# and it is the chance the model scored the event higher. Hanley and McNeil put it exactly
+# that way in 1982, and in the same paper observed that this is the quantity the Wilcoxon
+# rank-sum statistic already estimates. That observation is the whole of exercise 1.
+#
+# It is also the arithmetic the 2026 interagency model risk guidance is asking for when it
+# names "validating conceptual soundness and outcomes analyses" among the practices it
+# covers. Discrimination testing is outcomes analysis; an outcomes analysis that cannot say
+# how sure it is has not concluded anything.
+#
+# Run the cell. It computes the area straight from the definition on a slice of the book,
+# then projects what the same code would cost on the full sample.
+
+# %%
+_slice = 700
+_probe_y, _probe_p = DEV["y"][:_slice], DEV["champion"][:_slice]
+_t0 = time.perf_counter()
+_probe_auc = concordance_by_pairs(_probe_y, _probe_p)
+_probe_secs = time.perf_counter() - _t0
+_pairs_slice = int(_probe_y.sum()) * int(_slice - _probe_y.sum())
+_pairs_full = int(DEV["y"].sum()) * int(N_DEV - DEV["y"].sum())
+_scale = _pairs_full / _pairs_slice
+print(f"pairwise AUC on {_slice} records: {_probe_auc:.4f}")
+print(f"  {_pairs_slice:,} pairs in {_probe_secs * 1000:.1f} ms")
+print(f"  the full {N_DEV}-record book is {_pairs_full:,} pairs — about "
+      f"{_probe_secs * _scale * 1000:.0f} ms for ONE number")
+print(f"  and section 4 asks for a {N_BOOT}-replicate bootstrap of it: about "
+      f"{_probe_secs * _scale * N_BOOT:.0f} s, for one interval, for one model")
+print("\nThe rank identity in exercise 1 does the same arithmetic in one sort.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `auc_by_ranks()`
+#
+# Rank the scores, sum the ranks of the events, subtract off the ranks the events would have
+# held even if the model were useless, and divide by the number of pairs:
+#
+# > `AUC = (sum of event ranks - n_pos * (n_pos + 1) / 2) / (n_pos * n_neg)`
+#
+# The trap is ties. Two records with the same score are neither concordant nor discordant;
+# the definition counts that pair as half. Ranking them in whatever order `argsort` happened
+# to produce silently counts it as a whole win — and a scorecard with twenty bands ties
+# thousands of pairs, so this is not a corner case, it is most of your data.
+#
+# Give every member of a tied block the AVERAGE of the ranks that block spans. That is
+# `average_ranks()`, the first of the two stubs below; `auc_by_ranks()` is the identity built
+# on top of it.
+
+# %%
+def average_ranks(x: np.ndarray) -> np.ndarray:
+    """Ranks of `x`, 1-based, with tied values sharing the mean of the ranks they span.
+
+    Worked example:
+
+        [0.1, 0.5, 0.5, 0.9] -> [1.0, 2.5, 2.5, 4.0]
+        the two 0.5s would have taken ranks 2 and 3, so both take 2.5
+
+    Requirements:
+      * the result is in the INPUT order, not sorted order
+      * ranks start at 1
+      * `np.argsort(..., kind="mergesort")` is stable, and `np.unique(..., return_counts=True)`
+        on the sorted values gives you the size of every tied block in one call. Section 10
+        calls this tens of thousands of times, so keep the per-tie work out of Python.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("average_ranks")
+
+
+def auc_by_ranks(y_true: np.ndarray, y_score: np.ndarray) -> float:
+    """Area under the ROC curve by the Mann-Whitney rank identity.
+
+    Worked example, by hand:
+
+        y = [1, 0, 1, 0], score = [0.9, 0.9, 0.2, 0.1]
+        pairs: (0.9, 0.9) tie -> 0.5 · (0.9, 0.1) win -> 1
+               (0.2, 0.9) loss -> 0 · (0.2, 0.1) win -> 1
+        AUC = 2.5 / 4 = 0.625
+
+    Requirements:
+      * tied scores share the AVERAGE of the ranks their block spans
+      * raise ValueError if the two arrays differ in length, if the sample is empty, if any
+        label is outside {0, 1}, or if either class is absent (AUC is then undefined)
+      * return a real Python `float`, not a numpy scalar: `json.dumps` refuses np.float64,
+        and a validation pack that cannot be serialised is not a deliverable
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("auc_by_ranks")
+
+
+def _check_auc() -> None:
+    ranked = average_ranks(np.array([0.1, 0.5, 0.5, 0.9]))
+    assert np.allclose(ranked, [1.0, 2.5, 2.5, 4.0]), (
+        f"average_ranks([0.1, 0.5, 0.5, 0.9]) should be [1.0, 2.5, 2.5, 4.0], got {ranked} — "
+        "if you got [1, 2, 3, 4] the tie was broken by argsort order instead of averaged"
+    )
+    hand = auc_by_ranks(np.array([1, 0, 1, 0]), np.array([0.9, 0.9, 0.2, 0.1]))
+    assert abs(hand - 0.625) < 1e-12, (
+        f"the worked example should give 0.625, got {hand} — if you got 0.75 you ranked the "
+        "tied pair as a win instead of a half"
+    )
+    assert type(auc_by_ranks(np.array([0, 1]), np.array([0.1, 0.9]))) is float, (
+        "return float(...): a numpy scalar is not a Python float and json.dumps refuses it"
+    )
+    flat = auc_by_ranks(np.array([1, 1, 0, 0]), np.array([0.5, 0.5, 0.5, 0.5]))
+    assert abs(flat - 0.5) < 1e-12, (
+        f"a model that gives every record the same score has AUC 0.5 exactly, got {flat}"
+    )
+    rng = np.random.default_rng(1)
+    y = rng.integers(0, 2, 220)
+    p = rng.random(220).round(2)          # rounding manufactures plenty of ties
+    fast, slow = auc_by_ranks(y, p), concordance_by_pairs(y, p)
+    assert abs(fast - slow) < 1e-12, (
+        f"your AUC {fast:.6f} disagrees with the pairwise definition {slow:.6f} on a sample "
+        "full of ties — average the ranks inside each tied block"
+    )
+    for bad, why in (
+        ((np.array([1, 1]), np.array([0.2, 0.3])), "one class absent"),
+        ((np.array([1, 0, 1]), np.array([0.2, 0.3])), "mismatched lengths"),
+        ((np.array([1, 2]), np.array([0.2, 0.3])), "a label outside {0, 1}"),
+    ):
+        try:
+            auc_by_ranks(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} must raise ValueError, not return a number")
+    print("exercise 1: OK")
+
+
+_try("exercise 1", _check_auc)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `ks_and_gini()`
+#
+# Two more rank statistics, both reported in every credit scorecard pack. **Gini** is just
+# `2 * AUC - 1`, rescaled so that useless is 0 instead of 0.5. **KS** is the largest vertical
+# gap between the two classes' cumulative distributions:
+#
+# > `KS = max over thresholds t of | F_non-event(t) - F_event(t) |`
+#
+# with `F_class(t)` the share of that class scoring at or below `t`.
+#
+# Two traps. Evaluate the gap at the observed scores, not on an evenly spaced grid — the
+# maximum sits at a data point and a grid will walk past it. And compare SHARES within each
+# class, never counts: with 300 events and 5,700 non-events, a count-based curve measures the
+# class imbalance rather than the separation.
+
+# %%
+class Discrimination(NamedTuple):
+    """The three rank statistics a scorecard pack reports, from one pass over the scores."""
+
+    auc: float
+    gini: float
+    ks: float
+    ks_threshold: float     # the observed score at which the KS gap is widest
+
+
+def ks_and_gini(y_true: np.ndarray, y_score: np.ndarray) -> Discrimination:
+    """AUC, Gini and the KS statistic with the score that attains it.
+
+    Worked example, by hand:
+
+        y = [1, 1, 0, 0, 0], score = [0.8, 0.6, 0.6, 0.3, 0.1]
+        thresholds 0.1, 0.3, 0.6, 0.8
+        F_event  = 0,    0,    0.5,  1
+        F_non    = 1/3,  2/3,  1,    1
+        gaps     = 1/3,  2/3,  0.5,  0     -> KS = 2/3 at t = 0.3
+        AUC = 5.5 / 6 = 0.9166..., Gini = 0.8333...
+
+    Requirements:
+      * `gini` is exactly `2 * auc - 1`
+      * evaluate both CDFs at the UNIQUE observed scores, using "at or below"
+      * `ks_threshold` is one of the observed scores; on a tie take the lowest
+      * every field is a real Python `float`
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("ks_and_gini")
+
+
+def _check_ks() -> None:
+    d = ks_and_gini(np.array([1, 1, 0, 0, 0]), np.array([0.8, 0.6, 0.6, 0.3, 0.1]))
+    assert abs(d.ks - 2 / 3) < 1e-12, (
+        f"the worked example's KS is 2/3, got {d.ks} — evaluate the CDFs at the observed "
+        "scores with 'at or below', and compare shares within each class, not counts"
+    )
+    assert abs(d.ks_threshold - 0.3) < 1e-12, (
+        f"the widest gap in the worked example is at 0.3, got {d.ks_threshold}"
+    )
+    assert abs(d.gini - (2 * d.auc - 1)) < 1e-12, "gini is 2 * auc - 1"
+    split = ks_and_gini(np.array([0, 0, 1, 1]), np.array([0.1, 0.2, 0.8, 0.9]))
+    assert abs(split.ks - 1.0) < 1e-12 and abs(split.gini - 1.0) < 1e-12, (
+        f"a perfectly separating score has KS 1 and Gini 1, got {split.ks}, {split.gini}"
+    )
+    flat = ks_and_gini(np.array([0, 0, 1, 1]), np.array([0.4, 0.4, 0.4, 0.4]))
+    assert abs(flat.ks) < 1e-12, f"one score for everybody separates nothing; KS is 0, got {flat.ks}"
+    print("exercise 2: OK")
+
+
+_try("exercise 2", _check_ks)
+
+# %%
+def _show_headline_metrics() -> None:
+    champ = ks_and_gini(DEV["y"], DEV["champion"])
+    chal = ks_and_gini(DEV["y"], DEV["challenger"])
+    print(f"champion   AUC {champ.auc:.4f}  Gini {champ.gini:.4f}  "
+          f"KS {champ.ks:.4f} at {champ.ks_threshold:.4f}")
+    print(f"challenger AUC {chal.auc:.4f}  Gini {chal.gini:.4f}  "
+          f"KS {chal.ks:.4f} at {chal.ks_threshold:.4f}")
+    print(f"\nthe challenger is ahead by {chal.auc - champ.auc:.4f} AUC. "
+          "That is a number. It is not yet a finding.")
+
+
+_try("headline metrics", _show_headline_metrics)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `bootstrap_auc_ci()`
+#
+# A metric without an interval is not a test. The bootstrap gets one without assuming a
+# distribution: resample the records with replacement, recompute the statistic, and read the
+# percentiles of what comes back — Efron's 1979 idea, and still the one that survives when
+# your statistic has no closed-form variance.
+#
+# Two rules this implementation must obey, and both are graded.
+#
+# **Resample RECORDS, not columns.** A record is a label and a score bolted together. Draw
+# index positions and apply the SAME positions to both arrays. Shuffling scores against
+# labels does not estimate uncertainty; it destroys the signal and returns 0.5.
+#
+# **Stratify by class.** Draw the events from the events and the non-events from the
+# non-events, keeping both counts fixed. With 40 events in a 6,000-record book, an
+# unstratified draw will sooner or later hand you a replicate with no events at all, and AUC
+# is undefined there. Conditioning on the class counts also matches how the sample was
+# designed: nobody is uncertain about how many defaults they had.
+
+# %%
+class Interval(NamedTuple):
+    """A point estimate and the interval around it. `n_boot` is 0 for an analytic interval."""
+
+    point: float
+    lo: float
+    hi: float
+    se: float
+    n_boot: int
+
+
+def bootstrap_auc_ci(y_true: np.ndarray, y_score: np.ndarray, n_boot: int = N_BOOT,
+                     alpha: float = ALPHA,
+                     rng: np.random.Generator | None = None) -> Interval:
+    """Stratified percentile bootstrap interval for the AUC.
+
+    Worked example of the percentile rule: with alpha = 0.05 the interval runs from the
+    2.5th to the 97.5th percentile of the replicate AUCs — NOT the 5th to the 95th.
+
+    Requirements:
+      * `point` is the AUC of the ORIGINAL sample, never the mean of the replicates
+      * draw `n_pos` event indices from the events and `n_neg` non-event indices from the
+        non-events, with replacement, and index BOTH arrays with them. Stratify; do not
+        draw freely and then patch up the replicates that came back with no events in
+        them. A replacement value for an undefined AUC is a number you invented, and on a
+        thin class it drags the lower bound of the interval down to it. What the rubric
+        grades is the CONSEQUENCE — a thin, perfectly separating class has to come back as
+        a point interval — not the draw itself: a free draw that RETRIES until both
+        classes appear also passes, because it inflates the standard error by a few per
+        cent rather than breaking it, and no test can see the difference without
+        reproducing your replicate stream
+      * when `rng` is None, seed a fresh generator INSIDE the call. A
+        `rng=np.random.default_rng(...)` default in the signature is evaluated once when
+        the function is defined and then shared by every call, so a second run quietly
+        disagrees with the first and the pack cannot be regenerated
+      * `se` is the standard deviation of the replicate AUCs. Use `ddof=1` to match the
+        rest of the suite — but note that the rubric does NOT grade the choice, and
+        cannot without reproducing your replicate stream; at 2,000 replicates it moves
+        the figure in the fourth decimal place. Where `ddof` IS gradeable, in the
+        DeLong variance of exercise 5, it is graded.
+      * `n_boot` is echoed back in the result
+      * raise ValueError for `n_boot < 2` or `alpha` outside `(0, 1)`
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("bootstrap_auc_ci")
+
+
+def _check_bootstrap() -> None:
+    y = np.concatenate([np.ones(120, dtype=np.int64), np.zeros(380, dtype=np.int64)])
+    rng = np.random.default_rng(5)
+    p = np.concatenate([rng.normal(1.1, 1.0, 120), rng.normal(0.0, 1.0, 380)])
+    one = bootstrap_auc_ci(y, p, n_boot=2, alpha=ALPHA, rng=np.random.default_rng(9))
+    assert abs(one.point - auc_by_ranks(y, p)) < 1e-12, (
+        f"with two replicates `point` came back {one.point:.6f} but the sample's own AUC "
+        f"is {auc_by_ranks(y, p):.6f} — report the sample estimate, not the bootstrap mean"
+    )
+    ci = bootstrap_auc_ci(y, p, n_boot=600, alpha=ALPHA, rng=np.random.default_rng(9))
+    assert ci.lo < ci.point < ci.hi, f"the interval {ci.lo:.4f}-{ci.hi:.4f} misses its own point"
+    assert ci.n_boot == 600, f"n_boot should echo back 600, got {ci.n_boot}"
+    width_in_se = (ci.hi - ci.lo) / ci.se
+    assert 3.5 <= width_in_se <= 4.4, (
+        f"a 95% percentile interval is about 3.92 standard errors wide; yours is "
+        f"{width_in_se:.2f} — if it is near 3.3 you used the alpha and 1-alpha quantiles "
+        "instead of alpha/2 and 1-alpha/2"
+    )
+    again = bootstrap_auc_ci(y, p, n_boot=600, alpha=ALPHA, rng=np.random.default_rng(9))
+    assert (again.lo, again.hi) == (ci.lo, ci.hi), (
+        "the same seed must give the same interval; draw every random number from `rng`"
+    )
+    sharp = np.concatenate([np.full(120, 0.9), np.full(380, 0.1)])
+    clean = bootstrap_auc_ci(y, sharp, n_boot=300, alpha=ALPHA, rng=np.random.default_rng(3))
+    assert clean.lo > 0.99, (
+        f"a perfectly separating model's interval came back at [{clean.lo:.3f}, "
+        f"{clean.hi:.3f}] — near 0.5 means you resampled labels and scores separately and "
+        "broke the pairing inside each record"
+    )
+    thin_y = np.concatenate([np.ones(3, dtype=np.int64), np.zeros(40, dtype=np.int64)])
+    thin_p = np.concatenate([rng.normal(1.0, 1.0, 3), rng.normal(0.0, 1.0, 40)])
+    thin = bootstrap_auc_ci(thin_y, thin_p, n_boot=400, alpha=ALPHA,
+                            rng=np.random.default_rng(4))
+    assert math.isfinite(thin.lo) and math.isfinite(thin.hi), (
+        "400 replicates on a 3-event sample must all be usable — stratify the draw, or one "
+        "replicate will contain no events at all and AUC will be undefined there"
+    )
+    print("exercise 3: OK")
+
+
+_try("exercise 3", _check_bootstrap)
+
+# %%
+def _show_single_intervals() -> None:
+    rng = np.random.default_rng(SEED + 1)
+    champ = bootstrap_auc_ci(DEV["y"], DEV["champion"], N_BOOT, ALPHA, rng)
+    chal = bootstrap_auc_ci(DEV["y"], DEV["challenger"], N_BOOT, ALPHA, rng)
+    print(f"champion   AUC {champ.point:.4f}  95% CI [{champ.lo:.4f}, {champ.hi:.4f}]")
+    print(f"challenger AUC {chal.point:.4f}  95% CI [{chal.lo:.4f}, {chal.hi:.4f}]")
+    overlap = champ.lo <= chal.hi and chal.lo <= champ.hi
+    print(f"\ndo the two intervals overlap? {overlap}")
+    print("Hold on to that answer. Section 7 puts a number on why it is the wrong question.")
+
+
+_try("single-model intervals", _show_single_intervals)
+
+# %% [markdown]
+# ## 5. Exercise 4 — `paired_bootstrap_difference()`
+#
+# Both models scored the same records. An unlucky sample — a month with three large defaults
+# that neither model saw coming — pushes BOTH AUCs down together, and cancels out of the
+# difference. Two separate intervals throw that cancellation away and charge you for
+# uncertainty that is not there.
+#
+# So resample once per replicate and score both models on the SAME drawn records. Keep the
+# replicate AUCs of each model as well, so the notebook can put the paired standard error of
+# the difference next to the one you would have got by treating the models as independent:
+#
+# > `se_independent = sqrt(se_a**2 + se_b**2)`
+#
+# That is the number a validator quotes when they compare two intervals by eye, and the whole
+# of section 7 is about what it costs.
+
+# %%
+class PairedDifference(NamedTuple):
+    """The difference between two models scored on the same records, with its interval."""
+
+    diff: float             # auc_a - auc_b on the original sample
+    lo: float
+    hi: float
+    se_paired: float        # sd of the replicate DIFFERENCES
+    se_independent: float   # sqrt(se_a**2 + se_b**2), the wrong answer, kept for contrast
+    corr: float             # correlation of the two models' replicate AUCs
+    n_boot: int
+
+
+def paired_bootstrap_difference(y_true: np.ndarray, score_a: np.ndarray, score_b: np.ndarray,
+                                n_boot: int = N_BOOT, alpha: float = ALPHA,
+                                rng: np.random.Generator | None = None) -> PairedDifference:
+    """Percentile interval for `AUC(a) - AUC(b)` from ONE resample per replicate.
+
+    Worked example of the property being bought: hand this function the same score array
+    twice and every replicate difference is exactly 0, so `se_paired` is 0 and `corr` is 1 —
+    while `se_independent` is emphatically not 0. Two identical models are not uncertain
+    relative to each other, and only the paired route knows it.
+
+    Requirements:
+      * `diff` is measured on the original sample
+      * ONE stratified index draw per replicate, applied to `score_a` AND `score_b`
+      * `lo`, `hi` are the alpha/2 and 1-alpha/2 percentiles of the replicate differences
+      * `se_paired` is the standard deviation of the replicate differences and
+        `se_independent` is `hypot` of the two per-model standard deviations; use
+        `ddof=1` throughout, ungraded for the same reason as in exercise 3
+      * when `rng` is None, seed a fresh generator INSIDE the call, for the reason given in
+        exercise 3: a generator built in the default argument is shared between calls
+      * raise ValueError if the three arrays differ in length
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("paired_bootstrap_difference")
+
+
+def _check_paired() -> None:
+    y = np.concatenate([np.ones(150, dtype=np.int64), np.zeros(350, dtype=np.int64)])
+    rng = np.random.default_rng(6)
+    base = np.concatenate([rng.normal(1.0, 1.0, 150), rng.normal(0.0, 1.0, 350)])
+    twin = paired_bootstrap_difference(y, base, base, n_boot=200, alpha=ALPHA,
+                                       rng=np.random.default_rng(2))
+    assert abs(twin.diff) < 1e-12, f"a model against itself differs by 0, got {twin.diff}"
+    assert twin.se_paired < 1e-12, (
+        f"a model against itself has NO paired uncertainty, but se_paired came back "
+        f"{twin.se_paired:.6f} — you drew separate resamples for the two models"
+    )
+    assert twin.se_independent > 1e-4, (
+        "se_independent is built from the two per-model standard errors, which are not zero"
+    )
+    assert abs(twin.corr - 1.0) < 1e-6, f"identical models correlate at 1.0, got {twin.corr}"
+    rival = base + rng.normal(0.0, 0.8, 500)
+    pair = paired_bootstrap_difference(y, base, rival, n_boot=400, alpha=ALPHA,
+                                       rng=np.random.default_rng(2))
+    assert pair.se_paired < pair.se_independent, (
+        f"pairing should shrink the standard error, but {pair.se_paired:.5f} is not below "
+        f"{pair.se_independent:.5f} — check that ONE index draw feeds both models"
+    )
+    assert pair.lo < pair.diff < pair.hi, "the interval must contain the measured difference"
+    assert abs(pair.diff - (auc_by_ranks(y, base) - auc_by_ranks(y, rival))) < 1e-12, (
+        "diff is auc(a) - auc(b) on the ORIGINAL sample"
+    )
+    try:
+        paired_bootstrap_difference(y, base, rival[:-1], n_boot=10)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("mismatched lengths must raise ValueError")
+    print("exercise 4: OK")
+
+
+_try("exercise 4", _check_paired)
+
+# %% [markdown]
+# ## 6. Exercise 5 — DeLong, without resampling
+#
+# The bootstrap above costs `n_boot` sorts of the whole book. DeLong, DeLong and
+# Clarke-Pearson published the closed form in 1988, deriving the covariance matrix of
+# correlated AUCs from the theory of generalised U-statistics. It needs one pass.
+#
+# For each event `i`, the **structural component** `V10[i]` is how that single event fares
+# against the whole non-event population:
+#
+# > `V10[i] = ( #{non-events below i} + 0.5 * #{non-events tied with i} ) / n_neg`
+#
+# and symmetrically for each non-event `j` against the events:
+#
+# > `V01[j] = ( #{events above j} + 0.5 * #{events tied with j} ) / n_pos`
+#
+# Their means are both the AUC. Their variances give it a standard error:
+#
+# > `Var(AUC) = S10 / n_pos + S01 / n_neg`, with `S10`, `S01` the sample variances (`ddof=1`)
+#
+# and for two models on the same records, the same components taken jointly give the
+# covariance — which is where the pairing lives.
+
+# %%
+class DelongResult(NamedTuple):
+    """A DeLong comparison of two AUCs measured on one set of records."""
+
+    auc_a: float
+    auc_b: float
+    diff: float
+    se: float
+    z: float
+    p_value: float
+
+
+def delong_components(y_true: np.ndarray, y_score: np.ndarray) -> tuple:
+    """The DeLong structural components `(V10, V01)` for one model.
+
+    Worked example: y = [1, 1, 0, 0], score = [0.9, 0.2, 0.5, 0.1].
+        events 0.9, 0.2 against non-events {0.5, 0.1}:  V10 = [2/2, 1/2] = [1.0, 0.5]
+        non-events 0.5, 0.1 against events {0.9, 0.2}:  V01 = [1/2, 2/2] = [0.5, 1.0]
+        mean(V10) = mean(V01) = 0.75 = the AUC.
+
+    Requirements:
+      * `V10` has one entry per event, `V01` one per non-event, both in input order
+      * a tie counts half on both sides
+      * use `np.searchsorted` against the sorted opposite class; a double loop is O(n**2)
+        and section 10 runs this thousands of times
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("delong_components")
+
+
+def delong_auc_ci(y_true: np.ndarray, y_score: np.ndarray, alpha: float = ALPHA) -> Interval:
+    """A normal-approximation AUC interval from the DeLong variance. No resampling.
+
+    Worked example: with `se` 0.02 and alpha 0.05 the interval is the point estimate plus and
+    minus 1.96 * 0.02 = 0.0392.
+
+    Requirements:
+      * `Var = S10 / n_pos + S01 / n_neg`, both variances with `ddof=1`
+      * the half-width is `normal_quantile(1 - alpha / 2) * se`
+      * report `n_boot=0`: this interval resampled nothing, and the pack should say so
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("delong_auc_ci")
+
+
+def delong_test(y_true: np.ndarray, score_a: np.ndarray, score_b: np.ndarray) -> DelongResult:
+    """Two-sided DeLong test of `AUC(a) - AUC(b)` for two models on the same records.
+
+    Worked example of the property being bought: hand it the same score array twice and the
+    difference, its standard error and `z` are all 0, so `p_value` is exactly 1.
+
+    Requirements:
+      * stack each model's `V10` vectors and take `np.cov(..., ddof=1)`; same for `V01`
+      * `S = S10 / n_pos + S01 / n_neg`, then
+        `Var(diff) = S[0,0] + S[1,1] - 2 * S[0,1]` — the cross term IS the pairing
+      * `z = diff / se`, and `z = 0.0` when `se` is 0
+      * two-sided: `p_value = 2 * (1 - normal_cdf(abs(z)))`
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("delong_test")
+
+
+def _check_delong() -> None:
+    y = np.array([1, 1, 0, 0])
+    v10, v01 = delong_components(y, np.array([0.9, 0.2, 0.5, 0.1]))
+    assert np.allclose(v10, [1.0, 0.5]), f"V10 should be [1.0, 0.5], got {v10}"
+    assert np.allclose(v01, [0.5, 1.0]), f"V01 should be [0.5, 1.0], got {v01}"
+    rng = np.random.default_rng(8)
+    yy = np.concatenate([np.ones(200, dtype=np.int64), np.zeros(600, dtype=np.int64)])
+    pa = np.concatenate([rng.normal(1.0, 1.0, 200), rng.normal(0.0, 1.0, 600)])
+    m10, m01 = delong_components(yy, pa)
+    assert abs(float(m10.mean()) - auc_by_ranks(yy, pa)) < 1e-12, (
+        f"mean(V10) is the AUC: got {m10.mean():.6f} against {auc_by_ranks(yy, pa):.6f}"
+    )
+    assert abs(float(m01.mean()) - auc_by_ranks(yy, pa)) < 1e-12, "mean(V01) is the AUC too"
+    ci = delong_auc_ci(yy, pa, ALPHA)
+    assert ci.n_boot == 0, "the analytic interval resampled nothing; report n_boot=0"
+    assert abs((ci.hi - ci.lo) / ci.se - 2 * normal_quantile(1 - ALPHA / 2)) < 1e-9, (
+        f"a 95% normal interval is 2 * 1.95996 standard errors wide, yours is "
+        f"{(ci.hi - ci.lo) / ci.se:.4f}"
+    )
+    same = delong_test(yy, pa, pa)
+    assert same.se == 0.0 and same.z == 0.0, (
+        f"a model against itself has zero variance of the difference, got se {same.se}"
+    )
+    assert abs(same.p_value - 1.0) < 1e-12, (
+        f"z = 0 gives a two-sided p-value of exactly 1, got {same.p_value} — a value near "
+        "0.5 means you computed a one-sided tail"
+    )
+    pb = pa + rng.normal(0.0, 0.7, 800)
+    out = delong_test(yy, pa, pb)
+    assert abs(out.diff - (out.auc_a - out.auc_b)) < 1e-12, "diff is auc_a - auc_b"
+    assert out.se < math.hypot(delong_auc_ci(yy, pa).se, delong_auc_ci(yy, pb).se), (
+        "the paired standard error must be below the independent one; you dropped the "
+        "covariance term S[0,1]"
+    )
+    print("exercise 5: OK")
+
+
+_try("exercise 5", _check_delong)
+
+# %%
+def _show_delong_vs_bootstrap() -> None:
+    rng = np.random.default_rng(SEED + 2)
+    t0 = time.perf_counter()
+    boot = paired_bootstrap_difference(DEV["y"], DEV["challenger"], DEV["champion"],
+                                       N_BOOT, ALPHA, rng)
+    boot_secs = time.perf_counter() - t0
+    t0 = time.perf_counter()
+    dl = delong_test(DEV["y"], DEV["challenger"], DEV["champion"])
+    dl_secs = time.perf_counter() - t0
+    print(f"challenger - champion = {boot.diff:+.4f}")
+    print(f"  paired bootstrap  se {boot.se_paired:.5f}  "
+          f"95% CI [{boot.lo:+.4f}, {boot.hi:+.4f}]  ({boot_secs:.2f} s, "
+          f"{boot.n_boot} replicates)")
+    print(f"  DeLong            se {dl.se:.5f}  z {dl.z:.2f}  p {dl.p_value:.2e}  "
+          f"({dl_secs * 1000:.0f} ms, one pass)")
+    print(f"  treating the two models as independent would have claimed "
+          f"se {boot.se_independent:.5f}")
+    print(f"  the replicate AUCs correlate at {boot.corr:.3f}; that correlation is the "
+          f"{boot.se_independent / boot.se_paired:.1f}x the wrong standard error costs you")
+
+
+_try("DeLong against the bootstrap", _show_delong_vs_bootstrap)
+
+# %% [markdown]
+# ## 7. How often does the independent shortcut give the wrong answer?
+#
+# Measure it rather than assert it. The cell below rebuilds the book from scratch many times
+# — the challenger really is better every time — and asks three rules whether they can see it
+# at the 5% level: the paired DeLong test, the same difference judged against
+# `sqrt(se_a**2 + se_b**2)`, and the rule a committee actually uses, *do the two intervals
+# overlap?*
+#
+# This takes a few seconds. It is the most useful number in the lesson.
+
+# %%
+POWER_TRIALS = 500
+POWER_N = 2500
+
+
+def _show_power_study() -> None:
+    rng = np.random.default_rng(SEED + 3)
+    z_crit = normal_quantile(1.0 - ALPHA / 2.0)
+    paired_hits = independent_hits = disjoint_hits = 0
+    t0 = time.perf_counter()
+    for _ in range(POWER_TRIALS):
+        book = synthetic_book(rng, POWER_N)
+        res = delong_test(book["y"], book["challenger"], book["champion"])
+        ci_a = delong_auc_ci(book["y"], book["challenger"], ALPHA)
+        ci_b = delong_auc_ci(book["y"], book["champion"], ALPHA)
+        se_ind = math.hypot(ci_a.se, ci_b.se)
+        paired_hits += abs(res.z) >= z_crit
+        independent_hits += abs(res.diff) / se_ind >= z_crit
+        disjoint_hits += not (ci_a.lo <= ci_b.hi and ci_b.lo <= ci_a.hi)
+    secs = time.perf_counter() - t0
+    print(f"{POWER_TRIALS} fresh books of {POWER_N} records, challenger genuinely better, "
+          f"{secs:.1f} s")
+    print(f"  paired DeLong test finds it            {paired_hits / POWER_TRIALS:6.1%}")
+    print(f"  same difference, independent se        {independent_hits / POWER_TRIALS:6.1%}")
+    print(f"  'the intervals do not overlap'         {disjoint_hits / POWER_TRIALS:6.1%}")
+    print("\nSame data, same true difference, three rules. The last one is the one that gets "
+          "used in meetings.")
+
+
+_try("power study", _show_power_study)
+
+# %% [markdown]
+# ## 8. Exercise 6 — `measurability()`
+#
+# "Not significant" and "no difference" are different sentences, and the gap between them is
+# where most validation findings get lost. A test that could not have detected a difference
+# you would have acted on has told you nothing about the model — only about your sample.
+#
+# So report the **minimum detectable difference**: the smallest true difference this sample
+# could find, at your significance level and your required power.
+#
+# > `mdd = ( z(1 - alpha/2) + z(power) ) * se`
+#
+# and, because a standard error shrinks like `1 / sqrt(n)`, the records you would need before
+# a difference of `material` becomes detectable:
+#
+# > `n_required = ceil( n * (mdd / material)**2 )`
+
+# %%
+class Measurability(NamedTuple):
+    """What this sample could and could not have detected."""
+
+    mdd: float          # minimum detectable difference at (alpha, power)
+    n_required: int     # records needed before `material` becomes detectable
+    verdict: str        # SIGNIFICANT | NOT SIGNIFICANT | NOT MEASURABLE
+    reason: str
+
+
+def measurability(observed_diff: float, se: float, n: int,
+                  material: float = MATERIAL_AUC_DIFF, alpha: float = ALPHA,
+                  power: float = POWER) -> Measurability:
+    """Decide what the sample could see, and say so in a sentence a committee can read.
+
+    Worked example: observed_diff 0.004, se 0.006, n 1400, material 0.010.
+        z_crit = 1.9600, z_power = 0.8416
+        mdd = (1.9600 + 0.8416) * 0.006 = 0.0168095
+        |0.004| < 1.9600 * 0.006 = 0.011760, so it is not significant, and because
+        mdd 0.0168095 > material 0.010 the verdict is NOT MEASURABLE:
+        n_required = ceil(1400 * (0.0168095 / 0.010)**2) = ceil(3955.84) = 3956.
+
+    Requirements, in this order:
+      * SIGNIFICANT when `abs(observed_diff) >= z_crit * se` — inclusive, a result exactly on
+        the critical value clears it, and significance is decided BEFORE measurability
+      * otherwise NOT MEASURABLE when `mdd > material`
+      * otherwise NOT SIGNIFICANT
+      * `n_required` is an int, rounded UP
+      * `reason` BEGINS with the machine-readable head
+        `f"mdd={mdd:.4f} material={material:.4f} crit={z_crit * se:.4f} "`
+        `f"observed={abs(observed_diff):.4f}"`, then "; ", then a sentence a committee can
+        read. A verdict without its yardstick is not reviewable, and a yardstick a downstream
+        report cannot parse gets retyped by hand — which is how figures start disagreeing.
+      * the NOT MEASURABLE sentence names `n_required`
+      * raise ValueError for `se <= 0`, `material <= 0`, `n < 1`, or alpha/power outside (0,1)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("measurability")
+
+
+def _check_measurability() -> None:
+    m = measurability(0.004, 0.006, 1400, 0.010, ALPHA, POWER)
+    assert abs(m.mdd - 0.0168096) < 1e-6, (
+        f"the worked example's mdd is 0.016810, got {m.mdd:.6f} — it is "
+        "(z_crit + z_power) * se, not z_crit * se"
+    )
+    assert m.n_required == 3956, (
+        f"the worked example needs 3956 records, got {m.n_required} — n_required is rounded "
+        "UP, because 3955.84 records is not enough records"
+    )
+    assert m.verdict == "NOT MEASURABLE", f"expected NOT MEASURABLE, got {m.verdict}"
+    assert m.reason.startswith("mdd=0.0168 material=0.0100 "), (
+        f"the reason must open with the machine-readable head; yours opens {m.reason[:40]!r}"
+    )
+    assert str(m.n_required) in m.reason, (
+        "a NOT MEASURABLE verdict has to say how many records would be enough"
+    )
+    z_crit = normal_quantile(1.0 - ALPHA / 2.0)
+    edge = measurability(z_crit * 0.004, 0.004, 900, 0.010, ALPHA, POWER)
+    assert edge.verdict == "SIGNIFICANT", (
+        "a result landing exactly on the critical value is significant; the comparison is >="
+    )
+    loud = measurability(0.30, 0.02, 500, 0.001, ALPHA, POWER)
+    assert loud.verdict == "SIGNIFICANT", (
+        "significance is decided before measurability: this difference is 15 standard errors "
+        "out, whatever the minimum detectable difference says"
+    )
+    quiet = measurability(0.0005, 0.0010, 9000, 0.010, ALPHA, POWER)
+    assert quiet.verdict == "NOT SIGNIFICANT", (
+        f"mdd {quiet.mdd:.4f} is inside the material threshold, so this sample DID have the "
+        f"power and found nothing; got {quiet.verdict}"
+    )
+    doubled = measurability(0.004, 0.006, 1400, 0.020, ALPHA, POWER)
+    assert doubled.n_required == math.ceil(m.n_required / 4) or \
+        abs(doubled.n_required - m.n_required / 4) <= 1, (
+        f"doubling the material threshold quarters the records needed: {m.n_required} -> "
+        f"{doubled.n_required}"
+    )
+    for bad in ((0.01, 0.0, 100), (0.01, 0.01, 0)):
+        try:
+            measurability(bad[0], bad[1], bad[2])
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"measurability{bad} must raise ValueError")
+    print("exercise 6: OK")
+
+
+_try("exercise 6", _check_measurability)
+
+# %% [markdown]
+# ## 9. Exercise 7 — `interval_coverage()`
+#
+# Everything so far produced intervals. Nothing so far has checked that they are any good. A
+# 95% interval earns its name by containing the truth 95% of the time, and the only place you
+# can check that is a model where you know the truth — which is what `binormal_true_auc` is
+# for.
+#
+# Count the hits, and count the misses on each side separately. A symmetric miss pattern is
+# noise; 4% missing low and 1% missing high is a biased interval, and it is the shape you get
+# when a bounded, skewed statistic is handed a symmetric normal approximation.
+#
+# Report the standard error of the coverage estimate too — it is a proportion measured on a
+# finite number of trials, and it has its own uncertainty, which is the joke this whole
+# lesson is built on.
+
+# %%
+class Coverage(NamedTuple):
+    """How often a family of intervals contained a known truth."""
+
+    coverage: float
+    se: float           # binomial standard error of the coverage estimate
+    n: int
+    miss_low: int       # truth fell BELOW the interval
+    miss_high: int      # truth fell ABOVE the interval
+
+
+def interval_coverage(los: np.ndarray, his: np.ndarray, truth: float) -> Coverage:
+    """Score a family of intervals against a value you actually know.
+
+    Worked example: los = [0.1, 0.4, 0.7], his = [0.3, 0.6, 0.9], truth = 0.5.
+        interval 0 lies below 0.5  -> miss_high (the truth is ABOVE it)
+        interval 1 contains 0.5    -> hit
+        interval 2 lies above 0.5  -> miss_low
+        coverage = 1/3, se = sqrt((1/3)(2/3)/3) = 0.27217
+
+    Requirements:
+      * endpoints are INCLUSIVE: `lo <= truth <= hi` is a hit
+      * `miss_low` counts `truth < lo`, `miss_high` counts `truth > hi`
+      * `se = sqrt(coverage * (1 - coverage) / n)`
+      * raise ValueError if the two arrays differ in length or are empty
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError("interval_coverage")
+
+
+def _check_coverage() -> None:
+    cov = interval_coverage(np.array([0.1, 0.4, 0.7]), np.array([0.3, 0.6, 0.9]), 0.5)
+    assert abs(cov.coverage - 1 / 3) < 1e-12, f"coverage should be 1/3, got {cov.coverage}"
+    assert cov.miss_low == 1 and cov.miss_high == 1, (
+        f"one interval sits above the truth (miss_low) and one below it (miss_high); got "
+        f"low {cov.miss_low}, high {cov.miss_high}"
+    )
+    assert abs(cov.se - math.sqrt((1 / 3) * (2 / 3) / 3)) < 1e-12, (
+        f"se is sqrt(p(1-p)/n) = 0.27217, got {cov.se:.5f}"
+    )
+    touch = interval_coverage(np.array([0.5, 0.2]), np.array([0.8, 0.5]), 0.5)
+    assert touch.coverage == 1.0, (
+        "an interval whose endpoint IS the truth covers it; the comparisons are <= and >="
+    )
+    assert touch.se == 0.0, f"perfect coverage has zero binomial se, got {touch.se}"
+    try:
+        interval_coverage(np.array([0.1]), np.array([0.2, 0.3]), 0.5)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("mismatched lengths must raise ValueError")
+    print("exercise 7: OK")
+
+
+_try("exercise 7", _check_coverage)
+
+# %% [markdown]
+# ## 10. The coverage study: grading the intervals against a known truth
+#
+# `binormal_sample` draws events from `N(mu, 1)` and non-events from `N(0, 1)`, so the true
+# AUC is `Phi(mu / sqrt(2))` exactly. Build a great many intervals on fresh samples from it
+# and score them with your own `interval_coverage`.
+#
+# Three configurations, and the third is the one that matters: the same nominal 95% interval
+# on a handful of events.
+
+# %%
+COVER_TRIALS = 3000
+COVER_MU = 1.20
+
+
+def _show_coverage_study() -> None:
+    truth = binormal_true_auc(COVER_MU)
+    print(f"binormal model, mu = {COVER_MU}: true AUC = {truth:.6f} (closed form, "
+          "not simulated)\n")
+    for label, n_pos, n_neg, trials in (("DeLong, 60 events / 140 non-events", 60, 140,
+                                         COVER_TRIALS),
+                                        ("DeLong, 300 events / 700 non-events", 300, 700,
+                                         COVER_TRIALS),
+                                        ("DeLong, 8 events / 40 non-events", 8, 40,
+                                         COVER_TRIALS)):
+        rng = np.random.default_rng(SEED + 4)
+        los = np.empty(trials)
+        his = np.empty(trials)
+        for t in range(trials):
+            y, s = binormal_sample(rng, n_pos, n_neg, COVER_MU)
+            ci = delong_auc_ci(y, s, ALPHA)
+            los[t], his[t] = ci.lo, ci.hi
+        cov = interval_coverage(los, his, truth)
+        print(f"  {label:38s} coverage {cov.coverage:6.2%} "
+              f"(+/- {1.96 * cov.se:.2%})  missed low {cov.miss_low / trials:5.2%}  "
+              f"high {cov.miss_high / trials:5.2%}")
+    print("\nA nominal 95% interval is a promise. On the small sample it is not kept, and it "
+          "is not kept\nsymmetrically — which is exactly what an interval on a bounded, "
+          "skewed statistic does.")
+
+
+_try("coverage study (DeLong)", _show_coverage_study)
+
+# %%
+BOOT_COVER_TRIALS = 400
+BOOT_COVER_B = 400
+
+
+def _show_bootstrap_coverage() -> None:
+    """Score BOTH interval routes on the SAME drawn samples, so the comparison is paired."""
+    truth = binormal_true_auc(COVER_MU)
+    rng = np.random.default_rng(SEED + 5)
+    b_lo = np.empty(BOOT_COVER_TRIALS)
+    b_hi = np.empty(BOOT_COVER_TRIALS)
+    d_lo = np.empty(BOOT_COVER_TRIALS)
+    d_hi = np.empty(BOOT_COVER_TRIALS)
+    t0 = time.perf_counter()
+    for t in range(BOOT_COVER_TRIALS):
+        y, s = binormal_sample(rng, 60, 140, COVER_MU)
+        boot = bootstrap_auc_ci(y, s, BOOT_COVER_B, ALPHA, rng)
+        dl = delong_auc_ci(y, s, ALPHA)
+        b_lo[t], b_hi[t] = boot.lo, boot.hi
+        d_lo[t], d_hi[t] = dl.lo, dl.hi
+    secs = time.perf_counter() - t0
+    boot_cov = interval_coverage(b_lo, b_hi, truth)
+    dl_cov = interval_coverage(d_lo, d_hi, truth)
+    print(f"the same {BOOT_COVER_TRIALS} samples of 60 events / 140 non-events, two interval "
+          f"routes, {secs:.1f} s")
+    print(f"  percentile bootstrap ({BOOT_COVER_B} replicates)  "
+          f"coverage {boot_cov.coverage:6.2%} (+/- {1.96 * boot_cov.se:.2%})  "
+          f"mean width {np.mean(b_hi - b_lo):.4f}")
+    print(f"  DeLong normal approximation (one pass)  "
+          f"coverage {dl_cov.coverage:6.2%} (+/- {1.96 * dl_cov.se:.2%})  "
+          f"mean width {np.mean(d_hi - d_lo):.4f}")
+    print(f"\nThe two routes differ by {abs(boot_cov.coverage - dl_cov.coverage):.2%} here, "
+          f"against a +/-{1.96 * boot_cov.se:.2%} band on the bootstrap figure.")
+    print("Neither route is the truth. The truth is the thing both are being scored against,")
+    print("and you only have it because the sample came from a distribution you chose.")
+
+
+_try("coverage study (bootstrap)", _show_bootstrap_coverage)
+
+# %% [markdown]
+# ## 11. Out of time: the same model, a later period, and a much smaller one
+#
+# The champion is re-scored on a later book of `1400` records. Its AUC is lower. The question
+# a validator has to answer is not "is it lower" — it is "is it lower by more than this
+# sample can tell", and that is the question `measurability()` was built for.
+
+# %%
+def _show_out_of_time() -> None:
+    dev = delong_auc_ci(DEV["y"], DEV["champion"], ALPHA)
+    oot = delong_auc_ci(OOT["y"], OOT["champion"], ALPHA)
+    print(f"champion on development ({N_DEV} records): AUC {dev.point:.4f} "
+          f"[{dev.lo:.4f}, {dev.hi:.4f}]  se {dev.se:.5f}")
+    print(f"champion out of time    ({N_OOT} records): AUC {oot.point:.4f} "
+          f"[{oot.lo:.4f}, {oot.hi:.4f}]  se {oot.se:.5f}")
+    drop = dev.point - oot.point
+    se_drop = math.hypot(dev.se, oot.se)     # different periods, different records: these
+    #                                          two samples really ARE independent
+    verdict = measurability(drop, se_drop, N_OOT, MATERIAL_AUC_DIFF, ALPHA, POWER)
+    print(f"\nobserved drop {drop:+.4f}, se of the drop {se_drop:.5f} "
+          f"(independent samples, so no pairing to recover here)")
+    print(f"verdict: {verdict.verdict}")
+    print(f"  {verdict.reason}")
+    print(f"\nThe interval widened from +/-{1.96 * dev.se:.4f} to +/-{1.96 * oot.se:.4f} "
+          f"because the later period had {N_OOT} records, not {N_DEV}.")
+
+
+_try("out-of-time holdout", _show_out_of_time)
+
+# %% [markdown]
+# ## 12. Common mistakes
+#
+# - **Breaking the pairing inside a record.** Resampling labels and scores separately does
+#   not estimate uncertainty, it estimates a model that has been destroyed. It returns 0.5.
+# - **Two intervals instead of one difference.** Overlapping intervals are not a test. The
+#   section 7 study measured how often that rule misses a difference that is really there.
+# - **Ranking ties in argsort order.** A scorecard with twenty bands ties a large share of
+#   its pairs; counting each tie as a whole win inflates AUC and nothing complains.
+# - **An unstratified bootstrap on a thin class.** Sooner or later a replicate has no events
+#   in it and AUC is undefined. Draw within each class.
+# - **The `alpha` and `1 - alpha` percentiles.** A 95% interval runs from 2.5% to 97.5%. The
+#   wrong version is 16% too narrow and looks entirely plausible.
+# - **Reporting the bootstrap mean as the estimate.** The point estimate is the sample's.
+# - **A generator in the default argument.** `rng=np.random.default_rng(0)` in a signature is
+#   built once, when the function is defined, and then shared by every call, so the second
+#   run disagrees with the first. Default to `None` and seed inside. The interval still looks
+#   fine; it just cannot be reproduced, which is the one thing evidence has to be.
+# - **"Not significant" reported as "no difference".** Say what the sample could have
+#   detected. `NOT MEASURABLE` and `NOT SIGNIFICANT` are different findings with different
+#   remediation: one needs more data, the other needs none.
+# - **A double loop over all pairs.** It is the definition and it is O(n_pos * n_neg);
+#   section 1 measured what that costs before a single bootstrap replicate has been drawn.
+#
+# The first one is worth seeing rather than believing.
+
+# %%
+def _show_broken_pairing() -> None:
+    rng = np.random.default_rng(SEED + 6)
+    y, s = DEV["y"], DEV["champion"]
+    honest = auc_by_ranks(y, s)
+    reps = np.array([auc_by_ranks(y[rng.integers(0, y.size, y.size)],
+                                  s[rng.integers(0, y.size, y.size)]) for _ in range(40)])
+    print(f"champion AUC, one index draw for the record:      {honest:.4f}")
+    print(f"champion AUC, separate draws for labels and scores: "
+          f"{reps.mean():.4f}  (sd {reps.std(ddof=1):.4f})")
+    print("\nThe second route is a bootstrap in every visible respect. It reports a model "
+          "that ranks\nnothing, with a beautifully tight interval around it, and raises no "
+          "error at all.")
+
+
+_try("broken pairing", _show_broken_pairing)
+
+# %% [markdown]
+# ## 13. Self-check
+#
+# 1. Model A's 95% interval is [0.712, 0.744] and model B's is [0.738, 0.770]. They overlap.
+#    The correct conclusion is:
+#    - (a) the difference is not significant
+#    - (b) nothing yet; overlap of two separate intervals is not a test of the difference
+#    - (c) B is better, because its interval is higher
+#
+# 2. Your paired bootstrap reports `se_paired` 0.004 and `se_independent` 0.011. This means:
+#    - (a) the paired bootstrap has too few replicates
+#    - (b) the two models' errors move together across resamples, and pairing recovers that
+#    - (c) one of the two models is unstable
+#
+# 3. A challenger beats the champion by 0.002 AUC, `p = 0.41`, `mdd = 0.018`, material
+#    threshold 0.010. The finding to write is:
+#    - (a) the challenger is no better than the champion
+#    - (b) the test could not have detected a material difference; the comparison is
+#          inconclusive and needs a larger sample
+#    - (c) the challenger is better but not significantly
+#
+# 4. Your 95% DeLong intervals cover the true AUC 88% of the time, missing low 11% and high
+#    1%. The most likely cause is:
+#    - (a) the true AUC was computed wrongly
+#    - (b) too few coverage trials
+#    - (c) a symmetric normal interval on a bounded, skewed statistic measured on a small
+#          sample
+#
+# 5. You replace a 2,000-replicate paired bootstrap with DeLong and the standard error moves
+#    in the fourth decimal place. The right reading is:
+#    - (a) DeLong is an approximation and the bootstrap is the truth
+#    - (b) they estimate the same variance by different routes, and agreement is the check
+#    - (c) the bootstrap needed more replicates
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# Seven functions: the rank identity that makes AUC affordable, two more rank statistics, a
+# bootstrap interval, a paired interval that knows the two models saw the same records, the
+# closed-form DeLong covariance that does it in one pass, a sample-size check that says when
+# a difference could not have been seen at all, and a coverage scorer that grades the
+# intervals themselves against a truth you know. Module 7 of this programme builds a
+# challenger from scratch and puts it through exactly this comparison.
+
+# %%
+print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_auc),
+                          ("exercise 2", _check_ks),
+                          ("exercise 3", _check_bootstrap),
+                          ("exercise 4", _check_paired),
+                          ("exercise 5", _check_delong),
+                          ("exercise 6", _check_measurability),
+                          ("exercise 7", _check_coverage)):
+        _try(_name, _check)
+    # tools/execute.py runs this file and reads the exit code. Every check and every demo
+    # above went through _try, so a reference implementation that is quietly wrong lands here
+    # rather than in a PASS line.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

@@ -1,0 +1,87 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run on a
+# corpus generated inside the lesson from a fixed seed, and are therefore not claims about the
+# world; they do not appear here.
+#
+# The corpus is SYNTHETIC and the lesson says so in its first sentence. No claim below asserts
+# that these page geometries, gap widths or error rates resemble any particular real estate of
+# documents. What is claimed is only that the algorithm and the two metrics are the ones the
+# field uses, and that reading order is known to matter downstream.
+claims:
+  - id: xy-cut-is-recursive-projection
+    claim: >-
+      The XY-Cut algorithm recursively divides a document into smaller regions using horizontal
+      and vertical projections. This is the procedure exercise 2 asks the student to implement,
+      and the reason the lesson calls it a baseline rather than an invention of its own.
+    where: "lesson.py section 3 (exercise 1 preamble) and section 4 (exercise 2)"
+    source_url: https://arxiv.org/abs/2504.10258
+    source_title: >-
+      "XY-Cut++: Advanced Layout Ordering via Hierarchical Mask Mechanism on a Novel
+      Benchmark", Shuai Liu, Youmeng Li, Jizeng Wei, arXiv:2504.10258, submitted 14 April 2025
+    quote: >-
+      The XY-Cut algorithm recursively divides documents into smaller regions based on
+      horizontal and vertical projections.
+    quote_context: "section 2.1, Traditional Approaches"
+    accessed: 2026-09-16
+
+  - id: kendall-tau-is-the-reading-order-metric
+    claim: >-
+      Kendall's tau, a rank correlation between two orderings, is the metric the layout-ordering
+      literature reports for reading order. The lesson uses it for exactly that and defines the
+      arithmetic in full in the exercise docstring, so nothing about its VALUE is taken on
+      trust; what is taken from the source is that this is the metric the field uses.
+    where: "lesson.py section 7 (exercises 5 and 6 preamble, kendall_tau)"
+    source_url: https://arxiv.org/abs/2504.10258
+    source_title: >-
+      "XY-Cut++: Advanced Layout Ordering via Hierarchical Mask Mechanism on a Novel
+      Benchmark", Shuai Liu, Youmeng Li, Jizeng Wei, arXiv:2504.10258, submitted 14 April 2025
+    quote: "Tau: Kendall's Tau, measures the rank correlation between two sets of data."
+    quote_context: >-
+      Evaluation Metrics. Reviewer note 2026-09-16: verified against the v3 HTML at
+      arxiv.org/html/2504.10258v3, where this line is section 5.2, not 4.2 as first recorded.
+      The quote itself is verbatim; the section number has been corrected.
+    accessed: 2026-09-16
+
+  - id: reading-order-constrains-document-understanding
+    claim: >-
+      The effectiveness of multimodal transformers in visually-rich document understanding is
+      critically constrained by the lack of explicit modelling for logical reading order. This
+      is the argument for the module existing at all: reading order is a first-class failure
+      mode of document understanding, not a tidying step before the real work.
+    where: "lesson.py section 1 introduction and section 9 (what reading order is worth)"
+    source_url: https://arxiv.org/abs/2601.05470
+    source_title: >-
+      "ROAP: A Reading-Order and Attention-Prior Pipeline for Optimizing Layout Transformers
+      in Key Information Extraction", Tingwei Xie, Jinxin He, Yonghong Song,
+      arXiv:2601.05470, submitted 9 January 2026
+    quote: >-
+      The efficacy of Multimodal Transformers in visually-rich document understanding (VrDU)
+      is critically constrained by two inherent limitations: the lack of explicit modeling for
+      logical reading order and the interference of visual tokens that dilutes attention on
+      textual semantics.
+    quote_context: "abstract, first sentence"
+    accessed: 2026-09-16
+
+  - id: character-accuracy-is-not-downstream-accuracy
+    claim: >-
+      High OCR accuracy does not necessarily translate into strong downstream performance, and
+      structural errors can cause substantial failures even when character and word error rates
+      stay low. This is why section 9 reports field F1 against a gold-order ceiling rather than
+      reporting a reading-order score and stopping there: the lesson's own corpus has a
+      character error rate of exactly zero and still loses field F1 to order alone.
+    where: "lesson.py section 9 and self-check answer 5"
+    source_url: https://arxiv.org/abs/2605.00911
+    source_title: >-
+      "When Good OCR Is Not Enough: Benchmarking OCR Robustness for Retrieval-Augmented
+      Generation", Lin Sun, Wang Dexian, Jingang Huang, Linglin Zhang, Change Jia,
+      Zhengwei Cheng, Xiangzheng Zhang, arXiv:2605.00911, submitted 29 April 2026
+    quote: >-
+      high OCR accuracy does not necessarily translate into strong downstream RAG performance
+    quote_context: >-
+      abstract. The sentence opens "High OCR accuracy ..." and continues "structural and
+      semantic errors can cause substantial retrieval failures even when WER/CER remains
+      low"; the quote above is lower-cased only because the lesson sets it mid-sentence,
+      and was re-verified verbatim on 2026-09-16. The source studies
+      retrieval-augmented generation, not field extraction, and the lesson does not stretch it
+      past the general point that a clean character stream is not a correct document.
+    accessed: 2026-09-16

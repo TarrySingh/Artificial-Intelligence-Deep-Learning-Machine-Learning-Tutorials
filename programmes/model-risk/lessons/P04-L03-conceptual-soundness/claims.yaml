@@ -1,0 +1,91 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson is about evidence that can be re-run, so it holds itself to the standard it
+# teaches. Four deliberate NON-claims are recorded at the foot of this file: the leakage AUC
+# threshold, the contamination tolerance, the required skill margin and the severity mapping
+# are all policy inputs the notebook passes in, and the lesson nowhere says that any
+# regulator, standard or paper sets them.
+claims:
+  - id: interagency-mrm-guidance-2026-conceptual-soundness
+    claim: >-
+      On 17 April 2026 the Federal Reserve Board, the OCC and the FDIC jointly issued revised
+      guidance on model risk management, carried by the OCC as Bulletin 2026-13. It names
+      model validation and monitoring, including validating conceptual soundness and outcomes
+      analyses, among the practices it addresses. This lesson builds the conceptual-soundness
+      half of that pair; P04-L01 built the outcomes half.
+    where: "lesson.py section 1 (the one sentence of regulatory context in the notebook)"
+    source_url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    source_title: "OCC Bulletin 2026-13: Model Risk Management — Revised Interagency Guidance"
+    quote: >-
+      model validation and monitoring, including validating conceptual soundness and outcomes
+      analyses
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026-date-and-supersession
+    claim: >-
+      The Federal Reserve carries the same 17 April 2026 interagency guidance as SR 26-2, and
+      it supersedes SR 11-7 of 4 April 2011 and SR 21-8 of 9 April 2021. The agencies say they
+      updated it to clarify model risk management principles and to emphasise a risk-based
+      approach tailored to a banking organisation's model risk profile. The lesson cites the
+      date only; it makes no claim about what the guidance requires beyond the quoted sentence
+      in the claim above.
+    where: "lesson.py section 1; programmes/model-risk/README.md gives the fuller account"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "SR 26-2: Revised Guidance on Model Risk Management — Board of Governors of the Federal Reserve System"
+    quote: >-
+      clarify model risk management principles and to emphasize a risk-based approach to model
+      risk management
+    accessed: 2026-09-16
+
+  - id: leakage-survey-17-fields-329-papers
+    claim: >-
+      A systematic survey of leakage in machine-learning-based science found errors in 17
+      fields, collectively affecting 329 papers. The lesson cites this once, as the motivation
+      for scanning every feature against the target every time an extract is rebuilt. It makes
+      no claim about the rate of leakage in banking models, for which it has no source.
+    where: "lesson.py section 6 (the two sentences introducing exercise 5)"
+    source_url: https://arxiv.org/abs/2207.07048
+    source_title: "Kapoor and Narayanan — Leakage and the Reproducibility Crisis in ML-based Science (2022)"
+    quote: >-
+      17 fields where errors have been found, collectively affecting 329 papers and in some
+      cases leading to wildly overoptimistic conclusions.
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * The leakage threshold. LEAK_AUC_THRESHOLD = 0.95 is passed into scan_leakage as an
+#   argument and described in the prose as a policy input. No public primary source sets a
+#   univariate AUC above which a feature is leakage; the figure depends on the product, the
+#   outcome window and the extract. The lesson teaches the SHAPE of the alarm — a univariate
+#   AUC per feature, scored on max(auc, 1 - auc) so a mis-signed join is caught too — and
+#   leaves the number to a policy document the notebook does not have.
+#
+# * The contamination tolerance. MAX_CONTAMINATION_SHARE = 0.01 is likewise an argument. The
+#   lesson's own position, stated in the self-check, is that a contaminated figure is
+#   optimistic by an UNKNOWN amount until it is recomputed on the clean rows, which is exactly
+#   why the exercise returns the row indices rather than only a percentage.
+#
+# * The skill margin. MIN_SKILL_MARGIN = 0.10 is an argument to baseline_margin_check. The
+#   testable proposition is that a margin is agreed before the figures are seen, not that any
+#   particular margin is correct.
+#
+# * The severity mapping. SOUNDNESS_POLICY["severity"] is passed into soundness_findings and
+#   the rubric re-grades the same evidence under a second mapping to prove the register reads
+#   it rather than hard-coding it. The lesson explicitly does not assert that an undocumented
+#   variable is "high" anywhere but in its own example policy.
+#
+# * Synthetic data. Both extracts, the documented specification, the implementation under
+#   review and the planted discrepancies are generated by numpy.random.default_rng(20260916)
+#   and by code inside the notebook. DATA_NOTE says so and the notebook prints it. Nothing
+#   here makes a claim about any real portfolio or any real model, so it is not a dataset for
+#   the purposes of gate 11 and meta.yaml declares datasets: [].
+#
+# * The model under review is not a claim about industry practice. score_under_review carries
+#   several planted defects — an undocumented post-decision feature, an undocumented operational
+#   feature, a documented variable it never reads, a division that raises at a documented
+#   domain boundary and an overlay that returns 1.05 — because the lesson needs findings for
+#   the student's probes to find. The lesson does not assert that real credit models contain
+#   these, and says in section 1 only that outcomes analysis cannot see them.

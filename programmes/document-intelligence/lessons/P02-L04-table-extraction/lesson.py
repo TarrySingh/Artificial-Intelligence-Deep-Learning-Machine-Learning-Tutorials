@@ -1,0 +1,1182 @@
+# %% [markdown]
+# # P02-L04-table-extraction · Table extraction: structure and content are two different scores
+#
+# **You will build:** a table reader made of two projection profiles and a stitching rule, and
+# the two scores that judge it — a position-free content F1 and a tree-edit similarity in the
+# spirit of TEDS — then a measurement of where each one is blind.
+#
+# **Time:** ~70 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download, no model
+# API · **Prerequisites:** P02-L01 (the extraction harness), P02-L02 (reading order from
+# geometry), P02-L03-sequence-labelling (the tagger), T00-L01 (the 8 GB track).
+#
+# Module 1 scored a flat list of fields. A table is not a flat list: it has contents AND it has
+# a shape, and an extractor can get either one right while destroying the other. One number
+# cannot report both, and this lesson makes you measure that rather than take it on trust.
+#
+# By the end you will be able to:
+#
+# 1. Implement `ink_runs` and use one projection profile on both axes of a page.
+# 2. Reconstruct rows, columns and colspans from token geometry, spanning header included.
+# 3. Stitch a row whose wrap crosses a page break back into one row.
+# 4. Implement content F1 and a TEDS-like structure score, and state what each cannot see.
+# 5. Produce, on this corpus, a case where content is perfect and structure is wrong, and a
+#    case where the reverse holds — then say which score your consumer should gate on.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import random
+import sys
+import time
+from typing import Iterable, NamedTuple, Sequence
+
+import numpy as np
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+print("no PDF library, no OCR engine, no table model — and none of that is needed to learn")
+print("that a table has two correctnesses, and that one score cannot report both.\n")
+
+# --- page geometry -----------------------------------------------------------------------
+# A monospaced-ish rendering: every character is CHAR_W wide, every box BOX_H tall, and the
+# words inside one cell are separated by WORD_GAP. Rows sit on a fixed pitch. These are
+# properties of THIS corpus and nothing here claims they are typical of a real scan.
+CHAR_W = 7.0
+BOX_H = 10.0
+WORD_GAP = 6.0
+ROW_PITCH = 34.0
+PAGE_TOP = 60.0
+SLOTS_PER_PAGE = 8
+
+# Left edge of each of the five columns. The table is: reference, supplier, and three money
+# columns under one spanning header.
+COL_X = (40.0, 150.0, 340.0, 440.0, 530.0)
+COLUMN_NAMES = ("Ref", "Supplier", "Net", "VAT", "Gross")
+SPAN_HEADER = "Amounts charged in euro per invoice"
+
+# Defaults for the two projection thresholds. Section 6 sweeps both and finds the window that
+# works by measuring it, rather than by being told.
+ROW_GAP = 12.0
+COL_GAP = 16.0
+
+# The first two rows of every table are header rows: the spanning header and the three money
+# sub-headers. Upstream layout analysis (module 2) is what tells you this; here it is given.
+N_HEADER_ROWS = 2
+
+BODY_ROWS = 10           # logical body rows per table
+WRAPPED_ROWS = (5, 8)    # these two wrap onto a second line; row 5's wrap crosses the page
+
+
+class Box(NamedTuple):
+    """One word on a page, with the rectangle it occupies. y grows downwards."""
+    text: str
+    x: float
+    y: float
+    w: float
+    h: float
+    page: int
+
+    @property
+    def right(self) -> float:
+        return self.x + self.w
+
+    @property
+    def bottom(self) -> float:
+        return self.y + self.h
+
+
+class Cell(NamedTuple):
+    """One cell of a reconstructed table: its text, its leftmost column, and how many it spans."""
+    text: str
+    col: int
+    colspan: int
+
+
+# A Table is a list of rows; a row is a list of Cells, left to right. Nothing more.
+Row = list
+Table = list
+
+
+def norm_cell(text: str) -> str:
+    """Canonical form of a cell's text: lower case, whitespace collapsed. Empty in, empty out."""
+    return " ".join(text.lower().split())
+
+
+def levenshtein(a: str, b: str) -> int:
+    """Edit distance between two strings: insertions, deletions and substitutions, cost 1."""
+    if a == b:
+        return 0
+    if not a or not b:
+        return len(a) or len(b)
+    previous = list(range(len(b) + 1))
+    for i, ca in enumerate(a, start=1):
+        current = [i]
+        for j, cb in enumerate(b, start=1):
+            current.append(min(previous[j] + 1, current[j - 1] + 1,
+                               previous[j - 1] + (ca != cb)))
+        previous = current
+    return previous[-1]
+
+
+def similarity(a: str, b: str) -> float:
+    """1.0 for identical strings, 0.0 for nothing in common. Edit distance over the longer one."""
+    if not a and not b:
+        return 1.0
+    longest = max(len(a), len(b))
+    return 1.0 - levenshtein(a, b) / longest if longest else 1.0
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on to the next cell,
+    so one broken exercise never hides the feedback on the other six.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The corpus: tables as geometry, and the gold grid beside them
+#
+# There is no PDF library here, so there is nothing to parse. `build_corpus()` places word
+# boxes directly, from a fixed seed, and hands you the logical grid each page was rendered
+# from. Every student sees the same geometry and therefore the same numbers.
+#
+# Each table has a spanning header over three money columns, ten body rows, and two rows whose
+# supplier name wraps onto a second line. One of those wraps falls across the page break — the
+# first line is the last thing on page 1 and the continuation is the first thing on page 2.
+# Run the cell and read one table twice: as boxes, and as the grid it came from.
+
+# %%
+_SUPPLIERS_SHORT = ("Vantor Marine", "Helix Pharma", "Caldera Energy", "Kestrel Freight",
+                    "Meridian Custody", "Argent Clearing", "Vesper Maritime", "Sable Finch",
+                    "Dunbar Re", "Torrent Robotics", "Aalto Terveys", "Lindqvist Verkstad")
+_SUPPLIERS_WRAPPED = (("Nordwind Logistik", "GmbH"), ("Hollandse Kaasunie", "N.V."),
+                      ("Orsini Costruzioni", "SRL"), ("Petrarca Chimica", "SpA"),
+                      ("Brightwater Analytics", "Ltd"), ("Kaneko Precision", "KK"))
+_JITTER = (-3.0, -1.0, 0.0, 1.0, 3.0)
+
+
+def _lay_out(text: str, x: float, y: float, page: int) -> list[Box]:
+    """One cell's text as word boxes, left to right from x, all on the same baseline."""
+    boxes, cursor = [], x
+    for word in text.split():
+        width = CHAR_W * len(word)
+        boxes.append(Box(word, cursor, y, width, BOX_H, page))
+        cursor += width + WORD_GAP
+    return boxes
+
+
+def build_corpus(n_tables: int = 24, seed: int = 20260916) -> list[dict]:
+    """Deterministic corpus of two-page tables: word boxes plus the gold grid they render.
+
+    The gold grid is what a human annotator would have typed: a header row with a cell that
+    spans three columns, a sub-header row, and ten body rows whose wrapped supplier names are
+    ONE cell each, not two.
+    """
+    rng = random.Random(seed)
+    corpus = []
+    for t in range(n_tables):
+        boxes: list[Box] = []
+        gold: Table = []
+
+        def place(cells: Sequence[tuple[str, int]], slot: int, page: int) -> None:
+            """cells: (text, column index). Each cell gets its own vertical jitter."""
+            for text, col in cells:
+                y = PAGE_TOP + ROW_PITCH * slot + rng.choice(_JITTER)
+                boxes.extend(_lay_out(text, COL_X[col], y, page))
+
+        # header rows: the spanning header, then the three money sub-headers
+        place([("Ref", 0), ("Supplier", 1), (SPAN_HEADER, 2)], 0, 1)
+        place([("Net", 2), ("VAT", 3), ("Gross", 4)], 1, 1)
+        gold.append([Cell("Ref", 0, 1), Cell("Supplier", 1, 1), Cell(SPAN_HEADER, 2, 3)])
+        gold.append([Cell("Net", 2, 1), Cell("VAT", 3, 1), Cell("Gross", 4, 1)])
+
+        slot, page = 2, 1
+        for r in range(BODY_ROWS):
+            ref = f"R-{t * 100 + r:04d}"
+            net = rng.randint(100_00, 99_999_99) / 100.0
+            vat = round(net * 0.21, 2)
+            gross = round(net + vat, 2)
+            money = [f"{net:,.2f}", f"{vat:,.2f}", f"{gross:,.2f}"]
+            if r in WRAPPED_ROWS:
+                head, tail = _SUPPLIERS_WRAPPED[(t + r) % len(_SUPPLIERS_WRAPPED)]
+                supplier = f"{head} {tail}"
+            else:
+                head, tail = _SUPPLIERS_SHORT[(t * 3 + r) % len(_SUPPLIERS_SHORT)], ""
+                supplier = head
+            place([(ref, 0), (head, 1), (money[0], 2), (money[1], 3), (money[2], 4)], slot, page)
+            gold.append([Cell(ref, 0, 1), Cell(supplier, 1, 1),
+                         Cell(money[0], 2, 1), Cell(money[1], 3, 1), Cell(money[2], 4, 1)])
+            slot += 1
+            if slot >= SLOTS_PER_PAGE:
+                slot, page = 0, page + 1
+            if tail:                                   # the continuation line: column 1 only
+                place([(tail, 1)], slot, page)
+                slot += 1
+                if slot >= SLOTS_PER_PAGE:
+                    slot, page = 0, page + 1
+        corpus.append({"table_id": f"TAB-{t:03d}", "boxes": boxes, "gold": gold})
+    return corpus
+
+
+CORPUS = build_corpus()
+_pages = sorted({b.page for b in CORPUS[0]["boxes"]})
+print(f"{len(CORPUS)} tables · {sum(len(t['boxes']) for t in CORPUS)} word boxes · "
+      f"{len(CORPUS[0]['gold'])} gold rows per table · pages per table: {len(_pages)}")
+
+
+def show_page(boxes: Sequence[Box], page: int, width: int = 92) -> None:
+    """Crude ASCII rendering, so you can see what the geometry actually looks like."""
+    on = [b for b in boxes if b.page == page]
+    scale = width / 640.0
+    rows: dict[int, list[Box]] = {}
+    for b in on:
+        rows.setdefault(int(round(b.y / ROW_PITCH)), []).append(b)
+    for key in sorted(rows):
+        line = [" "] * width
+        for b in sorted(rows[key], key=lambda z: z.x):
+            start = int(b.x * scale)
+            for i, ch in enumerate(b.text):
+                if start + i < width:
+                    line[start + i] = ch
+        print("".join(line).rstrip())
+
+
+print(f"\n--- {CORPUS[0]['table_id']}, page 1 as geometry ---")
+show_page(CORPUS[0]["boxes"], 1)
+print(f"--- page 2 (no repeated header; the first line is a continuation) ---")
+show_page(CORPUS[0]["boxes"], 2)
+print("\ngold grid, first three rows (text, col, colspan):")
+for _r in CORPUS[0]["gold"][:3]:
+    print("  " + " | ".join(f"{c.text!r}@{c.col}x{c.colspan}" for c in _r))
+print("\nNote the third header cell: one cell, three columns. And note that the wrapped")
+print("supplier is ONE gold cell, even though the page prints it on two lines.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `ink_runs`, the projection profile
+#
+# Project every box onto one axis and you get a set of intervals. Where the intervals leave a
+# wide enough gap, there is a boundary. The same primitive finds rows on the y axis and
+# columns on the x axis; only the threshold changes. That is the whole of projection profiling.
+#
+# The trap is the running maximum. A tall box, or a wide one, can cover the interval that
+# comes after it in sorted order, and comparing against the *previous* interval instead of the
+# widest seen so far invents a gap that is not there.
+
+# %%
+def ink_runs(intervals: Iterable[tuple[float, float]], min_gap: float) -> list[tuple[float, float]]:
+    """Merge 1-D intervals into runs of ink, cutting only where the gap is wide enough.
+
+    Sort by low edge. Walk left to right holding the running maximum high edge seen so far.
+    A new run starts when the next low edge is more than `min_gap` beyond that running maximum
+    — STRICTLY more, so a gap of exactly `min_gap` does not cut. Returns runs sorted left to
+    right; an empty input gives an empty list.
+
+    Examples:
+        >>> ink_runs([(0, 10), (12, 20)], 5)
+        [(0.0, 20.0)]
+        >>> ink_runs([(0, 10), (20, 30)], 5)
+        [(0.0, 10.0), (20.0, 30.0)]
+        >>> ink_runs([(0, 10), (15, 25)], 5)        # a gap of exactly 5 does not cut
+        [(0.0, 25.0)]
+        >>> ink_runs([(0, 100), (10, 20), (40, 50)], 5)   # nested: the running max holds
+        [(0.0, 100.0)]
+        >>> ink_runs([], 5)
+        []
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def column_spans(boxes: Iterable[Box], min_gap: float = COL_GAP) -> list[tuple[float, float]]:
+    """The x-axis profile: which horizontal bands of the page carry ink. Given, once ink_runs
+    exists — the interesting decision is not this function, it is WHICH boxes you feed it."""
+    return ink_runs([(b.x, b.right) for b in boxes], min_gap)
+
+
+# Public checks — run these as often as you like.
+def _check_ink_runs() -> None:
+    got = ink_runs([(0, 10), (12, 20)], 5)
+    assert got == [(0.0, 20.0)], (
+        f"ink_runs([(0,10),(12,20)], 5) gave {got}: a gap of 2 is not wider than 5, so those "
+        "two intervals are one run")
+    got = ink_runs([(0, 10), (15, 25)], 5)
+    assert got == [(0.0, 25.0)], (
+        f"ink_runs([(0,10),(15,25)], 5) gave {got}: a gap of EXACTLY min_gap does not cut — "
+        "the rule is strictly more than min_gap")
+    got = ink_runs([(0, 100), (10, 20), (40, 50)], 5)
+    assert got == [(0.0, 100.0)], (
+        f"ink_runs gave {got}: compare against the RUNNING MAXIMUM high edge, not the previous "
+        "interval's high edge, or a wide box invents a gap after it")
+    got = ink_runs([(40, 50), (0, 10)], 5)
+    assert got == [(0.0, 10.0), (40.0, 50.0)], f"sort by low edge first; got {got}"
+    assert ink_runs([], 5) == [], "empty in, empty out"
+    print("ink_runs: all checks pass")
+
+
+_try("exercise 1", _check_ink_runs)
+
+# %% [markdown]
+# Now the point of the exercise. Run the x-axis profile twice: once over every box on page 1,
+# and once over the body rows only. The spanning header is one long run of ink that bridges
+# the gaps between the columns it spans, so feeding it to the profile deletes those columns.
+
+# %%
+def _show_spanning_header_trap() -> None:
+    boxes = CORPUS[0]["boxes"]
+    page1 = [b for b in boxes if b.page == 1]
+    body = [b for b in page1 if b.y > PAGE_TOP + ROW_PITCH * 1.5]
+    everything = column_spans(page1, COL_GAP)
+    body_only = column_spans(body, COL_GAP)
+    print(f"columns from ALL page-1 ink : {len(everything)}  {[(round(a), round(b)) for a, b in everything]}")
+    print(f"columns from BODY ink only  : {len(body_only)}  {[(round(a), round(b)) for a, b in body_only]}")
+    print(f"\nthe table has {len(COL_X)} columns. The spanning header is {len(SPAN_HEADER)} characters of")
+    print("continuous ink laid across three of them, so a profile that reads it cannot see the")
+    print("gaps underneath. Infer columns from the body; use the header to name them afterwards.")
+
+
+_try("spanning header trap", _show_spanning_header_trap)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `row_bands`
+#
+# The same primitive on the other axis, except that rows are groups of boxes rather than
+# intervals: you need the boxes back, not the runs. Cells within a row are jittered off the
+# baseline the way a scan jitters them, so the grouping has to tolerate a few points of slop
+# and still cut cleanly between rows.
+
+# %%
+def row_bands(boxes: Iterable[Box], min_gap: float = ROW_GAP) -> list[list[Box]]:
+    """Group boxes of ONE page into horizontal bands, top to bottom.
+
+    Same rule as `ink_runs` on the y axis: sort by top edge, hold the running maximum bottom
+    edge, and start a new band when the next top edge is STRICTLY more than `min_gap` below
+    it. Within a band, return the boxes sorted by `(x, text)` so the order is deterministic.
+    An empty input gives an empty list.
+
+    The caller filters by page. Two pages fed in together would be one continuous y axis,
+    which is not what a page break is.
+
+    Examples:
+        >>> b = lambda t, x, y, h=10.0: Box(t, x, y, 7.0 * len(t), h, 1)
+        >>> [[z.text for z in band] for band in row_bands([b("a", 0, 0), b("b", 40, 3)], 12)]
+        [['a', 'b']]
+        >>> [[z.text for z in band] for band in row_bands([b("a", 0, 0), b("b", 40, 40)], 12)]
+        [['a'], ['b']]
+        >>> [[z.text for z in band] for band in row_bands([b("t", 0, 0, 60.0), b("b", 40, 40)], 12)]
+        [['t', 'b']]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_row_bands() -> None:
+    def b(text, x, y, h=BOX_H):
+        return Box(text, x, y, CHAR_W * len(text), h, 1)
+
+    got = [[z.text for z in band] for band in row_bands([b("a", 0, 0), b("b", 40, 3)], ROW_GAP)]
+    assert got == [["a", "b"]], (
+        f"row_bands gave {got}: two boxes 3 points apart are the same row — cells are jittered "
+        "off the baseline and the band has to tolerate that")
+    got = [[z.text for z in band] for band in row_bands([b("a", 0, 0), b("b", 40, 40)], ROW_GAP)]
+    assert got == [["a"], ["b"]], f"row_bands gave {got}: 40 points apart is two rows"
+    got = [[z.text for z in band] for band in row_bands([b("t", 0, 0, 60.0), b("b", 40, 40)], ROW_GAP)]
+    assert got == [["t", "b"]], (
+        f"row_bands gave {got}: the tall box reaches y=60, so the box at y=40 is inside it. "
+        "Track the running maximum bottom edge, not the previous box's bottom edge")
+    got = [[z.text for z in band] for band in row_bands([b("z", 90, 0), b("a", 10, 0)], ROW_GAP)]
+    assert got == [["a", "z"]], f"boxes within a band sort by x; got {got}"
+    assert row_bands([], ROW_GAP) == [], "empty in, empty out"
+    print("row_bands: all checks pass")
+
+
+_try("exercise 2", _check_row_bands)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `cells_in_band`
+#
+# A band of boxes plus the column runs is a row of cells, in two steps that must happen in
+# this order. First cluster the band's own ink into cells — `ink_runs` again, same threshold
+# as the columns. Only then ask which columns each cell covers.
+#
+# Doing it the other way round, box by box, shreds the spanning header: its first word sits
+# over one column and its third over another, so no two words agree on a colspan and one cell
+# becomes four. Cluster first, assign second.
+
+# %%
+def cells_in_band(band: Sequence[Box], columns: Sequence[tuple[float, float]],
+                  min_gap: float = COL_GAP) -> list[Cell]:
+    """Turn one row band into cells, given the column runs from the x-axis profile.
+
+    1. Cluster the band's boxes with `ink_runs` at `min_gap`: each run is one cell, and its
+       text is the member boxes joined by a single space in ascending x order.
+    2. A cell covers every column run that overlaps its own interval with POSITIVE width —
+       `cell_lo < col_hi and cell_hi > col_lo`, so merely touching an edge is not overlapping.
+       `col` is the leftmost such column and `colspan` is how many it covers.
+
+    A cell that overlaps no column falls back to the column whose midpoint is nearest its own,
+    with colspan 1 — never drop ink on the floor. Return the cells sorted by `(col, colspan)`.
+
+    Examples:
+        >>> cols = [(0.0, 50.0), (100.0, 150.0)]
+        >>> cells_in_band([Box("hi", 0.0, 0.0, 14.0, 10.0, 1)], cols)
+        [Cell(text='hi', col=0, colspan=1)]
+        >>> cells_in_band([Box("wide", 10.0, 0.0, 120.0, 10.0, 1)], cols)
+        [Cell(text='wide', col=0, colspan=2)]
+        >>> cells_in_band([Box("b", 13.0, 0.0, 7.0, 10.0, 1), Box("a", 0.0, 0.0, 7.0, 10.0, 1)], cols)
+        [Cell(text='a b', col=0, colspan=1)]
+        >>> cells_in_band([], cols)
+        []
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_cells() -> None:
+    cols = [(0.0, 50.0), (100.0, 150.0)]
+    got = cells_in_band([Box("wide", 10.0, 0.0, 120.0, BOX_H, 1)], cols)
+    assert got == [Cell("wide", 0, 2)], (
+        f"cells_in_band gave {got}: a cell overlapping two column runs is one cell with "
+        "colspan 2 — that is how the spanning header survives")
+    got = cells_in_band([Box("b", 13.0, 0.0, 7.0, BOX_H, 1),
+                         Box("a", 0.0, 0.0, 7.0, BOX_H, 1)], cols)
+    assert got == [Cell("a b", 0, 1)], (
+        f"cells_in_band gave {got}: boxes 6 points apart are one cell, joined by a single "
+        "space in ascending x order")
+    wide = [Box("Amounts", 10.0, 0.0, 49.0, BOX_H, 1), Box("here", 65.0, 0.0, 28.0, BOX_H, 1),
+            Box("now", 99.0, 0.0, 21.0, BOX_H, 1)]
+    got = cells_in_band(wide, cols)
+    assert got == [Cell("Amounts here now", 0, 2)], (
+        f"cells_in_band gave {got}: cluster the band into cells FIRST, then ask which columns "
+        "the cell covers. Assigning box by box gives each word a different colspan and turns "
+        "one spanning header into three cells")
+    got = cells_in_band([Box("t", 50.0, 0.0, 50.0, BOX_H, 1)], [(0.0, 50.0), (100.0, 160.0)])
+    assert got == [Cell("t", 0, 1)], (
+        f"cells_in_band gave {got}: this cell runs 50..100 and TOUCHES both columns without "
+        "sharing ink with either. Overlap is strictly positive, so it overlaps nothing and "
+        "falls back to the nearest column by midpoint — never dropped, and never given a "
+        "colspan it did not earn")
+    assert cells_in_band([], cols) == [], "empty band, empty row"
+    print("cells_in_band: all checks pass")
+
+
+_try("exercise 3", _check_cells)
+
+
+# %%
+def infer_columns(boxes: Sequence[Box], row_gap: float = ROW_GAP, col_gap: float = COL_GAP,
+                  n_header_rows: int = N_HEADER_ROWS) -> list[tuple[float, float]]:
+    """Column runs from BODY ink only — given, because section 2 already measured why."""
+    first_page = min(b.page for b in boxes)
+    bands = row_bands([b for b in boxes if b.page == first_page], row_gap)
+    body = [b for band in bands[n_header_rows:] for b in band]
+    body += [b for b in boxes if b.page != first_page]
+    return column_spans(body, col_gap)
+
+
+def build_table(boxes: Sequence[Box], row_gap: float = ROW_GAP, col_gap: float = COL_GAP,
+                columns: Sequence[tuple[float, float]] | None = None,
+                n_header_rows: int = N_HEADER_ROWS, stitch: bool = True) -> Table:
+    """The whole pipeline: profile, band, cut into cells, stitch continuations. Given."""
+    if columns is None:
+        columns = infer_columns(boxes, row_gap, col_gap, n_header_rows)
+    rows: Table = []
+    for page in sorted({b.page for b in boxes}):
+        for band in row_bands([b for b in boxes if b.page == page], row_gap):
+            rows.append(cells_in_band(band, columns, col_gap))
+    return merge_continuations(rows, n_header_rows) if stitch else rows
+
+
+# %% [markdown]
+# ## 5. Exercise 4 — `merge_continuations`
+#
+# A wrapped cell prints its second line as its own band, and the reference column is blank on
+# that line because nobody reprints an identifier. So the rule is mechanical: a body row with
+# nothing in the key column is not a row, it is the tail of the row above it. The same rule
+# handles a wrap inside a page and a wrap across a page break — and an implementation that
+# only ever looks within one page gets the second one wrong.
+#
+# Header rows are exempt. The sub-header row here has nothing in column 0 either, and it is
+# not a continuation of the spanning header above it.
+
+# %%
+def merge_continuations(rows: Sequence[Sequence[Cell]], n_header_rows: int = N_HEADER_ROWS,
+                        key_col: int = 0) -> Table:
+    """Fold continuation bands back into the row they belong to. Never mutates its input.
+
+    Rows before `n_header_rows` are headers: copied through untouched, and nothing merges into
+    them. From there on, a row with no cell whose `col == key_col` is a continuation of the
+    last row kept. Merging appends each of its cells into the matching cell of that row —
+    `"Nordwind Logistik"` plus `"GmbH"` becomes `"Nordwind Logistik GmbH"`, joined by a single
+    space — and a cell the previous row does not yet have is inserted, keeping the row sorted
+    by `(col, colspan)`. A continuation with no row to merge into is kept as a row of its own.
+
+    A cell matches on the PAIR `(col, colspan)`, not on `col` alone. A colspan-1 cell sitting
+    under a colspan-3 one starts at the same column and is a different cell; keying on `col`
+    would swallow it and quietly rewrite the spanning cell's colspan.
+
+    Examples:
+        >>> head = [Cell("R-1", 0, 1), Cell("Nordwind Logistik", 1, 1)]
+        >>> tail = [Cell("GmbH", 1, 1)]
+        >>> merge_continuations([head, tail], n_header_rows=0)
+        [[Cell(text='R-1', col=0, colspan=1), Cell(text='Nordwind Logistik GmbH', col=1, colspan=1)]]
+        >>> merge_continuations([tail, head], n_header_rows=0) == [tail, head]
+        True
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_merge() -> None:
+    head = [Cell("R-1", 0, 1), Cell("Nordwind Logistik", 1, 1)]
+    tail = [Cell("GmbH", 1, 1)]
+    got = merge_continuations([head, tail], n_header_rows=0)
+    assert got == [[Cell("R-1", 0, 1), Cell("Nordwind Logistik GmbH", 1, 1)]], (
+        f"merge_continuations gave {got}: a row with nothing in column 0 is the tail of the "
+        "row above, and the texts join with a single space")
+    assert head == [Cell("R-1", 0, 1), Cell("Nordwind Logistik", 1, 1)], (
+        "merge_continuations mutated the rows it was given. Build new lists and new Cells — "
+        "every variant in section 10 reuses the same rows, and an in-place merge makes each "
+        "of them measure the one before it")
+    got = merge_continuations([tail, head], n_header_rows=0)
+    assert got == [tail, head], (
+        f"merge_continuations gave {got}: a continuation with no row above it is kept as its "
+        "own row, not dropped and not merged forwards")
+    got = merge_continuations([[Cell("R-1", 0, 1), Cell("Amounts", 2, 3)],
+                               [Cell("Net", 2, 1)]], n_header_rows=0)
+    assert got == [[Cell("R-1", 0, 1), Cell("Net", 2, 1), Cell("Amounts", 2, 3)]], (
+        f"merge_continuations gave {got}: the continuation's colspan-1 cell and the row's "
+        "colspan-3 cell both start at column 2 and are NOT the same cell. Match on the pair "
+        "(col, colspan). Keying on col alone joins their texts and rewrites the spanning "
+        "cell's colspan to 1; sorting on col alone leaves the pair in the wrong order")
+    span = [Cell("Amounts", 2, 3)]
+    sub = [Cell("Net", 2, 1), Cell("VAT", 3, 1)]
+    got = merge_continuations([span, sub, [Cell("R-1", 0, 1)]], n_header_rows=2)
+    assert got[:2] == [span, sub], (
+        f"merge_continuations gave {got[:2]}: the sub-header row has nothing in column 0 "
+        "either, and it is a header — rows before n_header_rows are copied through untouched")
+    print("merge_continuations: all checks pass")
+
+
+_try("exercise 4", _check_merge)
+
+# %% [markdown]
+# Now run the whole pipeline and compare it, table by table, against the gold grid. This is
+# the only cell in the lesson that tells you your geometry is right.
+
+# %%
+def rebuild_all(row_gap: float = ROW_GAP, col_gap: float = COL_GAP, stitch: bool = True) -> list[Table]:
+    return [build_table(t["boxes"], row_gap, col_gap, stitch=stitch) for t in CORPUS]
+
+
+def _show_rebuild() -> None:
+    built = rebuild_all()
+    exact = sum(1 for tab, t in zip(built, CORPUS) if tab == t["gold"])
+    print(f"tables rebuilt exactly from geometry: {exact}/{len(CORPUS)}")
+    wrapped = [c for c in built[0][WRAPPED_ROWS[0] + N_HEADER_ROWS] if c.col == 1]
+    print(f"the row whose wrap crosses the page break now reads: {wrapped[0].text!r}")
+    print(f"header cell colspan recovered: {built[0][0][-1].colspan} "
+          f"(gold {CORPUS[0]['gold'][0][-1].colspan})")
+
+
+_try("rebuild", _show_rebuild)
+
+# %% [markdown]
+# ## 6. The two thresholds, swept
+#
+# `ROW_GAP` and `COL_GAP` are not laws. Sweep them and read the window where the rebuild is
+# exact — and read the two numbers that set that window: the widest gap *inside* a cell and
+# the narrowest gap *between* two columns. Both are measured from the corpus, not declared.
+
+# %%
+def _sweep_thresholds() -> None:
+    intra, inter = 0.0, 1e9
+    for t in CORPUS:
+        cols = infer_columns(t["boxes"])
+        for lo, hi in zip([c[1] for c in cols[:-1]], [c[0] for c in cols[1:]]):
+            inter = min(inter, hi - lo)
+        for page in sorted({b.page for b in t["boxes"]}):
+            for band in row_bands([b for b in t["boxes"] if b.page == page]):
+                xs = sorted((b.x, b.right) for b in band)
+                reach = xs[0][1]
+                for lo, hi in xs[1:]:
+                    if lo - reach <= COL_GAP:
+                        intra = max(intra, lo - reach)
+                    reach = max(reach, hi)
+    print(f"widest gap inside a cell      : {intra:.0f} points")
+    print(f"narrowest gap between columns : {inter:.0f} points")
+    print(f"so any COL_GAP in [{intra:.0f}, {inter - 1:.0f}] rebuilds this corpus exactly.\n")
+    print("  col_gap   mean columns   mean cells/row   exact rebuilds")
+    for gap in (2.0, 5.0, 6.0, 16.0, 26.0, 27.0, 40.0):
+        built = rebuild_all(col_gap=gap)
+        ncols = np.mean([len(infer_columns(t["boxes"], col_gap=gap)) for t in CORPUS])
+        ncells = np.mean([len(r) for tab in built for r in tab])
+        exact = sum(1 for tab, t in zip(built, CORPUS) if tab == t["gold"])
+        print(f"  {gap:7.0f}   {ncols:12.2f}   {ncells:14.2f}   {exact:2d}/{len(CORPUS)}")
+    print("\n  row_gap   mean rows      exact rebuilds")
+    for gap in (0.0, 6.0, 12.0, 17.0, 18.0, 30.0):
+        built = rebuild_all(row_gap=gap)
+        exact = sum(1 for tab, t in zip(built, CORPUS) if tab == t["gold"])
+        print(f"  {gap:7.0f}   {np.mean([len(tab) for tab in built]):12.2f}   {exact:2d}/{len(CORPUS)}")
+    print("\nRead the col_gap rows carefully. The column COUNT is right at every setting up to 26,")
+    print("including the two that break the rebuild: the profile pools ink from every body row,")
+    print("and one row's word gap is covered by another row's word. It is cells-per-row that")
+    print("shows the damage, because a single band has no pooling to hide behind. A threshold")
+    print("that looks safe on the aggregate can still be wrong on every individual row.")
+    print("\nThe row_gap boundary is soft for a different reason. The gap between two bands is")
+    print("24 + (lowest jitter in the band below) - (highest jitter in the band above), so at 18")
+    print("some gaps still cut and some do not, and the exact-rebuild count on that line is")
+    print("whatever that lottery produced. A threshold on the edge of the jitter distribution")
+    print("is not a setting; it is a coin toss per row.")
+
+
+_try("threshold sweep", _sweep_thresholds)
+
+# %% [markdown]
+# ## 7. Exercise 5 — `content_f1`
+#
+# The first of the two scores. Content F1 asks one question: did the cell texts come out? It
+# is a multiset comparison and it is deliberately blind to where the cells ended up, which is
+# what makes it cheap, stable, and unable to tell you anything about the grid.
+#
+# A multiset, not a set: a table with two cells reading `30.00` and a prediction with one of
+# them is missing half the evidence, and a set would call it perfect.
+
+# %%
+def content_f1(pred: Sequence[Sequence[Cell]], gold: Sequence[Sequence[Cell]]) -> tuple[float, float, float]:
+    """Precision, recall and F1 over the MULTISET of normalised, non-empty cell texts.
+
+    Flatten both tables, run every cell text through `norm_cell`, drop the ones that normalise
+    to the empty string, and compare the two multisets: a true positive is one occurrence
+    matched on both sides, so two identical cells in gold need two identical cells in pred.
+    Position, row, column and colspan are all ignored — that is the point of this score.
+
+    Guard both denominators: with nothing on a side, the ratio that divides by it is 0.0.
+
+    Examples:
+        >>> a = [[Cell("Net", 0, 1), Cell("30.00", 1, 1)]]
+        >>> content_f1(a, a)
+        (1.0, 1.0, 1.0)
+        >>> content_f1([[Cell("net", 1, 3)]], [[Cell("Net", 0, 1)]])   # position ignored
+        (1.0, 1.0, 1.0)
+        >>> content_f1([[]], [[Cell("Net", 0, 1)]])
+        (0.0, 0.0, 0.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_content_f1() -> None:
+    a = [[Cell("Net", 0, 1), Cell("30.00", 1, 1)]]
+    assert content_f1(a, a) == (1.0, 1.0, 1.0), "a table against itself scores 1.0 everywhere"
+    got = content_f1([[Cell("net", 1, 3)]], [[Cell("Net", 0, 1)]])
+    assert got == (1.0, 1.0, 1.0), (
+        f"content_f1 gave {got}: this score ignores column and colspan entirely, and norm_cell "
+        "lower-cases — that blindness is exactly what section 10 measures")
+    got = content_f1([[Cell("30.00", 0, 1)]], [[Cell("30.00", 0, 1), Cell("30.00", 1, 1)]])
+    assert abs(got[1] - 0.5) < 1e-9, (
+        f"content_f1 gave recall {got[1]}: compare MULTISETS — gold holds '30.00' twice and "
+        "pred holds it once, so recall is 0.5, not 1.0")
+    got = content_f1([[Cell("a", 0, 1), Cell("b", 1, 1)]], [[Cell("a", 0, 1)]])
+    assert abs(got[2] - 2.0 / 3.0) < 1e-9, (
+        f"content_f1 gave F1 {got[2]}: precision 0.5 and recall 1.0 give 2/3. F1 is the "
+        "HARMONIC mean — the arithmetic mean says 0.75 and agrees with the right answer "
+        "whenever precision and recall happen to be equal, which is how it survives testing")
+    got = content_f1([[Cell("a", 0, 1), Cell("   ", 1, 1)]], [[Cell("a", 0, 1)]])
+    assert got == (1.0, 1.0, 1.0), (
+        f"content_f1 gave {got}: a cell that normalises to the empty string is dropped from "
+        "the bag. Counting it makes a blank look like a prediction and costs you precision "
+        "for finding nothing")
+    assert content_f1([[]], [[Cell("Net", 0, 1)]]) == (0.0, 0.0, 0.0), (
+        "an empty prediction scores zero, it does not raise ZeroDivisionError")
+    print("content_f1: all checks pass")
+
+
+_try("exercise 5", _check_content_f1)
+
+# %% [markdown]
+# ## 8. Exercise 6 — `row_distance`
+#
+# The second score is a tree-edit distance. Zhong et al., who introduced TEDS, define it as
+# `TEDS(Ta, Tb) = 1 - EditDist(Ta, Tb) / max(|Ta|, |Tb|)`, and they give the substitution rule
+# this lesson copies: "When both n_o and n_s are td, the substitution cost is 1 if the column
+# span or the row span differs. Otherwise, the substitution cost is the normalized Levenshtein
+# similarity between the content of n_o and n_s" (arXiv 1911.10683, section V).
+#
+# `cell_sub_cost` below is that rule. Your job is the alignment: the cheapest sequence of
+# inserts, deletes and substitutions turning one row's cells into the other's.
+
+# %%
+def cell_sub_cost(a: Cell, b: Cell, structure_only: bool = False) -> float:
+    """TEDS's substitution cost for two cells. Given, so the citation stays honest.
+
+    A colspan disagreement costs a full 1.0 — the cells are not the same cell, whatever they
+    say. Otherwise the cost is 1 minus the normalised similarity of their contents, or 0.0 if
+    `structure_only`, which is the TEDS-Struct variant that ignores text altogether.
+    """
+    if a.colspan != b.colspan:
+        return 1.0
+    if structure_only:
+        return 0.0
+    return 1.0 - similarity(norm_cell(a.text), norm_cell(b.text))
+
+
+def row_distance(a: Sequence[Cell], b: Sequence[Cell], structure_only: bool = False) -> float:
+    """Cheapest edit cost turning the cell sequence `a` into `b`.
+
+    A Levenshtein alignment over cells: inserting a cell costs 1.0, deleting one costs 1.0,
+    and substituting costs `cell_sub_cost(a_i, b_j, structure_only)`. Return the total cost of
+    the cheapest path. Two empty rows are distance 0.0.
+
+    Examples:
+        >>> r = [Cell("Net", 0, 1), Cell("VAT", 1, 1)]
+        >>> row_distance(r, r)
+        0.0
+        >>> row_distance(r, r[:1])                       # one deletion
+        1.0
+        >>> row_distance([Cell("x", 0, 1)], [Cell("x", 0, 3)])   # colspan differs: full cost
+        1.0
+        >>> row_distance([Cell("x", 0, 1)], [Cell("x", 0, 3)], structure_only=True)
+        1.0
+        >>> row_distance([Cell("abcd", 0, 1)], [Cell("abce", 0, 1)], structure_only=True)
+        0.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_row_distance() -> None:
+    r = [Cell("Net", 0, 1), Cell("VAT", 1, 1)]
+    assert row_distance(r, r) == 0.0, "a row against itself costs nothing"
+    assert row_distance(r, r[:1]) == 1.0, (
+        f"row_distance gave {row_distance(r, r[:1])}: deleting one cell costs exactly 1.0")
+    assert row_distance([], r) == 2.0, "inserting two cells costs 2.0"
+    got = row_distance([Cell("x", 0, 1)], [Cell("x", 0, 3)])
+    assert got == 1.0, (
+        f"row_distance gave {got}: identical text but a different colspan is a full-cost "
+        "substitution — that is the rule TEDS states, and it is what makes a spanning header "
+        "worth getting right")
+    got = row_distance([Cell("abcd", 0, 1)], [Cell("abce", 0, 1)])
+    assert abs(got - 0.25) < 1e-9, (
+        f"row_distance gave {got}: one character of four differs, so the substitution costs "
+        "1 - 0.75 = 0.25, not 1.0 — TEDS grades cell text by similarity, not equality")
+    got = row_distance([Cell("abcd", 0, 1)], [Cell("abce", 0, 1)], structure_only=True)
+    assert got == 0.0, f"row_distance(structure_only=True) gave {got}: text must be ignored"
+    print("row_distance: all checks pass")
+
+
+_try("exercise 6", _check_row_distance)
+
+# %% [markdown]
+# ## 9. Exercise 7 — `teds_like`
+#
+# One level up: align the rows the same way. Inserting or deleting a row costs 1 for the row
+# node plus 1 for each of its cells; substituting two rows costs `row_distance`. Normalise by
+# the larger tree, and you have a score in the spirit of TEDS.
+#
+# **Where this departs from the published metric, and why.** TEDS runs Zhang–Shasha over a
+# tree with `thead`/`tbody` nodes and supports rowspan. This is a two-level alignment over
+# rows and cells with no rowspan, which is a restricted tree edit distance. Its cost is not
+# bounded by `max(|Ta|, |Tb|)` the way a full tree edit distance is — a one-row table against a
+# ten-row one costs more than either tree has nodes — so the score is clamped at 0. It is a
+# teaching implementation of the idea, not a reimplementation of the paper.
+
+# %%
+def table_size(table: Sequence[Sequence[Cell]]) -> int:
+    """Nodes in the tree: one root, one per row, one per cell. Given."""
+    return 1 + len(table) + sum(len(row) for row in table)
+
+
+def teds_like(pred: Sequence[Sequence[Cell]], gold: Sequence[Sequence[Cell]],
+              structure_only: bool = False) -> float:
+    """Tree-edit-distance-based similarity between two tables, in [0, 1].
+
+    Align the row sequences with the same dynamic program you wrote for cells. Deleting row
+    `a_i` costs `1 + len(a_i)`; inserting row `b_j` costs `1 + len(b_j)`; substituting costs
+    `row_distance(a_i, b_j, structure_only)`. Then
+
+        teds = max(0.0, 1 - distance / max(table_size(pred), table_size(gold)))
+
+    Two empty tables score 1.0. With `structure_only=True` the cell texts are ignored and only
+    the shape — how many rows, how many cells, which colspans — is compared.
+
+    Examples:
+        >>> t = [[Cell("a", 0, 1)], [Cell("b", 0, 1)]]
+        >>> teds_like(t, t)
+        1.0
+        >>> teds_like([], [])
+        1.0
+        >>> round(teds_like(t, t[:1]), 4)      # one row of one cell deleted: 2 of 5 nodes
+        0.6
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_teds() -> None:
+    t = [[Cell("a", 0, 1)], [Cell("b", 0, 1)]]
+    assert teds_like(t, t) == 1.0, "a table against itself scores 1.0"
+    assert teds_like([], []) == 1.0, "two empty tables are identical, not undefined"
+    got = teds_like(t, t[:1])
+    assert abs(got - 0.6) < 1e-9, (
+        f"teds_like gave {got}: deleting a row of one cell costs 1 + 1 = 2, the larger tree "
+        "has 1 + 2 + 2 = 5 nodes, so the score is 1 - 2/5 = 0.6. Count the ROW node too")
+    shifted = [[Cell("a", 0, 1)], [Cell("zz", 0, 1)]]
+    assert teds_like(shifted, t, structure_only=True) == 1.0, (
+        "structure_only must pass all the way down to cell_sub_cost: these two tables have "
+        "identical shape and differ only in text")
+    assert teds_like(shifted, t) < 1.0, "with content on, a changed cell must cost something"
+    print("teds_like: all checks pass")
+
+
+_try("exercise 7", _check_teds)
+
+# %% [markdown]
+# ## 10. Six ways to be wrong, and what each score says about them
+#
+# Now the measurement the module exists for. Six deterministic degradations of the rebuilt
+# tables, scored three ways. Read down the columns, not across the rows.
+
+# %%
+def collapse_spans(table: Table) -> Table:
+    """Every spanning cell reduced to colspan 1: what assigning boxes to the NEAREST column
+    instead of every overlapping one produces. Text untouched."""
+    return [[Cell(c.text, c.col, 1) for c in row] for row in table]
+
+
+def shatter_rows(table: Table, at: int = 2, n_header_rows: int = N_HEADER_ROWS) -> Table:
+    """Every body row cut in two at column `at`: what a row band split by baseline jitter
+    produces before anything stitches it back. Every cell's text survives intact."""
+    out: Table = []
+    for i, row in enumerate(table):
+        left = [c for c in row if c.col < at]
+        right = [c for c in row if c.col >= at]
+        if i < n_header_rows or not left or not right:
+            out.append(list(row))
+        else:
+            out.extend([left, right])
+    return out
+
+
+def reverse_body(table: Table, n_header_rows: int = N_HEADER_ROWS) -> Table:
+    """The body read bottom-up: a reading-order bug, with every cell in the right column."""
+    return list(table[:n_header_rows]) + list(reversed(table[n_header_rows:]))
+
+
+def ocr_noise(table: Table, seed: int = 4242, rate: float = 0.25) -> Table:
+    """One substituted character in a quarter of the cells. The grid is untouched."""
+    rng = random.Random(seed)
+    out: Table = []
+    for row in table:
+        new_row = []
+        for cell in row:
+            text = cell.text
+            if text and rng.random() < rate:
+                i = rng.randrange(len(text))
+                text = text[:i] + rng.choice("aeoirnm8035") + text[i + 1:]
+            new_row.append(Cell(text, cell.col, cell.colspan))
+        out.append(new_row)
+    return out
+
+
+VARIANTS = (
+    ("reference pipeline", lambda t: build_table(t["boxes"])),
+    ("columns read off ALL ink", lambda t: build_table(
+        t["boxes"], columns=column_spans(t["boxes"], COL_GAP))),
+    ("spanning header collapsed", lambda t: collapse_spans(build_table(t["boxes"]))),
+    ("row bands shattered", lambda t: shatter_rows(build_table(t["boxes"]))),
+    ("body rows reversed", lambda t: reverse_body(build_table(t["boxes"]))),
+    ("continuations not stitched", lambda t: build_table(t["boxes"], stitch=False)),
+    ("cell text corrupted", lambda t: ocr_noise(build_table(t["boxes"]))),
+)
+
+
+def score_variant(make) -> tuple[float, float, float]:
+    """Corpus means of content F1, TEDS and TEDS-Struct for one degradation."""
+    c, td, ts = [], [], []
+    for t in CORPUS:
+        pred, gold = make(t), t["gold"]
+        c.append(content_f1(pred, gold)[2])
+        td.append(teds_like(pred, gold))
+        ts.append(teds_like(pred, gold, structure_only=True))
+    return float(np.mean(c)), float(np.mean(td)), float(np.mean(ts))
+
+
+SCORES: dict[str, tuple[float, float, float]] = {}
+
+
+def _show_variants() -> None:
+    print(f"  {'variant':28s} {'content F1':>10s} {'TEDS':>8s} {'TEDS-Struct':>12s}")
+    for name, make in VARIANTS:
+        SCORES[name] = score_variant(make)
+        c, td, ts = SCORES[name]
+        print(f"  {name:28s} {c:10.3f} {td:8.3f} {ts:12.3f}")
+
+
+_try("variant scores", _show_variants)
+
+# %% [markdown]
+# Two rows of that table are the lesson. Print them on their own and read what each score
+# missed.
+
+# %%
+def _show_the_two_cases() -> None:
+    if not SCORES:                       # the cell above has not run yet: nothing to read
+        raise NotImplementedError
+    c, td, ts = SCORES["row bands shattered"]
+    print("CONTENT PERFECT, STRUCTURE WRONG — every row cut in two, no text changed:")
+    print(f"  content F1 {c:.3f}   TEDS {td:.3f}   TEDS-Struct {ts:.3f}")
+    print("  Content F1 is a multiset over cell texts. Splitting a row moves cells; it does")
+    print("  not change them, so the multiset is untouched and the score cannot see the bug.\n")
+    c, td, ts = SCORES["cell text corrupted"]
+    print("STRUCTURE PERFECT, CONTENT WRONG — one character changed in a quarter of the cells:")
+    print(f"  content F1 {c:.3f}   TEDS {td:.3f}   TEDS-Struct {ts:.3f}")
+    print("  TEDS-Struct ignores text by construction, so a corrupted table scores a clean")
+    print("  1.000 on it. Ship on TEDS-Struct alone and you ship a perfectly shaped grid of")
+    print("  wrong numbers.\n")
+    c, td, ts = SCORES["body rows reversed"]
+    print("AND THE ONE THAT NEEDS BOTH — the body read bottom-up:")
+    print(f"  content F1 {c:.3f}   TEDS {td:.3f}   TEDS-Struct {ts:.3f}")
+    print("  Every cell is present and every row is the right shape. Only the order is wrong,")
+    print("  and only the order-sensitive, content-aware score notices.")
+
+
+_try("the two cases", _show_the_two_cases)
+
+# %% [markdown]
+# ## 11. Which score does your consumer actually need?
+#
+# Not a matter of taste. Each downstream consumer is broken by a different subset of these
+# defects, so the score you gate on is the one that catches the defects that would break
+# yours. Everything printed below is computed from the numbers you just measured.
+#
+# Read the `verdict` column first. Content F1 and TEDS-Struct are near-orthogonal — one reads
+# text and ignores shape, the other reads shape and ignores text — so the PAIR of them sorts
+# a defect into a class, the way module 1's confusion table sorted a cell into one. A single
+# score cannot: watch what TEDS reports for two entirely different bugs.
+
+# %%
+CONSUMERS = {
+    "full-text search / redaction sweep": ("content F1",),
+    "database load keyed by column": ("content F1", "TEDS-Struct"),
+    "line-item reconciliation, row by row": ("TEDS",),
+    "re-rendering the table for a human reviewer": ("content F1", "TEDS", "TEDS-Struct"),
+}
+
+
+def _show_consumer_rule() -> None:
+    if not SCORES:                       # the section 10 cell has not run yet
+        raise NotImplementedError
+    names = ("content F1", "TEDS", "TEDS-Struct")
+    print(f"  {'defect':28s} " + " ".join(f"{n:>12s}" for n in names) + "   verdict from the pair")
+    caught: dict[str, set[str]] = {n: set() for n in names}
+    for variant, scores in SCORES.items():
+        if variant == "reference pipeline":
+            continue
+        marks, hit = [], {}
+        for n, s in zip(names, scores):
+            hit[n] = s < 0.999
+            marks.append(f"{'CAUGHT' if hit[n] else '-  blind':>12s}")
+            if hit[n]:
+                caught[n].add(variant)
+        if hit["content F1"] and hit["TEDS-Struct"]:
+            verdict = "content AND structure"
+        elif hit["content F1"]:
+            verdict = "content only"
+        elif hit["TEDS-Struct"]:
+            verdict = "structure only"
+        elif hit["TEDS"]:
+            verdict = "order only"
+        else:
+            verdict = "nothing seen"
+        print(f"  {variant:28s} " + " ".join(marks) + f"   {verdict}")
+    print()
+    for consumer, gates in CONSUMERS.items():
+        covered = set().union(*(caught[g] for g in gates))
+        missed = sorted(set(SCORES) - {"reference pipeline"} - covered)
+        tail = ", ".join(missed) if missed else "nothing measured above"
+        print(f"  {consumer}\n    gate on {' + '.join(gates)} → blind to: {tail}")
+    # The measured argument against a single number, taken from the table rather than asserted.
+    by_teds: dict[float, list[str]] = {}
+    for variant, scores in SCORES.items():
+        if variant != "reference pipeline":
+            by_teds.setdefault(round(scores[1], 3), []).append(variant)
+    ties = {k: v for k, v in by_teds.items() if len(v) > 1}
+    print(f"\n  TEDS flags all {len(SCORES) - 1} defects, so it looks like the one number to gate on.")
+    for value, variants in sorted(ties.items()):
+        print(f"  But TEDS reads {value:.3f} for {len(variants)} of them: {'; '.join(variants)}.")
+    print("  One is a column-inference bug and one is a cell-assignment bug; they need different")
+    print("  people and different fixes, and TEDS cannot tell you which you have.")
+    print("\nThe rule: name the consumer, list the defects that would break it, gate on the")
+    print("smallest set of scores that catches all of them — and report content F1 and")
+    print("TEDS-Struct alongside whatever you gate on, because that pair is the work order.")
+
+
+_try("consumer rule", _show_consumer_rule)
+
+# %% [markdown]
+# One limitation of this family of scores, stated plainly because the table above hides it.
+# A tree has no column index: position is carried by sibling order and colspan, so two cells
+# that swapped columns without changing order or span are invisible to both TEDS and
+# TEDS-Struct. That is the gap Smock et al. propose GriTS for, on the argument that a table
+# should be evaluated "directly in its natural form as a matrix" (arXiv 2203.12555). Run the
+# cell to see it happen on this corpus.
+
+# %%
+def _show_column_index_blindness() -> None:
+    gold = CORPUS[0]["gold"]
+    shifted = [[Cell(c.text, c.col + 7, c.colspan) for c in row] for row in gold]
+    print(f"gold first body cell    : {gold[2][0]}")
+    print(f"same table, cols +7     : {shifted[2][0]}")
+    print(f"content F1  {content_f1(shifted, gold)[2]:.3f}    TEDS {teds_like(shifted, gold):.3f}"
+          f"    TEDS-Struct {teds_like(shifted, gold, structure_only=True):.3f}")
+    print("\nEvery column index is wrong and all three scores read 1.000, because none of them")
+    print("looks at `col`. Know what your metric cannot see before you quote it to anyone.")
+
+
+_try("column index blindness", _show_column_index_blindness)
+
+# %% [markdown]
+# ## 12. Common mistakes
+#
+# - **Inferring columns from every box on the page.** The spanning header is continuous ink
+#   across the columns it spans. Section 2 measured what that does: three columns become one.
+# - **Comparing against the previous interval instead of the running maximum.** One tall or
+#   wide box then invents a boundary immediately after itself, and the failure looks random.
+# - **Assigning a box to the nearest column instead of every column it overlaps.** Every
+#   colspan collapses to 1, the text is untouched, and content F1 still reads 1.000.
+# - **Stitching continuations within a page only.** The wrap that crosses the page break is
+#   the one that matters, and it is the one such an implementation misses.
+# - **Merging continuations in place.** Every later variant then scores the leftovers of the
+#   earlier one. Build new rows and new `Cell`s.
+# - **Reporting one number for a table.** A table has a shape and it has contents. Content F1
+#   cannot see a shattered grid; TEDS-Struct cannot see a corrupted digit.
+# - **Treating content F1 as accuracy.** It is position-free by design. That is a feature when
+#   you are sweeping for a phrase and a hole when you are loading a ledger.
+# - **Assuming this `teds_like` is TEDS.** It is a two-level alignment with no rowspan and no
+#   `thead`/`tbody`, clamped at zero. The published metric runs Zhang–Shasha over the full
+#   tree. If you report a number, report which one you computed.
+# - **Forgetting that a tree has no column index.** Section 11 shifts every column by seven and
+#   all three scores still read 1.000. Sibling order and colspan are all these metrics see.
+#
+# One of those is worth seeing rather than believing. Run it.
+
+# %%
+def _show_colspan_blindness() -> None:
+    gold = CORPUS[0]["gold"]
+    collapsed = collapse_spans(build_table(CORPUS[0]["boxes"]))
+    print(f"gold header cell : {gold[0][-1]}")
+    print(f"collapsed        : {collapsed[0][-1]}")
+    print(f"content F1       : {content_f1(collapsed, gold)[2]:.3f}   <- unmoved")
+    print(f"TEDS             : {teds_like(collapsed, gold):.3f}")
+    print(f"TEDS-Struct      : {teds_like(collapsed, gold, structure_only=True):.3f}")
+    print("\nThe text of every cell is byte-for-byte correct. What changed is the claim the")
+    print("table makes about which columns that header governs — which is the only thing a")
+    print("database loader reads it for.")
+
+
+_try("colspan blindness", _show_colspan_blindness)
+
+# %% [markdown]
+# ## 13. Self-check
+#
+# 1. A table extractor scores content F1 1.000 and TEDS-Struct far below it on this corpus
+#    — the pair the section 10 table prints for one of its six variants. The most
+#    likely cause is:
+#    - (a) the OCR is failing on the money columns
+#    - (b) the grid is wrong — cells are landing in the wrong rows or columns — while every
+#          cell's text came out intact
+#    - (c) content F1 is broken, because two scores cannot disagree that much
+#
+# 2. In the section 6 sweep, `col_gap = 5` reports the right number of columns on every table
+#    and rebuilds not one of them exactly. The explanation is:
+#    - (a) the sweep is non-deterministic at small thresholds
+#    - (b) the column profile pools ink from every body row, so one row's word gap is covered
+#          by another row's word — while clustering a single band has nothing to pool
+#    - (c) `row_gap` is wrong at that setting too
+#
+# 3. A colleague proposes gating the release on TEDS-Struct alone, because "structure is the
+#    hard part and OCR is solved". On the evidence in section 10 the strongest objection is:
+#    - (a) TEDS-Struct is slower to compute than content F1
+#    - (b) TEDS-Struct scored a clean 1.000 on the variant whose cell text was corrupted, so
+#          it cannot fail a release for any content defect at all
+#    - (c) TEDS-Struct does not handle rowspan
+#
+# 4. The continuation rule used here is "a body row with nothing in the key column is the tail
+#    of the row above". The reason header rows are exempt is:
+#    - (a) headers are always on page 1
+#    - (b) the sub-header row also has nothing in column 0, and merging it into the spanning
+#          header would destroy a real row
+#    - (c) headers have no colspan
+#
+# 5. You must pick ONE score to gate a pipeline that loads invoice line items into a ledger,
+#    keyed by column. The defensible choice is:
+#    - (a) content F1, because the amounts are what matter
+#    - (b) TEDS, because it is the only score in section 11 that fails on both a grid defect
+#          and a text defect
+#    - (c) TEDS-Struct, because the ledger only needs the columns
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# One last cell: the scorecard. Every line computed, which is the shape of the summary a model
+# validator will ask you for — and note that it takes three numbers to say one thing.
+
+# %%
+def _show_scorecard() -> None:
+    if not SCORES:
+        raise NotImplementedError
+    built = rebuild_all()
+    exact = sum(1 for tab, t in zip(built, CORPUS) if tab == t["gold"])
+    cells = sum(len(r) for tab in built for r in tab)
+    worst = min((v for k, v in SCORES.items() if k != "reference pipeline"),
+                key=lambda s: min(s))
+    worst_name = [k for k, v in SCORES.items() if v == worst][0]
+    blind = {n: [k for k, v in SCORES.items() if k != "reference pipeline" and v[i] >= 0.999]
+             for i, n in enumerate(("content F1", "TEDS", "TEDS-Struct"))}
+    print(f"corpus                 {len(CORPUS)} tables, {sum(len(t) for t in built)} rows, "
+          f"{cells} cells, {sum(len(t['boxes']) for t in CORPUS)} word boxes")
+    print(f"rebuilt exactly        {exact}/{len(CORPUS)} at ROW_GAP={ROW_GAP:.0f}, "
+          f"COL_GAP={COL_GAP:.0f}")
+    print(f"reference scores       content F1 {SCORES['reference pipeline'][0]:.3f} · "
+          f"TEDS {SCORES['reference pipeline'][1]:.3f} · "
+          f"TEDS-Struct {SCORES['reference pipeline'][2]:.3f}")
+    print(f"worst degradation      {worst_name} "
+          f"({worst[0]:.3f} / {worst[1]:.3f} / {worst[2]:.3f})")
+    for name, missed in blind.items():
+        print(f"{name:22s} blind to {len(missed)} of {len(SCORES) - 1} defects"
+              + (f": {', '.join(missed)}" if missed else ""))
+
+
+_try("scorecard", _show_scorecard)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You now have a table reader made of two projection profiles and a stitching rule, and — more
+# durably — two scores that disagree on purpose. Module 5 puts a classifier behind this
+# harness and asks where it should abstain; module 7 asks whether a difference between two of
+# these numbers is real or noise. Both of them are questions about measurement, which is why
+# this programme keeps building instruments before it builds models.
+
+# %%
+if __name__ == "__main__":
+    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure — it printed "not implemented yet" and
+    # the notebook carried on. A check that RAN and came back wrong is a failure, and it ends
+    # this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

@@ -1,0 +1,1317 @@
+# %% [markdown]
+# # P04-L03 · Conceptual soundness, reviewed mechanically
+#
+# **You will build:** eight probes that a reviewer can *run* instead of assert — a
+# feature-use recorder, a variable reconciliation, a monotonicity prober, a domain prober,
+# a leakage scan, a train/test contamination count, a trivial-baseline sanity test, and the
+# severity-rated finding register that assembles all seven into a reviewable document.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** T00-L01 (the tier gate and the profiler) and P04-L01 (the validation
+# suite). Pure numpy and the standard library throughout.
+#
+# The data is **synthetic and generated in this notebook**. Every figure you see is computed
+# by code you run.
+#
+# The model under review comes with a documented specification and an implementation. They
+# do not agree, and nobody is going to tell you where or in how many places. Your own probes
+# have to find them, and the count they report is a result of the review rather than an input
+# to it.
+#
+# By the end you will be able to:
+#
+# 1. Record which features an implementation actually reads, including the ones it reads
+#    only on some branches and the ones it reads through `.get()`.
+# 2. Reconcile a documented variable list against the implementation, and separate
+#    "undocumented" from "not available when the decision is taken" from "nobody catalogued it".
+# 3. Search a documented domain for counterexamples to a documented monotonic direction, and
+#    for inputs on which the implementation raises or returns something that is not a probability.
+# 4. Detect target leakage and train/test contamination mechanically, and test a model against
+#    a trivial baseline by a margin stated in advance.
+# 5. Assemble the results into a severity-rated finding register that is generated, not typed.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import math
+import sys
+import time
+from typing import Any, Callable, Iterable, Mapping, NamedTuple
+
+import numpy as np
+
+SEED = 20260916
+N_TRAIN = 4000
+N_TEST = 2000
+N_CONTAMINATED = 60          # test rows deliberately copied out of the training extract
+GRID = 25                    # probe points per documented domain
+LEAK_AUC_THRESHOLD = 0.95    # policy input; see claims.yaml on why no source is cited
+MAX_CONTAMINATION_SHARE = 0.01
+MIN_SKILL_MARGIN = 0.10
+AS_OF = "2026-09-16"
+SEVERITY_ORDER = ("critical", "high", "medium", "low")
+AVAILABILITY_STAGES = ("application", "post_decision")
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+DATA_NOTE = (
+    "SYNTHETIC DATA. Every record below was generated inside this notebook by "
+    f"numpy.random.default_rng({SEED}). No real applicant, account or lending decision is "
+    "represented. A conceptual-soundness review of a real model names the code revision it "
+    "probed and the extract it scored; a review that cannot say what it ran against is an "
+    "opinion, not evidence."
+)
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other seven.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# --- the documented specification ----------------------------------------------------------
+
+class Variable(NamedTuple):
+    """One row of the documented variable list, as the model document states it."""
+
+    name: str
+    direction: str    # "increasing" | "decreasing" | "none" — the DOCUMENTED direction
+    lo: float         # the documented domain, inclusive
+    hi: float
+
+
+SPEC: dict[str, Any] = {
+    "model_id": "PD-RETAIL-07",
+    "version": "3.2",
+    "formula": ("logit(pd) = -2.10 + 1.90*utilisation - 0.006*months_on_book "
+                "- 0.011*income_k + 0.55*prior_defaults + 0.12*region_index"),
+    "variables": (
+        Variable("utilisation", "increasing", 0.0, 1.5),
+        Variable("months_on_book", "decreasing", 0.0, 360.0),
+        Variable("income_k", "decreasing", 10.0, 250.0),
+        Variable("prior_defaults", "increasing", 0.0, 8.0),
+        Variable("region_index", "none", 0.0, 4.0),
+    ),
+    "base_row": {"utilisation": 0.35, "months_on_book": 48.0, "income_k": 60.0,
+                 "prior_defaults": 1.0, "region_index": 2.0},
+}
+
+# The firm's feature catalogue: when in the lifecycle each field is populated. A field staged
+# `post_decision` is not there when the decision is taken, however well it predicts.
+FEATURE_CATALOGUE: dict[str, str] = {
+    "utilisation": "application",
+    "months_on_book": "application",
+    "income_k": "application",
+    "prior_defaults": "application",
+    "region_index": "application",
+    "arrears_90d_next_month": "post_decision",
+}
+
+
+def score_under_review(row: Mapping[str, float]) -> float:
+    """The implementation as it is deployed. Read it if you like — then probe it anyway.
+
+    This is the artefact under review. It is given to you; you are not asked to change it,
+    and you are certainly not asked to take its documentation's word for what it does.
+    """
+    u = row["utilisation"]
+    m = row["months_on_book"]
+    inc = row["income_k"]
+    d = row["prior_defaults"]
+    if d >= 4.0:
+        return 1.05                                  # an "expert overlay" added in a hotfix
+    a = row.get("arrears_90d_next_month", 0.0)
+    ch = row.get("channel_code", 0.0)
+    z = (-2.10 + 1.90 * u - 0.006 * m - 0.011 * inc + 0.55 * d
+         + 2.40 * a + 0.30 * ch
+         + 0.00006 * inc * inc
+         - 0.80 * (12.0 / m))
+    return 1.0 / (1.0 + math.exp(-z))
+
+
+def corner_rows(variables: Iterable[Variable], base_row: Mapping[str, float]) -> tuple:
+    """Probe rows at both ends of every documented domain, plus the base row itself.
+
+    Given to you, not graded. One row exercises one path through an implementation; this is
+    the cheapest way to exercise several.
+    """
+    rows = [dict(base_row)]
+    for v in variables:
+        for value in (v.lo, v.hi):
+            row = dict(base_row)
+            row[v.name] = float(value)
+            rows.append(row)
+    return tuple(rows)
+
+
+def auc_by_ranks(y_true: np.ndarray, x: np.ndarray) -> float:
+    """Area under the ROC curve by the Mann-Whitney rank identity. Given to you, not graded.
+
+    Ties take the average rank, so a feature with two distinct values is scored honestly
+    rather than ordered by accident. P04-L01 hands you the same helper; module 4 of this
+    programme is where you build it.
+    """
+    y = np.asarray(y_true)
+    p = np.asarray(x, dtype=float)
+    n_pos = int(y.sum())
+    n_neg = int(y.size - n_pos)
+    if n_pos == 0 or n_neg == 0:
+        raise ValueError("AUC is undefined when one class is absent from the sample")
+    order = np.argsort(p, kind="mergesort")
+    ordered = p[order]
+    ranks_ordered = np.empty(p.size, dtype=float)
+    i = 0
+    while i < p.size:
+        j = i
+        while j + 1 < p.size and ordered[j + 1] == ordered[i]:
+            j += 1
+        ranks_ordered[i:j + 1] = (i + j) / 2.0 + 1.0
+        i = j + 1
+    ranks = np.empty(p.size, dtype=float)
+    ranks[order] = ranks_ordered
+    return float((ranks[y == 1].sum() - n_pos * (n_pos + 1) / 2.0) / (n_pos * n_neg))
+
+
+# --- the synthetic extract -----------------------------------------------------------------
+
+FEATURE_ORDER = ("utilisation", "months_on_book", "income_k", "prior_defaults",
+                 "region_index", "channel_code", "arrears_90d_next_month")
+
+
+def synthetic_extract(rng: np.random.Generator, n: int) -> dict:
+    """Generate one deterministic synthetic extract. SYNTHETIC — see DATA_NOTE.
+
+    `months_on_book` is never zero here: no live account has ever been scored on its opening
+    day. That is exactly why the division inside the implementation has survived three years
+    in production, and why a domain prober finds it and an outcomes analysis never will.
+    """
+    utilisation = rng.beta(2.0, 4.0, n) * 1.5
+    months_on_book = rng.integers(6, 361, n).astype(float)
+    income_k = rng.uniform(15.0, 240.0, n)
+    prior_defaults = np.clip(rng.poisson(0.5, n), 0, 3).astype(float)
+    region_index = rng.integers(0, 5, n).astype(float)
+    channel_code = rng.integers(0, 3, n).astype(float)
+
+    true_z = (-2.30 + 1.70 * utilisation - 0.0030 * months_on_book - 0.0045 * income_k
+              + 0.62 * prior_defaults + 0.08 * region_index)
+    y = (rng.random(n) < 1.0 / (1.0 + np.exp(-true_z))).astype(np.int64)
+    # Populated a month AFTER the decision. It is the best predictor in the extract and it
+    # cannot be known when the decision is taken. That is the whole lesson in one column.
+    arrears = np.where(y == 1, rng.random(n) < 0.97, rng.random(n) < 0.02).astype(float)
+
+    return {"utilisation": utilisation, "months_on_book": months_on_book,
+            "income_k": income_k, "prior_defaults": prior_defaults,
+            "region_index": region_index, "channel_code": channel_code,
+            "arrears_90d_next_month": arrears, "y": y}
+
+
+def as_matrix(extract: Mapping[str, np.ndarray]) -> np.ndarray:
+    """The feature columns as one 2-D array, in FEATURE_ORDER. Given to you, not graded."""
+    return np.column_stack([np.asarray(extract[name], dtype=float) for name in FEATURE_ORDER])
+
+
+def rows_of(extract: Mapping[str, np.ndarray], arrears: bool = True) -> list:
+    """The extract as a list of row dicts. With `arrears=False` the post-decision field is
+    zeroed, which is the only honest way to score the model at the moment of decision."""
+    n = len(extract["y"])
+    out = []
+    for i in range(n):
+        row = {name: float(extract[name][i]) for name in FEATURE_ORDER}
+        if not arrears:
+            row["arrears_90d_next_month"] = 0.0
+        out.append(row)
+    return out
+
+
+_rng = np.random.default_rng(SEED)
+TRAIN = synthetic_extract(_rng, N_TRAIN)
+TEST = synthetic_extract(_rng, N_TEST)
+
+# The contamination is planted here, deterministically: sixty test rows are overwritten with
+# rows copied out of the training extract, exactly as a careless de-duplication step would.
+_train_mat = as_matrix(TRAIN)
+_test_mat = as_matrix(TEST)
+_copy_from = _rng.choice(N_TRAIN, size=N_CONTAMINATED, replace=False)
+_copy_into = _rng.choice(N_TEST, size=N_CONTAMINATED, replace=False)
+_test_mat[_copy_into] = _train_mat[_copy_from]
+for _j, _name in enumerate(FEATURE_ORDER):
+    TEST[_name] = _test_mat[:, _j]
+TEST["y"][_copy_into] = TRAIN["y"][_copy_from]
+
+print(f"training extract: {N_TRAIN} records, event rate {TRAIN['y'].mean():.4f}")
+print(f"test extract:     {N_TEST} records, event rate {TEST['y'].mean():.4f}")
+print(f"model under review: {SPEC['model_id']} v{SPEC['version']}, "
+      f"{len(SPEC['variables'])} documented variables")
+print("\n" + DATA_NOTE)
+
+# %% [markdown]
+# ## 1. The phenomenon: outcomes analysis that looks superb, and a model that is not sound
+#
+# The interagency guidance the US banking agencies issued on 17 April 2026 names, among the
+# practices it addresses, "model validation and monitoring, including validating conceptual
+# soundness and outcomes analyses". P04-L01 built the outcomes half: calibration, stability,
+# subgroups, a promotion rule. A model can pass every one of those tests and still be
+# indefensible, because outcomes analysis only asks whether the answers came out right on the
+# sample you have.
+#
+# Run the cell below. It scores the model the way a backtest would — on an extract where
+# every column is present — and then the way a decision is actually taken, with the field
+# that does not exist yet set to zero.
+
+# %%
+_test_rows_all = rows_of(TEST, arrears=True)
+_test_rows_decision = rows_of(TEST, arrears=False)
+_p_all = np.array([score_under_review(r) for r in _test_rows_all])
+_p_decision = np.array([score_under_review(r) for r in _test_rows_decision])
+print(f"AUC on the extract as stored:              {auc_by_ranks(TEST['y'], _p_all):.4f}")
+print(f"AUC with the post-decision field removed:  {auc_by_ranks(TEST['y'], _p_decision):.4f}")
+print("\nThe first number is the one in the model document. The second is the one the")
+print("business will get. No amount of outcomes analysis on the stored extract finds that;")
+print("a reviewer who reads the variable list against the feature catalogue finds it in a")
+print("minute, and a reviewer who RUNS that comparison finds it every month, for free.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `observe_feature_use()`
+#
+# Everything downstream needs one fact: which features does the implementation actually read?
+# Reading the source is how this is usually answered, and it is how it is usually answered
+# wrong — a branch nobody exercised, a `.get()` with a default, a feature dropped two
+# refactors ago and still in the document.
+#
+# Record it instead. Hand the implementation a mapping that remembers which keys were asked
+# for, and run it on several rows so that several branches get exercised.
+
+# %%
+def observe_feature_use(fn: Callable[[Mapping[str, float]], Any],
+                        rows: Iterable[Mapping[str, float]]) -> tuple:
+    """Return the names `fn` actually read, across every row in `rows`, sorted ascending.
+
+    Hint: a `dict` subclass that overrides `__getitem__` is enough — but an implementation
+    is as entitled to call `row.get(name, default)` as `row[name]`, and a probe that records
+    only one of the two will report a feature as unused when it is not.
+
+    Requirements, each of which is graded:
+      * the result is the UNION over all rows: a feature read on one branch only is still read.
+      * a row on which `fn` raises is skipped rather than fatal — but the keys it read BEFORE
+        raising stay in the result. A crash is the domain prober's finding, not this one's.
+      * the result is a `tuple`, sorted ascending, with no repeats.
+      * a key present in the row and never read does not appear.
+      * `ValueError` if `rows` is empty: a probe with nothing to run on has observed nothing,
+        and returning `()` would look exactly like "this implementation reads no features".
+
+    Example:
+        >>> def f(row):
+        ...     return row["a"] if row["flag"] else row.get("b", 0.0)
+        >>> observe_feature_use(f, [{"a": 1.0, "b": 2.0, "flag": 1.0}])
+        ('a', 'flag')
+        >>> observe_feature_use(f, [{"a": 1.0, "b": 2.0, "flag": 1.0},
+        ...                         {"a": 1.0, "b": 2.0, "flag": 0.0}])
+        ('a', 'b', 'flag')
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_observe() -> None:
+    def branchy(row):
+        return row["a"] if row["flag"] else row.get("b", 0.0)
+
+    one = observe_feature_use(branchy, [{"a": 1.0, "b": 2.0, "flag": 1.0}])
+    assert isinstance(one, tuple), f"return a tuple, got {type(one).__name__}"
+    assert one == ("a", "flag"), (
+        f"got {one} — on this row the else branch never runs, so 'b' is not read; and "
+        "'flag' IS read, by the condition itself"
+    )
+    both = observe_feature_use(branchy, [{"a": 1.0, "b": 2.0, "flag": 1.0},
+                                         {"a": 1.0, "b": 2.0, "flag": 0.0}])
+    assert both == ("a", "b", "flag"), (
+        f"got {both} — the result is the union over every row, and 'b' is read through "
+        ".get(), which a recorder overriding only __getitem__ never sees"
+    )
+
+    def crashes(row):
+        row["first"]
+        raise ZeroDivisionError("division by zero")
+
+    partial = observe_feature_use(crashes, [{"first": 1.0, "second": 2.0}])
+    assert partial == ("first",), (
+        f"got {partial} — a row that raises is skipped, but 'first' was read before the "
+        "exception and must still be reported; 'second' never was"
+    )
+    try:
+        observe_feature_use(branchy, [])
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("an empty rows iterable should raise ValueError, not return ()")
+    print("exercise 1 looks right")
+
+
+_try("exercise 1", _check_observe)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `reconcile_variables()`
+#
+# Now put the two lists side by side. Four of the five answers are findings, and they are
+# four *different* findings that a single "mismatch" count would merge into one:
+#
+# * documented and used — the agreement, and the only harmless box;
+# * documented and never read — the document describes a model that is not running;
+# * read and not documented — the model running is not the one that was approved;
+# * read and staged after the decision — the field will not exist at inference time;
+# * read and not in the catalogue at all — nobody knows when it is populated, which is not
+#   the same as knowing it is late, and must not be filed as though it were.
+
+# %%
+class Reconciliation(NamedTuple):
+    """The documented variable list against the implementation. Every field sorted ascending."""
+
+    documented_and_used: tuple
+    documented_not_used: tuple
+    used_not_documented: tuple
+    used_after_decision: tuple      # read, and the catalogue stages it after the decision
+    used_not_in_catalogue: tuple    # read, and the catalogue has never heard of it
+
+
+def reconcile_variables(variables: Iterable[Variable], used_names: Iterable[str],
+                        catalogue: Mapping[str, str]) -> Reconciliation:
+    """Reconcile the documented variable list against what the implementation reads.
+
+    Requirements, each of which is graded:
+      * all five fields are tuples of names, sorted ascending, with no repeats.
+      * availability is judged on the names that are USED, and on those only. A documented
+        variable the implementation never reads cannot leak the future into a decision.
+      * a used name absent from `catalogue` goes to `used_not_in_catalogue` and NOWHERE else.
+        Filing "we do not know" as "we know it is late" is how a register stops being trusted.
+      * `ValueError` if `variables` is empty, if it names the same variable twice, or if any
+        catalogue value is not one of `AVAILABILITY_STAGES`.
+
+    Example:
+        >>> v = (Variable("a", "increasing", 0.0, 1.0), Variable("b", "none", 0.0, 1.0))
+        >>> r = reconcile_variables(v, ["a", "z"], {"a": "application", "z": "post_decision"})
+        >>> r.documented_and_used, r.documented_not_used, r.used_not_documented
+        (('a',), ('b',), ('z',))
+        >>> r.used_after_decision, r.used_not_in_catalogue
+        (('z',), ())
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_reconcile() -> None:
+    v = (Variable("a", "increasing", 0.0, 1.0), Variable("b", "none", 0.0, 1.0))
+    r = reconcile_variables(v, ["a", "z"], {"a": "application", "z": "post_decision"})
+    assert isinstance(r, Reconciliation), f"return a Reconciliation, got {type(r).__name__}"
+    assert r.documented_and_used == ("a",), f"documented_and_used {r.documented_and_used}"
+    assert r.documented_not_used == ("b",), (
+        f"documented_not_used {r.documented_not_used} — 'b' is documented and never read"
+    )
+    assert r.used_not_documented == ("z",), f"used_not_documented {r.used_not_documented}"
+    assert r.used_after_decision == ("z",), (
+        f"used_after_decision {r.used_after_decision} — 'z' is read and staged post_decision"
+    )
+    assert r.used_not_in_catalogue == (), f"used_not_in_catalogue {r.used_not_in_catalogue}"
+    # 'b' is staged post_decision and is NEVER READ. It is not an availability finding.
+    quiet = reconcile_variables(v, ["a"], {"a": "application", "b": "post_decision"})
+    assert quiet.used_after_decision == (), (
+        f"used_after_decision {quiet.used_after_decision} — a documented variable the "
+        "implementation never reads cannot put a post-decision field into a decision; "
+        "filter on the USED names, not on the catalogue"
+    )
+    unknown = reconcile_variables(v, ["a", "mystery"], {"a": "application"})
+    assert unknown.used_not_in_catalogue == ("mystery",), (
+        f"used_not_in_catalogue {unknown.used_not_in_catalogue}"
+    )
+    assert unknown.used_after_decision == (), (
+        f"used_after_decision {unknown.used_after_decision} — 'mystery' is not in the "
+        "catalogue, so its stage is unknown; unknown is its own finding, not a late one"
+    )
+    for bad, why in (
+        (((), ["a"], {}), "an empty documented variable list"),
+        (((v[0], v[0]), ["a"], {}), "a variable documented twice"),
+        ((v, ["a"], {"a": "someday"}), "a catalogue stage that is not a known stage"),
+    ):
+        try:
+            reconcile_variables(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 2 looks right")
+
+
+_try("exercise 2", _check_reconcile)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `probe_monotonicity()`
+#
+# The document says risk rises with utilisation and falls with time on book. Those are
+# claims about the implementation, and they are testable: sweep one variable across its
+# documented domain with everything else held still, and look for an adjacent pair that
+# moves the wrong way.
+#
+# Two rules make this a review rather than a demo. A point at which the implementation
+# *raises* is not a monotonicity counterexample — it is the domain prober's finding, and
+# this probe skips it and compares the surviving points in order. And the probe must not
+# mutate the caller's base row: a prober with a side effect is a prober whose second run
+# disagrees with its first.
+
+# %%
+class MonotonicityProbe(NamedTuple):
+    """The result of sweeping one documented variable across its documented domain."""
+
+    variable: str
+    direction: str            # the DOCUMENTED direction the sweep was judged against
+    violated: bool
+    worst_violation: float    # the largest wrong-way move between adjacent points; 0.0 if none
+    counterexample: tuple     # (x_lo, x_hi, score_lo, score_hi), or () when none was found
+    n_skipped: int            # grid points where fn raised or returned a non-finite value
+
+
+def probe_monotonicity(fn: Callable[[Mapping[str, float]], Any],
+                       variables: Iterable[Variable], base_row: Mapping[str, float],
+                       n_grid: int = GRID) -> dict:
+    """Search each documented monotonic direction for a counterexample.
+
+    For each variable, sweep `numpy.linspace(v.lo, v.hi, n_grid)` with every other value held
+    at `base_row`, and compare adjacent surviving points.
+
+    Requirements, each of which is graded:
+      * variables whose documented direction is neither "increasing" nor "decreasing" are not
+        probed and do not appear in the returned dict.
+      * a grid point where `fn` raises, or returns something that is not a finite number, is
+        counted in `n_skipped` and dropped; the comparison runs over the points that survived,
+        in ascending order of the swept value.
+      * for "increasing", a violation is `score_lo - score_hi` where that is positive; for
+        "decreasing" it is `score_hi - score_lo`. `worst_violation` is the largest such value
+        and is `0.0` when there is none. Flat is not a violation.
+      * `counterexample` is the adjacent pair with the largest violation, `(x_lo, x_hi,
+        score_lo, score_hi)`; ties go to the earliest pair. `()` when the sweep is clean.
+      * `base_row` is not modified. Build a copy per grid point.
+      * `ValueError` if `n_grid < 2`, if any probed variable is missing from `base_row`, or if
+        any probed variable has `lo >= hi`.
+
+    Example — an implementation documented as increasing that falls away above 0.5:
+        >>> v = (Variable("x", "increasing", 0.0, 1.0),)
+        >>> probes = probe_monotonicity(lambda r: min(r["x"], 1.0 - r["x"]), v, {"x": 0.0}, 3)
+        >>> probes["x"].violated, round(probes["x"].worst_violation, 6)
+        (True, 0.5)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_monotonicity() -> None:
+    v = (Variable("x", "increasing", 0.0, 1.0), Variable("q", "none", 0.0, 1.0))
+    tent = probe_monotonicity(lambda r: min(r["x"], 1.0 - r["x"]), v, {"x": 0.0, "q": 0.0}, 3)
+    assert set(tent) == {"x"}, (
+        f"probed {sorted(tent)} — a variable documented with no direction has no direction to "
+        "contradict and is not probed"
+    )
+    assert tent["x"].violated and abs(tent["x"].worst_violation - 0.5) < 1e-12, (
+        f"got violated={tent['x'].violated}, worst={tent['x'].worst_violation} — the sweep "
+        "0.0, 0.5, 1.0 scores 0.0, 0.5, 0.0, so the second pair falls by 0.5"
+    )
+    assert tent["x"].counterexample == (0.5, 1.0, 0.5, 0.0), (
+        f"counterexample {tent['x'].counterexample} — report (x_lo, x_hi, score_lo, score_hi) "
+        "for the worst adjacent pair"
+    )
+    clean = probe_monotonicity(lambda r: r["x"], v, {"x": 0.0, "q": 0.0}, 5)
+    assert not clean["x"].violated and clean["x"].worst_violation == 0.0, (
+        "a strictly increasing implementation documented as increasing has no violation"
+    )
+    assert clean["x"].counterexample == (), "a clean sweep reports () for the counterexample"
+    flat = probe_monotonicity(lambda r: 0.4, v, {"x": 0.0, "q": 0.0}, 5)
+    assert not flat["x"].violated, "a flat implementation does not move the wrong way"
+
+    def raises_low(row):
+        if row["x"] < 0.4:
+            raise ZeroDivisionError("division by zero")
+        return row["x"]
+
+    skipping = probe_monotonicity(raises_low, v, {"x": 0.0, "q": 0.0}, 5)
+    assert skipping["x"].n_skipped == 2 and not skipping["x"].violated, (
+        f"n_skipped={skipping['x'].n_skipped}, violated={skipping['x'].violated} — the two "
+        "points below 0.4 raise; skip them, count them, and compare what survived"
+    )
+    # Counting a point is not dropping it. Here the unevaluable point is in the MIDDLE of the
+    # grid and the pair either side of it is the only wrong-way move there is.
+    bracket = {0.0: 0.0, 0.25: 0.9, 0.75: 0.1, 1.0: 0.2}
+
+    def raises_middle(row):
+        x = round(row["x"], 6)
+        if x == 0.5:
+            raise ZeroDivisionError("division by zero")
+        return bracket[x]
+
+    middle = probe_monotonicity(raises_middle, v, {"x": 0.0, "q": 0.0}, 5)["x"]
+    assert middle.n_skipped == 1 and middle.violated and abs(middle.worst_violation - 0.8) < 1e-9, (
+        f"n_skipped={middle.n_skipped}, violated={middle.violated}, "
+        f"worst={middle.worst_violation} — 0.5 raised, so DROP it and compare 0.25 to 0.75 "
+        "directly: 0.9 falling to 0.1 is a wrong-way move of 0.8. Leaving the point in the "
+        "sequence with a substituted score (or a nan) quietly changes the answer"
+    )
+    assert middle.counterexample == (0.25, 0.75, 0.9, 0.1), (
+        f"counterexample {middle.counterexample} — the worst pair BRACKETS the skipped point: "
+        "(0.25, 0.75, 0.9, 0.1)"
+    )
+    base = {"x": 0.0, "q": 0.0}
+    probe_monotonicity(lambda r: r["x"], v, base, 4)
+    assert base == {"x": 0.0, "q": 0.0}, (
+        f"base_row came back as {base} — build a copy per grid point; a probe that mutates "
+        "its caller's row gives a different answer the second time it is run"
+    )
+    for bad, why in (
+        ((lambda r: r["x"], v, base, 1), "n_grid of 1"),
+        ((lambda r: r["x"], v, {"q": 0.0}, 3), "a probed variable missing from base_row"),
+        ((lambda r: r["x"], (Variable("x", "increasing", 1.0, 1.0),), base, 3), "lo == hi"),
+    ):
+        try:
+            probe_monotonicity(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 3 looks right")
+
+
+_try("exercise 3", _check_monotonicity)
+
+# %% [markdown]
+# ## 5. Exercise 4 — `probe_domain()`
+#
+# The document states a domain for every variable. That is a promise: inside it, the model
+# returns a probability. Test the promise. Two ways to break it, and a register has to tell
+# them apart, because they are fixed by different people:
+#
+# * **raised** — the implementation threw. Somebody's input validation is missing.
+# * **impossible** — it returned, and the value is not a probability in `[0, 1]`. Somebody's
+#   arithmetic is wrong, and everything downstream has been quietly consuming it.
+#
+# This probe sweeps *every* documented variable, including the ones with no documented
+# direction. A domain is documented whether or not a shape is.
+
+# %%
+class DomainFailure(NamedTuple):
+    """One probe point inside the documented domain on which the promise did not hold."""
+
+    variable: str
+    value: float
+    kind: str          # "raised" | "impossible"
+    exception: str     # the exception class name, or "" when kind == "impossible"
+    returned: float    # the offending return value, or nan when kind == "raised"
+
+
+class DomainProbe(NamedTuple):
+    n_tested: int
+    failures: tuple
+
+
+def probe_domain(fn: Callable[[Mapping[str, float]], Any], variables: Iterable[Variable],
+                 base_row: Mapping[str, float], n_grid: int = GRID) -> DomainProbe:
+    """Sweep every documented domain and record every point that is not a probability.
+
+    Requirements, each of which is graded:
+      * every variable is swept, whatever its documented direction, over
+        `numpy.linspace(v.lo, v.hi, n_grid)` with the rest held at `base_row`.
+      * `n_tested` counts every call made — `len(variables) * n_grid` — whether it failed or not.
+      * a call that raises gives `kind="raised"`, `exception=type(exc).__name__` and
+        `returned=nan`. A call that returns a value that is not a finite number in `[0, 1]`,
+        or is not a number at all, gives `kind="impossible"`, `exception=""` and the value in
+        `returned` (`nan` when it could not be converted to a float).
+      * `0.0` and `1.0` are probabilities. The bounds are inclusive.
+      * `failures` is a tuple in probe order: variables in the order given, values ascending.
+      * `base_row` is not modified.
+      * `ValueError` if `n_grid < 2`, if a variable is missing from `base_row`, or if `lo >= hi`.
+
+    Example:
+        >>> v = (Variable("x", "none", 0.0, 1.0),)
+        >>> out = probe_domain(lambda r: 1.0 / r["x"], v, {"x": 0.5}, 3)
+        >>> out.n_tested, out.failures[0].kind, out.failures[0].exception
+        (3, 'raised', 'ZeroDivisionError')
+        >>> out.failures[1].kind, out.failures[1].returned
+        ('impossible', 2.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_domain() -> None:
+    v = (Variable("x", "none", 0.0, 1.0),)
+    out = probe_domain(lambda r: 1.0 / r["x"], v, {"x": 0.5}, 3)
+    assert isinstance(out, DomainProbe), f"return a DomainProbe, got {type(out).__name__}"
+    assert out.n_tested == 3, (
+        f"n_tested {out.n_tested} — count every call the probe made, not the ones that failed"
+    )
+    assert len(out.failures) == 2, (
+        f"{len(out.failures)} failures — 1/0 raises, 1/0.5 is 2.0 which is not a probability, "
+        "and 1/1.0 is 1.0 which is"
+    )
+    first, second = out.failures
+    assert (first.kind, first.exception) == ("raised", "ZeroDivisionError"), (
+        f"got kind={first.kind!r} exception={first.exception!r} — record the exception CLASS "
+        "NAME so the register can say what broke"
+    )
+    assert math.isnan(first.returned), "a call that raised returned nothing; report nan"
+    assert second.kind == "impossible" and abs(second.returned - 2.0) < 1e-12, (
+        f"got kind={second.kind!r} returned={second.returned} — a returned 2.0 is not a "
+        "probability, and the register needs the value"
+    )
+    assert second.exception == "", "nothing was raised here, so the exception field is empty"
+    inclusive = probe_domain(lambda r: r["x"], v, {"x": 0.5}, 3)
+    assert inclusive.failures == (), (
+        f"got {inclusive.failures} — 0.0 and 1.0 ARE probabilities; the bounds are inclusive"
+    )
+    nan_out = probe_domain(lambda r: float("nan"), v, {"x": 0.5}, 2)
+    assert len(nan_out.failures) == 2 and nan_out.failures[0].kind == "impossible", (
+        "nan is not a finite number in [0, 1]; a suite that lets it through reports it as a rate"
+    )
+    two = (Variable("x", "none", 0.0, 1.0), Variable("w", "increasing", 0.0, 1.0))
+    ordered = probe_domain(lambda r: -1.0, two, {"x": 0.5, "w": 0.5}, 2)
+    assert [f.variable for f in ordered.failures] == ["x", "x", "w", "w"], (
+        f"order {[f.variable for f in ordered.failures]} — variables in the order given, "
+        "values ascending, so a register reads the same way twice"
+    )
+    assert [f.value for f in ordered.failures[:2]] == [0.0, 1.0], "values ascending within a sweep"
+    base = {"x": 0.5}
+    probe_domain(lambda r: 0.5, v, base, 3)
+    assert base == {"x": 0.5}, f"base_row came back as {base} — copy it per grid point"
+    for bad, why in (((lambda r: 0.5, v, {"x": 0.5}, 1), "n_grid of 1"),
+                     ((lambda r: 0.5, v, {}, 3), "a variable missing from base_row")):
+        try:
+            probe_domain(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 4 looks right")
+
+
+_try("exercise 4", _check_domain)
+
+# %% [markdown]
+# ## 6. Exercise 5 — `scan_leakage()`
+#
+# A feature that all but tells you the answer is not a good feature; it is a broken extract.
+# Kapoor and Narayanan's survey of leakage in machine-learning-based science found errors in
+# 17 fields, "collectively affecting 329 papers and in some cases leading to wildly
+# overoptimistic conclusions". A validator does not need the papers: a univariate AUC per
+# feature, run every time the extract is rebuilt, is a leakage alarm that costs nothing.
+#
+# A feature can separate the target upward or downward, so the alarm is on
+# `max(auc, 1 - auc)` — the distance from 0.5, not the direction of it.
+
+# %%
+class LeakageScan(NamedTuple):
+    """Univariate separation per feature, and the ones that are too good to be true."""
+
+    auc: dict      # name -> univariate AUC, in the feature's own direction
+    flagged: tuple  # names at or above the threshold, strongest first, ties alphabetical
+
+
+def scan_leakage(features: Mapping[str, np.ndarray], y_true: np.ndarray,
+                 auc_threshold: float = LEAK_AUC_THRESHOLD) -> LeakageScan:
+    """Score every feature against the target on its own and flag the implausible ones.
+
+    Requirements, each of which is graded:
+      * `auc` holds one plain Python `float` per feature, the AUC in the feature's own
+        direction, so a reader can see which way it points.
+      * a feature is flagged when `max(auc, 1 - auc) >= auc_threshold`. The rule is a minimum:
+        a feature landing exactly on the threshold is flagged.
+      * a feature that separates DOWNWARD — an AUC near 0 — is leakage too, and must be flagged.
+      * `flagged` is ordered by `max(auc, 1 - auc)` descending, ties broken alphabetically.
+      * `ValueError` if `features` is empty, if a column's length differs from `y_true`'s, if
+        `y_true` holds anything but 0 and 1, if it holds only one class, or if `auc_threshold`
+        is outside `(0.5, 1.0]`.
+
+    Example:
+        >>> y = np.array([0, 0, 1, 1])
+        >>> s = scan_leakage({"tell": np.array([0.0, 0.0, 1.0, 1.0]),
+        ...                   "noise": np.array([1.0, 0.0, 1.0, 0.0])}, y, 0.95)
+        >>> s.flagged, round(s.auc["noise"], 4)
+        (('tell',), 0.5)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_leakage() -> None:
+    y = np.array([0, 0, 1, 1])
+    s = scan_leakage({"tell": np.array([0.0, 0.0, 1.0, 1.0]),
+                      "noise": np.array([1.0, 0.0, 1.0, 0.0])}, y, 0.95)
+    assert isinstance(s, LeakageScan), f"return a LeakageScan, got {type(s).__name__}"
+    assert s.flagged == ("tell",), f"flagged {s.flagged} — 'tell' separates perfectly"
+    assert abs(s.auc["noise"] - 0.5) < 1e-12, f"the noise column should score 0.5, got {s.auc['noise']}"
+    assert type(s.auc["tell"]) is float, (
+        f"auc values should be plain floats, got {type(s.auc['tell']).__name__} — a numpy "
+        "scalar stops json.dumps, which is where a register gets serialised"
+    )
+    # An inverted tell: AUC 0.0. Distance from 0.5 is what matters, not direction.
+    inverted = scan_leakage({"upside_down": np.array([1.0, 1.0, 0.0, 0.0])}, y, 0.95)
+    assert inverted.flagged == ("upside_down",), (
+        f"flagged {inverted.flagged} — an AUC of {inverted.auc['upside_down']:.2f} is perfect "
+        "separation pointing downwards; flag on max(auc, 1 - auc)"
+    )
+    # Exactly on the threshold: the rule is a minimum.
+    edge = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+    boundary = scan_leakage({"edge": np.array([0.0, 1.0, 2.0, 3.0, 2.5, 2.5, 4.0, 5.0])},
+                            edge, 0.875)
+    assert boundary.flagged == ("edge",), (
+        f"got {boundary.flagged} with AUC {boundary.auc['edge']:.4f} against a threshold of "
+        "0.875 — a feature landing exactly on the threshold is flagged"
+    )
+    for bad, why in ((({}, y, 0.95), "no features"),
+                     (({"a": np.array([1.0, 2.0])}, y, 0.95), "a column of the wrong length"),
+                     (({"a": np.zeros(4)}, np.array([0, 0, 0, 0]), 0.95), "a single class"),
+                     (({"a": np.zeros(4)}, y, 0.4), "a threshold below 0.5")):
+        try:
+            scan_leakage(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 5 looks right")
+
+
+_try("exercise 5", _check_leakage)
+
+# %% [markdown]
+# ## 7. Exercise 6 — `duplicate_contamination()`
+#
+# The other way a test set lies: it is not a test set. Rows that appear in both extracts
+# inflate every out-of-sample figure in the pack, and the usual cause is mundane — a join
+# that fanned out, a re-run appended instead of replacing, a de-duplication applied to one
+# side only.
+#
+# This one is arithmetic, not statistics. Count the test rows whose exact values appear in
+# the training extract, and report which ones, so the finding can be handed back with
+# evidence rather than with a percentage.
+
+# %%
+class Contamination(NamedTuple):
+    n_test: int
+    n_in_train: int
+    share: float             # n_in_train / n_test
+    indices: tuple           # test row indices, ascending
+    repeats_within_test: int  # test rows that repeat an EARLIER test row
+
+
+def duplicate_contamination(train: np.ndarray, test: np.ndarray) -> Contamination:
+    """Count the test rows that also appear in the training extract.
+
+    Requirements, each of which is graded:
+      * a match is EXACT equality across every column. No tolerance: a tolerance turns
+        "these are the same record" into a modelling opinion.
+      * `indices` is a tuple of test row indices, ascending, one entry per contaminated row.
+      * `share` is a plain Python float, `n_in_train / n_test`.
+      * `repeats_within_test` counts test rows that repeat an earlier test row — three
+        identical rows are two repeats, not three.
+      * `ValueError` if either input is not two-dimensional, if the column counts differ, or
+        if `test` has no rows.
+
+    Example:
+        >>> tr = np.array([[1.0, 2.0], [3.0, 4.0]])
+        >>> te = np.array([[3.0, 4.0], [5.0, 6.0], [3.0, 4.0]])
+        >>> c = duplicate_contamination(tr, te)
+        >>> c.n_in_train, c.indices, round(c.share, 4), c.repeats_within_test
+        (2, (0, 2), 0.6667, 1)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_contamination() -> None:
+    tr = np.array([[1.0, 2.0], [3.0, 4.0]])
+    te = np.array([[3.0, 4.0], [5.0, 6.0], [3.0, 4.0]])
+    c = duplicate_contamination(tr, te)
+    assert isinstance(c, Contamination), f"return a Contamination, got {type(c).__name__}"
+    assert c.n_in_train == 2 and c.indices == (0, 2), (
+        f"n_in_train={c.n_in_train} indices={c.indices} — both copies of [3, 4] are "
+        "contaminated rows; report every index, ascending"
+    )
+    assert abs(c.share - 2 / 3) < 1e-12 and type(c.share) is float, (
+        f"share {c.share!r} should be 2/3 as a plain float"
+    )
+    assert c.repeats_within_test == 1, (
+        f"repeats_within_test {c.repeats_within_test} — the second [3, 4] repeats the first, "
+        "so one repeat, not two"
+    )
+    near = duplicate_contamination(np.array([[1.0, 2.0]]), np.array([[1.0, 2.0000001]]))
+    assert near.n_in_train == 0, (
+        "matching is exact — a row that is merely close is a different record, and deciding "
+        "how close counts is not this function's job"
+    )
+    thrice = duplicate_contamination(np.array([[9.0]]), np.array([[7.0], [7.0], [7.0]]))
+    assert thrice.repeats_within_test == 2, (
+        f"got {thrice.repeats_within_test} — three identical rows are two repeats"
+    )
+    for a, b, why in ((np.array([1.0, 2.0]), te, "a 1-D training extract"),
+                      (tr, np.array([[1.0]]), "mismatched column counts"),
+                      (tr, np.empty((0, 2)), "an empty test extract")):
+        try:
+            duplicate_contamination(a, b)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 6 looks right")
+
+
+_try("exercise 6", _check_contamination)
+
+# %% [markdown]
+# ## 8. Exercise 7 — `baseline_margin_check()`
+#
+# The last mechanical check is the crudest and the one most often skipped: does the model
+# beat predicting the base rate for everybody, by a margin stated before anyone saw the
+# figures? Brier score answers it — mean squared error against the outcome — and the skill
+# score turns two Briers into one number: `1 - brier_model / brier_baseline`.
+#
+# A single-class sample has a baseline Brier of zero and no skill score at all. That is a
+# `ValueError`, not a division producing `inf` that a report then prints as a triumph.
+
+# %%
+class BaselineCheck(NamedTuple):
+    brier_model: float
+    brier_baseline: float
+    skill: float        # 1 - brier_model / brier_baseline; negative means worse than nothing
+    min_margin: float
+    passed: bool
+
+
+def baseline_margin_check(y_true: np.ndarray, y_prob: np.ndarray,
+                          min_margin: float = MIN_SKILL_MARGIN) -> BaselineCheck:
+    """Test the model against a constant base-rate prediction by a stated margin.
+
+    The baseline predicts `y_true.mean()` for every record — the best constant there is.
+
+    Requirements, each of which is graded:
+      * `brier_model` is `mean((y_prob - y_true) ** 2)`; `brier_baseline` is the same against
+        the constant base rate.
+      * `skill` is `1 - brier_model / brier_baseline`, so a model worse than the constant
+        scores NEGATIVE. Do not clamp it at zero: "worse than nothing" is the finding.
+      * `passed` is `skill >= min_margin`. Landing exactly on the margin passes.
+      * every field is a plain Python `float`, except `passed`.
+      * `ValueError` if the two arrays differ in length, if `y_true` holds anything but 0 and
+        1, if `y_true` holds a single class, if any probability is outside `[0, 1]`, or if
+        `min_margin` is negative.
+
+    Example — a model that is exactly the base rate has no skill at all:
+        >>> c = baseline_margin_check(np.array([0, 1]), np.array([0.5, 0.5]), 0.1)
+        >>> round(c.skill, 12), c.passed
+        (0.0, False)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_baseline() -> None:
+    c = baseline_margin_check(np.array([0, 1]), np.array([0.5, 0.5]), 0.1)
+    assert isinstance(c, BaselineCheck), f"return a BaselineCheck, got {type(c).__name__}"
+    assert abs(c.skill) < 1e-12 and not c.passed, (
+        f"skill {c.skill} — predicting the base rate for everybody IS the baseline, so the "
+        "skill is exactly 0 and a margin of 0.1 is not met"
+    )
+    assert type(c.brier_model) is float and type(c.skill) is float, (
+        "return plain Python floats; a numpy scalar stops json.dumps"
+    )
+    perfect = baseline_margin_check(np.array([0, 1]), np.array([0.0, 1.0]), 0.5)
+    assert abs(perfect.skill - 1.0) < 1e-12 and perfect.passed, (
+        f"a perfect model has skill 1.0, got {perfect.skill}"
+    )
+    worse = baseline_margin_check(np.array([0, 0, 1, 1]), np.array([1.0, 1.0, 0.0, 0.0]), 0.1)
+    assert worse.skill < 0.0, (
+        f"skill {worse.skill} — a model that is worse than a constant must score negative; "
+        "clamping it at zero hides the single most reportable result this check produces"
+    )
+    exact = baseline_margin_check(np.array([0, 1]), np.array([0.0, 1.0]), 1.0)
+    assert exact.passed, "landing exactly on the required margin passes it"
+    for bad, why in (
+        ((np.array([0, 1]), np.array([0.5]), 0.1), "mismatched lengths"),
+        ((np.array([0, 2]), np.array([0.5, 0.5]), 0.1), "a label that is not 0 or 1"),
+        ((np.array([1, 1]), np.array([0.5, 0.5]), 0.1), "a single class"),
+        ((np.array([0, 1]), np.array([0.5, 1.5]), 0.1), "a prediction above 1"),
+        ((np.array([0, 1]), np.array([0.5, 0.5]), -0.1), "a negative margin"),
+    ):
+        try:
+            baseline_margin_check(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError")
+    print("exercise 7 looks right")
+
+
+_try("exercise 7", _check_baseline)
+
+# %% [markdown]
+# ## 9. Exercise 8 — `soundness_findings()`
+#
+# Seven probes have produced evidence. A register turns it into a document: one finding per
+# thing that is wrong, each with a rule family, a subject, a severity from policy and a
+# detail carrying the figure that produced it.
+#
+# The severities come from `policy`, not from your code. That is not ceremony — a firm that
+# treats an undocumented variable as high and a post-decision feature as critical has written
+# that down somewhere, and a register that hard-codes its own view of severity is one more
+# opinion in a document that is supposed to contain none.
+
+# %%
+class Finding(NamedTuple):
+    rule: str        # the family: MONO, DOMAIN-RAISED, LEAK, ...
+    subject: str     # the variable or feature it concerns; "" for register-level findings
+    severity: str
+    detail: str
+
+
+SOUNDNESS_POLICY: dict[str, Any] = {
+    "max_contamination_share": MAX_CONTAMINATION_SHARE,
+    "severity": {
+        "VAR-UNDOCUMENTED": "high",
+        "VAR-UNUSED": "medium",
+        "AVAIL": "critical",
+        "AVAIL-UNKNOWN": "medium",
+        "MONO": "high",
+        "DOMAIN-RAISED": "critical",
+        "DOMAIN-IMPOSSIBLE": "critical",
+        "LEAK": "critical",
+        "CONTAM": "high",
+        "BASELINE": "high",
+    },
+}
+
+REQUIRED_EVIDENCE = ("reconciliation", "monotonicity", "domain", "leakage", "contamination",
+                     "baseline")
+
+
+def soundness_findings(evidence: Mapping[str, Any],
+                       policy: Mapping[str, Any] = SOUNDNESS_POLICY) -> tuple:
+    """Assemble the probes into a severity-rated finding register.
+
+    `evidence` carries the six results, keyed by `REQUIRED_EVIDENCE`. One finding is raised
+    for each of these, and none is raised for anything that passed:
+
+      | rule                | one per                                            | subject |
+      |---------------------|----------------------------------------------------|---------|
+      | `VAR-UNDOCUMENTED`  | name in `used_not_documented`                      | name    |
+      | `VAR-UNUSED`        | name in `documented_not_used`                      | name    |
+      | `AVAIL`             | name in `used_after_decision`                      | name    |
+      | `AVAIL-UNKNOWN`     | name in `used_not_in_catalogue`                    | name    |
+      | `MONO`              | probe with `violated`                              | name    |
+      | `DOMAIN-RAISED`     | variable with at least one `kind == "raised"`      | name    |
+      | `DOMAIN-IMPOSSIBLE` | variable with at least one `kind == "impossible"`  | name    |
+      | `LEAK`              | name in `leakage.flagged`                          | name    |
+      | `CONTAM`            | `share > policy["max_contamination_share"]`        | `""`    |
+      | `BASELINE`          | `not baseline.passed`                              | `""`    |
+
+    Requirements, each of which is graded:
+      * severity comes from `policy["severity"][rule]`. `ValueError` if a rule fires and the
+        policy has no severity for it — never a default.
+      * findings are sorted by severity, most severe first in `SEVERITY_ORDER`, then by rule,
+        then by subject. The order is total, so two runs produce the same document.
+      * `detail` is a non-empty string, and the figure that produced the finding appears in it,
+        formatted exactly as follows so a reader can trace it back. The rest of the wording is
+        yours:
+          - `MONO`: the documented direction, and `f"{worst_violation:.6f}"`
+          - `DOMAIN-RAISED`: the exception class name, and `f"{value:.6g}"` of the FIRST
+            raising point for that variable
+          - `DOMAIN-IMPOSSIBLE`: `f"{returned:.6g}"` and `f"{value:.6g}"` of the FIRST
+            impossible point for that variable
+          - `LEAK`: `f"{auc:.4f}"`
+          - `CONTAM`: `f"{share:.4f}"` and `f"{max_contamination_share:.4f}"`
+          - `BASELINE`: `f"{skill:.4f}"` and `f"{min_margin:.4f}"`
+      * `ValueError` naming EVERY missing key when `evidence` is incomplete — one run, one
+        list, not one key per attempt.
+      * a clean review returns `()`. An empty register is a result.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _probe_evidence() -> dict:
+    """A tiny, unmistakable evidence bundle — nothing here comes from the extract above."""
+    rec = Reconciliation(documented_and_used=("kept",), documented_not_used=("ghost",),
+                         used_not_documented=("stowaway",), used_after_decision=("stowaway",),
+                         used_not_in_catalogue=("mystery",))
+    mono = {"bent": MonotonicityProbe("bent", "decreasing", True, 0.345678,
+                                      (1.0, 2.0, 0.1, 0.445678), 0)}
+    dom = DomainProbe(n_tested=9, failures=(
+        DomainFailure("blows_up", 12.5, "raised", "ZeroDivisionError", float("nan")),
+        DomainFailure("blows_up", 13.5, "raised", "ZeroDivisionError", float("nan")),
+        DomainFailure("silly", 7.25, "impossible", "", 1.0625),
+    ))
+    leak = LeakageScan(auc={"tell": 0.9876}, flagged=("tell",))
+    contam = Contamination(n_test=1000, n_in_train=37, share=0.037, indices=tuple(range(37)),
+                           repeats_within_test=0)
+    base = BaselineCheck(brier_model=0.2, brier_baseline=0.21, skill=0.0476,
+                         min_margin=0.1000, passed=False)
+    return {"reconciliation": rec, "monotonicity": mono, "domain": dom, "leakage": leak,
+            "contamination": contam, "baseline": base}
+
+
+def _check_findings() -> None:
+    register = soundness_findings(_probe_evidence(), SOUNDNESS_POLICY)
+    assert isinstance(register, tuple), f"return a tuple, got {type(register).__name__}"
+    by_rule = {f.rule: f for f in register}
+    assert set(by_rule) == {"VAR-UNDOCUMENTED", "VAR-UNUSED", "AVAIL", "AVAIL-UNKNOWN", "MONO",
+                            "DOMAIN-RAISED", "DOMAIN-IMPOSSIBLE", "LEAK", "CONTAM", "BASELINE"}, (
+        f"rules raised: {sorted(by_rule)} — every family in the table should fire exactly once "
+        "on this bundle"
+    )
+    assert len(register) == 10, (
+        f"{len(register)} findings — 'blows_up' raised twice and is ONE DOMAIN-RAISED finding, "
+        "reported at its first failing point"
+    )
+    severities = [f.severity for f in register]
+    ranks = [SEVERITY_ORDER.index(s) for s in severities]
+    assert ranks == sorted(ranks), (
+        f"severities came out {severities} — sort most severe first, using SEVERITY_ORDER "
+        "rather than the alphabet"
+    )
+    assert "0.345678" in by_rule["MONO"].detail and "decreasing" in by_rule["MONO"].detail, (
+        f"MONO detail {by_rule['MONO'].detail!r} must carry the documented direction and the "
+        "worst violation formatted to six decimals"
+    )
+    assert "12.5" in by_rule["DOMAIN-RAISED"].detail, (
+        f"DOMAIN-RAISED detail {by_rule['DOMAIN-RAISED'].detail!r} must name the FIRST failing "
+        "point, 12.5, not the last"
+    )
+    assert "0.9876" in by_rule["LEAK"].detail, "the LEAK detail carries the AUC to four decimals"
+    assert "0.0370" in by_rule["CONTAM"].detail, "the CONTAM detail carries the share, 0.0370"
+    assert by_rule["CONTAM"].subject == "", "a register-level finding has an empty subject"
+    assert "0.0476" in by_rule["BASELINE"].detail, "the BASELINE detail carries the skill"
+    # Severity is policy. Change the policy and the register must change with it.
+    lenient = {"max_contamination_share": 0.01,
+               "severity": dict(SOUNDNESS_POLICY["severity"], MONO="low")}
+    moved = {f.rule: f.severity for f in soundness_findings(_probe_evidence(), lenient)}
+    assert moved["MONO"] == "low", (
+        f"MONO came back {moved['MONO']!r} under a policy that says 'low' — read every "
+        "severity from policy['severity'], never from a constant in your own code"
+    )
+    strict = {"max_contamination_share": 0.01, "severity": {}}
+    try:
+        soundness_findings(_probe_evidence(), strict)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a policy with no severity for a rule that fired should raise "
+                             "ValueError, not fall back to a default")
+    clean = {"reconciliation": Reconciliation((), (), (), (), ()), "monotonicity": {},
+             "domain": DomainProbe(0, ()), "leakage": LeakageScan({}, ()),
+             "contamination": Contamination(10, 0, 0.0, (), 0),
+             "baseline": BaselineCheck(0.1, 0.2, 0.5, 0.1, True)}
+    assert soundness_findings(clean, SOUNDNESS_POLICY) == (), "a clean review returns ()"
+    try:
+        soundness_findings({"reconciliation": Reconciliation((), (), (), (), ())},
+                           SOUNDNESS_POLICY)
+    except ValueError as exc:
+        assert "monotonicity" in str(exc) and "baseline" in str(exc), (
+            f"the error said {str(exc)!r} — name EVERY missing key in one message, so a "
+            "caller fixes the bundle once rather than five times"
+        )
+    else:
+        raise AssertionError("an incomplete evidence bundle should raise ValueError")
+    print("exercise 8 looks right")
+
+
+_try("exercise 8", _check_findings)
+
+# %% [markdown]
+# ## 10. The review, run end to end
+#
+# Every probe is built. Run them against the model under review and print the register it
+# produces. Nothing below is typed: the findings, their subjects, their severities and their
+# figures all come out of the eight functions above.
+
+# %%
+def _run_review() -> None:
+    used = observe_feature_use(score_under_review,
+                               corner_rows(SPEC["variables"], SPEC["base_row"]))
+    rec = reconcile_variables(SPEC["variables"], used, FEATURE_CATALOGUE)
+    mono = probe_monotonicity(score_under_review, SPEC["variables"], SPEC["base_row"], GRID)
+    dom = probe_domain(score_under_review, SPEC["variables"], SPEC["base_row"], GRID)
+    leak = scan_leakage({n: TRAIN[n] for n in FEATURE_ORDER}, TRAIN["y"], LEAK_AUC_THRESHOLD)
+    contam = duplicate_contamination(as_matrix(TRAIN), as_matrix(TEST))
+    p_decision = np.array([score_under_review(r) for r in rows_of(TEST, arrears=False)])
+    base = baseline_margin_check(TEST["y"], p_decision, MIN_SKILL_MARGIN)
+
+    print(f"features the implementation reads: {', '.join(used)}")
+    print(f"documented and never read:         {', '.join(rec.documented_not_used) or 'none'}")
+    print(f"monotonicity sweeps:               {len(mono)} probed, "
+          f"{sum(p.violated for p in mono.values())} violated, "
+          f"{sum(p.n_skipped for p in mono.values())} points skipped")
+    print(f"domain sweeps:                     {dom.n_tested} points, "
+          f"{len(dom.failures)} failures")
+    print(f"leakage flags:                     {', '.join(leak.flagged) or 'none'}")
+    print(f"contaminated test rows:            {contam.n_in_train} of {contam.n_test} "
+          f"({contam.share:.4f})")
+    print(f"skill over the base rate:          {base.skill:.4f} "
+          f"(margin {base.min_margin:.4f}, {'PASS' if base.passed else 'FAIL'})")
+
+    evidence = {"reconciliation": rec, "monotonicity": mono, "domain": dom, "leakage": leak,
+                "contamination": contam, "baseline": base}
+    register = soundness_findings(evidence, SOUNDNESS_POLICY)
+    print(f"\nFINDING REGISTER — {SPEC['model_id']} v{SPEC['version']}, as of {AS_OF}")
+    print(f"{len(register)} findings. SYNTHETIC DATA; see DATA_NOTE.\n")
+    for f in register:
+        subject = f.subject or "(register)"
+        print(f"  [{f.severity:8s}] {f.rule:<18s} {subject:<24s} {f.detail}")
+
+
+_try("the review", _run_review)
+
+# %% [markdown]
+# ## 11. Common mistakes
+#
+# - **Probing with one row.** An implementation is a set of branches. A single probe row
+#   reviews one of them, and the feature list you publish is the feature list of that branch.
+# - **Recording only `row[name]`.** A `.get(name, default)` is a read. Miss it and you will
+#   report a live feature as dead, in a document whose whole purpose is to say what runs.
+# - **Filing "not in the catalogue" as "not available".** They are different findings with
+#   different owners: one is a data-governance gap, the other is a design defect.
+# - **Letting a crash count as a monotonicity violation.** Separate the probes. A raise is a
+#   domain finding; the shape question is asked of the points that returned an answer.
+# - **Mutating the caller's base row.** The second run of a probe that does this disagrees
+#   with the first, and you will spend a day proving which one to believe.
+# - **Matching contaminated rows with a tolerance.** Exact equality, or you have replaced a
+#   count with an opinion. (Note the corollary: a row holding `nan` never equals itself, so
+#   rows with missing values are invisible to this check and need their own.)
+# - **Clamping a negative skill score to zero.** "Worse than predicting the base rate" is the
+#   most reportable sentence in the pack.
+# - **Hard-coding severities.** They belong to a policy document that can change without your
+#   code changing.
+#
+# The first one is worth running rather than believing.
+
+# %%
+def _show_single_row_probe() -> None:
+    deep = {**SPEC["base_row"], "prior_defaults": 8.0}
+    one = observe_feature_use(score_under_review, [deep])
+    many = observe_feature_use(score_under_review,
+                               corner_rows(SPEC["variables"], SPEC["base_row"]))
+    print(f"probed on one row with prior_defaults=8: {', '.join(one)}")
+    print(f"probed on the corners of every domain:   {', '.join(many)}")
+    print(f"\nfeatures the one-row probe never saw:    "
+          f"{', '.join(sorted(set(many) - set(one))) or 'none'}")
+    print("The overlay returns before those two are read. A review that probed only that row")
+    print("would have certified a variable list the implementation does not use.")
+
+
+_try("one-row probe", _show_single_row_probe)
+
+# %% [markdown]
+# ## 12. Self-check
+#
+# 1. Your feature-use probe reports that the implementation reads `bureau_score`. The model
+#    document does not mention it. The most defensible finding is:
+#    - (a) the document is out of date and should be updated to include it
+#    - (b) the model in production is not the model that was approved, which is a change-
+#          control finding first and a documentation finding second
+#    - (c) no finding: the probe may have caught a debug line
+#
+# 2. A monotonicity sweep over `income_k` skips 4 of 25 points because the implementation
+#    raised on them, and finds no violation among the 21 that survived. The correct report is:
+#    - (a) monotonicity holds for `income_k`
+#    - (b) monotonicity holds over the part of the domain the implementation can evaluate, and
+#          4 points inside the documented domain are a separate domain finding
+#    - (c) monotonicity cannot be assessed at all
+#
+# 3. A feature has a univariate AUC of 0.02 against the target. Your scan does not flag it.
+#    The bug is:
+#    - (a) nothing; an AUC of 0.02 means the feature is useless
+#    - (b) the flag tests `auc >= threshold` instead of `max(auc, 1 - auc) >= threshold`, and
+#          0.02 is near-perfect separation pointing downwards
+#    - (c) the AUC helper mishandled ties
+#
+# 4. 3% of your test rows also appear in the training extract. The pack's out-of-sample AUC is
+#    0.81. The honest statement is:
+#    - (a) 3% is immaterial and the figure stands
+#    - (b) the figure is not out-of-sample for 3% of the rows, so it is optimistic by an
+#          unknown amount until it is recomputed on the clean rows
+#    - (c) the figure should be discarded entirely
+#
+# 5. Your register hard-codes `AVAIL` as critical. Policy changes it to high. Your code is
+#    unchanged and the register still says critical. The problem is:
+#    - (a) cosmetic; the finding is raised either way
+#    - (b) the register now contradicts the policy it claims to apply, and every prioritisation
+#          decision taken from it is taken against a rule nobody agreed
+#    - (c) there is no problem, because critical is more conservative
+#
+# Answers are published in the course solution bundle.
+
+# %%
+def _show_review_reproduces() -> None:
+    """One last property, worth running rather than believing: the review is a function."""
+    def once() -> tuple:
+        used = observe_feature_use(score_under_review,
+                                   corner_rows(SPEC["variables"], SPEC["base_row"]))
+        p = np.array([score_under_review(r) for r in rows_of(TEST, arrears=False)])
+        evidence = {
+            "reconciliation": reconcile_variables(SPEC["variables"], used, FEATURE_CATALOGUE),
+            "monotonicity": probe_monotonicity(score_under_review, SPEC["variables"],
+                                               SPEC["base_row"], GRID),
+            "domain": probe_domain(score_under_review, SPEC["variables"], SPEC["base_row"], GRID),
+            "leakage": scan_leakage({n: TRAIN[n] for n in FEATURE_ORDER}, TRAIN["y"],
+                                    LEAK_AUC_THRESHOLD),
+            "contamination": duplicate_contamination(as_matrix(TRAIN), as_matrix(TEST)),
+            "baseline": baseline_margin_check(TEST["y"], p, MIN_SKILL_MARGIN),
+        }
+        return soundness_findings(evidence, SOUNDNESS_POLICY)
+
+    first, second = once(), once()
+    print(f"two independent runs of the whole review: {len(first)} and {len(second)} findings")
+    print(f"the two registers are identical: {first == second}")
+    print("Nothing here samples and nothing here is typed, so a second run of the review is")
+    print("an audit of the first. That is what makes a finding register evidence rather than")
+    print("a record of what one reviewer thought on one afternoon.")
+
+
+_try("the review reproduces", _show_review_reproduces)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# Eight probes and a generated register. None of them reads a model document and agrees with
+# it; each one runs the implementation and reports what it did. That is the difference between
+# a conceptual-soundness review that is repeated every release for the cost of a CI job and
+# one that is repeated every release for the cost of a fortnight.
+#
+# Module 4 takes the one instrument this lesson borrowed — `auc_by_ranks` — and makes you
+# build it, with the confidence interval that turns a metric into a test. Module 10 takes this
+# register and turns it into the pack a committee receives, with a gate that fails the
+# document if a figure in it cannot be traced back to a run.
+
+# %%
+print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
+
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_observe),
+                          ("exercise 2", _check_reconcile),
+                          ("exercise 3", _check_monotonicity),
+                          ("exercise 4", _check_domain),
+                          ("exercise 5", _check_leakage),
+                          ("exercise 6", _check_contamination),
+                          ("exercise 7", _check_baseline),
+                          ("exercise 8", _check_findings)):
+        _try(_name, _check)
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

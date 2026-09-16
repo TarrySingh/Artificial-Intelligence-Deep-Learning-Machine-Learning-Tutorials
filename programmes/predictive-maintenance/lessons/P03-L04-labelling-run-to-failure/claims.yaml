@@ -1,0 +1,72 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — the three policies' errors against truth, the positive rate at each
+# horizon, the post-event row counts, every AUC, and all four cost-optimal thresholds — and
+# are therefore not claims. They do not appear here.
+#
+# Three things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# because a reviewer should be able to see that each omission was a decision.
+claims:
+  - id: censoring-definition
+    claim: >-
+      The NIST/SEMATECH e-Handbook of Statistical Methods defines censored data as what you
+      have when not every unit under observation fails, and calls the case where the unobserved
+      failure times lie beyond the end of observation "right censored". Section 5 of the lesson
+      quotes the first sentence to justify treating a unit with no work order as censored at
+      the edge of the sensor window rather than as a negative example, and exercise 5's -1
+      label is the same idea applied per hour.
+    where: "lesson.py section 5 (build_runs and right-censoring), section 6 (horizon_labels)"
+    source_url: https://www.itl.nist.gov/div898/handbook/apr/section1/apr131.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 8.1.3.1 Censoring"
+    quote: >-
+      When not all units on test fail we have censored data
+    quote_context: >-
+      Opening definition of the Censoring subsection; the same page adds "This type of
+      censoring is also called 'right censored' data since the times of failure to the right
+      (i.e., larger than T) are missing."
+    accessed: 2026-09-16
+
+  - id: multicensored-three-outcomes
+    claim: >-
+      The same handbook page states the general case in which each observed unit yields exactly
+      one of three kinds of information: a run time if it did not fail while under observation,
+      an exact failure time, or an interval during which it failed. The lesson's Run table is
+      the first two of those three — `kind` is FAILURE, SUSPENSION or CENSORED — and the
+      absence of the third is stated in the lesson's own scope rather than implied: this module
+      derives an event hour and does not model interval censoring.
+    where: "lesson.py section 5 (the three ways a run ends)"
+    source_url: https://www.itl.nist.gov/div898/handbook/apr/section1/apr131.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 8.1.3.1 Censoring"
+    quote: >-
+      In the most general case, every unit observed yields exactly one of the following three
+      types of information: a run-time if the unit did not fail while under observation, an
+      exact failure time, an interval of time during which the unit failed.
+    quote_context: "Multicensored Data subsection"
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. THE PLANT IS SYNTHETIC AND SAYS SO IN ITS FIRST SCREEN. `generate_plant` is in the
+#    notebook, is seeded, and is read by the student before it is run. meta.yaml declares it
+#    under `datasets:` with kind `synthetic` and `downloads: false`. This module is the one
+#    place in the programme where synthetic data is not a convenience but a requirement: the
+#    lesson's whole argument is that a labelling policy can be WRONG, and to show a policy
+#    wrong you need the run table the policy was trying to recover. No real maintenance log
+#    ships with one. Nothing in the lesson claims that this plant's failure rate, P-F interval
+#    spread, no-fault-found rate, historian coverage or paperwork lag describes any real
+#    population of machines or any real maintenance department.
+#
+# 2. THE PRICES ARE A SCENARIO, NOT A MEASUREMENT. `SCENARIO` prices a planned intervention at
+#    9,000, an unplanned failure at 60,000 and a false alarm at 6,000, and the notebook says
+#    in the setup cell that these are this plant's numbers and not module 1's. No source is
+#    cited because none is claimed. Module 1 argued that the operating point moves when the
+#    prices change; this module runs the opposite experiment — prices held fixed, labels
+#    changed — so the absolute level of the three numbers carries no weight here at all.
+#
+# 3. THE 0.05 CEILING MARGIN IS A JUDGEMENT AND IS PRINTED AS ONE. `honest_ceiling()` derives
+#    the score ceiling from an honest labelling of the same feature plus `CEILING_MARGIN`, and
+#    the notebook prints both the baseline and the margin so a reader can disagree with the
+#    margin rather than with a constant. No literature value for "an AUC this high is
+#    suspicious" is quoted, because the author could not verify a primary source that states
+#    one, and inventing a threshold for a lesson about not inventing thresholds would have
+#    been the worst possible ending.

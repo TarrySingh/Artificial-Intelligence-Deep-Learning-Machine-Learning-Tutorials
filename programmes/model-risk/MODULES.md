@@ -1,24 +1,30 @@
 # Module map — Model risk, AI assurance and audit analytics
 
-Ten modules. **One is built. Nine are specified and not yet written.** Every row says which.
+Ten modules. **Five are built. Five are specified and not yet written.** Every row says which.
+Built rows carry the cost and rubric size measured by `tools/execute.py` and `tools/grade.py`,
+never a figure typed by hand.
 
 A module is one lesson directory in the standard layout (`meta.yaml`, `lesson.py`,
 `solutions/`, `tests/`, `claims.yaml`), except the two compiled modules, which add a `Makefile`
 and a test binary. Every module is tier `cpu8` — 8 GiB, 2 vCPU, no GPU, no network, under ten
 minutes — and each row states the budget its `meta.yaml` will declare.
 
-| # | Module | Status | Language | Budget |
-|---|---|---|---|---|
-| 1 | A validation suite that would survive an audit | **BUILT** | python | 90 s |
-| 2 | The model inventory, and a tiering you can defend | specified | python | 90 s |
-| 3 | Conceptual soundness, reviewed mechanically | specified | python | 120 s |
-| 4 | Discrimination testing, and how sure you are of it | specified | python | 180 s |
-| 5 | Calibration and stability, at depth | specified | python | 180 s |
-| 6 | Reproducing the first line's number, exactly | specified | **C** | 120 s |
-| 7 | The challenger, built from scratch | specified | python | 240 s |
-| 8 | Explainability evidence that reproduces | specified | python | 240 s |
-| 9 | Monitoring a portfolio that does not fit in memory | specified | **C** | 180 s |
-| 10 | The validation report and the committee pack | specified | python | 120 s |
+| # | Module | Status | Language | Budget | Measured | Rubric |
+|---|---|---|---|---|---|---|
+| 1 | A validation suite that would survive an audit | **BUILT** | python | 90 s | 0.1 s · 35 MiB | 110 pts / 32 cases |
+| 2 | The model inventory, and a tiering you can defend | **BUILT** | python | 90 s | 0.1 s · 34 MiB | 121 pts / 32 cases |
+| 3 | Conceptual soundness, reviewed mechanically | **BUILT** | python | 120 s | 0.2 s · 40 MiB | 122 pts / 37 cases |
+| 4 | Discrimination testing, and how sure you are of it | **BUILT** | python | 180 s | 16.0 s · 38 MiB | 155 pts / 40 cases |
+| 5 | Calibration and stability, at depth | specified | python | 180 s | — | — |
+| 6 | Reproducing the first line's number, exactly | **BUILT** | **C** | 120 s | 2.7 s · 383 MiB | 75 pts / 15 cases |
+| 7 | The challenger, built from scratch | specified | python | 240 s | — | — |
+| 8 | Explainability evidence that reproduces | specified | python | 240 s | — | — |
+| 9 | Monitoring a portfolio that does not fit in memory | specified | **C** | 180 s | — | — |
+| 10 | The validation report and the committee pack | specified | python | 120 s | — | — |
+
+Module 6's 383 MiB is the largest figure in the programme and is real: the notebook holds two
+million doubles in four different summation orders at once, which is the whole point of the
+lesson. It is well inside the 8 GiB tier.
 
 ---
 
@@ -59,7 +65,9 @@ The full list is in the lesson's `meta.yaml`.
 
 ## Module 2 — The model inventory, and a tiering you can defend
 
-**Status: specified.** python · tier `cpu8` · budget 90 s · prerequisite: module 1.
+**Status: BUILT.** `lessons/P04-L02-model-inventory-tiering/` · python · tier `cpu8` ·
+budget 90 s · **measured 0.1 s, 34 MiB** · 121 rubric points across 32 autograded cases ·
+prerequisites `T00-L01-the-8gb-track`, `P04-L01-validation-suite`.
 
 Inventory and risk classification is the *first* of the PRA's five SS1/23 principles, and the
 2026 interagency guidance is explicitly risk-based — tailored to a firm's model risk profile.
@@ -77,7 +85,9 @@ distribution report generated from the result. Synthetic inventory, generated in
 
 ## Module 3 — Conceptual soundness, reviewed mechanically
 
-**Status: specified.** python · tier `cpu8` · budget 120 s.
+**Status: BUILT.** `lessons/P04-L03-conceptual-soundness/` · python · tier `cpu8` ·
+budget 120 s · **measured 0.2 s, 40 MiB** · 122 rubric points across 37 autograded cases ·
+prerequisites `T00-L01-the-8gb-track`, `P04-L01-validation-suite`.
 
 The interagency guidance pairs validating conceptual soundness with outcomes analysis. Module 1
 built the outcomes half. This is the other half, and the point of the lab is that much of what
@@ -96,7 +106,11 @@ code has to find it.
 
 ## Module 4 — Discrimination testing, and how sure you are of it
 
-**Status: specified.** python · tier `cpu8` · budget 180 s.
+**Status: BUILT.** `lessons/P04-L04-discrimination-testing/` · python · tier `cpu8` ·
+budget 180 s · **measured 16.0 s, 38 MiB** · 155 rubric points across 40 autograded cases ·
+prerequisites `T00-L01-the-8gb-track`, `P04-L01-validation-suite`. The 16 s is bootstrap
+resampling for the confidence intervals, and is the point of the module rather than an
+inefficiency.
 
 Module 1 hands the student `auc_by_ranks()`. This module makes them build it, and then makes
 the harder point: a metric without an interval is not a test.
@@ -129,7 +143,10 @@ see what their threshold's false-alarm rate actually is on their sample size.
 
 ## Module 6 — Reproducing the first line's number, exactly
 
-**Status: specified.** **C** · tier `cpu8` · budget 120 s. Build: `clang` and `make`, no cmake.
+**Status: BUILT.** `lessons/P04-L06-reproduce-the-number-in-c/` · **C** · tier `cpu8` ·
+budget 120 s · **measured 2.7 s, 383 MiB** · 75 rubric points across 15 autograded cases ·
+prerequisites `P04-L01-validation-suite`, `T00-L01-the-8gb-track`. Build: `clang` and `make`,
+no cmake.
 
 Two teams compute the same portfolio aggregate and disagree in the sixth decimal place. This
 module is why, and it is in C because the point is floating-point precision and summation order,

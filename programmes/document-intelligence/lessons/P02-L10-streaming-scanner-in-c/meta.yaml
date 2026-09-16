@@ -1,0 +1,142 @@
+id: P02-L10-streaming-scanner-in-c
+title: Implement a streaming field scanner in C that reads a document export of any size in fixed memory
+track: P02
+flagship: ""            # this programme's capstone is module 11, specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 60
+language: c             # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P02-L01-extraction-evaluation
+objectives:
+  - "Implement a chunk-resumable CSV field scanner in C whose counters do not depend on where the reader split the stream"
+  - "Implement a declared field-truncation policy in a fixed buffer, and report how often it fired without letting the count become a function of field length"
+  - "Distinguish a truncated final record from a legal final record with no trailing line break, and state what each contributes to the totals"
+  - "Measure throughput and peak resident memory against a Python scanner on identical bytes, and attribute each factor to the language or to the algorithm"
+  - "Show that peak resident memory is flat while the export grows by two orders of magnitude"
+datasets: []            # none: the export is generated deterministically inside lesson.c from a
+                        # fixed seed, and every number a student sees is computed by code they run
+points: 39              # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-16. All four gates run from the repo root on the venv interpreter; the
+# measured figures below were written back by tools/execute.py and never typed.
+#
+# WHY THE EXPORT IS SYNTHETIC. This environment has no PDF library, no OCR engine and no model
+# API, so there is nothing to export FROM, and no multi-gigabyte corpus may be downloaded on a
+# required path. The generator inside lesson.c builds a 997-record block once from a fixed
+# xorshift seed and repeats it for as long as the caller asks, a chunk at a time, so an export
+# of any size exists without a byte of it touching disk — which is also what lets section 11
+# scan 512 MiB inside the budget. The block deliberately contains the three things a naive
+# split-on-comma gets wrong: quoted fields holding commas, fields holding an embedded newline
+# and an escaped "", and notes longer than kFieldCap. Declared as synthetic here and in the
+# notebook's first section.
+#
+# DEVIATION FROM THE MODULE 10 SPEC IN MODULES.md, stated rather than hidden. The spec says
+# "multi-gigabyte". The largest stream the lesson actually scans is 512 MiB, because a
+# gigabyte-scale run would push a cpu8 lesson past its wall-clock budget for no pedagogical
+# gain: the evidence being produced is the FLATNESS of the peak-RSS column across a 128x
+# growth in the input, and that is already unambiguous at 4 MiB -> 512 MiB. The generator takes
+# a byte count, so a student who wants to watch it hold at 8 GiB can pass one. The spec's other
+# requirements are met as written: constant memory, quoted fields, embedded newlines, a
+# truncated final record, `clang` and `make`, a test binary, and a throughput and peak-RSS
+# comparison against the Python scanner. SECOND DEVIATION, added by the review pass: the spec
+# says the comparison is against "the Python version from module 1", and module 1 has no CSV
+# scanner in it — it is an evaluation harness. The Python oracle raced here is therefore the
+# one given in section 3 of this notebook, written in module 1's style and to the same
+# streaming shape. Nothing in the comparison depends on which file the Python lives in.
+#
+# THE SECOND FINDING, which is why the lesson has a section 12. "A truncated tail contributes
+# nothing" turns out to be false as usually stated: fields of the incomplete final record that
+# were already terminated by their own comma have been folded into the totals before the cut
+# is discovered, and only the PENDING field and the record itself are dropped. That is a
+# convention, not a law, and section 12 measures it on three bytes' difference rather than
+# asserting it. Rolling back to record boundaries is described there and is still constant
+# memory; it is not required of the student, because the thing being taught is that a scanner
+# must be able to SAY which convention it used.
+#
+# MUTATION TESTING. 13 plausible-wrong variants of the reference lesson.c were built in a
+# scratch directory OUTSIDE the lesson and graded, plus 1 equivalent variant and 2 controls.
+# Measured scores, not predicted ones. Every mutant loses the points for the behaviour it
+# breaks and keeps the rest, so partial credit survives all of them:
+#   1.  field_overflow counted per byte instead of per field       -> 21/39
+#   2.  seen_len advanced only for bytes that fit in the buffer    -> 18/39
+#   3.  max_field_len taken from field_len instead of seen_len     -> 23/39
+#   4.  field_complete resetting field_len but not seen_len        -> 16/39
+#   5.  the money rule applied to every column                     -> 35/39
+#   6.  the quote that OPENS a quoted field pushed as data         -> 27/39
+#   7.  an escaped "" pushed as two quotes                         -> 35/39
+#   8.  a newline inside quotes treated as a record end            -> 23/39
+#   9.  scan_finish treating kQuoteSeen as truncation              -> 36/39
+#   10. scan_finish completing a record whenever anything pends    -> 32/39
+#   11. scan_finish ignoring the missing-final-newline rule        -> 29/39
+#   12. parser state not carried across a chunk boundary           -> 27/39
+# DEFECT FOUND AND FIXED BY THIS EXERCISE. Mutant 7 scored 39/39 on the first pass — a clean
+# miss. Pushing both halves of an escaped "" makes the field exactly one byte too long and
+# changes nothing else, so it is invisible unless that field is the LONGEST in the record
+# (max_field_len) or the extra byte is the one that tips it past kFieldCap (field_overflow).
+# Neither the notebook's public cases nor the rubric's hidden ones had an escaped quote in a
+# long field: the export's longest field is a 167-byte note with no quotes in it, so even the
+# whole-export oracle comparison agreed. Two cases were added to
+# test_scan_chunk_quoting_hidden, and one to the notebook's public list so a student gets the
+# same signal; mutant 7 now scores 35/39. The general lesson, recorded here because it will
+# recur: a rubric that only ever compares AGGREGATES can miss a defect in the data those
+# aggregates are computed from, unless some aggregate is a function of the exact bytes.
+# Mutant 12 is the other instructive one: it is CORRECT at every chunk size the notebook's
+# public checks use and wrong only once a boundary falls inside a record — which is why the
+# rubric runs the same bytes at chunk size 1, 2, 3, 5, 8, 13, 64 and unlimited rather than at
+# one convenient size. Mutant 9 is the cheapest to write and the hardest to notice: it costs
+# three points and silently discards the last record of any export whose final field is quoted.
+#
+# ONE EQUIVALENT VARIANT, documented rather than counted as caught: adding parse_cents's
+# out-parameter unconditionally instead of only when it returns true scores 39/39, and should.
+# parse_cents never writes through the pointer on a refusal, and the given code initialises
+# `cents` to 0, so the unconditional version adds zero — it is the same program. The dangerous
+# spelling of that mistake is the one that leaves `cents` uninitialised, and that one is
+# undefined behaviour rather than a wrong answer a rubric can pin.
+#
+# TWO CONTROLS — differently shaped and equally correct: field_push rewritten around a "room"
+# flag instead of an else-if chain, and field_complete rewritten to save the column and reset
+# the field buffer BEFORE folding the value in, dispatching on a switch. Both score 39/39, so
+# the rubric rejects wrong answers without rejecting right ones it did not expect.
+#
+# ============================ INDEPENDENT REVIEW, 2026-09-16 ============================
+# All four gates re-run from the repo root before and after the changes below. 13 fresh
+# mutants were built in a scratch directory outside the lesson and graded, plus 3 controls.
+# Measured scores against the rubric AS IT WAS: 18, 18, 36, 10, 20, 20, 36, 10, 39, 31, 29,
+# 29, 39. Two survivors at 39/39, both real, both now caught.
+#
+# DEFECT 1 — a CR inside a quoted field was never tested. The grammar drops a bare CR OUTSIDE
+# a quoted field (leniency 1) and pushes it INSIDE one, because inside quotes everything is
+# data. A scanner that applies the leniency in both places — the obvious way to misread the
+# rule — makes every quoted field holding a CR exactly one byte short and changes nothing
+# else. It scored 39/39. The reason it was invisible is worth recording: the generated export
+# contains zero CR bytes (measured), so even the whole-export oracle comparison agreed, and
+# no public or hidden case had a CR inside quotes. FIX: three cases added to
+# test_scan_chunk_quoting_hidden — a CRLF inside quotes, a CR in the longest field of a
+# record, and a CR sitting exactly on kFieldCap — with two pinned assertions that name the
+# mistake, plus one public case in the notebook's _QUOTING_CASES and a common-mistakes bullet
+# so a student gets the same signal. The mutant now scores 35/39. This is the same shape of
+# hole as the escaped-quote one above, from the other side: an aggregate-only rubric cannot
+# see a one-byte error unless some aggregate is a function of the exact bytes.
+#
+# DEFECT 2 — the constant-memory test's SPAN, not its threshold, was too small. A scanner
+# that keeps four bytes per record in a doubling heap buffer is linear in the input and
+# scored 39/39: measured peak RSS grew 3.95 MiB across the test's 2 -> 48 MiB span, under the
+# 8 MiB margin, and 10.04 MiB across 2 -> 192 MiB. The reference grows 0.00 MiB at 2, 48, 192
+# and 512 MiB — it measures 1.5 MiB flat at every size — so the margin was never the problem.
+# FIX: _BIG_STREAM raised from 48 MiB to 192 MiB, which leaves the loose 8 MiB threshold and
+# its no-flaky-machine rationale untouched and costs the grader about half a second. The
+# mutant now scores 36/39.
+#
+# THIRD CHANGE — claims.yaml. The getrusage(2) quote read "(in kilobytes)"; the page as
+# fetched on 2026-09-16 reads "(in KiB)". Corrected to the verbatim text. The three RFC 4180
+# quotes and their rule numbers (2, 6, 7) were re-fetched and are exact.
+#
+# THREE REVIEW CONTROLS, correct and differently shaped, all 39/39 after the fixes: a
+# scan_chunk that handles CR inside quotes in its own explicit branch and pushes it, a
+# field_complete whose max_field_len is a ternary, and the unconditional-out-parameter
+# variant the author documented as equivalent — independently re-confirmed equivalent by
+# reading parse_cents, which writes through the pointer only on the success path.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-16: four gates re-run; 13 mutants + 3 controls graded; 2 rubric defects found and fixed (CR inside a quoted field untested; constant-memory span too short at 48 MiB); getrusage quote corrected to verbatim; module-1 Python-scanner deviation now stated."
+measured_seconds: 4.3
+measured_peak_mib: 65

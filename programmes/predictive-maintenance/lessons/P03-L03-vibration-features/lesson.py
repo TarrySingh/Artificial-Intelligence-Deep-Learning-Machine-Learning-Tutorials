@@ -1,0 +1,1254 @@
+# %% [markdown]
+# # P03-L03 · Vibration and temperature features: which ones see the fault, and which ones
+# # only see the load
+#
+# **You will build:** the four condition indicators every vibration analyst computes — RMS,
+# crest factor, kurtosis and band energy from an FFT you write yourself — plus a load-corrected
+# bearing temperature. Then you will measure two numbers for each of them: how well it
+# separates a healthy machine from a degrading one, and how well it separates a healthy
+# machine from *the same healthy machine under more load*. The second number is the one that
+# ends careers.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** `T00-L01-the-8gb-track` (the profiler and the tier gate) and
+# `P03-L01-alarm-economics` (the confusion matrix priced in currency — this lesson reuses its
+# cost function to rank features by money rather than by accuracy).
+#
+# By the end you will be able to:
+#
+# 1. Implement RMS, crest factor and kurtosis from their definitions, and say which of the
+#    three is blind to a change of gain and why.
+# 2. Compute a correctly scaled one-sided amplitude spectrum with `numpy.fft.rfft`, and a
+#    band-energy feature from it that satisfies Parseval's identity to floating-point error.
+# 3. Measure feature separation with a rank statistic, and measure a feature's sensitivity to
+#    a confounder with the same statistic.
+# 4. Remove a bearing temperature's dependence on load and ambient by least squares, and show
+#    the residual detects a fault the raw temperature does not.
+# 5. Rank every feature by the money it saves at its own cost-optimal threshold, and explain
+#    why the ranking is not the ranking you would get from separation alone.
+#
+# **The data is synthetic and the generator is in this notebook.** Nothing downloads. A bench
+# where you know the severity of every defect and the load on every unit is the only way to
+# prove that a feature is reading the fault rather than the duty point. `meta.yaml` declares
+# it as synthetic and names a real, CC-BY-licensed bearing corpus you can point this same code
+# at afterwards.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import sys
+import time
+from typing import Any, Callable
+
+import numpy as np
+
+import matplotlib
+_INTERACTIVE = "ipykernel" in sys.modules
+if not _INTERACTIVE:
+    # Headless: a script run (including this repository's execution gate) must never try to
+    # open a window. In Jupyter the default inline backend is already the right one.
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402  (backend must be chosen before this import)
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__,
+      "· matplotlib", matplotlib.__version__)
+
+# The bench. 480 units, half of them with a seeded outer-race defect, each captured for one
+# second at 8192 Hz. A test bench is not a fleet: the fault rate here is 50% by construction,
+# and section 11 puts that right before any money is counted.
+FS = 8192.0             # Hz, sample rate
+BURST_LEN = 8192        # samples, so every capture is exactly 1.000 s
+N_UNITS = 480
+SHAFT_HZ = 24.0         # nominal shaft rate, 1440 rpm
+DEFECT_ORDER = 3.57     # defect repeats 3.57 times per shaft revolution -> 85.7 Hz
+RESONANCE_HZ = 2200.0   # the housing resonance each impact rings at
+RING_DECAY_S = 0.0009   # time constant of that ringdown
+SEED = 20260916
+
+# The two bands you will measure energy in.
+SHAFT_BAND = (10.0, 120.0)      # 1x, 2x, 3x shaft: imbalance, misalignment, looseness
+DEFECT_BAND = (1700.0, 2700.0)  # the resonance the bearing impacts excite
+
+# The load split. Load is continuous on this bench; these two groups are the ones a
+# "same machine, different duty point" comparison is made between.
+LOW_LOAD = 0.40
+HIGH_LOAD = 0.65
+
+# Module 1's cost model, carried forward unchanged, plus the fleet it will be applied to.
+PRICES = (9_000.0, 180_000.0, 6_000.0)   # planned intervention, unplanned failure, false alarm
+PREVALENCE = 0.04       # 4% of the real fleet is degrading at any time - NOT the bench's 50%
+FLEET_SIZE = 1000
+
+
+def safe_ratio(numerator: Any, denominator: Any, when_zero: float = 0.0) -> Any:
+    """Elementwise division that returns `when_zero` wherever the denominator is zero.
+
+    Given to you, and used by several of the stubs below. A ratio with no denominator is
+    undefined, and a NaN left in its place spreads silently through every mean, area and
+    ranking computed downstream — so it is replaced explicitly, by a value the caller picks.
+    """
+    num = np.asarray(numerator, dtype=float)
+    den = np.asarray(denominator, dtype=float)
+    out = np.full(np.broadcast(num, den).shape, float(when_zero))
+    np.divide(num, den, out=out, where=den != 0)
+    return out[()]   # a 0-d result comes back as a scalar, an array as an array
+
+
+def _show(fig: "matplotlib.figure.Figure") -> None:
+    """Display a figure in Jupyter, or close it cleanly in a headless script run."""
+    if _INTERACTIVE:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
+    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The bench
+#
+# Read the generator before you run it. Four things in it decide everything that follows:
+#
+# - **Load is a gain.** Every unit is driven at a load between 0.10 and 0.95, and the whole
+#   vibration signal — noise, shaft harmonics, defect impacts alike — is multiplied by
+#   `1 + 1.1 * load`. A heavily loaded machine shakes about twice as hard as a lightly loaded
+#   one. Nothing about that is a fault.
+# - **Units differ in size.** A further lognormal factor of about 7% per unit, because two
+#   nominally identical machines are not identical.
+# - **The defect is impulsive.** A degrading unit gets a train of impacts 3.57 times per
+#   revolution, each ringing down at 2200 Hz with a 0.9 ms time constant. Short, sharp, and
+#   *not* a large fraction of the total energy — which is exactly why RMS struggles with it.
+# - **Temperature is mostly not about health.** Bearing temperature is ambient plus a rise
+#   that is dominated by load, with a few degrees of fault on top. Section 12 is that problem.
+#
+# Nothing on this bench is aliased and nothing is filtered: the highest component the
+# generator writes is the 2200 Hz ringdown and the sample rate is 8192 Hz, so every feature
+# you build below reads a faithfully sampled signal. Module 2 of this programme is where the
+# measurement chain gets to lie to you; this module assumes it did not.
+
+# %%
+def generate_bench(seed: int = SEED, n_units: int = N_UNITS, burst_len: int = BURST_LEN,
+                   fs: float = FS) -> dict[str, np.ndarray]:
+    """Deterministic synthetic bearing bench. Same seed, same bench, on any machine.
+
+    Returns a dict with:
+      * `vibration`  (n_units, burst_len) acceleration, arbitrary units
+      * `degrading`  (n_units,) bool, True where an outer-race defect was seeded
+      * `load`       (n_units,) duty point in [0.10, 0.95]
+      * `ambient`    (n_units,) ambient air temperature, degrees C
+      * `temperature`(n_units,) bearing temperature, degrees C
+      * `commissioned` (n_units,) bool, the known-good units measured at commissioning
+      * `severity`   (n_units,) defect severity, 0.0 where healthy (ground truth, for plots)
+    """
+    rng = np.random.default_rng(seed)
+    t = np.arange(burst_len) / fs
+
+    degrading = np.zeros(n_units, dtype=bool)
+    degrading[rng.permutation(n_units)[: n_units // 2]] = True
+
+    load = rng.uniform(0.10, 0.95, n_units)
+    gain = (1.0 + 1.1 * load) * np.exp(rng.normal(0.0, 0.07, n_units))
+    severity = np.where(degrading, rng.uniform(0.30, 1.40, n_units), 0.0)
+    shaft = SHAFT_HZ * np.exp(rng.normal(0.0, 0.01, n_units))
+    ambient = rng.uniform(14.0, 32.0, n_units)
+
+    # Broadband noise plus the first three shaft harmonics, at random phase.
+    x = rng.normal(0.0, 1.0, (n_units, burst_len))
+    for order, amp in ((1, 0.90), (2, 0.45), (3, 0.25)):
+        a = amp * np.exp(rng.normal(0.0, 0.15, n_units))
+        phase = rng.uniform(0.0, 2.0 * np.pi, n_units)
+        x += a[:, None] * np.sin(2.0 * np.pi * order * shaft[:, None] * t[None, :]
+                                 + phase[:, None])
+
+    # The defect: an impulse train convolved with one decaying ringdown of the housing.
+    decay = np.arange(int(6 * RING_DECAY_S * fs))
+    kernel = (np.exp(-decay / (RING_DECAY_S * fs))
+              * np.sin(2.0 * np.pi * RESONANCE_HZ * decay / fs))
+    for i in np.flatnonzero(degrading):
+        period = 1.0 / (DEFECT_ORDER * shaft[i])
+        n_impacts = int(np.floor(burst_len / fs / period))
+        times = (np.arange(n_impacts) + rng.uniform(0.0, 1.0)) * period
+        times *= 1.0 + rng.normal(0.0, 0.012, n_impacts)   # roller slip
+        idx = np.clip((times * fs).astype(int), 0, burst_len - 1)
+        train = np.zeros(burst_len)
+        np.add.at(train, idx, 5.5 * severity[i] * np.exp(rng.normal(0.0, 0.12, n_impacts)))
+        x[i] += np.convolve(train, kernel)[:burst_len]
+
+    x *= gain[:, None]   # load and unit size scale EVERYTHING, defect included
+    temperature = (ambient + 6.0 + 26.0 * load + 3.0 * severity
+                   + rng.normal(0.0, 0.8, n_units))
+    commissioned = (~degrading) & (rng.random(n_units) < 0.45)
+    return {"vibration": x, "degrading": degrading, "load": load, "ambient": ambient,
+            "temperature": temperature, "commissioned": commissioned, "severity": severity}
+
+
+BENCH = generate_bench()
+VIB, DEGRADING = BENCH["vibration"], BENCH["degrading"]
+LOAD, AMBIENT, TEMPERATURE = BENCH["load"], BENCH["ambient"], BENCH["temperature"]
+COMMISSIONED, SEVERITY = BENCH["commissioned"], BENCH["severity"]
+HEALTHY = ~DEGRADING
+IS_LOW = LOAD < LOW_LOAD
+IS_HIGH = LOAD > HIGH_LOAD
+
+print(f"vibration {VIB.shape} = {VIB.nbytes / 1024**2:.0f} MiB · {FS:.0f} Hz · "
+      f"{BURST_LEN / FS:.3f} s per capture")
+print(f"{int(DEGRADING.sum())} degrading, {int(HEALTHY.sum())} healthy, "
+      f"{int(COMMISSIONED.sum())} of the healthy ones measured at commissioning")
+print(f"defect tone at {DEFECT_ORDER * SHAFT_HZ:.1f} Hz · shaft 1x at {SHAFT_HZ:.1f} Hz · "
+      f"frequency resolution {FS / BURST_LEN:.2f} Hz")
+print(f"load spans {LOAD.min():.2f} to {LOAD.max():.2f}; "
+      f"{int(IS_LOW.sum())} units below {LOW_LOAD}, {int(IS_HIGH.sum())} above {HIGH_LOAD}")
+
+# %% [markdown]
+# Here are four captures: healthy and degrading, each at low and at high load. Before you
+# compute anything, decide by eye which pair looks more different. Most people pick the wrong
+# pair, which is the whole lesson in one picture.
+
+# %%
+def _show_four_captures() -> None:
+    picks = {
+        "healthy, low load": np.flatnonzero(HEALTHY & IS_LOW)[0],
+        "healthy, high load": np.flatnonzero(HEALTHY & IS_HIGH)[0],
+        "degrading, low load": np.flatnonzero(DEGRADING & IS_LOW)[0],
+        "degrading, high load": np.flatnonzero(DEGRADING & IS_HIGH)[0],
+    }
+    fig, axes = plt.subplots(2, 2, figsize=(10, 4.0), sharex=True, sharey=True)
+    for ax, (title, unit) in zip(axes.ravel(), picks.items()):
+        ax.plot(np.arange(1200) / FS, VIB[unit, :1200], lw=0.6)
+        ax.set_title(f"{title} (unit {unit}, load {LOAD[unit]:.2f})", fontsize=8)
+    for ax in axes[1]:
+        ax.set_xlabel("time (s)")
+    for ax in axes[:, 0]:
+        ax.set_ylabel("acceleration")
+    fig.suptitle("first 0.146 s of four captures", fontsize=10)
+    fig.tight_layout()
+    _show(fig)
+    print("the two right-hand panels are bigger. One of them is bigger because a bearing is")
+    print("breaking and the other because the machine is working harder, and no feature you")
+    print("write in the next hour can tell them apart from amplitude alone.")
+
+
+_show_four_captures()
+
+# %% [markdown]
+# ## 2. Exercise 1 — `rms()`
+#
+# Root mean square: the square root of the mean of the squared samples. It is proportional to
+# the energy in the signal and it is what a hand-held vibration meter reports.
+#
+# The trap is `np.std`, which subtracts the mean first. On a burst with any DC component — an
+# amplifier bias, a slow thermal ramp on the charge amplifier — the two answers differ, and the
+# instrument is calibrated against the RMS.
+
+# %%
+def rms(x: np.ndarray) -> np.ndarray:
+    """Root mean square along the LAST axis.
+
+    Output has the input's shape with the last axis removed, so a (units, samples) array
+    becomes (units,). Do not subtract the mean; `np.std` does, and RMS does not.
+
+    Example:
+        >>> rms(np.array([3.0, 4.0]))              # sqrt((9 + 16) / 2)
+        np.float64(3.5355339059327378)
+        >>> rms(np.array([[10.0, 10.0], [0.0, 0.0]])).tolist()
+        [10.0, 0.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_rms() -> None:
+    one = rms(np.array([3.0, 4.0]))
+    assert np.isclose(one, 3.5355339059327378), (
+        f"rms([3, 4]) came back {one!r}; expected sqrt((9 + 16)/2) = 3.5355. A value of 0.5 "
+        "means you used np.std, which subtracts the mean before squaring"
+    )
+    constant = rms(np.array([10.0, 10.0, 10.0]))
+    assert np.isclose(constant, 10.0), (
+        f"rms([10, 10, 10]) came back {constant!r}, not 10.0 — a constant signal has RMS "
+        "equal to that constant and standard deviation zero. This is the np.std trap"
+    )
+    shaped = rms(np.zeros((4, 5, 6)))
+    assert shaped.shape == (4, 5), (
+        f"rms on a (4, 5, 6) array returned shape {shaped.shape}; reduce the LAST axis "
+        "only, with axis=-1"
+    )
+    print("exercise 1 looks right — rms collapses a capture to its amplitude")
+
+
+# %%
+_try("exercise 1", _check_rms)
+
+# %% [markdown]
+# ## 3. Exercise 2 — `crest_factor()`
+#
+# Crest factor is the peak absolute value divided by the RMS. It is **dimensionless**, and
+# that single property is what this lesson is about: multiply the whole signal by the load
+# gain and both numerator and denominator move together, so the answer does not change.
+#
+# A sine has a crest factor of exactly sqrt(2). Gaussian noise of this length sits near 4. A
+# signal with sharp impacts in it goes higher, because the peak grows faster than the energy.
+# An all-zero capture has no crest factor at all; return `0.0` rather than a NaN.
+
+# %%
+def crest_factor(x: np.ndarray) -> np.ndarray:
+    """Peak absolute value divided by RMS, along the LAST axis.
+
+    Use the peak of the ABSOLUTE value: a bearing impact that rings negative first is still
+    an impact. Where the RMS is zero, return 0.0 — `safe_ratio` is given to you above.
+
+    Example:
+        >>> float(crest_factor(np.array([1.0, -1.0, 1.0, -1.0])))   # square wave: peak == rms
+        1.0
+        >>> float(np.round(crest_factor(np.array([-5.0, 1.0, 1.0, 1.0])), 4))
+        1.8898
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_crest_factor() -> None:
+    square = crest_factor(np.array([1.0, -1.0, 1.0, -1.0]))
+    assert np.isclose(square, 1.0), (
+        f"a square wave has peak == rms, so crest factor 1.0; got {square!r}"
+    )
+    t = np.arange(4096) / 4096.0
+    sine = crest_factor(np.sin(2.0 * np.pi * 8.0 * t))
+    assert np.isclose(sine, np.sqrt(2.0), atol=1e-3), (
+        f"a sine has crest factor sqrt(2) = 1.4142; got {sine!r}"
+    )
+    negative = crest_factor(np.array([-5.0, 1.0, 1.0, 1.0]))
+    assert np.isclose(negative, 1.8898, atol=1e-3), (
+        f"crest_factor([-5, 1, 1, 1]) came back {negative!r}, expected 5 / sqrt(7) = 1.8898. "
+        "A value near 0.378 means you took np.max instead of the peak of the ABSOLUTE "
+        "value, so the largest impact was ignored because it pointed downwards"
+    )
+    zero = crest_factor(np.zeros(8))
+    assert np.isclose(zero, 0.0), (
+        f"an all-zero capture must give 0.0, not {zero!r} — a NaN here poisons every ranking "
+        "computed from this feature later"
+    )
+    scaled = crest_factor(np.array([[1.0, -4.0, 2.0, 0.5]]) * 37.0)
+    plain = crest_factor(np.array([[1.0, -4.0, 2.0, 0.5]]))
+    assert np.allclose(scaled, plain), (
+        "crest factor must be unchanged when the whole signal is multiplied by a constant; "
+        f"got {scaled} against {plain}. That invariance is the point of the feature"
+    )
+    print("exercise 2 looks right — crest factor, and it is blind to gain")
+
+
+# %%
+_try("exercise 2", _check_crest_factor)
+
+# %% [markdown]
+# ## 4. Exercise 3 — `kurtosis()`
+#
+# Kurtosis is the fourth standardised moment: the mean of the fourth power of the deviations
+# from the mean, divided by the square of the variance. The US National Institute of Standards
+# and Technology's statistics handbook gives it as `sum((Y - Ybar)**4) / N` over `s**4`, with
+# `N` in both denominators, and records that **the kurtosis of a standard normal distribution
+# is three**.
+#
+# Two traps, and both are graded:
+#
+# - **Do not subtract 3.** Many libraries return *excess* kurtosis, which is this minus three.
+#   Condition monitoring quotes the un-shifted figure, where 3 is the noise floor.
+# - **Divide by the population variance**, the one with `N` in its denominator. Using `N - 1`
+#   for the variance and `N` for the fourth moment mixes two conventions and biases the result.
+
+# %%
+def kurtosis(x: np.ndarray) -> np.ndarray:
+    """Fourth standardised moment along the LAST axis. NOT excess kurtosis.
+
+        kurtosis = mean((x - mean(x))**4) / mean((x - mean(x))**2)**2
+
+    Gaussian noise gives about 3.0, a sine gives exactly 1.5, and impulsive data goes above
+    3. Where the variance is zero (a constant capture) return 0.0.
+
+    Example:
+        >>> t = np.arange(4096) / 4096.0
+        >>> float(np.round(kurtosis(np.sin(2 * np.pi * 8 * t)), 6))
+        1.5
+        >>> float(kurtosis(np.full(10, 4.0)))
+        0.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_kurtosis() -> None:
+    t = np.arange(4096) / 4096.0
+    sine = kurtosis(np.sin(2.0 * np.pi * 8.0 * t))
+    assert np.isclose(sine, 1.5, atol=1e-6), (
+        f"a sine has kurtosis exactly 1.5; got {sine!r}. A value near -1.5 means you "
+        "subtracted 3 and returned EXCESS kurtosis, which this lesson does not use"
+    )
+    noise = kurtosis(np.random.default_rng(3).normal(0.0, 1.0, 200_000))
+    assert abs(noise - 3.0) < 0.1, (
+        f"Gaussian noise must come out near 3.0; got {noise!r}. Near 0.0 means excess "
+        "kurtosis; near 2.99 with 200,000 samples is fine, that is sampling error"
+    )
+    shifted = kurtosis(np.array([[1.0, 2.0, 3.0, 9.0]]) * 5.0 + 100.0)
+    plain = kurtosis(np.array([[1.0, 2.0, 3.0, 9.0]]))
+    assert np.allclose(shifted, plain), (
+        f"kurtosis must be unchanged by scaling and shifting; got {shifted} against "
+        f"{plain}. If only the shift breaks it you forgot to subtract the mean"
+    )
+    flat = kurtosis(np.full(10, 4.0))
+    assert np.isclose(flat, 0.0), (
+        f"a constant capture has zero variance; return 0.0, not {flat!r}"
+    )
+    assert kurtosis(np.zeros((3, 4, 20))).shape == (3, 4), "reduce the LAST axis only"
+    print("exercise 3 looks right — kurtosis, un-shifted, population variance")
+
+
+# %%
+_try("exercise 3", _check_kurtosis)
+
+# %% [markdown]
+# Run this once exercise 3 works. It prints kurtosis for four signals of the *same* RMS, so
+# the only thing that varies is shape.
+
+# %%
+def _show_kurtosis_of_shapes() -> None:
+    rng = np.random.default_rng(11)
+    t = np.arange(8192) / FS
+    shapes = {
+        "pure sine": np.sin(2.0 * np.pi * 50.0 * t),
+        "Gaussian noise": rng.normal(0.0, 1.0, 8192),
+        "noise + 20 impacts": rng.normal(0.0, 1.0, 8192),
+        "noise + 200 impacts": rng.normal(0.0, 1.0, 8192),
+    }
+    for name, n_imp in (("noise + 20 impacts", 20), ("noise + 200 impacts", 200)):
+        hits = rng.choice(8192, n_imp, replace=False)
+        shapes[name][hits] += 9.0
+    print(f"{'signal':24s} {'rms':>8s} {'crest':>8s} {'kurtosis':>10s}")
+    for name, sig in shapes.items():
+        sig = sig / rms(sig)          # every row normalised to unit RMS
+        print(f"{name:24s} {rms(sig):8.3f} {crest_factor(sig):8.3f} {kurtosis(sig):10.3f}")
+    print("\nfour signals, identical RMS, and kurtosis tells them apart. That is what a")
+    print("shape statistic buys you over an energy statistic.")
+
+
+_try("kurtosis of shapes", _show_kurtosis_of_shapes)
+
+# %% [markdown]
+# ## 5. Exercise 4 — `amplitude_spectrum()`
+#
+# Now the frequency domain, computed rather than imported. `numpy.fft.rfft` "computes the
+# one-dimensional n-point discrete Fourier Transform (DFT) of a real-valued array", returning
+# `n/2 + 1` bins for even `n`, and its default normalisation is `"backward"` — meaning **the
+# forward transform is not scaled at all**. The raw output is therefore in units of "n times
+# the amplitude", and you have to put the scale back.
+#
+# Two rules, and both are graded:
+#
+# - Divide by `n` and multiply by **2**, because a real sine of amplitude `A` splits its
+#   energy between a positive and a negative frequency, and `rfft` only hands you one of them.
+# - **Do not double bin 0 (DC), and do not double the Nyquist bin** when `n` is even. Those two
+#   have no negative-frequency twin to fold in. Doubling them is the most common FFT bug there
+#   is, and it is silent: the spectrum looks right everywhere you are likely to look.
+
+# %%
+def amplitude_spectrum(x: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
+    """One-sided amplitude spectrum along the LAST axis.
+
+    Returns `(freqs, amp)`. `freqs` is 1-D of length `n // 2 + 1`, in Hz, from
+    `np.fft.rfftfreq`. `amp` has the input's shape with the last axis replaced by that same
+    length, and `amp[..., k]` is the amplitude of the sinusoid at `freqs[k]`, so a pure sine
+    of amplitude A lands on A.
+
+    Scale by 2/n, then undo the doubling for bin 0 and — only when n is even — the last bin.
+
+    Example, a 100 Hz sine of amplitude 2.0 sampled at 1000 Hz for exactly one second:
+        >>> t = np.arange(1000) / 1000.0
+        >>> f, a = amplitude_spectrum(2.0 * np.sin(2 * np.pi * 100 * t), 1000.0)
+        >>> int(f[int(np.argmax(a))]), float(np.round(a.max(), 6))
+        (100, 2.0)
+        >>> float(np.round(amplitude_spectrum(np.full(1000, 3.0), 1000.0)[1][0], 6))
+        3.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_amplitude_spectrum() -> None:
+    t = np.arange(1000) / 1000.0
+    freqs, amp = amplitude_spectrum(2.0 * np.sin(2.0 * np.pi * 100.0 * t), 1000.0)
+    assert freqs.shape == (501,) and amp.shape == (501,), (
+        f"expected 1000 // 2 + 1 = 501 bins, got freqs {np.shape(freqs)} amp {np.shape(amp)}"
+    )
+    assert np.allclose(freqs, np.fft.rfftfreq(1000, 1.0 / 1000.0)), (
+        "freqs must be np.fft.rfftfreq(n, 1/fs) — a spacing of 1 instead of 1/fs gives bins "
+        "in cycles per sample, not Hz, and every band edge you use later will be wrong"
+    )
+    assert np.isclose(amp.max(), 2.0, atol=1e-6), (
+        f"a sine of amplitude 2.0 must peak at 2.0; got {amp.max():.6f}. 1.0 means you "
+        "forgot the factor of 2 for the folded negative frequency"
+    )
+    dc = amplitude_spectrum(np.full(1000, 3.0), 1000.0)[1]
+    assert np.isclose(dc[0], 3.0, atol=1e-9), (
+        f"a constant 3.0 has DC amplitude 3.0; got {dc[0]:.6f}. 6.0 means bin 0 was doubled "
+        "along with everything else — DC has no negative-frequency twin"
+    )
+    nyq = amplitude_spectrum(np.tile([1.0, -1.0], 8), 16.0)[1]
+    assert np.isclose(nyq[-1], 1.0, atol=1e-9), (
+        f"the alternating +1/-1 signal is a Nyquist-frequency square of amplitude 1.0; got "
+        f"{nyq[-1]:.6f}. 2.0 means the Nyquist bin was doubled — for even n it must not be"
+    )
+    batched = amplitude_spectrum(np.zeros((3, 7, 64)), FS)[1]
+    assert batched.shape == (3, 7, 33), (
+        f"on a (3, 7, 64) input the transform runs along the LAST axis; got {batched.shape}"
+    )
+    print("exercise 4 looks right — a scaled one-sided spectrum, DC and Nyquist included")
+
+
+# %%
+_try("exercise 4", _check_amplitude_spectrum)
+
+# %% [markdown]
+# With a correct spectrum the bench stops being mysterious. The next cell averages the
+# spectrum over the healthy units and over the degrading ones and plots both, with the two
+# bands marked.
+
+# %%
+def _show_mean_spectra() -> None:
+    freqs, amp = amplitude_spectrum(VIB, FS)
+    fig, ax = plt.subplots(figsize=(10, 3.0))
+    ax.semilogy(freqs, amp[HEALTHY].mean(axis=0), lw=0.8, label="healthy (mean of 240)")
+    ax.semilogy(freqs, amp[DEGRADING].mean(axis=0), lw=0.8, label="degrading (mean of 240)")
+    for lo, hi, name in ((*SHAFT_BAND, "shaft band"), (*DEFECT_BAND, "defect band")):
+        ax.axvspan(lo, hi, alpha=0.12, color="0.4")
+        ax.text((lo + hi) / 2, amp.max(), name, ha="center", va="top", fontsize=8)
+    ax.set_xlabel("frequency (Hz)")
+    ax.set_ylabel("mean amplitude")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    _show(fig)
+    band = (freqs >= DEFECT_BAND[0]) & (freqs < DEFECT_BAND[1])
+    lift = (amp[DEGRADING][:, band].mean() / amp[HEALTHY][:, band].mean())
+    shaft = (freqs >= SHAFT_BAND[0]) & (freqs < SHAFT_BAND[1])
+    print(f"in the defect band the degrading units average {lift:.2f}x the healthy amplitude;")
+    print(f"in the shaft band, {amp[DEGRADING][:, shaft].mean() / amp[HEALTHY][:, shaft].mean():.2f}x.")
+    print("the fault lives in one band and not the other, which is the entire argument for")
+    print("measuring energy in a band rather than across the whole signal.")
+
+
+_try("mean spectra", _show_mean_spectra)
+
+# %% [markdown]
+# ## 6. Exercise 5 — `band_energy()`
+#
+# Now turn the spectrum into one number: the mean-square power carried by the frequencies in
+# `[lo, hi)`. Half-open, so that adjacent bands never double-count a bin.
+#
+# Converting amplitude to power needs the doubling rule run backwards. A sinusoid of amplitude
+# `A` has mean square `A**2 / 2`; DC and Nyquist, which were not doubled, have mean square
+# `A**2`. Get that right and you gain a free correctness test: **summed over every bin, this
+# must equal `rms(x)**2` exactly**, to floating-point error. That is Parseval's identity, and
+# the public check below runs it on the bench's own data.
+
+# %%
+def band_energy(x: np.ndarray, fs: float, lo: float, hi: float) -> np.ndarray:
+    """Mean-square power of `x` in the half-open frequency band [lo, hi), along the LAST axis.
+
+    Build the amplitude spectrum, convert each bin to mean-square power — `amp**2 / 2` for the
+    ordinary bins, `amp**2` for bin 0 and, when `n` is even, for the last (Nyquist) bin — then
+    sum the bins whose frequency satisfies `lo <= f < hi`.
+
+    Summed over all frequencies this equals `rms(x)**2`.
+
+    Example, a 100 Hz sine of amplitude 2.0 (mean square 2.0) at 1000 Hz:
+        >>> t = np.arange(1000) / 1000.0
+        >>> s = 2.0 * np.sin(2 * np.pi * 100 * t)
+        >>> float(np.round(band_energy(s, 1000.0, 90.0, 110.0), 6))
+        2.0
+        >>> float(np.round(band_energy(s, 1000.0, 0.0, 100.0), 6))   # [lo, hi) excludes 100
+        0.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_band_energy() -> None:
+    t = np.arange(1000) / 1000.0
+    sine = 2.0 * np.sin(2.0 * np.pi * 100.0 * t)
+    inside = band_energy(sine, 1000.0, 90.0, 110.0)
+    assert np.isclose(inside, 2.0, atol=1e-6), (
+        f"a sine of amplitude 2.0 has mean-square power 2.0; got {inside!r}. 4.0 means you "
+        "summed amp**2 without halving the ordinary bins"
+    )
+    below = band_energy(sine, 1000.0, 0.0, 100.0)
+    assert np.isclose(below, 0.0, atol=1e-9), (
+        f"the band is half-open: [0, 100) must exclude the 100 Hz bin, but got {below!r}. "
+        "Use lo <= f < hi, not lo <= f <= hi"
+    )
+    at_edge = band_energy(sine, 1000.0, 100.0, 200.0)
+    assert np.isclose(at_edge, 2.0, atol=1e-6), (
+        f"[100, 200) must INCLUDE the 100 Hz bin; got {at_edge!r}"
+    )
+    for n, label in ((1000, "even"), (1001, "odd")):
+        noisy = np.random.default_rng(5).normal(0.0, 2.0, n)
+        total = band_energy(noisy, 1000.0, 0.0, np.inf)
+        assert np.isclose(total, rms(noisy) ** 2, rtol=1e-9), (
+            f"Parseval fails for {label} n: the full band gives {total!r} but rms**2 is "
+            f"{rms(noisy) ** 2!r}. For odd n there is NO Nyquist bin, so the last bin is an "
+            "ordinary one and must be halved like the rest"
+        )
+    fleet = band_energy(VIB[:4], FS, 0.0, np.inf)
+    assert np.allclose(fleet, rms(VIB[:4]) ** 2, rtol=1e-9), (
+        "Parseval fails on the bench's own captures, which are (units, samples) — the sum "
+        "must run along the LAST axis and return one number per unit"
+    )
+    print("exercise 5 looks right — band energy, and Parseval holds to 1e-9")
+
+
+# %%
+_try("exercise 5", _check_band_energy)
+
+# %% [markdown]
+# ## 7. Exercise 6 — `band_energy_fraction()`
+#
+# `band_energy` is in the same units as `rms**2`, so it scales with the square of the load
+# gain. Dividing it by the total power removes that — and produces the feature that does best
+# on this bench. It answers "what fraction of this machine's vibration is in the bearing
+# resonance band", which is a question about the machine's *state*, not its *duty point*.
+
+# %%
+def band_energy_fraction(x: np.ndarray, fs: float, lo: float, hi: float) -> np.ndarray:
+    """`band_energy(x, fs, lo, hi)` divided by the total power of `x`, along the LAST axis.
+
+    The total power is `rms(x)**2` — which, by Parseval, is also the band energy over all
+    frequencies, so either route is correct. Where the total power is zero, return 0.0.
+
+    The result is dimensionless and lies in [0, 1] for any band inside [0, fs/2].
+
+    Example:
+        >>> t = np.arange(1000) / 1000.0
+        >>> s = 2.0 * np.sin(2 * np.pi * 100 * t)
+        >>> float(np.round(band_energy_fraction(s, 1000.0, 90.0, 110.0), 6))
+        1.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_band_energy_fraction() -> None:
+    t = np.arange(1000) / 1000.0
+    sine = 2.0 * np.sin(2.0 * np.pi * 100.0 * t)
+    assert np.isclose(band_energy_fraction(sine, 1000.0, 90.0, 110.0), 1.0, atol=1e-9), (
+        "all of a pure sine's power is in a band containing it, so the fraction is 1.0"
+    )
+    assert np.isclose(band_energy_fraction(sine, 1000.0, 0.0, np.inf), 1.0, atol=1e-9), (
+        "over every frequency the fraction must be exactly 1.0"
+    )
+    rng = np.random.default_rng(17)
+    mixed = rng.normal(0.0, 1.0, 4096)
+    a = band_energy_fraction(mixed, FS, *DEFECT_BAND)
+    b = band_energy_fraction(mixed * 123.0, FS, *DEFECT_BAND)
+    assert np.isclose(a, b, rtol=1e-9), (
+        f"the fraction must not change when the signal is multiplied by 123: {a!r} became "
+        f"{b!r}. If it did, you divided by something that is not the total power"
+    )
+    assert np.isclose(band_energy_fraction(np.zeros(64), FS, 0.0, 100.0), 0.0), (
+        "a silent capture has no fraction; return 0.0, not a NaN"
+    )
+    per_unit = band_energy_fraction(VIB[:5], FS, *DEFECT_BAND)
+    assert per_unit.shape == (5,) and np.all((per_unit >= 0) & (per_unit <= 1)), (
+        f"expected five fractions in [0, 1], got {np.asarray(per_unit).tolist()}"
+    )
+    print("exercise 6 looks right — a dimensionless band feature")
+
+
+# %%
+_try("exercise 6", _check_band_energy_fraction)
+
+# %% [markdown]
+# ## 8. Exercise 7 — `separation_auc()`
+#
+# You now have five candidate features. To compare them you need one number per feature that
+# says how far apart the two populations are, and it must not care about the units the feature
+# happens to be in — otherwise you are comparing a kurtosis with a millimetre per second.
+#
+# Use the rank statistic behind the ROC curve: **the probability that a randomly chosen
+# degrading unit scores higher than a randomly chosen healthy one**, with ties counting a half.
+# That is the area under the ROC curve, computed without sweeping a single threshold. 1.0 means
+# perfectly separated, 0.5 means indistinguishable, and 0.0 means perfectly separated *the
+# wrong way round* — which, as section 10 shows, is a thing that happens.
+
+# %%
+def separation_auc(healthy: np.ndarray, degrading: np.ndarray) -> float:
+    """P(a random degrading value > a random healthy value), with ties counting 0.5.
+
+    Both inputs are 1-D samples of the same feature. Compare every degrading value with every
+    healthy value: `(wins + 0.5 * ties) / (n_degrading * n_healthy)`. Return a plain `float`.
+
+    Because it depends only on the ORDER of the values, any strictly increasing transform of
+    the feature — a log, a square — gives the same answer. Raise `ValueError` if either
+    sample is empty.
+
+    Example:
+        >>> separation_auc(np.array([1.0, 2.0]), np.array([3.0, 4.0]))
+        1.0
+        >>> separation_auc(np.array([3.0, 4.0]), np.array([1.0, 2.0]))
+        0.0
+        >>> separation_auc(np.array([1.0, 2.0]), np.array([1.0, 2.0]))
+        0.5
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_separation_auc() -> None:
+    assert separation_auc(np.array([1.0, 2.0]), np.array([3.0, 4.0])) == 1.0, (
+        "two non-overlapping samples with the degrading one higher give exactly 1.0"
+    )
+    assert separation_auc(np.array([3.0, 4.0]), np.array([1.0, 2.0])) == 0.0, (
+        "swap the arguments and you must get 0.0 — the statistic is directional, and the "
+        "argument order is (healthy, degrading)"
+    )
+    same = separation_auc(np.array([1.0, 2.0, 3.0]), np.array([1.0, 2.0, 3.0]))
+    assert np.isclose(same, 0.5), (
+        f"identical samples are indistinguishable: expected 0.5, got {same!r}. A value of "
+        "0.0 or 1.0 means ties were counted as losses or as wins instead of as halves"
+    )
+    partial = separation_auc(np.array([0.0, 1.0, 2.0]), np.array([1.0, 3.0]))
+    assert np.isclose(partial, 0.75), (
+        f"expected 0.75 here: of the 6 pairs, 4 are wins and 1 is a tie; got {partial!r}"
+    )
+    plain = separation_auc(np.array([1.0, 2.0, 3.0]), np.array([2.5, 5.0, 6.0]))
+    logged = separation_auc(np.exp([1.0, 2.0, 3.0]), np.exp([2.5, 5.0, 6.0]))
+    assert np.isclose(plain, logged), (
+        f"a rank statistic cannot change under a strictly increasing transform: {plain!r} "
+        f"became {logged!r}. If it did, you compared means or distances, not ranks"
+    )
+    assert isinstance(separation_auc(np.array([1.0]), np.array([2.0])), float), (
+        "return a plain float, not a 0-d numpy array — it goes straight into an f-string"
+    )
+    for bad in ((np.array([]), np.array([1.0])), (np.array([1.0]), np.array([]))):
+        try:
+            separation_auc(*bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("an empty sample must raise ValueError, not divide by zero")
+    print("exercise 7 looks right — a rank-based separation, ties handled")
+
+
+# %%
+_try("exercise 7", _check_separation_auc)
+
+# %% [markdown]
+# ## 9. The scorecard: separation, and sensitivity to load
+#
+# Here is the measurement the lesson exists for. For each feature, two AUCs:
+#
+# - **fault AUC** — healthy against degrading, over the whole bench.
+# - **load AUC** — healthy at low load against **healthy at high load**. Every unit in that
+#   comparison is in perfect condition. A feature that is reading the machine's health should
+#   score 0.5 here. Anything far from 0.5 is reading the duty point.
+
+# %%
+FEATURES: dict[str, Callable[[np.ndarray], np.ndarray]] = {
+    "rms": lambda v: rms(v),
+    "crest_factor": lambda v: crest_factor(v),
+    "kurtosis": lambda v: kurtosis(v),
+    "band_energy(defect)": lambda v: band_energy(v, FS, *DEFECT_BAND),
+    "band_fraction(defect)": lambda v: band_energy_fraction(v, FS, *DEFECT_BAND),
+    "band_fraction(shaft)": lambda v: band_energy_fraction(v, FS, *SHAFT_BAND),
+}
+_VALUES: dict[str, np.ndarray] = {}
+
+
+def _have_values() -> bool:
+    """True once the section 9 cell has filled `_VALUES` in.
+
+    Every table below reads it. Without this guard a notebook full of unfilled stubs would
+    reach `min()` on an empty dict and report a crash where the honest answer is "you have
+    not written the features yet".
+    """
+    if _VALUES:
+        return True
+    print("no feature values yet — fill in exercises 1-6 and re-run the section 9 cell.")
+    return False
+
+
+def _scorecard() -> None:
+    _VALUES.clear()
+    for name, fn in FEATURES.items():
+        _VALUES[name] = np.asarray(fn(VIB), dtype=float)
+    print(f"{'feature':24s} {'fault AUC':>10s} {'load AUC':>9s}   verdict")
+    for name, v in _VALUES.items():
+        fault = separation_auc(v[HEALTHY], v[DEGRADING])
+        load = separation_auc(v[HEALTHY & IS_LOW], v[HEALTHY & IS_HIGH])
+        sees = ("sees the fault" if fault - 0.5 > 0.25 else
+                "sees the fault, INVERTED" if 0.5 - fault > 0.25 else "blind to the fault")
+        fooled = "FOOLED by load" if abs(load - 0.5) > 0.25 else "immune to load"
+        print(f"{name:24s} {fault:10.3f} {load:9.3f}   {sees}, {fooled}")
+    print("\nread the second column first. A feature with a load AUC near 1.0 will raise an")
+    print("alarm every time the plant increases throughput, and the maintenance crew will")
+    print("find a healthy machine, twice, and then stop answering the phone.")
+
+
+_try("scorecard", _scorecard)
+
+# %% [markdown]
+# ## 10. What a confounder actually costs
+#
+# The fault AUC above was measured over the whole bench, where load happened to be spread
+# evenly across both populations. Real data is not that tidy: the degrading units are often
+# the ones that were being run gently, or hard, for reasons that have nothing to do with the
+# study. The next cell measures each feature again on a **confounded** comparison — healthy
+# units at high load against degrading units at low load — and prints how far each moved.
+
+# %%
+def _show_confounded() -> None:
+    if not _have_values():
+        return
+    print(f"{'feature':24s} {'clean':>8s} {'confounded':>11s} {'shift':>8s}")
+    for name, v in _VALUES.items():
+        clean = separation_auc(v[HEALTHY], v[DEGRADING])
+        conf = separation_auc(v[HEALTHY & IS_HIGH], v[DEGRADING & IS_LOW])
+        print(f"{name:24s} {clean:8.3f} {conf:11.3f} {conf - clean:+8.3f}")
+    worst = min(_VALUES, key=lambda n: separation_auc(_VALUES[n][HEALTHY & IS_HIGH],
+                                                     _VALUES[n][DEGRADING & IS_LOW]))
+    worst_auc = separation_auc(_VALUES[worst][HEALTHY & IS_HIGH],
+                               _VALUES[worst][DEGRADING & IS_LOW])
+    print(f"\n{worst} scores {worst_auc:.3f} on the confounded comparison. Below 0.5 means it")
+    print("ranks the healthy machines as sicker than the broken ones — a detector built on it")
+    print("would alarm on exactly the wrong units, confidently, and its ROC curve on the")
+    print("clean split would never have shown it.")
+
+
+_try("confounded", _show_confounded)
+
+# %% [markdown]
+# ## 11. Exercise 8 — `cheapest_alarm()`
+#
+# Separation is not the deliverable; a decision is. Module 1's expected cost, unchanged:
+# a planned intervention, an unplanned failure and a false alarm each have a price, and the
+# threshold is whatever minimises the total.
+#
+# One thing has to be fixed first. This bench is 50% faulty and no fleet is. Prevalence is an
+# input to the cost, so the counts must be rebuilt from *rates* measured on the bench and the
+# prevalence of the fleet you are pricing — `PREVALENCE` and `FLEET_SIZE` above.
+
+# %%
+def cheapest_alarm(healthy: np.ndarray, degrading: np.ndarray,
+                   prices: tuple[float, float, float], prevalence: float,
+                   fleet_size: int) -> tuple[float, float]:
+    """The cost-optimal "alarm when feature >= threshold" rule for one feature.
+
+    `prices` is `(planned, unplanned, false_alarm)`. For each candidate threshold:
+
+        tpr  = fraction of `degrading` at or above it, fpr = fraction of `healthy` likewise
+        n_bad  = fleet_size * prevalence          n_good = fleet_size * (1 - prevalence)
+        cost = n_bad*tpr*planned + n_bad*(1-tpr)*unplanned + n_good*fpr*false_alarm
+
+    Candidates are every distinct value in the two samples, in ascending order, **followed by
+    `np.inf`** — the option of never alarming at all, which wins outright when the feature is
+    useless or failures are cheap. Return `(threshold, cost)` for the cheapest candidate;
+    where several tie, the smallest threshold (so a real threshold beats `inf` on a tie).
+
+    Raise `ValueError` if `prevalence` is outside [0, 1].
+
+    Example — two clean populations, a 50% fleet of 100, prices (10, 100, 5):
+        >>> cheapest_alarm(np.array([0.0, 1.0]), np.array([2.0, 3.0]), (10.0, 100.0, 5.0),
+        ...                0.5, 100)
+        (2.0, 500.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_cheapest_alarm() -> None:
+    thr, cost = cheapest_alarm(np.array([0.0, 1.0]), np.array([2.0, 3.0]),
+                               (10.0, 100.0, 5.0), 0.5, 100)
+    assert np.isclose(thr, 2.0) and np.isclose(cost, 500.0), (
+        f"expected (2.0, 500.0), got ({thr!r}, {cost!r}). At threshold 2.0 every degrading "
+        "unit alarms and no healthy one does: 50 * 10 = 500"
+    )
+    never_thr, never_cost = cheapest_alarm(np.array([0.0, 1.0]), np.array([2.0, 3.0]),
+                                           (10.0, 1.0, 50.0), 0.5, 100)
+    assert np.isinf(never_thr) and np.isclose(never_cost, 50.0), (
+        f"when a failure costs 1 and a false alarm 50, never alarming is cheapest — expected "
+        f"(inf, 50.0), got ({never_thr!r}, {never_cost!r}). Append np.inf to the candidates"
+    )
+    rng = np.random.default_rng(23)
+    h, d = rng.normal(0.0, 1.0, 200), rng.normal(1.2, 1.0, 200)
+    lo_thr, _ = cheapest_alarm(h, d, PRICES, 0.02, FLEET_SIZE)
+    hi_thr, _ = cheapest_alarm(h, d, PRICES, 0.30, FLEET_SIZE)
+    assert hi_thr < lo_thr, (
+        f"a fleet with more degrading machines should alarm more readily, so its threshold "
+        f"must be LOWER: got {hi_thr:.3f} at 30% prevalence against {lo_thr:.3f} at 2%. If "
+        "they are equal, prevalence is not reaching the cost"
+    )
+    for bad in (-0.1, 1.5):
+        try:
+            cheapest_alarm(np.array([0.0]), np.array([1.0]), PRICES, bad, 100)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"prevalence={bad} must raise ValueError")
+    print("exercise 8 looks right — a priced threshold, at the fleet's own prevalence")
+
+
+# %%
+_try("exercise 8", _check_cheapest_alarm)
+
+# %% [markdown]
+# Now the ranking MODULES.md asks this module for: features ordered by the money they save
+# against doing nothing at all, each at its own cost-optimal threshold.
+
+# %%
+def _show_money_ranking() -> None:
+    if not _have_values():
+        return
+    do_nothing = FLEET_SIZE * PREVALENCE * PRICES[1]
+    alarm_always = (FLEET_SIZE * PREVALENCE * PRICES[0]
+                    + FLEET_SIZE * (1 - PREVALENCE) * PRICES[2])
+    print(f"never alarm at all: {do_nothing:,.0f}   ·   alarm on everything: "
+          f"{alarm_always:,.0f}   (per {FLEET_SIZE} machines)")
+    rows = []
+    for name, v in _VALUES.items():
+        thr, cost = cheapest_alarm(v[HEALTHY], v[DEGRADING], PRICES, PREVALENCE, FLEET_SIZE)
+        rows.append((do_nothing - cost, name, thr, cost,
+                     separation_auc(v[HEALTHY], v[DEGRADING])))
+    rows.sort(reverse=True)
+    print(f"\n{'feature':24s} {'fault AUC':>10s} {'threshold':>11s} {'cost':>12s} {'saved':>12s}")
+    for saved, name, thr, cost, auc in rows:
+        print(f"{name:24s} {auc:10.3f} {thr:11.4g} {cost:12,.0f} {saved:12,.0f}")
+    print(f"\nbest by money: {rows[0][1]}. Worst: {rows[-1][1]}, which saves "
+          f"{rows[-1][0]:,.0f} —")
+    print("the cheapest thing it can do is alarm on everything, so it is worth what a")
+    print("blanket overhaul policy is worth, and not a penny more.")
+
+
+_try("money ranking", _show_money_ranking)
+
+# %% [markdown]
+# ## 12. The temperature half
+#
+# A bearing temperature is a function of ambient and load long before it is a function of
+# health. On this bench a healthy unit ranges over roughly forty degrees for those two reasons
+# alone, while the defect adds a few. Thresholding that raw number is hopeless.
+#
+# The fix is a model of the *expected* temperature, fitted on units you know were healthy —
+# the commissioning set — and then subtracted. Two exercises: fit it, then apply it.
+
+# %%
+def fit_load_model(load: np.ndarray, ambient: np.ndarray, temperature: np.ndarray,
+                   fit_rows: np.ndarray) -> np.ndarray:
+    """Least-squares fit of `temperature ~ b0 + b1 * load + b2 * ambient`.
+
+    Fit on the rows where `fit_rows` is True and **only** those rows — they are the units
+    known to be healthy. Fitting on everything lets the fault you are trying to detect walk
+    into the model and cancel itself out.
+
+    Build the design matrix with an explicit column of ones for the intercept, in the order
+    `[1, load, ambient]`, and solve with `np.linalg.lstsq(..., rcond=None)`. Return the three
+    coefficients as a 1-D array of length 3. Raise `ValueError` if fewer than 3 rows are
+    selected.
+
+    Example, exactly linear data:
+        >>> load = np.array([0.0, 1.0, 0.0, 1.0])
+        >>> amb = np.array([10.0, 10.0, 20.0, 20.0])
+        >>> temp = 5.0 + 2.0 * load + 0.5 * amb
+        >>> fit_load_model(load, amb, temp, np.ones(4, dtype=bool)).round(6).tolist()
+        [5.0, 2.0, 0.5]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def expected_temperature(load: np.ndarray, ambient: np.ndarray,
+                         coefficients: np.ndarray) -> np.ndarray:
+    """Apply a fitted load model to EVERY row: `b0 + b1 * load + b2 * ambient`.
+
+    The residual a student wants is `temperature - expected_temperature(...)`, computed for
+    every unit including the ones the model was not fitted on. That is the whole point: the
+    model says what a healthy machine at this duty point should be running at, and the
+    residual is what is left over.
+
+    Example:
+        >>> expected_temperature(np.array([0.5]), np.array([20.0]),
+        ...                      np.array([5.0, 2.0, 0.5])).tolist()
+        [16.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_temperature_model() -> None:
+    load = np.array([0.0, 1.0, 0.0, 1.0])
+    amb = np.array([10.0, 10.0, 20.0, 20.0])
+    temp = 5.0 + 2.0 * load + 0.5 * amb
+    coef = fit_load_model(load, amb, temp, np.ones(4, dtype=bool))
+    assert np.asarray(coef).shape == (3,), (
+        f"expected three coefficients [b0, b1, b2], got shape {np.asarray(coef).shape} — "
+        "the design matrix needs an explicit intercept column of ones"
+    )
+    assert np.allclose(coef, [5.0, 2.0, 0.5], atol=1e-8), (
+        f"on exactly linear data the fit must recover [5, 2, 0.5]; got "
+        f"{np.asarray(coef).round(4).tolist()}"
+    )
+    # Rows outside the mask are poisoned. A fit that reads them cannot come back clean.
+    poisoned_temp = temp.copy()
+    poisoned_load = np.concatenate([load, [0.5, 0.5]])
+    poisoned_amb = np.concatenate([amb, [15.0, 15.0]])
+    poisoned_temp = np.concatenate([poisoned_temp, [900.0, -900.0]])
+    mask = np.array([True] * 4 + [False, False])
+    masked = fit_load_model(poisoned_load, poisoned_amb, poisoned_temp, mask)
+    assert np.allclose(masked, [5.0, 2.0, 0.5], atol=1e-8), (
+        f"two rows outside fit_rows changed the answer to "
+        f"{np.asarray(masked).round(3).tolist()} — index load, ambient AND temperature by "
+        "fit_rows before you build the design matrix"
+    )
+    assert np.allclose(expected_temperature(np.array([0.5]), np.array([20.0]),
+                                            np.array([5.0, 2.0, 0.5])), [16.0]), (
+        "expected_temperature must be b0 + b1*load + b2*ambient = 5 + 1 + 10 = 16.0"
+    )
+    every = expected_temperature(poisoned_load, poisoned_amb, np.array([5.0, 2.0, 0.5]))
+    assert np.asarray(every).shape == (6,), (
+        f"expected_temperature runs on EVERY row, not just the fitted ones; got shape "
+        f"{np.asarray(every).shape} from 6 rows"
+    )
+    try:
+        fit_load_model(load, amb, temp, np.array([True, True, False, False]))
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("fewer than 3 selected rows must raise ValueError")
+    print("exercise 9 and 10 look right — a load model fitted on the known-good units")
+
+
+# %%
+_try("exercises 9 and 10", _check_temperature_model)
+
+# %% [markdown]
+# Now measure what the correction bought. The residual is a temperature in degrees, so it is
+# directly readable: "this bearing is running 3.4 C hotter than a healthy one would at this
+# load and this ambient."
+
+# %%
+def _show_temperature() -> None:
+    coef = fit_load_model(LOAD, AMBIENT, TEMPERATURE, COMMISSIONED)
+    residual = TEMPERATURE - expected_temperature(LOAD, AMBIENT, coef)
+    _VALUES["temperature (raw)"] = TEMPERATURE
+    _VALUES["temperature residual"] = residual
+    print(f"fitted on {int(COMMISSIONED.sum())} commissioned units: expected temperature = "
+          f"{coef[0]:.2f} + {coef[1]:.2f}*load + {coef[2]:.2f}*ambient")
+    print(f"healthy units span {TEMPERATURE[HEALTHY].min():.1f} to "
+          f"{TEMPERATURE[HEALTHY].max():.1f} C raw, and "
+          f"{residual[HEALTHY].min():+.1f} to {residual[HEALTHY].max():+.1f} C as a residual")
+    for label, v in (("temperature (raw)", TEMPERATURE), ("temperature residual", residual)):
+        print(f"  {label:24s} fault AUC {separation_auc(v[HEALTHY], v[DEGRADING]):.3f}   "
+              f"load AUC {separation_auc(v[HEALTHY & IS_LOW], v[HEALTHY & IS_HIGH]):.3f}")
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.0))
+    for ax, v, title in ((axes[0], TEMPERATURE, "raw bearing temperature"),
+                         (axes[1], residual, "residual after removing load and ambient")):
+        ax.scatter(LOAD[HEALTHY], v[HEALTHY], s=6, alpha=0.5, label="healthy")
+        ax.scatter(LOAD[DEGRADING], v[DEGRADING], s=6, alpha=0.5, label="degrading")
+        ax.set_xlabel("load")
+        ax.set_title(title, fontsize=9)
+    axes[0].set_ylabel("degrees C")
+    axes[0].legend(fontsize=8)
+    fig.tight_layout()
+    _show(fig)
+    print("\nsame sensor, same units, same fault. The left panel is two clouds lying on top")
+    print("of each other along a load trend; the right panel is a detector.")
+
+
+_try("temperature", _show_temperature)
+
+# %% [markdown]
+# ## 13. The handover
+#
+# One table, every feature, both AUCs and the money. This is what you would put in front of
+# the reliability engineer, and the column that decides is the last one.
+
+# %%
+def _handover() -> None:
+    if not _have_values():
+        return
+    do_nothing = FLEET_SIZE * PREVALENCE * PRICES[1]
+    rows = []
+    for name, v in _VALUES.items():
+        thr, cost = cheapest_alarm(v[HEALTHY], v[DEGRADING], PRICES, PREVALENCE, FLEET_SIZE)
+        rows.append((do_nothing - cost, name, thr,
+                     separation_auc(v[HEALTHY], v[DEGRADING]),
+                     separation_auc(v[HEALTHY & IS_LOW], v[HEALTHY & IS_HIGH])))
+    rows.sort(reverse=True)
+    print("FEATURE SCORECARD — bench of "
+          f"{N_UNITS} units, priced against a {FLEET_SIZE}-machine fleet at "
+          f"{PREVALENCE:.0%} prevalence")
+    print(f"{'feature':24s} {'fault AUC':>10s} {'load AUC':>9s} {'alarm at':>10s} "
+          f"{'saves':>12s}")
+    for saved, name, thr, fault, load in rows:
+        print(f"{name:24s} {fault:10.3f} {load:9.3f} {thr:10.4g} {saved:12,.0f}")
+    top = rows[0]
+    print(f"\n  recommended   {top[1]} >= {top[2]:.4g}")
+    print(f"  derived from  planned {PRICES[0]:,.0f} · unplanned {PRICES[1]:,.0f} · "
+          f"false alarm {PRICES[2]:,.0f} · prevalence {PREVALENCE:.0%}")
+    print("  re-derive whenever a price, the prevalence, or the duty-point mix changes.")
+    print("  load AUC is reported next to fault AUC on purpose: a feature is only as good as")
+    print("  its second column on a plant whose throughput is not constant.")
+
+
+_try("handover", _handover)
+
+# %% [markdown]
+# ## 14. Common mistakes
+#
+# - **Using `np.std` for RMS.** They differ by the DC component, and an accelerometer with a
+#   bias offset has one.
+# - **Returning excess kurtosis.** Most statistics libraries subtract 3. Condition monitoring
+#   does not. A "kurtosis of 0.4" in a report is either a very smooth machine or a convention
+#   mismatch, and it is almost always the second.
+# - **Doubling the DC and Nyquist bins.** The 2/n scaling applies only to bins with a folded
+#   negative-frequency twin. Parseval is the cheap test: if the band energy over all
+#   frequencies is not `rms**2`, the scaling is wrong.
+# - **Comparing a feature between two populations that differ in load.** Everything in section
+#   10. A feature's fault AUC is only trustworthy when the confounder is balanced, and
+#   balancing it is your job, not the statistic's.
+# - **Reading a fleet threshold off a test bench.** A bench is 50% faulty. Prevalence multiplies
+#   the failure term of the cost and nothing else, so a threshold derived at the bench's own
+#   base rate is far too eager.
+# - **Fitting the load model on all the data.** The degrading units drag the fit towards
+#   themselves, the residual shrinks, and the feature quietly loses most of its power.
+# - **Ranking features by separation and stopping there.** The last cell below shows the two
+#   orderings side by side. They are not the same ordering, because a feature's cost depends
+#   on where its errors fall, not only on how far apart its two populations are.
+
+# %%
+def _show_two_orderings() -> None:
+    if not _have_values():
+        return
+    do_nothing = FLEET_SIZE * PREVALENCE * PRICES[1]
+    by_auc = sorted(_VALUES, key=lambda n: separation_auc(_VALUES[n][HEALTHY],
+                                                          _VALUES[n][DEGRADING]), reverse=True)
+    by_money = sorted(_VALUES, key=lambda n: cheapest_alarm(
+        _VALUES[n][HEALTHY], _VALUES[n][DEGRADING], PRICES, PREVALENCE, FLEET_SIZE)[1])
+    print(f"{'rank':>4s}  {'by separation':24s} {'by money saved':24s}")
+    for i, (a, m) in enumerate(zip(by_auc, by_money), start=1):
+        flag = "  <- differs" if a != m else ""
+        print(f"{i:>4d}  {a:24s} {m:24s}{flag}")
+    swaps = sum(a != m for a, m in zip(by_auc, by_money))
+    print(f"\n{swaps} of {len(by_auc)} positions differ between the two orderings, on the "
+          "same numbers.")
+    print(f"(do-nothing cost, for reference: {do_nothing:,.0f})")
+
+
+_try("two orderings", _show_two_orderings)
+
+# %% [markdown]
+# ## 15. Self-check
+#
+# 1. A feature's load AUC on healthy units only comes out at 0.98. This means:
+#    - (a) the feature is an excellent fault detector
+#    - (b) the feature separates duty points almost perfectly, and every alarm it raises
+#          during a throughput increase will be false
+#    - (c) nothing; AUC is only meaningful against a fault label
+#
+# 2. You compute the amplitude spectrum with `2 * abs(rfft(x)) / n` applied to every bin,
+#    including bin 0. The band energy summed over all frequencies will:
+#    - (a) still equal `rms(x)**2`, because the error is in one bin
+#    - (b) be too large by the DC power, which matters most on exactly the signals — biased
+#          accelerometer channels — where you would least notice
+#    - (c) be too small, because bin 0 was scaled down
+#
+# 3. Crest factor and kurtosis both come out near their healthy values on a machine with a
+#    late-stage, heavily worn bearing that is roaring. The most likely explanation is:
+#    - (a) the bearing is fine after all
+#    - (b) the damage has spread until the impacts are no longer isolated, so the signal has
+#          become broadband — shape statistics fall back towards noise as a fault matures
+#    - (c) the sample rate is too low
+#
+# 4. Your team reports that `band_energy(defect)` has a fault AUC of 0.89 on historical data.
+#    Before trusting it you should ask:
+#    - (a) how many units were in the study
+#    - (b) whether the healthy and degrading units were running at comparable loads, since the
+#          feature is not dimensionless and the bench shows its load AUC at 1.000
+#    - (c) whether a deep model would score higher
+#
+# 5. The load model is refitted every quarter on whatever units were healthy that quarter. One
+#    quarter the plant runs at a duty point never seen before. The residual will:
+#    - (a) be unaffected, since the model is linear
+#    - (b) be an extrapolation, and a systematic residual offset across the whole fleet is
+#          then a modelling artefact rather than a fleet-wide fault
+#    - (c) automatically widen its confidence interval
+#
+# Answers, with the reasoning, are published in the course solution bundle.
+
+# %% [markdown]
+# Before the summary, one measurement about the notebook itself. This lesson is declared
+# `cpu8` with a 90-second budget, and it is worth knowing how cheap the whole spectral
+# pipeline actually is before you argue with anyone about putting it on an edge device.
+
+# %%
+def _budget() -> None:
+    spent = time.perf_counter() - _LESSON_T0
+    print(f"wall clock so far: {spent:.1f}s  ·  captures held in memory: "
+          f"{VIB.nbytes / 1024**2:.0f} MiB  ·  declared budget: 90 s, tier cpu8")
+    t0 = time.perf_counter()
+    band_energy(VIB, FS, *DEFECT_BAND)
+    per_capture = (time.perf_counter() - t0) / N_UNITS
+    print(f"one band-energy feature over all {N_UNITS} captures costs "
+          f"{per_capture * 1e6:.0f} microseconds per capture — a device sampling one "
+          f"{BURST_LEN / FS:.0f}-second window per machine per hour is not compute-bound.")
+
+
+_try("budget", _budget)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# Six vibration features and a corrected temperature, each carrying two numbers instead of
+# one: what it sees, and what fools it. Module 4 takes the labels this all rests on and shows
+# how much they move under three defensible labelling policies; module 5 replaces the
+# threshold with a remaining-useful-life distribution.
+#
+# The code above is not bench-specific. The real corpus named in `meta.yaml` — the Case
+# Western Reserve University bearing data, deposited on Zenodo under CC BY 4.0 — is
+# accelerometer data at 12 kHz and 48 kHz with seeded outer-race, inner-race and ball faults
+# at four motor loads. Point `rms`, `kurtosis` and `band_energy` at it, and measure the load
+# AUC across those four loads before you believe any fault AUC you get.
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_rms),
+                          ("exercise 2", _check_crest_factor),
+                          ("exercise 3", _check_kurtosis),
+                          ("exercise 4", _check_amplitude_spectrum),
+                          ("exercise 5", _check_band_energy),
+                          ("exercise 6", _check_band_energy_fraction),
+                          ("exercise 7", _check_separation_auc),
+                          ("exercise 8", _check_cheapest_alarm),
+                          ("exercises 9 and 10", _check_temperature_model)):
+        _try(_name, _check)
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

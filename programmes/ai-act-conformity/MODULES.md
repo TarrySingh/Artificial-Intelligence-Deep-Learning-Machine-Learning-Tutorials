@@ -1,8 +1,8 @@
 # Module map — EU AI Act conformity engineering
 
-Nine modules. **One is built.** The other eight are specified here in enough detail to be
+Nine modules. **Four are built.** The other five are specified here in enough detail to be
 built and argued with, and are marked `SPECIFIED — NOT BUILT`. No directory exists for them;
-`lessons/` holds exactly one lesson, and that is the only one you can run.
+`lessons/` holds exactly the four built lessons, and those are the only ones you can run.
 
 Every module is `cpu8`: 8 GiB, 2 vCPU, no GPU, no network, standard library plus numpy. Every
 module is a notebook with scaffolded stubs, public checks, an autograded rubric with partial
@@ -12,17 +12,17 @@ The spine is the evidence table from the prerequisite lesson
 `lessons/T10-L01-ai-act-conformity-pack`. Each module below fills one or more of the evidence
 ids that lesson defines, so the pack stays machine-checkable as the programme grows.
 
-| # | Module | Evidence ids it fills | Tier | Status |
-|---|--------|----------------------|------|--------|
-| 1 | Article 12 logging and traceability | `automatic_logging_design` | `cpu8` | **BUILT** |
-| 2 | Risk classification as a decision procedure | `risk_classification_record` | `cpu8` | specified |
-| 3 | Annex IV technical documentation, generated | `technical_documentation` | `cpu8` | specified |
-| 4 | Data governance you can test | `data_governance_record` | `cpu8` | specified |
-| 5 | Human oversight as a measurable property | `human_oversight_plan` | `cpu8` | specified |
-| 6 | Accuracy, robustness and cybersecurity evidence | `accuracy_robustness_cybersecurity_report` | `cpu8` | specified |
-| 7 | Post-market monitoring and serious incidents | `post_market_monitoring_plan`, `serious_incident_procedure` | `cpu8` | specified |
-| 8 | The conformity assessment route | `conformity_assessment_record`, `eu_declaration_of_conformity`, `ce_marking_record` | `cpu8` | specified |
-| 9 | The pack under inspection (capstone) | all of the above, re-verified | `cpu8` | specified |
+| # | Module | Evidence ids it fills | Tier | Status | Measured · rubric |
+|---|--------|----------------------|------|--------|-------------------|
+| 1 | Article 12 logging and traceability | `automatic_logging_design` | `cpu8` | **BUILT** | 0.1 s · 33 MiB · 58 pts / 19 cases |
+| 2 | Risk classification as a decision procedure | `risk_classification_record` | `cpu8` | **BUILT** | <0.1 s · 21 MiB · 69 pts / 23 cases |
+| 3 | Annex IV technical documentation, generated | `technical_documentation` | `cpu8` | **BUILT** | <0.1 s · 21 MiB · 61 pts / 20 cases |
+| 4 | Data governance you can test | `data_governance_record` | `cpu8` | **BUILT** | 0.1 s · 37 MiB · 101 pts / 30 cases |
+| 5 | Human oversight as a measurable property | `human_oversight_plan` | `cpu8` | specified | — |
+| 6 | Accuracy, robustness and cybersecurity evidence | `accuracy_robustness_cybersecurity_report` | `cpu8` | specified | — |
+| 7 | Post-market monitoring and serious incidents | `post_market_monitoring_plan`, `serious_incident_procedure` | `cpu8` | specified | — |
+| 8 | The conformity assessment route | `conformity_assessment_record`, `eu_declaration_of_conformity`, `ce_marking_record` | `cpu8` | specified | — |
+| 9 | The pack under inspection (capstone) | all of the above, re-verified | `cpu8` | specified | — |
 
 ---
 
@@ -65,7 +65,9 @@ them. A field list you cannot argue with is a field list nobody checked.
 
 ## 2. Risk classification as a decision procedure
 
-`SPECIFIED — NOT BUILT` · tier `cpu8`
+`lessons/P01-L02-risk-classification` · **BUILT** · tier `cpu8` · measured <0.1 s, 21 MiB ·
+69 rubric points across 23 autograded cases · prerequisites `T10-L01-ai-act-conformity-pack`,
+`P01-L01-article-12-logging`
 
 **The lab.** T10-L01 gave the student a `classify()` that reads flags off a dictionary. This
 module makes them earn those flags. They implement an **interview**: an ordered decision
@@ -92,7 +94,9 @@ log.
 
 ## 3. Annex IV technical documentation, generated rather than written
 
-`SPECIFIED — NOT BUILT` · tier `cpu8`
+`lessons/P01-L03-annex-iv-documentation` · **BUILT** · tier `cpu8` · measured <0.1 s, 21 MiB ·
+61 rubric points across 20 autograded cases · prerequisites `T10-L01-ai-act-conformity-pack`,
+`P01-L01-article-12-logging`
 
 **The lab.** Annex IV lists what the Article 11 technical documentation must contain: general
 description; elements and development process; monitoring, functioning and control;
@@ -116,7 +120,9 @@ fails, because it produces a green pack.
 
 ## 4. Data governance you can test
 
-`SPECIFIED — NOT BUILT` · tier `cpu8`
+`lessons/P01-L04-data-governance` · **BUILT** · tier `cpu8` · measured 0.1 s, 37 MiB ·
+101 rubric points across 30 autograded cases · prerequisites `T10-L01-ai-act-conformity-pack`,
+`P01-L01-article-12-logging`
 
 **The lab.** Article 10 asks for training, validation and test data that are relevant,
 sufficiently representative and, to the best extent possible, free of errors and complete in

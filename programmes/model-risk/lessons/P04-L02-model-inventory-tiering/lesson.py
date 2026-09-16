@@ -1,0 +1,1000 @@
+# %% [markdown]
+# # P04-L02 · The model inventory, and a tiering you can defend
+#
+# **You will build:** a model record schema and the validator that names every record failing
+# it; a `tier()` that turns four attributes into a risk tier *and an audit trail saying why*;
+# a reconciliation between the inventory and what is actually running; a validation coverage
+# report; and the inventory report generated from all of it.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** T00-L01 (the tier gate and the profiler), P04-L01 (the validation
+# suite). Pure numpy and the standard library throughout.
+#
+# The inventory is **synthetic and generated in this notebook**. Every figure you see is
+# computed by code you run, including the figures in the report.
+#
+# Module 1 measured one model. This module answers the question that comes before it: *which
+# models, and how hard do we look at each?* The PRA's SS1/23 makes model identification and
+# model risk classification its **first** principle — a definition of a model, a model
+# inventory, and a risk-based tiering approach — before governance, before validation.
+#
+# By the end you will be able to:
+#
+# 1. Implement a model record schema validator that reports every defect in every record,
+#    rather than stopping at the first one.
+# 2. Implement `tier(record, policy)` from materiality, complexity, exposure, reversibility
+#    and human override, with the policy passed in and the boundaries defined.
+# 3. Produce an audit trail that reconstructs a tier decision from the record alone.
+# 4. Reconcile an inventory against a runtime registry, and name the models running outside it.
+# 5. Generate the inventory report — tier distribution, coverage and findings — from the
+#    measured results, and explain why a model with no validation on file is a coverage
+#    finding rather than a schema error.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import datetime as _dt
+import re
+import sys
+import time
+from typing import Any, Callable, NamedTuple
+
+import numpy as np
+
+SEED = 20260916
+N_RECORDS = 40
+AS_OF = "2026-09-16"
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+DATA_NOTE = (
+    "SYNTHETIC DATA. Every model record and every runtime identifier below was generated "
+    f"inside this notebook by numpy.random.default_rng({SEED}). No real model, portfolio, "
+    "owner or firm is represented. A real inventory report must name its extract, the system "
+    "it came from and the date it was taken here instead."
+)
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other five.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# --- the schema, as constants you will validate against ------------------------------------
+
+REQUIRED_FIELDS = (
+    "model_id", "name", "owner", "status", "purpose", "exposure_gbp", "customers",
+    "materiality", "complexity", "reversibility", "human_override", "last_validated",
+    "validation_frequency_months",
+)
+TEXT_FIELDS = ("model_id", "name", "owner", "purpose")
+COUNT_FIELDS = ("exposure_gbp", "customers")
+ENUMS = {
+    "status": ("decommissioned", "in_development", "in_use"),
+    "materiality": ("high", "low", "medium"),
+    "complexity": ("high", "low", "medium"),
+    "reversibility": ("irreversible", "recoverable", "reversible"),
+}
+DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+# The tiering policy. It is DATA, passed into `tier()`, because a tiering approach belongs to
+# a firm's policy document and not to a function. Tier 1 is the most risk; tier 4 the least.
+POLICY: dict[str, Any] = {
+    "name": "house tiering policy v1",
+    "points": {
+        "materiality": {"low": 0, "medium": 2, "high": 4},
+        "complexity": {"low": 0, "medium": 1, "high": 2},
+        "reversibility": {"reversible": 0, "recoverable": 1, "irreversible": 3},
+    },
+    # (threshold, points), ascending. A model scores the points of the LAST band whose
+    # threshold it reaches. Landing exactly on a threshold reaches it.
+    "exposure_bands": ((0, 0), (10_000_000, 1), (100_000_000, 2), (1_000_000_000, 3)),
+    "no_override_points": 1,     # awarded when no human can override the model's output
+    # (cut, tier), descending by cut. Score >= cut earns that tier; nothing matched is
+    # `default_tier`.
+    "tier_cuts": ((8, 1), (5, 2), (2, 3)),
+    "default_tier": 4,
+    # A model whose decisions are irreversible and which no human can override is never
+    # allowed to sit below this tier number, whatever it scored.
+    "escalation_tier_at_most": 2,
+}
+
+REPORT_SECTIONS = (
+    "1. Scope and data",
+    "2. Schema conformance",
+    "3. Tier distribution",
+    "4. Inventory versus runtime",
+    "5. Validation coverage",
+    "6. Findings",
+)
+
+
+# --- given helpers -------------------------------------------------------------------------
+
+def parse_date(text: str) -> _dt.date:
+    """Parse a `YYYY-MM-DD` string. Given to you; raises ValueError on anything else."""
+    if not isinstance(text, str) or not DATE_RE.match(text):
+        raise ValueError(f"not a YYYY-MM-DD date: {text!r}")
+    return _dt.date.fromisoformat(text)
+
+
+def shift_months(day: _dt.date, months: int) -> _dt.date:
+    """Move a date by whole months, clamping the day to 28 so no month length can bite.
+
+    Given to you. It is used to generate the synthetic dates below and nowhere else.
+    """
+    total = (day.year * 12 + day.month - 1) + months
+    return _dt.date(total // 12, total % 12 + 1, min(day.day, 28))
+
+
+def synthetic_inventory(rng: np.random.Generator, n: int = N_RECORDS) -> list[dict]:
+    """Generate one deterministic synthetic inventory. SYNTHETIC — see DATA_NOTE.
+
+    Four records are deliberately damaged, because a real extract always has some: one is
+    missing a field, one carries a value outside its enumeration, one has a negative
+    exposure, and one repeats another record's id.
+    """
+    owners = ["a.okafor", "b.lindqvist", "c.mehta", "d.rossi", "e.nakamura"]
+    purposes = ["retail PD scorecard", "IFRS 9 lifetime ECL", "market VaR",
+                "counterparty exposure", "AML transaction screening", "pricing uplift",
+                "collections propensity", "liquidity stress projection"]
+    statuses = ["in_use", "in_use", "in_use", "in_use", "in_development", "decommissioned"]
+    as_of = parse_date(AS_OF)
+
+    records: list[dict] = []
+    for i in range(n):
+        status = statuses[int(rng.integers(len(statuses)))]
+        never = bool(rng.random() < 0.18)
+        age = int(rng.integers(1, 40))
+        records.append({
+            "model_id": f"MDL-{i:03d}",
+            "name": f"{purposes[int(rng.integers(len(purposes)))]} v{int(rng.integers(1, 6))}",
+            "owner": owners[int(rng.integers(len(owners)))],
+            "status": status,
+            "purpose": purposes[int(rng.integers(len(purposes)))],
+            "exposure_gbp": int(10.0 ** float(rng.uniform(5.0, 9.6))),
+            "customers": int(10.0 ** float(rng.uniform(1.0, 6.5))),
+            "materiality": ["low", "medium", "high"][int(rng.integers(3))],
+            "complexity": ["low", "medium", "high"][int(rng.integers(3))],
+            "reversibility": ["reversible", "recoverable", "irreversible"][int(rng.integers(3))],
+            "human_override": bool(rng.random() < 0.65),
+            "last_validated": None if never else shift_months(as_of, -age).isoformat(),
+            "validation_frequency_months": int([6, 12, 12, 24, 36][int(rng.integers(5))]),
+        })
+
+    # The model nobody has looked at: the largest exposure in the book, never validated.
+    records[0].update(name="group capital overlay v3", status="in_use",
+                      exposure_gbp=4_100_000_000, customers=0, materiality="high",
+                      complexity="high", reversibility="irreversible", human_override=False,
+                      last_validated=None, validation_frequency_months=12)
+    # Four planted defects, one of each kind.
+    records[3].pop("owner")
+    records[7]["materiality"] = "critical"
+    records[11]["exposure_gbp"] = -5
+    records[15]["model_id"] = records[14]["model_id"]
+    return records
+
+
+def synthetic_runtime(records: list[dict], rng: np.random.Generator) -> list[str]:
+    """Generate what production says it is running. SYNTHETIC — see DATA_NOTE.
+
+    Most in-use models are running; two are not; two identifiers are running that no record
+    in the inventory claims; and one decommissioned model never got switched off.
+    """
+    running = [r["model_id"] for r in records
+               if r.get("status") == "in_use" and bool(rng.random() < 0.88)]
+    dead = [r["model_id"] for r in records if r.get("status") == "decommissioned"]
+    running += dead[:1] + ["SHADOW-PRICING-01", "SHADOW-COLLECTIONS-02"]
+    return sorted(set(running))
+
+
+_rng = np.random.default_rng(SEED)
+INVENTORY = synthetic_inventory(_rng, N_RECORDS)
+RUNTIME = synthetic_runtime(INVENTORY, _rng)
+print(f"inventory: {len(INVENTORY)} records · runtime registry: {len(RUNTIME)} identifiers")
+print("\n" + DATA_NOTE)
+
+# %% [markdown]
+# ## 1. The phenomenon: the number you cannot get
+#
+# Ask a model risk function how many models it has and you get a number. Ask the platform
+# team what is running and you get a different one. Neither is wrong; they are answers to
+# different questions, and the gap between them is where the unpleasant surprises live.
+#
+# Run this. It uses none of your code yet — it just counts.
+
+# %%
+_in_use = [r for r in INVENTORY if r.get("status") == "in_use"]
+_biggest = max(_in_use, key=lambda r: r.get("exposure_gbp", 0))
+print(f"records with status in_use: {len(_in_use)}")
+print(f"identifiers in the runtime registry: {len(RUNTIME)}")
+print(f"largest in-use exposure: {_biggest['model_id']} at {_biggest['exposure_gbp']:,} GBP")
+print(f"  ... last validated: {_biggest['last_validated']}")
+print("\nTwo counts that should agree and do not, and the biggest number in the book sitting")
+print("against a model nobody has validated. Neither fact is visible from a model-by-model")
+print("review. Both fall out of the inventory, which is why the inventory comes first.")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `validate_record()`
+#
+# An inventory is a control, and a control you cannot trust the contents of is decoration.
+# The validator's job is to report **everything** wrong with a record, not the first thing.
+# A validator that stops at the first defect turns one extract review into six.
+#
+# Two traps. `isinstance(True, int)` is `True` in Python, so a lazy integer check accepts a
+# boolean exposure. And a model with no validation date is *not* a schema error — the field
+# is legitimately `None` — it is a **coverage** finding, which exercise 5 raises. A schema
+# validator that swallows it has hidden the finding inside a different report.
+
+# %%
+def validate_record(record: dict) -> tuple[str, ...]:
+    """Return every reason `record` fails the schema, sorted. An empty tuple means it passes.
+
+    Requirements, each of which is graded:
+      * one message per defect. Never return after the first; never raise.
+      * a missing field gives exactly `f"missing field: {field}"` and no further message
+        about that field.
+      * `model_id`, `name`, `owner`, `purpose` must be non-empty strings:
+        `f"{field}: expected a non-empty string, got {value!r}"`.
+      * `status`, `materiality`, `complexity`, `reversibility` must be in `ENUMS[field]`:
+        `f"{field}: expected one of {list(ENUMS[field])}, got {value!r}"`.
+      * `exposure_gbp` and `customers` must be non-negative `int`s, and a `bool` is NOT an
+        int for this purpose: `f"{field}: expected a non-negative int, got {value!r}"`.
+        Floats are rejected too — an exposure that arrived as a float is an extract that lost
+        its precision, and the audit trail in exercise 3 has to render it exactly.
+      * `human_override` must be a `bool`:
+        `f"human_override: expected a bool, got {value!r}"`.
+      * `validation_frequency_months` must be an `int` of at least 1:
+        `f"validation_frequency_months: expected an int of at least 1, got {value!r}"`.
+      * `last_validated` must be `None` or a `YYYY-MM-DD` string:
+        `f"last_validated: expected None or a YYYY-MM-DD date, got {value!r}"`.
+        `None` is VALID. A model that has never been validated still belongs in the inventory.
+      * extra fields are allowed and are not reported. Inventories grow columns.
+
+    Example:
+        >>> bad = {"model_id": "M1"}
+        >>> errs = validate_record(bad)
+        >>> len(errs)
+        12
+        >>> errs[0]
+        'missing field: complexity'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public checks — run these as often as you like.
+def _check_validate_record() -> None:
+    good = dict(INVENTORY[0])
+    assert validate_record(good) == (), (
+        f"record 0 is well formed and should pass, got {validate_record(good)}"
+    )
+    assert isinstance(validate_record(good), tuple), "return a tuple of strings, not a list"
+    only_id = validate_record({"model_id": "M1"})
+    assert len(only_id) == len(REQUIRED_FIELDS) - 1, (
+        f"a record with only model_id is missing {len(REQUIRED_FIELDS) - 1} fields, you "
+        f"reported {len(only_id)} — collect every defect, do not return after the first"
+    )
+    assert all("missing field" in e for e in only_id), (
+        "every message for an absent field is 'missing field: <name>' and nothing else — do "
+        "not also type-check a field that is not there"
+    )
+    assert list(only_id) == sorted(only_id), "sort the messages before returning them"
+    none_ok = dict(INVENTORY[0], last_validated=None)
+    assert validate_record(none_ok) == (), (
+        "last_validated=None is VALID — never validated is a coverage finding, not a schema "
+        "defect, and exercise 5 is where it gets raised"
+    )
+    booly = validate_record(dict(INVENTORY[0], exposure_gbp=True))
+    assert any("exposure_gbp" in e for e in booly), (
+        "exposure_gbp=True slipped through: isinstance(True, int) is True in Python, so an "
+        "int check alone accepts a boolean — exclude bool explicitly"
+    )
+    floaty = validate_record(dict(INVENTORY[0], exposure_gbp=1.5e8))
+    assert any("exposure_gbp" in e for e in floaty), (
+        "a float exposure must be rejected: the audit trail renders the figure verbatim"
+    )
+    override = validate_record(dict(INVENTORY[0], human_override=1))
+    assert any("human_override" in e for e in override), (
+        "human_override=1 is an int, not a bool — check the concrete type"
+    )
+    enum = validate_record(dict(INVENTORY[0], materiality="critical"))
+    assert len(enum) == 1 and "materiality" in enum[0] and "critical" in enum[0], (
+        f"an out-of-enumeration materiality should give exactly one message naming the bad "
+        f"value, got {enum}"
+    )
+    freq = validate_record(dict(INVENTORY[0], validation_frequency_months=0))
+    assert any("validation_frequency_months" in e for e in freq), (
+        "a validation frequency of 0 months is not a frequency; the minimum is 1"
+    )
+    blank = validate_record(dict(INVENTORY[0], owner="   "))
+    assert any("owner" in e for e in blank), (
+        "an owner of whitespace is not an owner — strip before testing for emptiness"
+    )
+    print("exercise 1 looks right")
+
+
+# %% [markdown]
+# ## 3. Exercise 2 — `validate_inventory()`
+#
+# Now over the whole extract. Two properties matter to whoever has to fix it: it names
+# **every** failing record, and it catches the defect a per-record check cannot see —
+# a model id used twice. A duplicated id means two models share one row of every report
+# downstream, and the second one is invisible.
+
+# %%
+def validate_inventory(records: list[dict]) -> dict[str, tuple[str, ...]]:
+    """Validate every record and return only the ones that fail, keyed by identity.
+
+    Requirements, each of which is graded:
+      * the key is the record's `model_id` when it is a non-empty string, and otherwise
+        `f"<record {i}>"` using its zero-based position. A record with no usable id still has
+        to be findable by whoever fixes the extract.
+      * the value is that record's `validate_record()` tuple, in the same sorted order.
+      * records that pass are absent from the result. An empty dict means a clean extract.
+      * a `model_id` appearing on more than one record adds `f"duplicate model_id: {mid}"` to
+        EVERY record carrying it, including records that are otherwise perfect. Sort each
+        record's messages after adding it.
+      * insertion order follows the records. Do not sort the keys.
+      * `TypeError` if `records` is not a list or tuple. A dict of records is a different
+        shape and silently iterating its keys is how an inventory check reports nothing.
+
+    Example:
+        >>> a = {"model_id": "M1", "name": "n", "owner": "o", "status": "in_use",
+        ...      "purpose": "p", "exposure_gbp": 1, "customers": 1, "materiality": "low",
+        ...      "complexity": "low", "reversibility": "reversible", "human_override": True,
+        ...      "last_validated": None, "validation_frequency_months": 12}
+        >>> out = validate_inventory([a, dict(a)])
+        >>> sorted(out)
+        ['M1']
+        >>> out["M1"]
+        ('duplicate model_id: M1',)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_validate_inventory() -> None:
+    out = validate_inventory(INVENTORY)
+    assert isinstance(out, dict), f"return a dict, got {type(out).__name__}"
+    assert "MDL-003" in out and any("owner" in e for e in out["MDL-003"]), (
+        "record 3 is missing its owner and must appear in the result"
+    )
+    assert "MDL-007" in out and any("materiality" in e for e in out["MDL-007"]), (
+        "record 7 carries materiality='critical' and must appear in the result"
+    )
+    assert "MDL-011" in out, "record 11 has a negative exposure and must appear"
+    assert len(out) >= 4, (
+        f"four records were deliberately damaged and you found {len(out)} — the loop must "
+        "keep going after the first failure"
+    )
+    dup = [k for k, v in out.items() if any("duplicate" in e for e in v)]
+    assert "MDL-014" in dup, (
+        "MDL-014 is well formed but its id is used twice, so it must still be reported — "
+        "the duplicate attaches to EVERY record carrying the id, not just the later one"
+    )
+    clean = dict(INVENTORY[0])
+    assert validate_inventory([clean]) == {}, "a clean extract returns an empty dict"
+    anon = validate_inventory([{"name": "no id here"}])
+    assert "<record 0>" in anon, (
+        f"a record with no usable model_id is keyed by position as '<record 0>', got "
+        f"{list(anon)}"
+    )
+    try:
+        validate_inventory({"MDL-000": INVENTORY[0]})
+    except TypeError:
+        pass
+    else:
+        raise AssertionError("a dict of records should raise TypeError, not be iterated")
+    print("exercise 2 looks right")
+
+
+# %% [markdown]
+# ## 4. Exercise 3 — `tier(record, policy)`
+#
+# SS1/23 asks for "a consistent, firm-wide model tiering approach that assigns a risk-based
+# materiality and complexity rating to each of their models", where materiality considers
+# both size-based measures and the purpose of the model. `POLICY` above is one such approach,
+# written down as data. Your job is to apply it — and to leave behind the reasoning.
+#
+# The audit trail is the exercise. A tier without one is an opinion; a tier with one can be
+# re-derived by an examiner from the record and the policy, a year later, without you.
+
+# %%
+class TierDecision(NamedTuple):
+    """A tier, the score behind it, and the lines that reconstruct both."""
+
+    tier: int                       # 1 (most risk) to 4 (least)
+    score: int                      # total points awarded
+    reasons: tuple[str, ...]        # the audit trail, in policy order
+
+
+def tier(record: dict, policy: dict) -> TierDecision:
+    """Score `record` under `policy` and return the tier with its audit trail.
+
+    Points are awarded in this order, one audit line each, formatted EXACTLY as shown:
+
+        f"materiality={v} +{p}"        p = policy["points"]["materiality"][v]
+        f"complexity={v} +{p}"         p = policy["points"]["complexity"][v]
+        f"exposure={v} +{p}"           p = the last band in policy["exposure_bands"] whose
+                                           threshold is <= v. Landing exactly on a threshold
+                                           REACHES that band.
+        f"reversibility={v} +{p}"      p = policy["points"]["reversibility"][v]
+        f"human_override={v} +{p}"     p = policy["no_override_points"] when v is False, else 0
+
+    Then the cut, as a sixth line:
+
+        f"score {score} -> tier {t}"   t = the first (cut, tier) pair in policy["tier_cuts"]
+                                           with score >= cut, else policy["default_tier"].
+                                           Scoring exactly the cut EARNS that tier.
+
+    Then, only when `reversibility == "irreversible"` and `human_override is False`, a
+    seventh line recording the escalation rule, whether or not it moved anything:
+
+        f"escalation: irreversible with no human override -> tier {t}"
+
+    where that `t` is `min(t, policy["escalation_tier_at_most"])`. The escalation is a FLOOR,
+    never a demotion: a model already in tier 1 stays in tier 1.
+
+    `ValueError` if materiality, complexity or reversibility is outside its points table, if
+    `human_override` is not a bool, or if `exposure_gbp` is negative — naming the field. A
+    tiering that quietly scores an unrecognised value as zero is how a model disappears.
+
+    Example — a medium-materiality, low-complexity, 9,999,999 exposure, recoverable model
+    with a human in the loop scores 2 + 0 + 0 + 1 + 0 = 3 and lands in tier 3:
+        >>> r = dict(materiality="medium", complexity="low", exposure_gbp=9_999_999,
+        ...          reversibility="recoverable", human_override=True)
+        >>> d = tier(r, POLICY)
+        >>> d.tier, d.score, len(d.reasons)
+        (3, 3, 6)
+        >>> d.reasons[2]
+        'exposure=9999999 +0'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_tier() -> None:
+    base = dict(materiality="medium", complexity="low", exposure_gbp=9_999_999,
+                reversibility="recoverable", human_override=True)
+    d = tier(base, POLICY)
+    assert isinstance(d, TierDecision), f"return a TierDecision, got {type(d).__name__}"
+    assert d.score == 3, f"the docstring example scores 2+0+0+1+0 = 3, you got {d.score}"
+    assert d.tier == 3, f"a score of 3 clears the cut of 2, so tier 3; you got {d.tier}"
+    assert len(d.reasons) == 6, (
+        f"six audit lines for a record with no escalation, you produced {len(d.reasons)}"
+    )
+    assert d.reasons[2] == "exposure=9999999 +0", (
+        f"line 3 should be 'exposure=9999999 +0', got {d.reasons[2]!r} — render the figure "
+        "from the record, not the band threshold you matched"
+    )
+    assert d.reasons[5] == "score 3 -> tier 3", f"got {d.reasons[5]!r} for the cut line"
+    band = tier(dict(base, exposure_gbp=10_000_000), POLICY)
+    assert band.score == 4, (
+        f"10,000,000 lands exactly on a band threshold and REACHES it (+1), so 4; got "
+        f"{band.score} — the comparison is >=, not >"
+    )
+    assert band.tier == 3, "a score of 4 is still short of the cut of 5"
+    # One attribute, one band, and the tier moves. This is the whole point of a boundary.
+    flip = tier(dict(base, exposure_gbp=10_000_000, materiality="high"), POLICY)
+    assert flip.score == 6 and flip.tier == 2, (
+        f"medium -> high materiality is +2, taking 4 to 6 and tier 3 to tier 2; you got "
+        f"score {flip.score}, tier {flip.tier}"
+    )
+    on_cut = tier(dict(base, materiality="high"), POLICY)
+    assert on_cut.score == 5 and on_cut.tier == 2, (
+        f"a score of exactly 5 EARNS tier 2; you got tier {on_cut.tier} for score "
+        f"{on_cut.score} — landing on a cut passes it"
+    )
+    below = tier(dict(base, materiality="high", reversibility="reversible"), POLICY)
+    assert below.score == 4 and below.tier == 3, (
+        f"one step on ONE attribute — recoverable down to reversible — takes 5 to 4 and "
+        f"tier 2 back to tier 3; you got score {below.score}, tier {below.tier}"
+    )
+    quiet = tier(dict(materiality="low", complexity="low", exposure_gbp=0,
+                      reversibility="irreversible", human_override=False), POLICY)
+    assert quiet.score == 4, f"0+0+0+3+1 = 4, you got {quiet.score}"
+    assert quiet.tier == 2, (
+        f"a score of 4 is tier 3, but an irreversible decision no human can override is "
+        f"floored at tier 2 by the policy; you got tier {quiet.tier}"
+    )
+    assert len(quiet.reasons) == 7 and quiet.reasons[6].startswith("escalation:"), (
+        f"the escalation must be recorded as a seventh line, got {quiet.reasons}"
+    )
+    loud = tier(dict(materiality="high", complexity="high", exposure_gbp=2_000_000_000,
+                     reversibility="irreversible", human_override=False), POLICY)
+    assert loud.score == 13 and loud.tier == 1, (
+        f"the worst record scores 4+2+3+3+1 = 13 and is tier 1; the escalation is a FLOOR "
+        f"and must not demote it to 2. You got score {loud.score}, tier {loud.tier}"
+    )
+    assert loud.reasons[6] == ("escalation: irreversible with no human override -> tier 1"), (
+        f"the escalation line is still recorded when it changes nothing, got "
+        f"{loud.reasons[6]!r}"
+    )
+    calm = tier(dict(base, reversibility="irreversible"), POLICY)
+    assert len(calm.reasons) == 6, (
+        "the escalation applies only when there is ALSO no human override — an irreversible "
+        "model a human can stop does not trigger it"
+    )
+    for bad, why in (
+        (dict(base, materiality="critical"), "an unrecognised materiality"),
+        (dict(base, reversibility="maybe"), "an unrecognised reversibility"),
+        (dict(base, human_override=1), "human_override as an int"),
+        (dict(base, exposure_gbp=-1), "a negative exposure"),
+    ):
+        try:
+            tier(bad, POLICY)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"{why} should raise ValueError, not score as zero")
+    print("exercise 3 looks right")
+
+
+# %% [markdown]
+# ## 5. Exercise 4 — `reconcile()`
+#
+# Three lists, and they are not equally interesting. *In the inventory and running* is the
+# happy path. *In the inventory and not running* is usually a decommissioning nobody closed
+# out. **Running and absent from the inventory** is the one that ends careers: a model taking
+# decisions that no tiering, no validation and no monitoring has ever touched.
+#
+# A fourth list is worth having for the same reason: something still running that the
+# inventory says was switched off.
+
+# %%
+class Reconciliation(NamedTuple):
+    """The inventory against the runtime registry. Every field is sorted and de-duplicated."""
+
+    both: tuple[str, ...]                    # in the inventory and running
+    inventory_only: tuple[str, ...]          # in the inventory, not running
+    runtime_only: tuple[str, ...]            # running, not in the inventory
+    decommissioned_running: tuple[str, ...]  # in the inventory as decommissioned, still running
+
+
+def reconcile(records: list[dict], runtime_ids) -> Reconciliation:
+    """Compare inventory identifiers against the identifiers production says it is running.
+
+    Requirements, each of which is graded:
+      * every field is a tuple of unique identifiers, sorted ascending. Both inputs may
+        repeat an identifier; the output never does.
+      * `decommissioned_running` is a SUBSET of `both`: it holds the running identifiers whose
+        inventory record has `status == "decommissioned"`.
+      * where an identifier appears on more than one record, the FIRST record's status wins.
+        Duplicates are exercise 2's finding, not this one's, and raising here would stop a
+        reconciliation that the extract's owner needs in order to fix the duplicates.
+      * `ValueError` naming the position if any record's `model_id` is not a non-empty string
+        — `f"record {i} has no usable model_id"`. A reconciliation that silently drops a
+        nameless record reports a clean bill of health it has not earned.
+      * status is read with `.get`, so a record missing `status` reconciles fine. It fails
+        exercise 1, and that is exercise 1's job to say.
+
+    Example:
+        >>> recs = [{"model_id": "A", "status": "in_use"},
+        ...         {"model_id": "B", "status": "decommissioned"}]
+        >>> r = reconcile(recs, ["B", "C", "C"])
+        >>> r.both, r.inventory_only, r.runtime_only, r.decommissioned_running
+        (('B',), ('A',), ('C',), ('B',))
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_reconcile() -> None:
+    recs = [{"model_id": "A", "status": "in_use"}, {"model_id": "B", "status": "decommissioned"}]
+    r = reconcile(recs, ["B", "C", "C"])
+    assert isinstance(r, Reconciliation), f"return a Reconciliation, got {type(r).__name__}"
+    assert r.both == ("B",), f"B is in both, got both={r.both}"
+    assert r.inventory_only == ("A",), f"A is inventory-only, got {r.inventory_only}"
+    assert r.runtime_only == ("C",), (
+        f"C is running and unknown to the inventory, and appears once however many times the "
+        f"registry repeats it; got {r.runtime_only}"
+    )
+    assert r.decommissioned_running == ("B",), (
+        f"B is recorded as decommissioned and is still running; got {r.decommissioned_running}"
+    )
+    live = reconcile(INVENTORY, RUNTIME)
+    assert "SHADOW-PRICING-01" in live.runtime_only, (
+        "the two SHADOW- identifiers are running and are in no record; they must surface in "
+        "runtime_only, which is the list this exercise exists for"
+    )
+    assert set(live.decommissioned_running) <= set(live.both), (
+        "decommissioned_running is a subset of both — a model cannot be running-and-known "
+        "without being in both lists"
+    )
+    assert list(live.runtime_only) == sorted(live.runtime_only), "sort every field"
+    dupes = reconcile([{"model_id": "A", "status": "in_use"},
+                       {"model_id": "A", "status": "decommissioned"}], ["A"])
+    assert dupes.both == ("A",) and dupes.decommissioned_running == (), (
+        "with a duplicated id the FIRST record's status wins, and A appears once; got "
+        f"both={dupes.both}, decommissioned_running={dupes.decommissioned_running}"
+    )
+    try:
+        reconcile([{"model_id": ""}], [])
+    except ValueError as exc:
+        assert "0" in str(exc), f"name the position of the nameless record, got {exc}"
+    else:
+        raise AssertionError("a record with no usable model_id should raise ValueError")
+    print("exercise 4 looks right")
+
+
+# %% [markdown]
+# ## 6. Exercise 5 — `validation_coverage()`
+#
+# SS1/23 asks the inventory to carry "the dates when validation was last performed, and the
+# frequency of future validation". Two fields; one report. Coverage is what those fields are
+# *for*, and it is the answer to the only question a committee ever asks about an inventory:
+# what in here has nobody looked at?
+#
+# Months elapsed, with no pandas and no dateutil, is a subtraction you write out:
+# `(a.year - v.year) * 12 + (a.month - v.month)`, minus one if the day of the month has not
+# yet come round. Six months and a day after a validation is six months, not seven.
+
+# %%
+class CoverageRow(NamedTuple):
+    """One in-use model's validation position at the as-of date."""
+
+    model_id: str
+    months_since: int | None    # None when the model has never been validated
+    due_months: int             # the record's validation_frequency_months
+    verdict: str                # "never_validated" | "overdue" | "current"
+
+
+def validation_coverage(records: list[dict], as_of: str) -> dict[str, CoverageRow]:
+    """Report the validation position of every IN-USE model, keyed by model_id.
+
+    Requirements, each of which is graded:
+      * only records with `status == "in_use"` appear. A decommissioned model with no
+        validation on file is not a gap; an in-development one is not in use yet.
+      * `months_since` uses the subtraction above, on `parse_date` of both dates:
+        `(a.year - v.year) * 12 + (a.month - v.month) - (1 if a.day < v.day else 0)`.
+      * `verdict` is `"never_validated"` when `last_validated` is None; `"overdue"` when
+        `months_since > due_months`; `"current"` otherwise. Landing exactly ON the frequency
+        is CURRENT — the validation is due, not late, and a report that calls it late will be
+        argued with until nobody reads it.
+      * `ValueError` naming the model when `last_validated` is later than `as_of`:
+        a validation in the future is a data-entry error, not a compliant model.
+      * insertion order follows the records. Do not sort.
+
+    Example — validated 2026-03-16, due every 6 months, as of 2026-09-16 is exactly 6 months:
+        >>> r = {"model_id": "M1", "status": "in_use", "last_validated": "2026-03-16",
+        ...      "validation_frequency_months": 6}
+        >>> row = validation_coverage([r], "2026-09-16")["M1"]
+        >>> row.months_since, row.verdict
+        (6, 'current')
+        >>> validation_coverage([r], "2026-09-15")["M1"].months_since
+        5
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_validation_coverage() -> None:
+    r = {"model_id": "M1", "status": "in_use", "last_validated": "2026-03-16",
+         "validation_frequency_months": 6}
+    rows = validation_coverage([r], "2026-09-16")
+    assert set(rows) == {"M1"}, f"one in-use record, one row; got {list(rows)}"
+    row = rows["M1"]
+    assert isinstance(row, CoverageRow), f"values are CoverageRow, got {type(row).__name__}"
+    assert row.months_since == 6, f"2026-03-16 to 2026-09-16 is 6 months, you got {row.months_since}"
+    assert row.verdict == "current", (
+        "exactly on the frequency is CURRENT, not overdue — the validation is due today"
+    )
+    day_before = validation_coverage([r], "2026-09-15")["M1"]
+    assert day_before.months_since == 5, (
+        f"2026-03-16 to 2026-09-15 is 5 whole months, not 6 — subtract one when the day of "
+        f"the month has not come round; you got {day_before.months_since}"
+    )
+    late = validation_coverage([r], "2026-10-16")["M1"]
+    assert late.months_since == 7 and late.verdict == "overdue", (
+        f"7 months against a 6-month frequency is overdue; got {late.months_since}, "
+        f"{late.verdict!r}"
+    )
+    never = validation_coverage([dict(r, last_validated=None)], "2026-09-16")["M1"]
+    assert never.verdict == "never_validated" and never.months_since is None, (
+        f"a model with no validation date reports months_since=None and verdict "
+        f"'never_validated', got {never}"
+    )
+    for status in ("decommissioned", "in_development"):
+        assert validation_coverage([dict(r, status=status)], "2026-09-16") == {}, (
+            f"a {status} model is not a coverage gap and does not belong in this report"
+        )
+    try:
+        validation_coverage([dict(r, last_validated="2026-12-01")], "2026-09-16")
+    except ValueError as exc:
+        assert "M1" in str(exc), f"name the model in the message, got {exc}"
+    else:
+        raise AssertionError("a validation date after the as-of date should raise ValueError")
+    live = validation_coverage(INVENTORY, AS_OF)
+    assert live["MDL-000"].verdict == "never_validated", (
+        "MDL-000 is the largest exposure in the book and has never been validated; if it is "
+        "not in this report the report is not doing its job"
+    )
+    print("exercise 5 looks right")
+
+
+# %% [markdown]
+# ## 7. Exercise 6 — `render_inventory_report()`
+#
+# The last exercise of module 1 generated the validation report. This one generates the
+# inventory report, and the rule is the same: it renders **only** what it is handed. Every
+# figure in the document traces back to a run, because no other figure can get into it.
+#
+# One detail carries the pedagogy: a tier with no models in it still gets a row. "We have no
+# tier 1 models" is a claim somebody will one day want to check.
+
+# %%
+def render_inventory_report(findings: dict) -> str:
+    """Render the inventory report from `findings` and from nothing else.
+
+    `findings` must carry: `as_of`, `data_note`, `policy_name`, `n_records`,
+    `schema_failures` (the exercise-2 dict), `tiers` (model_id -> TierDecision),
+    `reconciliation` (a Reconciliation) and `coverage` (the exercise-5 dict). `ValueError`
+    naming EVERY missing key at once if any are absent — `f"findings is missing: {names}"`
+    with the names sorted and comma-separated.
+
+    The page, line for line:
+
+      * `f"# MODEL INVENTORY AND TIERING REPORT — {as_of}"`
+      * a blank line, then each heading in `REPORT_SECTIONS` in order, as `f"## {heading}"`.
+      * section 1: `f"  records: {n_records}"`, `f"  policy: {policy_name}"`, then the
+        `data_note` verbatim on its own line.
+      * section 2: `f"  records failing the schema: {len(schema_failures)}"`, then one
+        `f"  - {model_id}: {n} defect(s)"` line per failing record, in the dict's order.
+      * section 3: one row per tier 1, 2, 3, 4 IN THAT ORDER, including tiers holding no
+        models: `f"  tier {t}: {count} models"`.
+      * section 4: `f"  in inventory and running: {len(both)}"`,
+        `f"  in inventory, not running: {len(inventory_only)}"`, then for the two dangerous
+        lists either `f"  FINDING: running and absent from the inventory: {ids}"` with the
+        identifiers comma-separated, or `"  none running outside the inventory"`; and either
+        `f"  FINDING: decommissioned and still running: {ids}"` or
+        `"  none decommissioned and still running"`.
+      * section 5: for each coverage row, in the dict's order, `f"  {mid}: {verdict}"`
+        followed by `f" (last validated {months_since} months ago, due every {due} months)"`
+        when it has a date, or `f" (never validated, due every {due} months)"` when it has
+        not. One line per model.
+      * section 6: one `f"  - {text}"` line per finding, then `f"  total findings: {n}"`.
+        The findings, in this order: one per failing record
+        (`f"schema: {mid} has {n} defect(s)"`), one per never-validated model
+        (`f"coverage: {mid} has never been validated"`), one per overdue model
+        (`f"coverage: {mid} is overdue by {months_since - due} month(s)"`), one per
+        runtime-only identifier (`f"shadow: {mid} is running and is not in the inventory"`)
+        and one per decommissioned-but-running identifier
+        (`f"shadow: {mid} is decommissioned and is still running"`).
+
+    Return the page as one string, lines joined with newlines. Recompute nothing: if a figure
+    is not in `findings`, it does not belong in the report.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _probe_findings() -> dict:
+    """A findings dict whose every figure is unmistakable, so nothing can be recomputed."""
+    return {
+        "as_of": "1970-01-01",
+        "data_note": "PROBE DATA NOTE, SYNTHETIC",
+        "policy_name": "probe policy v9",
+        "n_records": 4242,
+        "schema_failures": {"BAD-1": ("missing field: owner", "missing field: purpose")},
+        "tiers": {"T1": TierDecision(1, 13, ("score 13 -> tier 1",)),
+                  "T3": TierDecision(3, 3, ("score 3 -> tier 3",))},
+        "reconciliation": Reconciliation(both=("T1", "T3"), inventory_only=("GONE-7",),
+                                         runtime_only=("SHADOW-9",),
+                                         decommissioned_running=()),
+        "coverage": {"T1": CoverageRow("T1", None, 12, "never_validated"),
+                     "T3": CoverageRow("T3", 31, 24, "overdue")},
+    }
+
+
+def _check_render_report() -> None:
+    page = render_inventory_report(_probe_findings())
+    assert isinstance(page, str), f"return one string, got {type(page).__name__}"
+    lines = page.splitlines()
+    assert lines[0] == "# MODEL INVENTORY AND TIERING REPORT — 1970-01-01", (
+        f"first line is the title and the as-of date, got {lines[0]!r}"
+    )
+    at = [next(i for i, l in enumerate(lines) if l == f"## {h}") for h in REPORT_SECTIONS]
+    assert at == sorted(at), "the six sections must appear in REPORT_SECTIONS order"
+    assert "  records: 4242" in lines, "section 1 reports n_records from findings"
+    assert "PROBE DATA NOTE, SYNTHETIC" in page, (
+        "the data note goes in the report verbatim — a reader of the artefact has to be able "
+        "to see that the figures are synthetic without opening the notebook"
+    )
+    assert "  policy: probe policy v9" in lines, "name the policy the tiers were cut under"
+    for t, count in ((1, 1), (2, 0), (3, 1), (4, 0)):
+        assert f"  tier {t}: {count} models" in lines, (
+            f"tier {t} should read '{count} models' — every tier gets a row, including the "
+            "empty ones: 'we have no tier 1 models' is a claim somebody will want to check"
+        )
+    assert any("FINDING" in l and "SHADOW-9" in l for l in lines), (
+        "a runtime-only identifier is a FINDING and must be named in section 4"
+    )
+    assert any("none decommissioned and still running" in l for l in lines), (
+        "when a dangerous list is empty, say so explicitly — a missing line reads as an "
+        "omission, and the reader cannot tell the difference"
+    )
+    assert any(l.startswith("  T1: never_validated") and "never validated" in l
+               for l in lines), "section 5 spells out a model with no validation date"
+    assert any("T3: overdue" in l and "31 months ago" in l and "24 months" in l
+               for l in lines), "section 5 carries the months and the frequency"
+    assert "  - coverage: T3 is overdue by 7 month(s)" in lines, (
+        "the overdue finding states the overrun, 31 - 24 = 7, computed from the row"
+    )
+    assert "  total findings: 4" in lines, (
+        "one schema failure, one never-validated, one overdue, one shadow = 4 findings"
+    )
+    try:
+        bad = _probe_findings()
+        del bad["coverage"]
+        del bad["tiers"]
+        render_inventory_report(bad)
+    except ValueError as exc:
+        assert "coverage" in str(exc) and "tiers" in str(exc), (
+            f"name EVERY missing key in one message, got {exc}"
+        )
+    else:
+        raise AssertionError("findings missing required keys should raise ValueError")
+    print("exercise 6 looks right")
+
+
+# %% [markdown]
+# ## 8. Run the whole thing
+#
+# Six functions, one pass over the inventory, one document. Nothing below types a figure.
+
+# %%
+def run_inventory_review() -> str:
+    """Assemble the findings dict and render the report. Uses only your six functions."""
+    failures = validate_inventory(INVENTORY)
+    tiers: dict[str, TierDecision] = {}
+    for rec in INVENTORY:
+        mid = rec.get("model_id")
+        if isinstance(mid, str) and mid and mid not in tiers and not validate_record(rec):
+            tiers[mid] = tier(rec, POLICY)
+    findings = {
+        "as_of": AS_OF,
+        "data_note": DATA_NOTE,
+        "policy_name": POLICY["name"],
+        "n_records": len(INVENTORY),
+        "schema_failures": failures,
+        "tiers": tiers,
+        "reconciliation": reconcile(INVENTORY, RUNTIME),
+        "coverage": validation_coverage([r for r in INVENTORY if not validate_record(r)], AS_OF),
+    }
+    return render_inventory_report(findings)
+
+
+def _show_report() -> None:
+    print(run_inventory_review())
+
+
+_try("the inventory report", _show_report)
+
+# %% [markdown]
+# ## 9. Common mistakes
+#
+# - **Stopping at the first schema defect.** One extract review becomes six.
+# - **Treating `None` for `last_validated` as a schema error.** It is not malformed data; it
+#   is the finding. Hide it in the schema report and nobody reads it as one.
+# - **Trusting `isinstance(x, int)` on a boolean.** `True` is an `int` in Python. An exposure
+#   of `True` is one pound.
+# - **Tiering on exposure alone.** It is the attribute everyone has to hand, and it is the one
+#   that misses the small, automatic, irreversible model. The cell below shows this.
+# - **Scoring an unrecognised value as zero.** A materiality of `"critical"` that falls
+#   through a `dict.get(v, 0)` makes the firm's most dangerous model its safest.
+# - **Failing a model that lands exactly on a cut.** Boundaries are where the argument
+#   happens. Write which way they go down, then implement that.
+# - **Letting an escalation demote.** A floor that is applied as an assignment moves a tier 1
+#   model to tier 2 and looks, in aggregate, like an improvement.
+# - **Reporting only the tiers that have models in them.** "No tier 1 models" is a claim.
+# - **Reconciling only the direction you control.** In the inventory and not running is
+#   housekeeping. Running and not in the inventory is the finding.
+#
+# The fourth one is worth seeing rather than believing.
+
+# %%
+def _show_exposure_only_tiering() -> None:
+    quiet = dict(model_id="AUTO-DECLINE", materiality="low", complexity="low",
+                 exposure_gbp=250_000, reversibility="irreversible", human_override=False)
+    loud = dict(model_id="BIG-BUT-SUPERVISED", materiality="medium", complexity="low",
+                exposure_gbp=3_000_000_000, reversibility="reversible", human_override=True)
+    decisions = {}
+    for rec in (quiet, loud):
+        d = tier(rec, POLICY)
+        decisions[rec["model_id"]] = d
+        print(f"{rec['model_id']:<20} exposure {rec['exposure_gbp']:>14,}  tier {d.tier}")
+        print(f"  {' · '.join(d.reasons)}")
+    ratio = loud["exposure_gbp"] / quiet["exposure_gbp"]
+    same = decisions["AUTO-DECLINE"].tier == decisions["BIG-BUT-SUPERVISED"].tier
+    verdict = "the same tier" if same else "a different tier"
+    print(f"\n{ratio:,.0f} times the exposure, and {verdict}.")
+    print("AUTO-DECLINE declines applications with no human in the loop and no way to put the")
+    print("decision back. Rank the book by exposure and it is the last model anyone looks at.")
+
+
+_try("exposure-only tiering", _show_exposure_only_tiering)
+
+# %% [markdown]
+# ## 10. Self-check
+#
+# 1. Your reconciliation finds two identifiers running that no inventory record claims. The
+#    first thing that follows is:
+#    - (a) the inventory is out of date and should be updated to include them
+#    - (b) two models are taking decisions that no tiering, validation or monitoring has ever
+#          covered, and the exposure they carry is unknown until someone looks
+#    - (c) the runtime registry is wrong, since the inventory is the system of record
+#
+# 2. A model scores 4 under the policy — tier 3 — but its decisions are irreversible and no
+#    human can override them, so it is floored at tier 2. A colleague proposes applying the
+#    floor by assignment (`decision_tier = 2`) rather than `min(tier, 2)`. The consequence is:
+#    - (a) none; every model the rule touches scores below 5 anyway
+#    - (b) the firm's most dangerous models — the ones already in tier 1 — are quietly moved
+#          down to tier 2, and the aggregate tier distribution improves
+#    - (c) the audit trail becomes longer than it needs to be
+#
+# 3. An in-use model has `last_validated = None`. Your schema validator passes it. This is:
+#    - (a) a bug: a required field is empty
+#    - (b) correct: the field is legitimately empty and the fact is a coverage finding, which
+#          the coverage report raises by name
+#    - (c) correct, and the model should also be excluded from the coverage report until it
+#          has been validated once
+#
+# 4. Two model ids in the extract are identical. Which report should say so, and why?
+#    - (a) the reconciliation, because the runtime registry will only run one of them
+#    - (b) the schema report, because a duplicated id means two models share one row of every
+#          downstream report and the second is invisible
+#    - (c) neither: ids are cosmetic once the records are keyed in a dict
+#
+# 5. Your tier distribution shows 0 models in tier 1 and the report prints no tier 1 row at
+#    all. The problem with that is:
+#    - (a) nothing, an empty row is noise
+#    - (b) the reader cannot distinguish "we measured tier 1 and it is empty" from "tier 1 was
+#          not measured", and the first is a claim somebody will want to check
+#    - (c) it breaks the sort order of the table
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A schema you can trust the contents of, a tiering that an examiner can re-derive from the
+# record and the policy without you in the room, a reconciliation that names what is running
+# outside the inventory, a coverage report that names what nobody has looked at, and a
+# document generated from all four. Module 1 measured one model; this one decides which models
+# get that treatment and how often. Module 3 takes the tier-1 list and reviews conceptual
+# soundness mechanically; module 10 turns these findings into the pack a committee receives.
+
+# %%
+print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_validate_record),
+                          ("exercise 2", _check_validate_inventory),
+                          ("exercise 3", _check_tier),
+                          ("exercise 4", _check_reconcile),
+                          ("exercise 5", _check_validation_coverage),
+                          ("exercise 6", _check_render_report)):
+        _try(_name, _check)
+    # tools/execute.py runs the reference solution and reads the exit code. Every check and
+    # every demo above went through _try, so a reference implementation that is quietly wrong
+    # lands here rather than in a PASS line.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

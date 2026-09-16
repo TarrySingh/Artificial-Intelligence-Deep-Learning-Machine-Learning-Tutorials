@@ -1,0 +1,82 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson generates its own token stream, so it has no dataset entry and nothing to
+# license. The FUNSD dataset is NAMED below as evidence that the task framing is standard, but
+# it is not downloaded and is on no required path — the claim is about how the task is posed,
+# not about the data.
+claims:
+  - id: chunking-as-token-tagging
+    claim: >-
+      Framing span extraction as a per-token tagging problem — the BIO scheme this lesson
+      builds on — is the standard formulation and predates every neural tagger by two decades.
+      Ramshaw and Marcus introduced it for text chunking in 1995, and it is the reason this
+      lesson labels tokens rather than trying to predict spans directly.
+    where: "lesson.py section 1 preamble (the token stream and the labels on it); TAGS in the setup cell"
+    source_url: https://arxiv.org/abs/cmp-lg/9505040
+    source_title: "Text Chunking using Transformation-Based Learning — Lance A. Ramshaw and Mitchell P. Marcus (arXiv cmp-lg/9505040, submitted 23 May 1995; Third Workshop on Very Large Corpora)"
+    quote: >-
+      For this purpose, it is convenient to view chunking as a tagging problem by encoding the
+      chunk structure in new tags attached to each word.
+    quote_context: "from the abstract"
+    accessed: 2026-09-16
+
+  - id: form-extraction-is-entity-labelling
+    claim: >-
+      Extracting fields from a scanned form is posed, in the benchmark literature, as an entity
+      labelling task over the tokens a page decomposes into — which is exactly what this
+      lesson's tagger does. The FUNSD dataset of 199 annotated scanned forms is built for that
+      family of tasks.
+    where: "lesson.py section 1 preamble; section 6 (decode_spans, turning tags back into fields)"
+    source_url: https://arxiv.org/abs/1905.13538
+    source_title: "FUNSD: A Dataset for Form Understanding in Noisy Scanned Documents — Jaume, Ekenel and Thiran (arXiv 1905.13538, submitted 27 May 2019)"
+    quote: >-
+      can be used for various tasks, including text detection, optical character recognition,
+      spatial layout analysis, and entity labeling/linking
+    quote_context: >-
+      from the abstract. FUNSD is named as evidence of the task framing only; it is not
+      downloaded, and nothing in this lesson depends on it.
+    accessed: 2026-09-16
+
+  - id: averaged-perceptron-provenance
+    claim: >-
+      The training algorithm implemented in exercise 6 and averaged in section 7 is not an
+      invention of this lesson. It is the perceptron training method for hidden-Markov-style
+      tagging published by Michael Collins at EMNLP 2002, whose averaged-parameter variant is
+      the reason this lesson keeps a running checkpoint of the weights rather than reporting
+      the final vector. This lesson averages once per training document rather than once per
+      update, which is a cheaper approximation of the same idea and is described as such in
+      the notebook.
+    where: "lesson.py section 7 (the Tagger class and averaged()) and section 10 (exercise 6)"
+    source_url: https://aclanthology.org/W02-1001/
+    source_title: "Discriminative Training Methods for Hidden Markov Models: Theory and Experiments with Perceptron Algorithms — Michael Collins, Proceedings of EMNLP 2002 (ACL Anthology W02-1001)"
+    quote: >-
+      Discriminative Training Methods for Hidden Markov Models: Theory and Experiments with
+      Perceptron Algorithms
+    quote_context: >-
+      The ACL Anthology landing page carries the title, author, venue and year but no abstract
+      for papers of this vintage, and the PDF could not be converted to text on the access
+      date. The claim above is therefore restricted to what that page establishes —
+      provenance — and asserts nothing about the paper's contents beyond its title.
+    accessed: 2026-09-16
+
+  - id: small-domain-models-are-a-live-option
+    claim: >-
+      Training a small task-specific extractor instead of calling a frontier model is a current
+      engineering option rather than a history lesson. A May 2026 study of structured contract
+      extraction reports a domain-trained small language model achieving the strongest
+      aggregate performance in that study, at a macro F1 of 0.812, with a 78-97% cost reduction
+      against frontier models and fewer hallucinated and unsupported extractions. This lesson
+      does not claim its own 90-line perceptron is competitive with any such system; the claim
+      is only that the category is live, which is why a student should be able to build and
+      measure one.
+    where: "lesson.py section 13 preamble (exercise 7, improvement_table)"
+    source_url: https://arxiv.org/abs/2605.05532
+    source_title: "A Few Good Clauses: Comparing LLMs vs Domain-Trained Small Language Models on Structured Contract Extraction — Lincoln, Whitehouse, Mar and Perera (arXiv 2605.05532, submitted 7 May 2026)"
+    quote: >-
+      achieved the strongest aggregate performance in the study, with a macro F1 of 0.812
+    quote_context: >-
+      from the abstract, which also records the cost reduction against frontier models and
+      the lower rate of hallucinated and unsupported extractions.
+    accessed: 2026-09-16

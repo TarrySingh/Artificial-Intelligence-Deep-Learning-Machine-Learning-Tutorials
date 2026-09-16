@@ -1,0 +1,193 @@
+id: P01-L04-data-governance
+title: Implement the executable data-governance checks an Article 10 record implies, each one carrying the smallest effect it could have detected
+track: P01
+programme: ai-act-conformity
+flagship: F09           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T10-L01-ai-act-conformity-pack
+  - P01-L01-article-12-logging
+objectives:
+  - "Implement the exact rule-of-three share floor and the two-proportion minimum detectable difference, and attach one power statement to every verdict the lesson emits"
+  - "Implement a leakage check that finds exact and re-entered duplicates across splits and an identifier that predicts the target, and state the precision at which it stops seeing them"
+  - "Implement a representativeness check against a declared population that reports the stratum the data holds and the declaration never mentioned, and emit the Article 10(2)(h) gap report with a remedy per gap"
+  - "Implement train-versus-test drift over categorical and numeric features, taking the categorical distance over the union of categories rather than over one split's"
+  - "Implement a subgroup bias probe with a minimum-support rule, and explain why a 100% error rate on three rows is reported as insufficient support rather than as the system's worst disparity"
+datasets:
+  - name: loan-copilot synthetic application table
+    kind: synthetic
+    licence: "n/a — generated inside lesson.py, not distributed and not derived from any real data set"
+    url: ""
+    note: >-
+      2400 rows across three splits, built in section 2 from a single numpy Generator seed
+      (20271202) and explicit per-stratum counts. Nothing is read from disk and nothing is
+      downloaded, so the lesson runs offline and two runs agree to the last digit. Every
+      defect it contains — the empty stratum, the thin one, the over-represented one, the
+      undeclared one, the twenty duplicated test rows, the back-filled identifier, the
+      unapproved label method and the three-row subgroup — is planted deliberately and
+      documented in the authoring notes below. No real applicant data is involved, and none
+      of the figures the lesson prints is a claim about any real credit portfolio.
+points: 101             # = sum of RUBRIC points in tests/test_lesson.py
+status: reviewed        # draft | executed | reviewed | shipped
+# Authoring notes, 2026-09-16.
+#
+# All four gates run from the repo root on the venv interpreter. The measured figures below
+# were written back by tools/execute.py and were not typed.
+#
+# Relationship to MODULES.md. Module 4 was specified there as four tests — leakage, coverage,
+# drift, provenance — each returning a verdict and a power statement. The brief this lesson
+# was built from added a fifth: a subgroup bias probe with a minimum-support rule. The lesson
+# builds all five, plus the gap report Article 10(2)(h) asks for, which the spec folded into
+# coverage. That is a deliberate superset of MODULES.md, not a deviation from it: the bias
+# probe is the only place in the programme where the support rule can be taught against the
+# statistic it protects, and dropping it would have left the module's own opening claim —
+# that this is where a bias examination becomes testable — unsupported.
+#
+# One genuine simplification against the spec. MODULES.md wanted the coverage check run
+# against "a declared intended population"; this lesson declares that population as a flat
+# region-by-age-band grid rather than a hierarchy, because a two-level declaration turns the
+# precedence rule (undeclared > empty > thin > over) into a much larger exercise without
+# teaching anything the flat version does not.
+#
+# Dependencies: stdlib plus numpy. No pyyaml, no assets directory, no network, no disk reads.
+# datasets: declares the synthetic table rather than an empty list, because a generated table
+# with eight planted defects is a data set a reviewer should be able to argue with.
+#
+# The honesty note the lesson carries. Article 10(5) — the narrow permission to process
+# special categories of personal data for bias detection — was DELETED by Regulation (EU)
+# 2026/1744 and moved into a new Article 4a, which 10(1) and 10(6) now cross-refer to. The
+# lesson says so in section 1, builds no special-category processing, and probes region and
+# age band, which are ordinary fields of a credit file. Teaching a protected-characteristic
+# probe under Article 10 would have been the easy, wrong lesson. Two independent
+# reproductions of the consolidated text were checked for this; both are in claims.yaml.
+#
+# The reading the lesson flags as a reading. Article 10(3) says data sets "shall be relevant,
+# sufficiently representative, and to the best extent possible, free of errors and complete".
+# Section 1 and self-check question 5 take the qualifier to attach to "free of errors and
+# complete" and not to "relevant" or "sufficiently representative". That is a reading of a
+# sentence, not a ruling, and both the notebook and claims.yaml label it as one.
+#
+# Sync between lesson.py and solutions/lesson_solution.py is mechanical, not manual: the
+# solution is GENERATED from the notebook by substituting the nine stub bodies, so the two
+# cannot drift in the prose, the public checks or the fixture. The solution additionally
+# carries a banner cell and section 11a, the self-check answers. The self-check key in
+# lesson.py is salted SHA-256 digests, so no answer is readable off the student's own page.
+#
+# Rubric mutation testing. 33 plausible-wrong variants of the reference solution were built
+# in a temporary directory outside the lesson tree and graded through tools/grade.py, plus
+# TWO controls that are differently-shaped RIGHT answers and must still score 100%: one using
+# the exp/log form of the share floor, the summed-positive-part form of total variation
+# distance and a two-pass sort of the findings; one reordering the empty and undeclared
+# branches of the status ladder, which no input can distinguish because an undeclared stratum
+# always has rows in it.
+#
+# The FIRST run caught 29 of 34 and found four real rubric defects, each of which scored a
+# full 98/98 because the fixture was one-sided:
+#
+#   * The predictive identifier runs WITH the target, so dropping abs() round the correlation
+#     changed nothing. A second table whose references were issued in DESCENDING order of
+#     outcome now runs through the same check.
+#   * Every declared share lands on a whole number of rows (0.04 of 1500 is exactly 60), so
+#     round() and ceil() agreed everywhere. A 100-row table declared at 0.041 separates them:
+#     4.1 applicants is 5 rows short, and round() leaves the stratum below its declaration.
+#   * Every numeric feature that drifted, drifted upwards, so `stat >= SMD_THRESHOLD` passed
+#     without the absolute value. A table whose test income collapses now catches it.
+#   * Every subgroup gap sits either well inside its detectable floor or a long way outside
+#     it, so a fixed five-point threshold produced exactly the same one finding. Two 40-row
+#     subgroups 7.5 points either side of a 20% baseline now separate the per-subgroup floor
+#     from a constant: a fixed threshold calls both a finding; the floor calls neither.
+#
+# A fifth variant — reordering the empty and undeclared branches — was reclassified as the
+# second control rather than fixed, because it is behaviourally identical for every possible
+# input rather than a defect the rubric missed.
+#
+# After the four fixes the rubric is 101 points across 30 tests: 33 of 33 mutants lost points
+# (scores 84% to 98%), every one keeping partial credit on the exercises it had not broken,
+# and both controls still score 100%.
+#
+# Open for the owner: this lesson declares P01-L01 as a prerequisite as well as T10-L01,
+# because section 9's artefact is described as the object behind the conformity pack's
+# data_governance_record and the closing section points forward at the same log P01-L01
+# builds. P01-L02 and P01-L03 directories exist but were being built concurrently, so nothing
+# here depends on them. flagship F09 matches the rest of the programme; flagships/ still
+# holds no F09 directory.
+#
+# ---------------------------------------------------------------------------------------
+# INDEPENDENT REVIEW, 2026-09-16. All four gates were re-run from the repo root before and
+# after the changes below; the measured figures at the foot of this file are the reviewer's
+# run, written back by tools/execute.py.
+#
+# 37 fresh mutants were built in a temporary directory outside the lesson tree and graded
+# through tools/grade.py, alongside two differently-shaped RIGHT answers as controls. The
+# author's own 33 are not counted here; these were written without reading their list.
+#
+# The first run caught 30 of 37 and found SIX real rubric defects plus one prose defect. Each
+# defect scored a full 101/101 against the rubric as the author left it:
+#
+#   * drift_report and provenance_report could both be hard-wired to return "fail". No test
+#     ever handed either of them a clean split, so a verdict that carried no information was
+#     worth full marks. Both now run on a hand-built table with nothing wrong with it.
+#   * coverage_report's verdict could fire on "empty" and "undeclared" alone and ignore
+#     "thin" and "over" — which is how an over-represented split reaches an inspector marked
+#     green. Two more hand-built splits now separate them.
+#   * The over-representation comparison could be `>=` instead of `>`. No stratum in the
+#     fixture lands on the boundary; one built at 75 of 200 rows against a declared 0.25 does,
+#     exactly, in binary floating point.
+#   * overlap_row_ids was graded on its length, its sortedness and its split, never on its
+#     contents, so twenty of the WRONG test rows passed. The ids are now re-derived and
+#     compared.
+#   * The bias findings could be sorted by |gap| ascending. The fixture holds exactly one
+#     finding, so no order was observable; a table with two findings 35 and 25 points from
+#     its baseline now pins it.
+#   * findings could be placeholder strings. They must now be distinct, at least 20
+#     characters, and name the quantity they report — a requirement the notebook's own
+#     docstring states, so it is readable rather than hidden. The same test also catches a
+#     near-duplicate finding raised when the near count merely equals the exact one.
+#
+# The prose defect: section 3 said dropping z_beta "understates the floor by 43 %". The
+# alpha-only floor is 30 % SMALLER than the honest one; the honest one is 43 % LARGER. Both
+# figures, and the rule of three's 7.8 % error at n = 20, are now COMPUTED and printed by the
+# power demo cell from the student's own implementation rather than typed into prose.
+# claims.yaml and the rubric's hint were corrected to match.
+#
+# One mutant SURVIVES and was left alone as genuinely EQUIVALENT rather than missed:
+# appending exact_key(...) instead of row_id to the local exact_ids list inside
+# leakage_report. That list is consumed only by len() and a truthiness test, so the returned
+# report is byte-identical for every input. Measured on the fixture, on a table with repeated
+# keys inside one split, and on a table where every row is identical: the two reports compared
+# equal in all three.
+#
+# After the fixes: 37 mutants, 36 lost points (scores 84 % to 99 %), 1 proven equivalent, and
+# both controls still 100 %. Every losing mutant kept partial credit on the exercises it had
+# not broken, so no test collapsed into all-or-nothing. Points are unchanged at 101 across 30
+# tests; no test was added, only existing hidden cases tightened.
+#
+# Checked and found sound, needing no change: both prerequisite ids resolve to real lessons
+# (lessons/T10-L01-ai-act-conformity-pack and this programme's P01-L01-article-12-logging);
+# all five objectives start with "Implement" and none says "understand"; every one of the nine
+# stubs carries a docstring with a worked example, a # YOUR CODE HERE and a raise
+# NotImplementedError, and none is a blank cell; the public _check_* messages name the likely
+# mistake rather than saying "assertion failed"; the longest prose run is 45 lines and is the
+# self-check question list, with every expository cell under 40; and the synthetic table is
+# declared as synthetic and generated from one seed inside the lesson.
+#
+# Sources spot-checked on 2026-09-16: euaiact.com/article/10 confirms Article 10(2)(h)'s
+# "and how those gaps and shortcomings can be addressed", the 10(3) sentence with the
+# qualifier where the lesson quotes it, and marks 10(5) "Point deleted by Regulation (EU)
+# 2026/1744". A web search independently confirms 2026/1744 entered into force on
+# 2026-07-27 and that Article 10 now cross-refers to Article 4a(1). The lesson's READING of
+# where 10(3)'s qualifier bites is labelled as a reading in the notebook, in the answer key
+# and in claims.yaml, which is the right treatment of it.
+#
+# Left for the owner, no action taken by the reviewer: MODULES.md still says "lessons/ holds
+# exactly one lesson" and marks module 4 "SPECIFIED — NOT BUILT", while four lesson
+# directories now exist. That table is the owner's to update and was not touched. The lesson
+# is a deliberate superset of the module 4 spec — five checks rather than four, plus the
+# Article 10(2)(h) gap report — which the author declared above and which this review agrees
+# is an improvement on the spec rather than a deviation from it.
+# ---------------------------------------------------------------------------------------
+reviewed_by: "independent reviewer, 2026-09-16 — re-ran all four gates; 37 mutants, 36 caught, 1 proven equivalent, 2 right-answer controls at 100%; fixed 6 rubric defects and 1 inverted figure in prose"
+measured_seconds: 0.1
+measured_peak_mib: 37

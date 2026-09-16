@@ -1,20 +1,23 @@
 # P03 · Module map
 
-Nine modules. **One is built.** The other eight are specifications for later waves: they have
+Nine modules. **Four are built.** The other five are specifications for later waves: they have
 a title, a lab, a tier and a stated dependency, and they have no code. Nothing in this file
 describes a notebook that exists unless it says BUILT.
 
-| # | status | id | module |
-|---|---|---|---|
-| 1 | **BUILT** | `P03-L01-alarm-economics` | Alarm economics — why the best model is not the best threshold |
-| 2 | specified | `P03-L02-sensor-physics` | Sensor physics and signal conditioning |
-| 3 | specified | `P03-L03-vibration-features` | Feature engineering for vibration and temperature |
-| 4 | specified | `P03-L04-labelling-run-to-failure` | Labelling run-to-failure data |
-| 5 | specified | `P03-L05-remaining-useful-life` | Remaining useful life, and its error bars |
-| 6 | specified | `P03-L06-thresholds-from-distributions` | Threshold setting from an RUL distribution |
-| 7 | specified | `P03-L07-ot-network-deployment` | Deployment on an OT network |
-| 8 | specified | `P03-L08-drift-and-the-alarm-audit` | Drift, retraining, and the alarm audit |
-| 9 | specified | `P03-L09-capstone` | Capstone: a monitoring programme for one asset class |
+Built modules carry their measured cost and rubric size, written back by `tools/execute.py` and
+`tools/grade.py` — not typed by hand.
+
+| # | status | id | module | measured | rubric |
+|---|---|---|---|---|---|
+| 1 | **BUILT** | `P03-L01-alarm-economics` | Alarm economics — why the best model is not the best threshold | 0.6 s · 191 MiB | 79 pts / 22 cases |
+| 2 | **BUILT** | `P03-L02-sensor-physics` | Sensor physics and signal conditioning | 0.8 s · 90 MiB | 123 pts / 33 cases |
+| 3 | **BUILT** | `P03-L03-vibration-features` | Feature engineering for vibration and temperature | 0.9 s · 220 MiB | 106 pts / 29 cases |
+| 4 | **BUILT** | `P03-L04-labelling-run-to-failure` | Labelling run-to-failure data | 1.0 s · 119 MiB | 113 pts / 29 cases |
+| 5 | specified | `P03-L05-remaining-useful-life` | Remaining useful life, and its error bars | — | — |
+| 6 | specified | `P03-L06-thresholds-from-distributions` | Threshold setting from an RUL distribution | — | — |
+| 7 | specified | `P03-L07-ot-network-deployment` | Deployment on an OT network | — | — |
+| 8 | specified | `P03-L08-drift-and-the-alarm-audit` | Drift, retraining, and the alarm audit | — | — |
+| 9 | specified | `P03-L09-capstone` | Capstone: a monitoring programme for one asset class | — | — |
 
 Every module is tier **`cpu8`** — at most 8 GiB, no GPU, under ten minutes, and in practice
 far less. That is a constraint on the design, not a warning to the student: a module that will

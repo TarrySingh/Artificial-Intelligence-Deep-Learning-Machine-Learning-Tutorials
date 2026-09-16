@@ -1,0 +1,1567 @@
+# %% [markdown]
+# # P03-L02 · Sensor physics and signal conditioning
+#
+# **You will build:** the measurement chain that stands between a rotating machine and every
+# feature you will ever compute from it — sampling, anti-alias filtering, windowing, an ADC,
+# a unit conversion and an integration — and then you will catch that chain lying to you, by
+# frequency, with numbers rather than by eye.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download
+# · **Prerequisites:** `T00-L01-the-8gb-track` (the profiler and the tier gate) and
+# `P03-L01-alarm-economics` (the cost function a feature is finally judged by). Python, numpy
+# indexing, and complex numbers to the level of "a complex number has a magnitude and an
+# angle". No signal-processing course is assumed; everything is derived here.
+#
+# By the end you will be able to:
+#
+# 1. Implement an amplitude-scaled spectrum and read a component's amplitude off it.
+# 2. Compute the frequency a tone appears at when it is sampled too slowly, and identify an
+#    aliased component by resampling rather than by looking at the trace.
+# 3. Implement a cascaded one-pole low-pass, predict its gain and phase from its own
+#    difference equation, and measure both on a real tone.
+# 4. Quantise a signal through a sensor sensitivity and an ADC range, and measure what
+#    clipping does that extra bits cannot undo.
+# 5. Integrate acceleration to velocity, and explain from your own measured numbers why the
+#    high-pass belongs after the integration and not before it.
+#
+# **The data is synthetic and the generator is in this notebook.** Nothing is downloaded.
+# That is deliberate: this lesson is about the difference between what a signal *is* and what
+# a measurement chain *reports*, and you can only see that difference when you are allowed to
+# know the truth. `meta.yaml` declares it as synthetic.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import sys
+import time
+from typing import Callable
+
+import numpy as np
+
+import matplotlib
+_INTERACTIVE = "ipykernel" in sys.modules
+if not _INTERACTIVE:
+    # Headless: a script run (including this repository's execution gate) must never try to
+    # open a window. In Jupyter the default inline backend is already the right one.
+    matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402  (backend must be chosen before this import)
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__,
+      "· matplotlib", matplotlib.__version__)
+
+# --- the machine ------------------------------------------------------------------------
+# A 1500 rpm machine: shaft at 25 Hz, second harmonic at 50 Hz, a 425 Hz gear-mesh line, and
+# a 5545 Hz structural resonance rung by a bearing defect. Amplitudes are in g.
+TONES = ((25.0, 0.60, 0.0),        # 1x shaft
+         (50.0, 0.22, 1.1),        # 2x
+         (425.0, 0.30, 0.0),       # gear mesh - the line we care about
+         (5545.0, 0.45, 0.0))      # bearing-excited resonance, high and real
+DC_OFFSET_G = 0.015                # the accelerometer's own amplifier bias
+NOISE_G = 0.02                     # broadband electrical + mechanical noise, RMS
+SEED = 20260916
+
+# --- the "continuous" world -------------------------------------------------------------
+# We cannot store a continuous signal, so we make one so far above every rate we will use
+# that it stands in for the truth. Every sampled record below is a subsample of this one.
+FS_TRUE = 51200.0                  # Hz
+DURATION = 2.0                     # s
+
+# --- the rates a real analyser offers, and the integer decimation that produces each ------
+RATES = ((2560.0, 20), (3200.0, 16), (2048.0, 25))
+
+# --- the conditioning chain ---------------------------------------------------------------
+FC_AA = 1024.0                     # anti-alias corner, 0.4 x the 2560 Hz rate
+AA_STAGES = 4                      # one-pole sections in series
+FC_HP = 2.0                        # high-pass corner for the velocity path
+HP_STAGES = 2
+
+# --- the sensor and its front end ---------------------------------------------------------
+# A general-purpose industrial IEPE accelerometer. Its published sensitivity and bandwidth
+# are recorded in claims.yaml with the datasheet URL and the date it was read.
+SENSITIVITY_MV_PER_G = 100.0
+SENSOR_F_MAX = 10000.0             # the sensor's upper -3 dB limit, in Hz
+ADC_BITS = 12
+ADC_RANGES_V = (0.25, 0.5, 1.0, 2.0, 5.0, 10.0)
+
+# Standard acceleration due to gravity, the exact conventional value. Source in claims.yaml.
+G_N = 9.80665                      # m/s^2
+
+
+def _show(fig: "matplotlib.figure.Figure") -> None:
+    """Display a figure in Jupyter, or close it cleanly in a headless script run."""
+    if _INTERACTIVE:
+        plt.show()
+    else:
+        plt.close(fig)
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
+    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The signal, and the chain that will misreport it
+#
+# Read the generator. You are allowed to know the truth here, and that is the whole point of
+# a synthetic record: every number the chain reports later can be compared against a
+# component you put in yourself.
+#
+# One detail to notice now, because it decides the rest of the notebook: the 5545 Hz
+# resonance is **real**. It is not noise, it is not an artefact, and it is the largest thing
+# in the signal after the shaft line. It is also five times higher than any rate a typical
+# analyser is configured to use.
+
+# %%
+def synthesise_acceleration(fs: float = FS_TRUE, duration: float = DURATION,
+                            seed: int = SEED, shock: bool = False) -> np.ndarray:
+    """Deterministic synthetic acceleration in g, sampled at `fs` for `duration` seconds.
+
+    The signal is the four tones in TONES, plus the accelerometer's DC bias, plus seeded
+    Gaussian noise. With `shock=True` a single short impulsive transient is added at 62% of
+    the record — a forklift hitting the skid — which the ADC section needs and the spectral
+    sections must not have.
+
+    Same seed, same record, on any machine. Nothing is downloaded.
+    """
+    n = int(round(fs * duration))
+    t = np.arange(n) / fs
+    x = np.full(n, DC_OFFSET_G)
+    for freq, amp, phase in TONES:
+        x += amp * np.cos(2.0 * np.pi * freq * t + phase)
+    x += np.random.default_rng(seed).normal(0.0, NOISE_G, n)
+    if shock:
+        start = int(0.62 * n)
+        width = int(0.004 * fs)
+        decay = np.exp(-np.arange(width) / (0.0006 * fs))
+        x[start:start + width] += 5.0 * decay * np.cos(
+            2.0 * np.pi * 3100.0 * np.arange(width) / fs)
+    return x
+
+
+TRUE_G = synthesise_acceleration()
+TRUE_T = np.arange(TRUE_G.size) / FS_TRUE
+print(f"'continuous' record: {TRUE_G.size} samples at {FS_TRUE:.0f} Hz "
+      f"= {DURATION:.0f} s, {TRUE_G.nbytes / 1024**2:.1f} MiB")
+print(f"true overall RMS {np.sqrt(np.mean(TRUE_G ** 2)):.4f} g, "
+      f"true peak {np.max(np.abs(TRUE_G)):.4f} g")
+print("components put in, by acceleration amplitude:")
+for _f, _a, _p in sorted(TONES, key=lambda c: -c[1]):
+    print(f"   {_f:8.1f} Hz  {_a:.3f} g")
+
+# %% [markdown]
+# Here is one tenth of a second of it. There is nothing wrong with this trace, and there is
+# nothing in it you could point at. That is why the rest of the lesson is arithmetic.
+
+# %%
+_fig, _ax = plt.subplots(figsize=(10, 2.4))
+_n = int(0.1 * FS_TRUE)
+_ax.plot(TRUE_T[:_n] * 1000.0, TRUE_G[:_n], lw=0.6)
+_ax.set_xlabel("time (ms)")
+_ax.set_ylabel("acceleration (g)")
+_ax.set_title("100 ms of the true signal, before any measurement chain touches it",
+              fontsize=10)
+_fig.tight_layout()
+_show(_fig)
+
+# %% [markdown]
+# ## 2. Exercise 1 — `amplitude_spectrum()`
+#
+# Everything below is measured in the frequency domain, so the first thing to build is a
+# spectrum whose numbers mean something. `np.fft.rfft` gives you unscaled complex
+# coefficients; a tone of amplitude `A` does **not** read `A` in them.
+#
+# Two scalings and two special bins:
+#
+# - Divide by `n`, then multiply by **2**, because a real cosine of amplitude `A` splits its
+#   energy between `+f` and `-f` and `rfft` only shows you one of them.
+# - Bin 0 (DC) and, when `n` is even, the last bin (Nyquist) have **no twin to fold in**.
+#   Doubling them overstates them by exactly 2x.
+# - A window changes the total; divide by its mean — its *coherent gain* — to put the
+#   amplitude back.
+
+# %%
+def amplitude_spectrum(x: np.ndarray, fs: float,
+                       window: np.ndarray | None = None) -> tuple[np.ndarray, np.ndarray]:
+    """One-sided amplitude spectrum of a 1-D real signal.
+
+    Returns `(freqs, amps)` where `freqs = np.fft.rfftfreq(n, 1 / fs)` and `amps[k]` is the
+    amplitude of the component in bin k, scaled so that a pure cosine of amplitude A that
+    completes a whole number of cycles in the record reads exactly A.
+
+        X     = np.fft.rfft(x * w)            # w is `window`, or all ones
+        cg    = w.mean()                      # coherent gain of the window
+        amps  = 2 * |X| / (n * cg)            # every bin ...
+        amps[0]  = |X[0]| / (n * cg)          # ... except DC ...
+        amps[-1] = |X[-1]| / (n * cg)         # ... and, for even n, Nyquist
+
+    Raise `ValueError` if `fs <= 0`, if `x` is not 1-D, or if `window` is given with a
+    length other than `len(x)`.
+
+    Example:
+        >>> sig = 3.0 * np.cos(2 * np.pi * 4 * np.arange(16) / 16)   # 4 cycles in 16 samples
+        >>> f, a = amplitude_spectrum(sig, 16.0)
+        >>> float(f[4]), round(float(a[4]), 10)
+        (4.0, 3.0)
+        >>> f2, a2 = amplitude_spectrum(np.full(8, 2.5), 8.0)        # pure DC of 2.5
+        >>> round(float(a2[0]), 10)
+        2.5
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_amplitude_spectrum() -> None:
+    sig = 3.0 * np.cos(2.0 * np.pi * 4.0 * np.arange(16) / 16.0)
+    freqs, amps = amplitude_spectrum(sig, 16.0)
+    assert freqs.shape == amps.shape == (9,), (
+        f"a 16-sample record has 9 one-sided bins; got freqs {np.shape(freqs)} and amps "
+        f"{np.shape(amps)}. Use np.fft.rfft and np.fft.rfftfreq, not the full fft"
+    )
+    assert np.isclose(freqs[4], 4.0), (
+        f"bin 4 of a 16-sample record at 16 Hz is 4.0 Hz; got {freqs[4]!r}. "
+        "rfftfreq takes the sample SPACING d=1/fs, not fs"
+    )
+    assert np.isclose(amps[4], 3.0), (
+        f"a cosine of amplitude 3.0 read back as {amps[4]!r}. 1.5 means the factor of 2 for "
+        "the folded negative frequency is missing; 24.0 means you did not divide by n"
+    )
+    dc_freqs, dc_amps = amplitude_spectrum(np.full(8, 2.5), 8.0)
+    assert np.isclose(dc_amps[0], 2.5), (
+        f"a constant 2.5 signal read back as DC {dc_amps[0]!r}. A value of 5.0 means bin 0 "
+        "was doubled along with the rest — DC has no negative-frequency twin to fold in"
+    )
+    nyq = np.array([1.0, -1.0, 1.0, -1.0, 1.0, -1.0, 1.0, -1.0])
+    _, nyq_amps = amplitude_spectrum(nyq, 8.0)
+    assert np.isclose(nyq_amps[-1], 1.0), (
+        f"an alternating +-1 signal is a cosine of amplitude 1.0 at the Nyquist bin; got "
+        f"{nyq_amps[-1]!r}. A value of 2.0 means the last bin of an even-length record was "
+        "doubled as well"
+    )
+    win = np.full(16, 0.5)
+    _, scaled = amplitude_spectrum(sig, 16.0, window=win)
+    assert np.isclose(scaled[4], 3.0), (
+        f"with a constant window of 0.5 the amplitude must still read 3.0, got {scaled[4]!r} "
+        "— divide by the window's MEAN (its coherent gain), not by its sum or its length"
+    )
+    for bad, why in (((sig, 0.0, None), "fs <= 0"),
+                     ((sig, 16.0, np.ones(5)), "a window of the wrong length"),
+                     ((np.zeros((2, 8)), 8.0, None), "a 2-D input")):
+        try:
+            amplitude_spectrum(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError, not be silently accepted")
+    print("exercise 1 looks right — the spectrum now reports amplitudes, not coefficients")
+
+
+# %%
+_try("exercise 1", _check_amplitude_spectrum)
+
+
+# %% [markdown]
+# ## 3. Exercise 2 — `peak_in_band()`
+#
+# One line of plumbing you will call a dozen times: the largest component inside a frequency
+# band, returned as a `(frequency, amplitude)` pair rather than as an index. Returning the
+# index is the mistake — it is an index into a *sliced* array, and converting it back to a
+# frequency later is where the off-by-one lives.
+
+# %%
+def peak_in_band(freqs: np.ndarray, amps: np.ndarray,
+                 f_lo: float, f_hi: float) -> tuple[float, float]:
+    """Largest-amplitude component with `f_lo <= freq <= f_hi`, as `(frequency, amplitude)`.
+
+    Both band edges are INCLUSIVE. Raise `ValueError` if `f_lo > f_hi` or if no bin falls
+    inside the band — an empty band is a question with no answer, not a zero.
+
+    Example:
+        >>> f = np.array([0.0, 10.0, 20.0, 30.0])
+        >>> a = np.array([5.0, 1.0, 9.0, 2.0])
+        >>> peak_in_band(f, a, 10.0, 30.0)
+        (20.0, 9.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_peak_in_band() -> None:
+    freqs = np.array([0.0, 10.0, 20.0, 30.0])
+    amps = np.array([5.0, 1.0, 9.0, 2.0])
+    got = peak_in_band(freqs, amps, 10.0, 30.0)
+    assert isinstance(got, tuple) and len(got) == 2, (
+        f"return a (frequency, amplitude) TUPLE, not {got!r}"
+    )
+    assert np.allclose(got, (20.0, 9.0)), (
+        f"expected (20.0, 9.0), got {got!r}. A first element of 1 or 2 means you returned an "
+        "index instead of a frequency"
+    )
+    edge = peak_in_band(freqs, amps, 0.0, 0.0)
+    assert np.allclose(edge, (0.0, 5.0)), (
+        f"both band edges are inclusive, so [0, 0] contains bin 0; got {edge!r}"
+    )
+    for bad, why in (((freqs, amps, 30.0, 10.0), "f_lo > f_hi"),
+                     ((freqs, amps, 11.0, 19.0), "a band containing no bin")):
+        try:
+            peak_in_band(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError")
+    print("exercise 2 looks right — you can now read a line off a spectrum")
+
+
+# %%
+_try("exercise 2", _check_peak_in_band)
+
+
+# %% [markdown]
+# ## 4. Exercise 3 — `alias_frequency()`, and the tone that is not there
+#
+# A sampler at rate `fs` cannot tell `f` apart from `f + fs`, `f + 2 fs`, `f - fs`, and so on:
+# all of them produce the identical sequence of numbers. Whatever the true frequency was, the
+# record you are holding shows it **folded** into `[0, fs/2]`, at
+#
+#     f_alias = |f - fs * round(f / fs)|
+#
+# `f % fs` is not that formula and is not a substitute for it. Above `fs/2` the modulus and
+# the fold disagree — at `fs = 2560`, a 1800 Hz tone has `1800 % 2560 == 1800` and folds to
+# 760 Hz. Only one of those two numbers is what you will see.
+
+# %%
+def alias_frequency(f: np.ndarray | float, fs: float) -> np.ndarray | float:
+    """Apparent frequency of a tone at `f` after sampling at rate `fs`.
+
+    Works elementwise on an array or on a scalar; the result always lies in `[0, fs / 2]`.
+    Negative `f` means the same tone as `|f|`, so take the absolute value first. Raise
+    `ValueError` if `fs <= 0`.
+
+    Example:
+        >>> float(alias_frequency(100.0, 2560.0))      # below Nyquist: unchanged
+        100.0
+        >>> float(alias_frequency(1800.0, 2560.0))     # folds down; 1800 % 2560 would not
+        760.0
+        >>> float(alias_frequency(5545.0, 2560.0))     # lands on the gear-mesh line
+        425.0
+        >>> float(alias_frequency(2560.0, 2560.0))     # a tone at exactly fs looks like DC
+        0.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_alias_frequency() -> None:
+    cases = {(100.0, 2560.0): 100.0, (1800.0, 2560.0): 760.0, (5545.0, 2560.0): 425.0,
+             (5545.0, 3200.0): 855.0, (2560.0, 2560.0): 0.0, (1280.0, 2560.0): 1280.0,
+             (-425.0, 2560.0): 425.0}
+    for (freq, rate), want in cases.items():
+        got = float(alias_frequency(freq, rate))
+        assert np.isclose(got, want), (
+            f"alias_frequency({freq}, {rate}) = {got!r}, expected {want}. "
+            f"{'A result above fs/2 means you used the modulus instead of the fold. ' if got > rate / 2 else ''}"
+            "The formula is abs(f - fs * round(f / fs))"
+        )
+    arr = alias_frequency(np.array([100.0, 1800.0, 5545.0]), 2560.0)
+    assert np.allclose(arr, [100.0, 760.0, 425.0]), (
+        f"must work elementwise on an array; got {np.asarray(arr).tolist()}"
+    )
+    try:
+        alias_frequency(100.0, 0.0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("fs <= 0 must raise ValueError")
+    print("exercise 3 looks right — you can predict where a tone will land")
+
+
+# %%
+_try("exercise 3", _check_alias_frequency)
+
+# %% [markdown]
+# Now sample the true signal three times, by taking every 20th, 16th and 25th sample of it —
+# which is exactly what an analyser configured for 2560, 3200 and 2048 Hz would hand you if
+# nobody had fitted an anti-alias filter. Compare the lines that come back.
+
+# %%
+def decimate_naive(x: np.ndarray, factor: int) -> np.ndarray:
+    """Keep every `factor`-th sample, starting at index 0. No filtering whatsoever.
+
+    Given to you, because the point of this function is that it is what a sampler DOES. It is
+    not a mistake in the code below; it is the mistake in the instrument cabinet.
+    """
+    return np.asarray(x)[::int(factor)]
+
+
+def _show_three_rates() -> None:
+    print(f"{'rate (Hz)':>10s}  lines above 0.05 g, as amplitude (g) at frequency (Hz)")
+    for rate, factor in RATES:
+        freqs, amps = amplitude_spectrum(decimate_naive(TRUE_G, factor), rate)
+        keep = np.flatnonzero(amps > 0.05)
+        order = keep[np.argsort(-amps[keep])]
+        line = "  ".join(f"{amps[k]:.3f}@{freqs[k]:.0f}" for k in order)
+        print(f"{rate:10.0f}  {line}")
+    print("\nthe 25 Hz and 50 Hz lines agree across all three rates. Nothing else does.")
+
+
+_try("three rates", _show_three_rates)
+
+# %% [markdown]
+# Two things in that table, and the second one is why this lesson exists.
+#
+# At 3200 Hz and at 2048 Hz a large line appears that no feature of the machine explains, and
+# it is at a **different frequency in each**. A real component does not move when you change
+# the sampling rate. That is the test, and it costs one extra record.
+#
+# At 2560 Hz there is no strange line at all. There are exactly three lines, all of them at
+# frequencies the machine really produces, and the gear-mesh line is simply **too big**. A
+# spectrum can be entirely plausible and entirely wrong.
+
+# %%
+def _show_the_gear_line() -> None:
+    true_amp = dict((f, a) for f, a, _ in TONES)[425.0]
+    print(f"{'rate (Hz)':>10s} {'425 Hz reads':>14s} {'error':>9s}")
+    for rate, factor in RATES:
+        freqs, amps = amplitude_spectrum(decimate_naive(TRUE_G, factor), rate)
+        _, amp = peak_in_band(freqs, amps, 415.0, 435.0)
+        print(f"{rate:10.0f} {amp:14.4f} {100 * (amp / true_amp - 1):+8.1f}%")
+    print(f"\nthe gear-mesh line really is {true_amp:.3f} g. At 2560 Hz the 5545 Hz")
+    print("resonance folds to exactly 425 Hz and adds to it, in phase, and the result is a")
+    print("line at the right frequency with the wrong number in it.")
+
+
+_try("the gear line", _show_the_gear_line)
+
+
+# %% [markdown]
+# ## 5. Exercise 4 — `candidate_true_frequencies()`
+#
+# You have an unexplained line. Which real frequency produced it? Run the fold backwards: a
+# line at `f_a` in a record sampled at `fs` could have come from any of
+#
+#     ..., 2 fs - f_a,  2 fs + f_a,  fs - f_a,  fs + f_a,  f_a
+#
+# That list is infinite, and the thing that makes it finite is the **sensor**, not the
+# mathematics. An accelerometer has a published upper frequency limit; nothing above it
+# reaches the ADC at a level worth folding. Cut the list there, do it again at a second
+# sampling rate, and intersect.
+
+# %%
+def candidate_true_frequencies(f_apparent: float, fs: float,
+                               f_max: float) -> np.ndarray:
+    """Every true frequency in `[0, f_max]` that would appear at `f_apparent` under `fs`.
+
+    Returns a sorted 1-D float array with no duplicates. Raise `ValueError` if `fs <= 0`,
+    if `f_max < 0`, or if `f_apparent` is outside `[0, fs / 2]` — a sampled record cannot
+    show you a line outside that band, so being handed one means something upstream is wrong.
+
+    Example:
+        >>> candidate_true_frequencies(100.0, 1000.0, 2500.0).tolist()
+        [100.0, 900.0, 1100.0, 1900.0, 2100.0]
+        >>> candidate_true_frequencies(0.0, 1000.0, 2500.0).tolist()
+        [0.0, 1000.0, 2000.0]
+        >>> candidate_true_frequencies(500.0, 1000.0, 1600.0).tolist()
+        [500.0, 1500.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_candidate_true_frequencies() -> None:
+    got = candidate_true_frequencies(100.0, 1000.0, 2500.0)
+    assert np.allclose(got, [100.0, 900.0, 1100.0, 1900.0, 2100.0]), (
+        f"expected [100, 900, 1100, 1900, 2100], got {np.asarray(got).tolist()}. Every "
+        "k*fs - f_a and k*fs + f_a that lands in [0, f_max], sorted"
+    )
+    dc = candidate_true_frequencies(0.0, 1000.0, 2500.0)
+    assert np.allclose(dc, [0.0, 1000.0, 2000.0]), (
+        f"at f_apparent = 0 the minus and plus branches coincide; expected "
+        f"[0, 1000, 2000] with no repeats, got {np.asarray(dc).tolist()}"
+    )
+    nyq = candidate_true_frequencies(500.0, 1000.0, 1600.0)
+    assert np.allclose(nyq, [500.0, 1500.0]), (
+        f"at exactly fs/2 the two branches coincide, so 1500 must appear ONCE; expected "
+        f"[500, 1500], got {np.asarray(nyq).tolist()}"
+    )
+    # Every candidate must actually fold back to where it came from.
+    back = alias_frequency(got, 1000.0)
+    assert np.allclose(back, 100.0), (
+        f"your own candidates fold to {np.asarray(back).tolist()} instead of 100.0 — "
+        "alias_frequency and candidate_true_frequencies must be inverses"
+    )
+    for bad, why in (((100.0, 0.0, 2500.0), "fs <= 0"),
+                     ((100.0, 1000.0, -1.0), "a negative f_max"),
+                     ((900.0, 1000.0, 2500.0), "an f_apparent above fs/2")):
+        try:
+            candidate_true_frequencies(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError")
+    print("exercise 4 looks right — you can run the fold backwards")
+
+
+# %%
+_try("exercise 4", _check_candidate_true_frequencies)
+
+# %% [markdown]
+# Now identify the intruder. Take the unexplained line from each of the three records, bound
+# the search by the sensor's own upper limit, and intersect the three candidate sets.
+
+# %%
+def _find_the_intruder() -> None:
+    known = {f for f, _, _ in TONES if f < min(rate for rate, _ in RATES) / 2}
+    running, blind = None, []
+    for rate, factor in RATES:
+        freqs, amps = amplitude_spectrum(decimate_naive(TRUE_G, factor), rate)
+        loud = np.flatnonzero(amps > 0.05)
+        odd = [k for k in loud if not any(abs(freqs[k] - f) < 2.0 for f in known)]
+        if not odd:
+            blind.append(rate)
+            print(f"  at {rate:6.0f} Hz every loud line sits on a frequency the machine "
+                  f"really produces. No evidence here at all.")
+            continue
+        k = max(odd, key=lambda i: amps[i])
+        cands = candidate_true_frequencies(float(freqs[k]), rate, SENSOR_F_MAX)
+        running = cands if running is None else np.intersect1d(running, cands)
+        print(f"  at {rate:6.0f} Hz an unexplained line sits at {freqs[k]:6.1f} Hz "
+              f"({amps[k]:.3f} g): {cands.size} candidates below {SENSOR_F_MAX:.0f} Hz, "
+              f"{running.size} left after intersecting")
+    assert running is not None and running.size == 1, (
+        f"the surviving candidate list should hold exactly one frequency; got "
+        f"{None if running is None else running.tolist()}"
+    )
+    culprit = float(running[0])
+    truth = [f for f, _, _ in TONES if f > SENSOR_F_MAX / 2][0]
+    print(f"\nsurviving candidate: {culprit:.0f} Hz. The generator put a tone at "
+          f"{truth:.0f} Hz. Nobody looked at a waveform to work that out.")
+    for rate in blind:
+        folded = float(alias_frequency(culprit, rate))
+        print(f"and now the {rate:.0f} Hz record explains itself: {culprit:.0f} Hz folds to "
+              f"{folded:.0f} Hz, which is where the gear mesh already was.")
+    print("a sampling rate that hides an alias is not a safer rate. It is a rate on which")
+    print("the alias has nowhere visible to go.")
+
+
+_try("find the intruder", _find_the_intruder)
+
+
+# %% [markdown]
+# ## 6. Exercise 5 — `one_pole_lowpass()`
+#
+# The fix is a filter **before** the sampler, so the energy is gone before it can fold. The
+# cheapest useful one is a single pole, run several times in series:
+#
+#     a = exp(-2 pi fc / fs)
+#     y[n] = a * y[n-1] + (1 - a) * x[n]
+#
+# Two details that are the exercise. Start the state at `x[0]`, not at zero — otherwise the
+# filter spends its first time constant climbing out of a hole it invented, and that start-up
+# transient is low-frequency energy that section 10 will amplify. And apply the whole pass
+# `stages` times in series, each stage taking the previous stage's output.
+
+# %%
+def one_pole_lowpass(x: np.ndarray, fc: float, fs: float, stages: int = 1) -> np.ndarray:
+    """Cascade of `stages` identical one-pole low-pass sections, applied to a 1-D signal.
+
+    Each section is `y[n] = a * y[n-1] + (1 - a) * x[n]` with `a = exp(-2 * pi * fc / fs)`,
+    and the state before the first sample is `x[0]`, so `y[0] == x[0]` exactly. Returns a new
+    float array of the same shape; `x` is not modified.
+
+    Raise `ValueError` if `fc <= 0`, `fs <= 0`, `stages < 1`, or `x` is not 1-D.
+
+    Example:
+        >>> one_pole_lowpass(np.full(5, 7.0), 10.0, 100.0, 2).tolist()   # DC passes exactly
+        [7.0, 7.0, 7.0, 7.0, 7.0]
+        >>> step = one_pole_lowpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0)
+        >>> [round(v, 6) for v in step.tolist()]
+        [0.0, 0.466512, 0.71539, 0.848164]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_one_pole_lowpass() -> None:
+    flat = one_pole_lowpass(np.full(5, 7.0), 10.0, 100.0, 2)
+    assert np.allclose(flat, 7.0), (
+        f"a constant input must come out unchanged; got {np.asarray(flat).tolist()}. A first "
+        "element near 0 means the filter state started at 0 instead of at x[0]"
+    )
+    step = one_pole_lowpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0)
+    assert np.allclose(step, [0.0, 0.466512, 0.71539, 0.848164], atol=1e-5), (
+        f"step response {np.round(np.asarray(step), 5).tolist()} is not "
+        "[0, 0.466512, 0.71539, 0.848164] — check a = exp(-2*pi*fc/fs) and that the input "
+        "term "
+        "is multiplied by (1 - a)"
+    )
+    once = one_pole_lowpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0, 1)
+    twice = one_pole_lowpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0, 2)
+    assert np.allclose(twice, one_pole_lowpass(once, 100.0, 1000.0, 1)), (
+        "stages=2 must be stages=1 applied to its own output; a cascade is not a single "
+        "section with a different corner"
+    )
+    original = np.array([0.0, 1.0, 1.0, 1.0])
+    one_pole_lowpass(original, 100.0, 1000.0, 3)
+    assert np.allclose(original, [0.0, 1.0, 1.0, 1.0]), (
+        "the input array was modified in place; return a new array"
+    )
+    # Causality: changing the tail must not change the head.
+    head = np.linspace(0.0, 1.0, 40)
+    calm = one_pole_lowpass(np.concatenate([head, np.zeros(40)]), 50.0, 1000.0, 2)
+    wild = one_pole_lowpass(np.concatenate([head, np.full(40, 500.0)]), 50.0, 1000.0, 2)
+    assert np.allclose(calm[:40], wild[:40]), (
+        "changing samples 40-79 changed samples 0-39. The filter is reading the future — "
+        "np.convolve with mode='same', or a reversed pass, will do this"
+    )
+    for bad, why in (((np.zeros(4), 0.0, 1000.0, 1), "fc <= 0"),
+                     ((np.zeros(4), 10.0, 0.0, 1), "fs <= 0"),
+                     ((np.zeros(4), 10.0, 1000.0, 0), "stages < 1"),
+                     ((np.zeros((2, 4)), 10.0, 1000.0, 1), "a 2-D input")):
+        try:
+            one_pole_lowpass(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError")
+    print("exercise 5 looks right — you have a causal filter")
+
+
+# %%
+_try("exercise 5", _check_one_pole_lowpass)
+
+
+# %% [markdown]
+# ## 7. Exercise 6 — `lowpass_response()`
+#
+# Before you use a filter you must be able to say what it will do to each component. The
+# response you need is the response of **the difference equation you just wrote**, not of the
+# RC circuit it is named after. Substituting `x[n] = exp(j w n)` into one section gives
+#
+#     H(w) = (1 - a) / (1 - a exp(-j w)),        w = 2 pi f / fs
+#
+# and `stages` sections in series multiply their gains and add their phases. The textbook
+# `1 / sqrt(1 + (f/fc)^2)` is the analogue answer, and the cell after the check below prices
+# the difference on this lesson's own anti-alias chain rather than asserting it.
+
+# %%
+def lowpass_response(f: np.ndarray | float, fc: float, fs: float,
+                     stages: int = 1) -> tuple[np.ndarray | float, np.ndarray | float]:
+    """Gain (linear, not dB) and phase (radians) of `one_pole_lowpass` at frequency `f`.
+
+    Returns `(gain, phase)`, elementwise over `f`. With `d = 1 - a * exp(-1j * w)`,
+
+        gain  = ((1 - a) / abs(d)) ** stages
+        phase = -stages * angle(d)
+
+    The phase is NOT wrapped into `(-pi, pi]`: a four-stage filter really does delay a
+    high-frequency component by more than half a cycle, and section 9 measures exactly that.
+    Raise `ValueError` if `fc <= 0`, `fs <= 0` or `stages < 1`.
+
+    Example:
+        >>> g, p = lowpass_response(0.0, 100.0, 1000.0, 3)     # DC: gain 1, no phase shift
+        >>> round(float(g), 12), round(float(p), 12)
+        (1.0, 0.0)
+        >>> g, p = lowpass_response(100.0, 100.0, 1000.0, 1)
+        >>> round(float(g), 6), round(float(p), 6)
+        (0.71864, -0.504135)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_lowpass_response() -> None:
+    gain, phase = lowpass_response(0.0, 100.0, 1000.0, 3)
+    assert np.isclose(gain, 1.0) and np.isclose(phase, 0.0), (
+        f"at DC the gain is exactly 1 and the phase exactly 0; got ({gain!r}, {phase!r})"
+    )
+    gain, phase = lowpass_response(100.0, 100.0, 1000.0, 1)
+    assert np.isclose(gain, 0.71864, atol=1e-6), (
+        f"one section at f = fc = 100 Hz, fs = 1000 Hz has gain 0.71864, not {gain!r}. "
+        "0.7071 is the ANALOGUE answer 1/sqrt(2) — this filter is the difference equation, "
+        "not the RC circuit"
+    )
+    assert np.isclose(phase, -0.504135, atol=1e-6), (
+        f"phase should be -0.504135 rad, got {phase!r}. A positive value means the sign is "
+        "flipped: a low-pass DELAYS, so its phase is negative"
+    )
+    four_gain, four_phase = lowpass_response(100.0, 100.0, 1000.0, 4)
+    assert np.isclose(four_gain, 0.71864 ** 4, atol=1e-9), (
+        f"four sections multiply the gain: {0.71864 ** 4:.6f}, not {four_gain!r}"
+    )
+    assert np.isclose(four_phase, 4 * -0.504135, atol=1e-6), (
+        f"four sections ADD their phases: {4 * -0.504135:.6f} rad, not {four_phase!r}. A "
+        "value inside (-pi, pi] means the total was wrapped; do not wrap it"
+    )
+    arr_gain, arr_phase = lowpass_response(np.array([0.0, 100.0]), 100.0, 1000.0, 1)
+    assert np.allclose(arr_gain, [1.0, 0.71864], atol=1e-6), "must work elementwise over f"
+    assert np.allclose(arr_phase, [0.0, -0.504135], atol=1e-6), "must work elementwise over f"
+    for bad, why in (((100.0, 0.0, 1000.0, 1), "fc <= 0"),
+                     ((100.0, 100.0, 0.0, 1), "fs <= 0"),
+                     ((100.0, 100.0, 1000.0, 0), "stages < 1")):
+        try:
+            lowpass_response(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError")
+    print("exercise 6 looks right — you can predict the filter before you run it")
+
+
+# %%
+_try("exercise 6", _check_lowpass_response)
+
+
+# %% [markdown]
+# Now price the shortcut. The RC formula is the one most people reach for; run it against the
+# response you just wrote, on this lesson's own anti-alias chain.
+
+# %%
+def _price_the_analogue_shortcut() -> None:
+    """The textbook RC formula against the difference equation, on this chain's own numbers."""
+    print(f"anti-alias chain: {AA_STAGES} x one-pole, corner {FC_AA:.0f} Hz, "
+          f"sampled at {FS_TRUE:.0f} Hz")
+    print(f"{'f (Hz)':>8s} {'gain here':>10s} {'gain RC':>9s} {'err':>8s} "
+          f"{'lag here':>11s} {'lag RC':>10s} {'err':>8s}")
+    for freq in (FC_AA / 4.0, FC_AA, 2.0 * FC_AA):
+        gain, phase = lowpass_response(freq, FC_AA, FS_TRUE, AA_STAGES)
+        gain, phase = float(np.asarray(gain)), float(np.asarray(phase))
+        lag = -phase / (2.0 * np.pi * freq)
+        rc_gain = (1.0 + (freq / FC_AA) ** 2) ** (-AA_STAGES / 2.0)
+        rc_lag = AA_STAGES * np.arctan(freq / FC_AA) / (2.0 * np.pi * freq)
+        print(f"{freq:8.0f} {gain:10.6f} {rc_gain:9.6f} {100 * (rc_gain / gain - 1):+7.2f}% "
+              f"{lag * 1e6:10.1f}u {rc_lag * 1e6:9.1f}u {100 * (rc_lag / lag - 1):+7.2f}%")
+    print("\nread the two error columns against each other. The RC formula gets the GAIN")
+    print("nearly right and the DELAY wrong, by more at every frequency, which is the worst")
+    print("failure mode available: you spot-check the number you can see and inherit the one")
+    print("you cannot. Phase is what reorders a waveform, and module 3's shape features —")
+    print("crest factor, kurtosis — are measurements of exactly that ordering.")
+
+
+_try("the analogue shortcut", _price_the_analogue_shortcut)
+
+
+# %% [markdown]
+# ## 8. Exercise 7 — `measure_gain_and_lag()`
+#
+# Predicting is not measuring. To measure what the filter did at one frequency, project both
+# the input and the output onto `exp(-j 2 pi f t)` — a one-bin DFT, which an instrument
+# engineer would call a lock-in. The ratio of the two complex numbers carries both answers:
+# its magnitude is the gain and its angle is the phase shift.
+#
+# A delay of `tau` seconds shifts phase by `-2 pi f tau`, so `tau = -phase / (2 pi f)`. The
+# angle you get back is wrapped into `(-pi, pi]`, which means a measured lag is only ever
+# known **modulo one period** of `f`. Section 9 is about the consequences of that.
+
+# %%
+def measure_gain_and_lag(x_in: np.ndarray, x_out: np.ndarray,
+                         f: float, fs: float) -> tuple[float, float]:
+    """Gain and time lag a filter applied at frequency `f`, measured from its own signals.
+
+    With `e = exp(-2j * pi * f * arange(n) / fs)` and `A = sum(x_in * e)`,
+    `B = sum(x_out * e)`:
+
+        gain = abs(B) / abs(A)
+        lag  = -angle(B / A) / (2 * pi * f)        seconds, wrapped into +-1/(2f)
+
+    Use `np.angle(B / A)`, which is already wrapped, rather than subtracting two angles and
+    hoping. Raise `ValueError` if the two signals differ in length, if `f <= 0`, or if
+    `fs <= 0`.
+
+    Example:
+        >>> fs, n, f = 1000.0, 1000, 50.0
+        >>> t = np.arange(n) / fs
+        >>> a = np.cos(2 * np.pi * f * t)
+        >>> b = 0.5 * np.cos(2 * np.pi * f * (t - 0.002))      # half gain, 2 ms late
+        >>> g, lag = measure_gain_and_lag(a, b, f, fs)
+        >>> round(g, 6), round(lag * 1000, 6)
+        (0.5, 2.0)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_measure_gain_and_lag() -> None:
+    fs, n, f = 1000.0, 1000, 50.0
+    t = np.arange(n) / fs
+    sig = np.cos(2.0 * np.pi * f * t)
+    delayed = 0.5 * np.cos(2.0 * np.pi * f * (t - 0.002))
+    gain, lag = measure_gain_and_lag(sig, delayed, f, fs)
+    assert np.isclose(gain, 0.5, atol=1e-9), (
+        f"the output is half the amplitude of the input, so the gain is 0.5, not {gain!r}"
+    )
+    assert np.isclose(lag * 1000.0, 2.0, atol=1e-9), (
+        f"the output is 2 ms late, so the lag is +2.0 ms, got {lag * 1000:.6f} ms. A value of "
+        "-2.0 means the sign is flipped — a DELAY is a positive lag and a NEGATIVE phase"
+    )
+    same, zero = measure_gain_and_lag(sig, sig, f, fs)
+    assert np.isclose(same, 1.0) and np.isclose(zero, 0.0, atol=1e-12), (
+        f"a signal against itself is gain 1.0 and lag 0.0; got ({same!r}, {zero!r})"
+    )
+    # Amplitude at one frequency must not be contaminated by another.
+    mixed = sig + 3.0 * np.cos(2.0 * np.pi * 120.0 * t)
+    clean, _ = measure_gain_and_lag(sig, mixed, f, fs)
+    assert np.isclose(clean, 1.0, atol=1e-9), (
+        f"a 120 Hz component leaked into the 50 Hz measurement (gain {clean!r}, expected "
+        "1.0). Project onto exp(-2j*pi*f*t) rather than comparing peak values"
+    )
+    for bad, why in (((sig, sig[:-1], f, fs), "signals of different length"),
+                     ((sig, sig, 0.0, fs), "f <= 0"),
+                     ((sig, sig, f, 0.0), "fs <= 0")):
+        try:
+            measure_gain_and_lag(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{why} must raise ValueError")
+    print("exercise 7 looks right — you can measure a filter instead of trusting it")
+
+
+# %%
+_try("exercise 7", _check_measure_gain_and_lag)
+
+
+# %% [markdown]
+# ## 9. What the anti-alias filter costs
+#
+# Filter the true record at `FC_AA` with `AA_STAGES` sections, then decimate. The alias is
+# gone. Now find out what else changed: measure the gain and the lag at each of the four real
+# tones, and compare with what `lowpass_response` predicted.
+
+# %%
+FILTERED_G = None
+
+
+def _measure_the_filter() -> None:
+    global FILTERED_G
+    FILTERED_G = one_pole_lowpass(TRUE_G, FC_AA, FS_TRUE, AA_STAGES)
+    print(f"{'f (Hz)':>8s} {'gain meas':>10s} {'gain pred':>10s} "
+          f"{'lag meas':>10s} {'lag pred':>10s} {'period':>9s}")
+    for freq, _, _ in TONES:
+        gain_m, lag_m = measure_gain_and_lag(TRUE_G, FILTERED_G, freq, FS_TRUE)
+        gain_p, phase_p = lowpass_response(freq, FC_AA, FS_TRUE, AA_STAGES)
+        lag_p = -float(phase_p) / (2.0 * np.pi * freq)
+        print(f"{freq:8.1f} {gain_m:10.6f} {float(gain_p):10.6f} "
+              f"{lag_m * 1e3:9.4f}m {lag_p * 1e3:9.4f}m {1e3 / freq:8.4f}m")
+    print("\n(lags in ms). The gains agree to better than a part in a thousand. The lags")
+    print("agree at 25, 50 and 425 Hz and disagree at 5545 Hz by almost exactly one period:")
+    gain_m, lag_m = measure_gain_and_lag(TRUE_G, FILTERED_G, 5545.0, FS_TRUE)
+    _, phase_p = lowpass_response(5545.0, FC_AA, FS_TRUE, AA_STAGES)
+    lag_p = -float(phase_p) / (2.0 * np.pi * 5545.0)
+    print(f"  measured {lag_m * 1e6:.2f} us, predicted {lag_p * 1e6:.2f} us, "
+          f"difference {(lag_p - lag_m) * 1e6:.2f} us, one period {1e6 / 5545.0:.2f} us")
+    print("a single-frequency measurement cannot count whole cycles of delay. The prediction")
+    print("can, because it was never wrapped. Neither number is wrong; they answer")
+    print("different questions, and only one of them is the one a phase-sensitive feature")
+    print("needs.")
+
+
+_try("measure the filter", _measure_the_filter)
+
+# %% [markdown]
+# The gains are the operational problem. A four-stage filter with its corner at 0.4 of the
+# sampling rate takes a bite out of the top of its own passband — and the bite is not a
+# constant, so it changes the *shape* of the waveform as well as its size. Price it.
+
+# %%
+def _price_the_filter() -> None:
+    true_amp = dict((f, a) for f, a, _ in TONES)
+    print(f"{'f (Hz)':>8s} {'true':>7s} {'naive 2560':>11s} {'AA+2560':>9s} "
+          f"{'AA+comp':>9s}  what the chain did")
+    naive_f, naive_a = amplitude_spectrum(decimate_naive(TRUE_G, 20), 2560.0)
+    aa_f, aa_a = amplitude_spectrum(decimate_naive(FILTERED_G, 20), 2560.0)
+    for freq, amp, _ in TONES:
+        if freq > 1280.0:
+            continue
+        _, naive = peak_in_band(naive_f, naive_a, freq - 10.0, freq + 10.0)
+        _, filt = peak_in_band(aa_f, aa_a, freq - 10.0, freq + 10.0)
+        gain, _ = lowpass_response(freq, FC_AA, FS_TRUE, AA_STAGES)
+        comp = filt / float(gain)
+        print(f"{freq:8.1f} {amp:7.3f} {naive:11.4f} {filt:9.4f} {comp:9.4f}"
+              f"  {100 * (naive / amp - 1):+6.1f}% -> {100 * (filt / amp - 1):+6.1f}%"
+              f" -> {100 * (comp / amp - 1):+6.1f}%")
+    print("\nthe filter trades a 150% error for a 27% one, and dividing by the gain you")
+    print("predicted in exercise 6 takes the 27% back out. The filter is not free and it is")
+    print("not magic: it is a known, computable distortion that you must undo on purpose.")
+    lag_lo = -float(lowpass_response(25.0, FC_AA, FS_TRUE, AA_STAGES)[1]) / (2 * np.pi * 25.0)
+    lag_hi = -float(lowpass_response(425.0, FC_AA, FS_TRUE, AA_STAGES)[1]) / (2 * np.pi * 425.0)
+    print(f"\nand the phase does not undo: 25 Hz is delayed {lag_lo * 1e6:.0f} us and 425 Hz "
+          f"{lag_hi * 1e6:.0f} us.")
+    print("different delays for different components means the waveform SHAPE changes. Crest")
+    print("factor and kurtosis — module 3's features — are shape measurements, so they are")
+    print("not safe through this filter unless it is applied identically every time.")
+
+
+_try("price the filter", _price_the_filter)
+
+# %%
+def _plot_the_two_spectra() -> None:
+    naive_f, naive_a = amplitude_spectrum(decimate_naive(TRUE_G, 20), 2560.0)
+    aa_f, aa_a = amplitude_spectrum(decimate_naive(FILTERED_G, 20), 2560.0)
+    fig, axes = plt.subplots(1, 2, figsize=(10, 2.8), sharey=True)
+    for ax, (freqs, amps, title) in zip(axes, (
+            (naive_f, naive_a, "sampled at 2560 Hz, no anti-alias filter"),
+            (aa_f, aa_a, f"{AA_STAGES}-pole low-pass at {FC_AA:.0f} Hz, then sampled"))):
+        ax.plot(freqs, amps, lw=0.7)
+        ax.set_xlabel("frequency (Hz)")
+        ax.set_title(title, fontsize=9)
+        ax.set_xlim(0, 1280)
+    for freq, amp, _ in TONES:
+        if freq < 1280.0:
+            axes[0].plot([freq], [amp], "o", ms=4, mfc="none", color="k")
+            axes[1].plot([freq], [amp], "o", ms=4, mfc="none", color="k")
+    axes[0].set_ylabel("amplitude (g)")
+    fig.suptitle("open circles are the amplitudes the generator put in", fontsize=9)
+    fig.tight_layout()
+    _show(fig)
+
+
+_try("plot the two spectra", _plot_the_two_spectra)
+
+
+# %% [markdown]
+# ## 10. Exercise 8 — `hann_window()`, and the amplitude you actually read
+#
+# Every record so far contained a whole number of cycles of every tone, which never happens.
+# When a tone falls between two bins its energy smears across them — *leakage* — and the
+# tallest bin under-reports the amplitude. The worst case is a tone exactly half a bin off.
+#
+# A window tapers the record's ends so the periodic extension has no step in it. The Hann
+# window used for spectral analysis is the **periodic** one, `0.5 (1 - cos(2 pi k / n))`.
+# `np.hanning` is the *symmetric* one, with `n - 1` in the denominator; it is the right
+# window for designing an FIR filter and the wrong one here.
+
+# %%
+def hann_window(n: int) -> np.ndarray:
+    """Periodic Hann window of length `n`: `w[k] = 0.5 * (1 - cos(2 * pi * k / n))`.
+
+    Note the denominator: `n`, not `n - 1`. The periodic window starts at 0 and does NOT
+    come back to 0 at the last sample, because sample `n` would be the repeat of sample 0.
+    Raise `ValueError` if `n < 1`.
+
+    Example:
+        >>> hann_window(4).tolist()
+        [0.0, 0.5, 1.0, 0.5]
+        >>> hann_window(1).tolist()
+        [0.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_hann_window() -> None:
+    got = hann_window(4)
+    assert np.allclose(got, [0.0, 0.5, 1.0, 0.5]), (
+        f"hann_window(4) = {np.asarray(got).tolist()}, expected [0, 0.5, 1, 0.5]. "
+        "[0, 0.75, 0.75, 0] is np.hanning(4), the SYMMETRIC window with n-1 underneath"
+    )
+    eight = hann_window(8)
+    assert eight.size == 8 and np.isclose(eight[4], 1.0), (
+        f"the periodic window peaks at exactly 1.0 in the middle sample; got "
+        f"{np.asarray(eight).round(4).tolist()}"
+    )
+    assert not np.isclose(eight[-1], 0.0), (
+        "the periodic window does not return to zero at the last sample — that is what makes "
+        "it periodic. You have used np.hanning or an n-1 denominator"
+    )
+    assert np.isclose(hann_window(64).mean(), 0.5), (
+        f"the coherent gain of a Hann window is exactly 0.5; yours is "
+        f"{hann_window(64).mean():.6f}"
+    )
+    try:
+        hann_window(0)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("n < 1 must raise ValueError")
+    print("exercise 8 looks right — and it is the periodic window, not np.hanning")
+
+
+# %%
+_try("exercise 8", _check_hann_window)
+
+# %% [markdown]
+# Measure the leakage. Two records of the same 1.000 g tone: one landing exactly on bin 340,
+# one landing half a bin above it. Read each four ways.
+
+# %%
+def _measure_leakage() -> None:
+    fs, n = 2560.0, 2048
+    bin_hz = fs / n
+    t = np.arange(n) / fs
+    win = hann_window(n)
+    print(f"bin width {bin_hz:.4f} Hz. True amplitude 1.000 g in every row.")
+    print(f"{'tone':>22s} {'rect peak':>10s} {'hann peak':>10s} "
+          f"{'rect band':>10s} {'hann band':>10s}")
+    for offset, label in ((0.0, "on a bin (340.000)"), (0.5, "half a bin off (340.5)")):
+        freq = (340.0 + offset) * bin_hz
+        sig = np.cos(2.0 * np.pi * freq * t)
+        row = []
+        for window, enbw in ((None, 1.0), (win, 1.5)):
+            freqs, amps = amplitude_spectrum(sig, fs, window=window)
+            row.append(peak_in_band(freqs, amps, freq - 5.0, freq + 5.0)[1])
+            band = (freqs >= freq - 3.0 * bin_hz) & (freqs <= freq + 3.0 * bin_hz)
+            row.append(float(np.sqrt(np.sum(amps[band] ** 2) / enbw)))
+        print(f"{label:>22s} {row[0]:10.4f} {row[2]:10.4f} {row[1]:10.4f} {row[3]:10.4f}")
+    print("\ncolumns are: tallest bin unwindowed, tallest bin with Hann, then the same two")
+    print("read as BAND energy over +-3 bins (divided by the window's noise bandwidth,")
+    print("1.0 for rectangular and 1.5 for Hann).")
+    print("\nthe worst cell in that table is the one every tutorial teaches: read the tallest")
+    print("bin of an unwindowed record and a tone that is half a bin off reads 36% low. The")
+    print("window halves that error. Reading BAND energy instead of a single bin removes it.")
+    print("Module 3's band-energy features are not a stylistic preference.")
+
+
+_try("measure leakage", _measure_leakage)
+
+
+# %% [markdown]
+# ## 11. Exercises 9 and 10 — the sensor, the ADC, and the two directions
+#
+# Nothing so far has been in real units. A charge amplifier turns acceleration into volts at
+# a published **sensitivity** in mV/g; an ADC turns volts into integer **counts** across a
+# bipolar range of `+-full_scale_v` using `2^bits` levels. Both conversions are one line, and
+# both are where a plant's numbers go wrong by a clean multiplicative factor nobody notices.
+
+# %%
+def g_to_counts(g: np.ndarray, sensitivity_mv_per_g: float,
+                full_scale_v: float, n_bits: int) -> np.ndarray:
+    """Acceleration in g through a sensor and a bipolar ADC, to integer counts.
+
+        volts  = g * sensitivity_mv_per_g / 1000
+        half   = 2 ** (n_bits - 1)
+        step_v = full_scale_v / half
+        counts = clip(round(volts / step_v), -half, half - 1)
+
+    Returns an int64 array. The clip is the ADC's converter, not a safety net: a signal
+    beyond the range is CLIPPED, silently, and the record does not record that it happened.
+    Raise `ValueError` if `sensitivity_mv_per_g <= 0`, `full_scale_v <= 0`, or `n_bits < 2`.
+
+    Example:
+        >>> g_to_counts(np.array([0.0, 1.0, 50.0]), 100.0, 1.0, 12).tolist()
+        [0, 205, 2047]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def counts_to_g(counts: np.ndarray, sensitivity_mv_per_g: float,
+                full_scale_v: float, n_bits: int) -> np.ndarray:
+    """Integer ADC counts back to acceleration in g. The exact inverse of the scaling above.
+
+        g = counts * (full_scale_v / 2 ** (n_bits - 1)) * 1000 / sensitivity_mv_per_g
+
+    Returns a float array. Raise the same `ValueError`s as `g_to_counts`.
+
+    Example:
+        >>> counts_to_g(np.array([0, 205, 2047]), 100.0, 1.0, 12).round(4).tolist()
+        [0.0, 1.001, 9.9951]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_adc() -> None:
+    counts = g_to_counts(np.array([0.0, 1.0, 50.0]), 100.0, 1.0, 12)
+    assert counts.dtype.kind == "i", f"counts must be integers, got dtype {counts.dtype}"
+    assert counts.tolist() == [0, 205, 2047], (
+        f"expected [0, 205, 2047], got {counts.tolist()}. 1 g at 100 mV/g is 0.1 V, and the "
+        "step of a +-1 V 12-bit converter is 1/2048 V, so 1 g is 204.8 -> 205 counts. A "
+        "result of 409 means the range was treated as 0 to full_scale rather than +-"
+    )
+    assert counts[-1] == 2047, (
+        f"50 g is far beyond +-1 V and must clip to 2047, the largest positive code of a "
+        f"12-bit converter; got {counts[-1]}. 2048 is out of range"
+    )
+    low = g_to_counts(np.array([-50.0]), 100.0, 1.0, 12)
+    assert low.tolist() == [-2048], (
+        f"the negative rail of a 12-bit bipolar converter is -2048, got {low.tolist()} — the "
+        "range is asymmetric because zero takes one of the codes"
+    )
+    back = counts_to_g(np.array([0, 205, 2047]), 100.0, 1.0, 12)
+    assert np.allclose(back, [0.0, 1.0009765625, 9.99511719], atol=1e-6), (
+        f"round trip gave {np.asarray(back).round(6).tolist()}; expected "
+        "[0.0, 1.0009766, 9.9951172]"
+    )
+    # Halving the range halves the step, so the same g gives twice the counts.
+    wide = g_to_counts(np.array([0.5]), 100.0, 2.0, 12)
+    narrow = g_to_counts(np.array([0.5]), 100.0, 1.0, 12)
+    assert narrow[0] == 2 * wide[0], (
+        f"halving full_scale_v must double the counts for the same input; got {wide[0]} and "
+        f"{narrow[0]}"
+    )
+    for fn in (g_to_counts, counts_to_g):
+        for bad, why in (((np.zeros(3), 0.0, 1.0, 12), "sensitivity <= 0"),
+                         ((np.zeros(3), 100.0, 0.0, 12), "full_scale_v <= 0"),
+                         ((np.zeros(3), 100.0, 1.0, 1), "n_bits < 2")):
+            try:
+                fn(*bad)
+            except ValueError:
+                continue
+            raise AssertionError(f"{fn.__name__}: {why} must raise ValueError")
+    print("exercises 9 and 10 look right — the chain now has real units")
+
+
+# %%
+_try("exercises 9 and 10", _check_adc)
+
+# %% [markdown]
+# Now the choice a technician actually makes on site, with a record that contains one
+# impulsive shock. They cannot change the sensor and they cannot change the converter. They
+# set **the range**. Sweep it and measure the error.
+
+# %%
+def _sweep_the_adc_range() -> None:
+    record = synthesise_acceleration(shock=True)
+    true_rms = float(np.sqrt(np.mean(record ** 2)))
+    true_peak = float(np.max(np.abs(record)))
+    print(f"true RMS {true_rms:.4f} g · true peak {true_peak:.4f} g "
+          f"· true crest factor {true_peak / true_rms:.2f}")
+    print(f"\n{'bits':>5s} {'range':>8s} {'step (mg)':>10s} {'clipped':>8s} "
+          f"{'err RMS (mg)':>13s} {'RMS read':>9s} {'crest read':>11s}")
+    best = None
+    for bits in (ADC_BITS, 16):
+        for full_scale in ADC_RANGES_V:
+            counts = g_to_counts(record, SENSITIVITY_MV_PER_G, full_scale, bits)
+            back = counts_to_g(counts, SENSITIVITY_MV_PER_G, full_scale, bits)
+            half = 2 ** (bits - 1)
+            step_mg = (full_scale / half) * 1000.0 / SENSITIVITY_MV_PER_G * 1000.0
+            clipped = int(np.sum((counts <= -half) | (counts >= half - 1)))
+            err = float(np.sqrt(np.mean((back - record) ** 2))) * 1000.0
+            rms = float(np.sqrt(np.mean(back ** 2)))
+            crest = float(np.max(np.abs(back))) / rms
+            if bits == ADC_BITS and (best is None or err < best[1]):
+                best = (full_scale, err)
+            print(f"{bits:5d} {full_scale:7.2f}V {step_mg:10.4f} {clipped:8d} "
+                  f"{err:13.4f} {rms:9.4f} {crest:11.2f}")
+    print(f"\nthe best {ADC_BITS}-bit choice is +-{best[0]:.2f} V at {best[1]:.4f} mg error.")
+    print("read the 16-bit rows again. Four extra bits at the wrong range is WORSE than")
+    print("twelve bits at the right one, because clipping is not a resolution problem and no")
+    print("number of bits repairs it. And look at the RMS column: it barely moves. The")
+    print("feature that notices is the crest factor, which is a shape measurement, and")
+    print("shape is exactly what clipping destroys.")
+
+
+_try("sweep the ADC range", _sweep_the_adc_range)
+
+# %% [markdown]
+# One more unit failure, and it is the quietest one in this notebook. The sensor ages and its
+# sensitivity drifts, but the DAQ configuration file still holds the number from the
+# calibration certificate. Nothing in the data looks wrong.
+
+# %%
+def _calibration_drift() -> None:
+    record = synthesise_acceleration()
+    drifted = SENSITIVITY_MV_PER_G * 1.08          # the sensor, two years later
+    counts = g_to_counts(record, drifted, 1.0, 16)
+    as_read = counts_to_g(counts, SENSITIVITY_MV_PER_G, 1.0, 16)   # the DAQ's stale constant
+    true_rms = float(np.sqrt(np.mean(record ** 2)))
+    read_rms = float(np.sqrt(np.mean(as_read ** 2)))
+    true_crest = float(np.max(np.abs(record))) / true_rms
+    read_crest = float(np.max(np.abs(as_read))) / read_rms
+    print(f"sensitivity drifted {100 * (drifted / SENSITIVITY_MV_PER_G - 1):.0f}% "
+          f"({SENSITIVITY_MV_PER_G:.1f} -> {drifted:.1f} mV/g), DAQ constant unchanged")
+    print(f"  overall RMS   true {true_rms:.4f} g   read {read_rms:.4f} g   "
+          f"error {100 * (read_rms / true_rms - 1):+.2f}%")
+    print(f"  crest factor  true {true_crest:.4f}     read {read_crest:.4f}     "
+          f"error {100 * (read_crest / true_crest - 1):+.2f}%")
+    ratio = abs(read_crest / true_crest - 1.0)
+    print(f"\nevery absolute amplitude moved by the same factor, and the RATIO moved by "
+          f"{100 * ratio:.2f}%")
+    print("— which is the 16-bit quantiser's rounding and not the drift. An alarm on an")
+    print("absolute level in g has slipped 8% without anyone touching it. Module 1's health")
+    print("index, which divides each machine by its own baseline, has effectively not moved")
+    print("— provided the baseline was recorded AFTER the drift, which is the argument for")
+    print("re-baselining on recalibration rather than carrying a number forward from a")
+    print("certificate written two years ago.")
+
+
+_try("calibration drift", _calibration_drift)
+
+
+# %% [markdown]
+# ## 12. Exercises 11 and 12 — from acceleration to velocity
+#
+# Acceleration is what the sensor measures; it is rarely what the limit is written in. Going
+# from one to the other is an integration, and integration divides every component by
+# `2 pi f`. That is a 1/f weighting: it reorders the whole signal.
+#
+# It also integrates the accelerometer's DC bias into a straight line that walks off the
+# screen. The cure is a high-pass, and **where** you put it is the exercise.
+
+# %%
+def one_pole_highpass(x: np.ndarray, fc: float, fs: float, stages: int = 1) -> np.ndarray:
+    """Cascade of `stages` identical one-pole high-pass sections, applied to a 1-D signal.
+
+    Each section is `y[n] = a * (y[n-1] + x[n] - x[n-1])` with `a = exp(-2*pi*fc/fs)`, and
+    `y[0] = 0`. A constant input therefore comes out as exactly zero everywhere, which is the
+    whole point: DC is removed without needing to know what the DC was.
+
+    Raise `ValueError` if `fc <= 0`, `fs <= 0`, `stages < 1`, or `x` is not 1-D.
+
+    Example:
+        >>> one_pole_highpass(np.full(5, 7.0), 10.0, 1000.0, 2).tolist()   # DC blocked
+        [0.0, 0.0, 0.0, 0.0, 0.0]
+        >>> step = one_pole_highpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0)
+        >>> [round(v, 6) for v in step.tolist()]
+        [0.0, 0.533488, 0.28461, 0.151836]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def integrate_trapezoid(a: np.ndarray, fs: float) -> np.ndarray:
+    """Cumulative trapezoidal integral of a 1-D signal sampled at `fs`, starting from zero.
+
+        v[0] = 0
+        v[n] = v[n-1] + (a[n-1] + a[n]) / (2 * fs)
+
+    The output has the same length as the input. `np.cumsum(a) / fs` is the rectangular rule,
+    which is a different answer and biased by half a sample. Raise `ValueError` if `fs <= 0`
+    or `a` is not 1-D.
+
+    Example:
+        >>> integrate_trapezoid(np.array([0.0, 2.0, 2.0, 2.0]), 2.0).tolist()
+        [0.0, 0.5, 1.5, 2.5]
+        >>> integrate_trapezoid(np.array([5.0]), 10.0).tolist()
+        [0.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_integration() -> None:
+    flat = one_pole_highpass(np.full(5, 7.0), 10.0, 1000.0, 2)
+    assert np.allclose(flat, 0.0), (
+        f"a constant input must be blocked completely; got {np.asarray(flat).tolist()}"
+    )
+    step = one_pole_highpass(np.array([0.0, 1.0, 1.0, 1.0]), 100.0, 1000.0)
+    assert np.allclose(step, [0.0, 0.533488, 0.28461, 0.151836], atol=1e-5), (
+        f"step response {np.round(np.asarray(step), 5).tolist()} is not "
+        "[0, 0.533488, 0.28461, 0.151836] — the section is a*(y[n-1] + x[n] - x[n-1])"
+    )
+    fast = one_pole_highpass(np.cos(2 * np.pi * 100.0 * np.arange(2000) / 1000.0),
+                             1.0, 1000.0, 2)
+    assert np.isclose(np.sqrt(np.mean(fast[500:] ** 2)), np.sqrt(0.5), atol=0.01), (
+        "a 100 Hz tone must pass a 1 Hz high-pass essentially untouched; yours did not"
+    )
+    ramp = integrate_trapezoid(np.array([0.0, 2.0, 2.0, 2.0]), 2.0)
+    assert np.allclose(ramp, [0.0, 0.5, 1.5, 2.5]), (
+        f"expected [0, 0.5, 1.5, 2.5], got {np.asarray(ramp).tolist()}. [0, 1, 2, 3] is "
+        "np.cumsum(a)/fs, the rectangular rule; the trapezoid averages consecutive samples"
+    )
+    assert np.allclose(integrate_trapezoid(np.array([5.0]), 10.0), [0.0]), (
+        "a one-sample input integrates to [0.0]"
+    )
+    for fn, args in ((one_pole_highpass, (np.zeros(4), 10.0, 0.0, 1)),
+                     (one_pole_highpass, (np.zeros((2, 4)), 10.0, 1000.0, 1)),
+                     (integrate_trapezoid, (np.zeros(4), 0.0)),
+                     (integrate_trapezoid, (np.zeros((2, 4)), 100.0))):
+        try:
+            fn(*args)
+        except ValueError:
+            continue
+        raise AssertionError(f"{fn.__name__} must raise ValueError on {args[1:]}")
+    print("exercises 11 and 12 look right — you can change units now")
+
+
+# %%
+_try("exercises 11 and 12", _check_integration)
+
+# %% [markdown]
+# Three orderings of the same two operations, against the velocity the generator implies
+# exactly: each tone of amplitude `A` g becomes `A * G_N / (2 pi f)` m/s.
+
+# %%
+def _integrate_three_ways() -> None:
+    expected = np.sqrt(sum((amp * G_N / (2.0 * np.pi * freq)) ** 2
+                           for freq, amp, _ in TONES) / 2.0) * 1000.0
+    accel_ms2 = TRUE_G * G_N
+    raw = integrate_trapezoid(accel_ms2, FS_TRUE) * 1000.0
+    hp_first = integrate_trapezoid(
+        one_pole_highpass(accel_ms2, FC_HP, FS_TRUE, HP_STAGES), FS_TRUE) * 1000.0
+    hp_after = one_pole_highpass(raw, FC_HP, FS_TRUE, HP_STAGES)
+    print(f"true velocity RMS, from the components put in: {expected:.3f} mm/s")
+    print(f"\n{'ordering':>34s} {'RMS (mm/s)':>11s} {'error':>9s} {'drift at 2 s':>13s}")
+    for label, series in (("integrate only", raw),
+                          ("high-pass the ACCELERATION first", hp_first),
+                          ("integrate, then high-pass", hp_after)):
+        rms = float(np.sqrt(np.mean(series ** 2)))
+        print(f"{label:>34s} {rms:11.3f} {100 * (rms / expected - 1):+8.1f}% "
+              f"{series[-1]:12.2f}")
+    print("\nthe DC bias is 0.015 g. Integrated over two seconds that is a ramp reaching")
+    print(f"{raw[-1]:.0f} mm/s, several times the signal, and it is still climbing.")
+    print("\nhigh-passing the acceleration first does not fix it. The high-pass has its own")
+    print("start-up transient, which is low-frequency energy, and integration multiplies")
+    print("low frequencies by 1/f. The filter's cure becomes the disease. High-pass AFTER")
+    print("the integration, where the thing you are removing is the drift itself.")
+
+
+_try("integrate three ways", _integrate_three_ways)
+
+# %%
+def _the_ranking_flip() -> None:
+    print("the same four components, ranked by each unit:")
+    print(f"{'f (Hz)':>8s} {'accel (g)':>10s} {'rank':>5s} {'vel (mm/s)':>11s} {'rank':>5s}")
+    rows = [(f, a, a * G_N / (2.0 * np.pi * f) * 1000.0) for f, a, _ in TONES]
+    by_acc = sorted(rows, key=lambda r: -r[1])
+    by_vel = sorted(rows, key=lambda r: -r[2])
+    for freq, acc, vel in rows:
+        print(f"{freq:8.1f} {acc:10.3f} {by_acc.index((freq, acc, vel)) + 1:5d} "
+              f"{vel:11.3f} {by_vel.index((freq, acc, vel)) + 1:5d}")
+    worst = min(rows, key=lambda r: r[2])
+    acc_rank = by_acc.index(worst) + 1
+    print(f"\nthe {worst[0]:.0f} Hz resonance ranks {acc_rank} of {len(rows)} in "
+          f"acceleration and last in velocity, {by_vel[0][2] / worst[2]:.0f} times below")
+    print(f"the {by_vel[0][0]:.0f} Hz shaft line. The 50 Hz and 425 Hz lines swap places "
+          f"too.")
+    print("a velocity limit and an acceleration limit are not two views of one measurement.")
+    print("They are two different questions, and a chain that integrates has already chosen")
+    print("which one you are asking.")
+
+
+_try("the ranking flip", _the_ranking_flip)
+
+
+# %% [markdown]
+# ## 13. The conditioning spec
+#
+# The deliverable of this module is not a number, it is a specification: the chain that every
+# feature in module 3 will be computed on. Print it with the measured cost of each decision
+# beside it, because a conditioning choice with no measured cost is a preference.
+
+# %%
+def _conditioning_spec() -> None:
+    naive_f, naive_a = amplitude_spectrum(decimate_naive(TRUE_G, 20), 2560.0)
+    aa_f, aa_a = amplitude_spectrum(decimate_naive(FILTERED_G, 20), 2560.0)
+    true_425 = dict((f, a) for f, a, _ in TONES)[425.0]
+    _, naive_425 = peak_in_band(naive_f, naive_a, 415.0, 435.0)
+    _, aa_425 = peak_in_band(aa_f, aa_a, 415.0, 435.0)
+    gain_425 = float(lowpass_response(425.0, FC_AA, FS_TRUE, AA_STAGES)[0])
+    lag_425 = -float(lowpass_response(425.0, FC_AA, FS_TRUE, AA_STAGES)[1]) / (2 * np.pi * 425)
+    record = synthesise_acceleration(shock=True)
+    peak_g = float(np.max(np.abs(record)))
+    needed_v = peak_g * SENSITIVITY_MV_PER_G / 1000.0
+    chosen = min(r for r in ADC_RANGES_V if r >= needed_v)
+    step_mg = (chosen / 2 ** (ADC_BITS - 1)) * 1000.0 / SENSITIVITY_MV_PER_G * 1000.0
+    print("SIGNAL CONDITIONING SPEC — hand this to whoever configures the analyser")
+    print(f"  sensor             {SENSITIVITY_MV_PER_G:.0f} mV/g, usable to "
+          f"{SENSOR_F_MAX:.0f} Hz")
+    print(f"  anti-alias filter  {AA_STAGES} x one-pole low-pass, corner {FC_AA:.0f} Hz, "
+          f"BEFORE the sampler")
+    print(f"  sample rate        {RATES[0][0]:.0f} Hz "
+          f"(usable band 0 to {0.4 * RATES[0][0]:.0f} Hz)")
+    print(f"  passband           compensate by dividing by the filter gain: "
+          f"{gain_425:.4f} at 425 Hz")
+    print(f"  phase              {lag_425 * 1e6:.0f} us of lag at 425 Hz, not constant with "
+          f"frequency; shape features must use the same chain every time")
+    print(f"  ADC                {ADC_BITS} bits, range +-{chosen:.2f} V "
+          f"(step {step_mg:.3f} mg, headroom over the observed "
+          f"{peak_g:.2f} g peak: {100 * (chosen / needed_v - 1):.0f}%)")
+    print(f"  spectrum           periodic Hann window, band energy over +-3 bins, "
+          f"not the tallest bin")
+    print(f"  velocity path      integrate first, then high-pass {HP_STAGES} x "
+          f"{FC_HP:.0f} Hz — never the other way round")
+    print("  measured cost of the two conditioning decisions, at the 425 Hz gear line:")
+    print(f"     no anti-alias filter: reads {naive_425:.4f} g against a true "
+          f"{true_425:.3f} g ({100 * (naive_425 / true_425 - 1):+.0f}%)")
+    print(f"     filtered, uncompensated: {aa_425:.4f} g "
+          f"({100 * (aa_425 / true_425 - 1):+.0f}%)")
+    print(f"     filtered and compensated: {aa_425 / gain_425:.4f} g "
+          f"({100 * (aa_425 / gain_425 / true_425 - 1):+.1f}%)")
+    print("  re-derive this spec whenever the sensor, the rate or the range changes.")
+
+
+_try("conditioning spec", _conditioning_spec)
+
+
+# %% [markdown]
+# ## 14. Common mistakes
+#
+# - **Taking the sampling rate as given.** It is a choice somebody made, often years ago,
+#   often without knowing what the machine's resonances were. It is the first thing to check
+#   and the cheapest thing to change.
+# - **Assuming a spectrum with plausible lines is a correct spectrum.** At 2560 Hz this
+#   machine produces three lines, all at real frequencies, with one of them 150% too big.
+#   Nothing in the picture says so.
+# - **Using `f % fs` for the alias.** It agrees with the fold below `fs/2` and disagrees
+#   above it, which is exactly the region you are asking about.
+# - **Decimating without filtering first.** `x[::20]` is a sampler. Everything above the new
+#   Nyquist comes back, and it comes back inside your band, not outside it.
+# - **Forgetting to compensate the anti-alias filter's passband droop.** A 27% amplitude
+#   error that is stable over time looks exactly like a machine that is 27% healthier.
+# - **Trusting the analogue formula for a digital filter.** `1/sqrt(1 + (f/fc)^2)` is not the
+#   response of the difference equation you wrote. Section 7's comparison cell prints both,
+#   and its gain column is the reason the mistake survives: the gain is nearly right.
+# - **Reading amplitude off the tallest bin.** A tone half a bin off reads 36% low unwindowed
+#   and 15% low with a Hann window. Band energy over a few bins reads it correctly.
+# - **Using `np.hanning` for spectral analysis.** That is the symmetric window; the periodic
+#   one is what makes the coherent gain exactly 0.5 and the leakage minimal.
+# - **Buying bits instead of setting the range.** Sixteen bits clipped is worse than twelve
+#   bits with headroom. Count clipped samples in every record; RMS will not tell you.
+# - **High-passing acceleration before integrating it.** The filter's own transient is
+#   low-frequency, and integration is a 1/f amplifier. High-pass the velocity instead.
+# - **Comparing a velocity limit with an acceleration measurement.** The two units rank the
+#   same signal differently; here the second-largest acceleration component is the smallest
+#   velocity component by a factor of nearly 300.
+#
+# The third of those is worth measuring rather than believing, because `f % fs` is right far
+# more often than it is wrong.
+
+# %%
+def _the_modulus_trap() -> None:
+    rate = RATES[0][0]
+    probe = np.arange(0.0, SENSOR_F_MAX + 1.0, 1.0)
+    fold = np.asarray(alias_frequency(probe, rate))
+    modulus = probe % rate
+    disagree = np.flatnonzero(~np.isclose(fold, modulus))
+    print(f"over the {probe.size} integer frequencies from 0 to {SENSOR_F_MAX:.0f} Hz that "
+          f"this sensor can see, sampled at {rate:.0f} Hz:")
+    print(f"  the fold and `f % fs` agree on {probe.size - disagree.size} of them")
+    print(f"  they first disagree at {probe[disagree[0]]:.0f} Hz "
+          f"(fold {fold[disagree[0]]:.0f} Hz, modulus {modulus[disagree[0]]:.0f} Hz)")
+    print(f"  the largest disagreement is {np.max(np.abs(fold - modulus)):.0f} Hz")
+    above = int(np.sum(modulus > rate / 2.0))
+    print(f"  and {above} of the modulus answers sit above Nyquist, where a sampled record")
+    print("  cannot show you anything at all")
+    print("\na rule that is right most of the time is worse than one that is never right,")
+    print("because it survives every casual test. The half it is wrong about is the half you")
+    print("are asking about: the only reason to fold a frequency is that it was above")
+    print("Nyquist to begin with.")
+
+
+_try("the modulus trap", _the_modulus_trap)
+
+
+# %% [markdown]
+# ## 15. Self-check
+#
+# 1. You sample a machine at 2560 Hz and see a clean line at 425 Hz where the gear mesh is
+#    expected. You resample at 3200 Hz and the 425 Hz line is still there but 60% smaller,
+#    and a new line appears at 855 Hz. The most likely explanation is:
+#    - (a) the machine changed between the two records
+#    - (b) a real component above 1280 Hz was folding onto the 425 Hz line in the first
+#          record, and at the new rate it folds somewhere else instead
+#    - (c) the 3200 Hz record has worse frequency resolution
+#
+# 2. An anti-alias filter is fitted with its corner at 0.4 of the sampling rate. The gear-mesh
+#    line, well inside the passband, now reads 27% low every single day. This is:
+#    - (a) a fault to be fixed by removing the filter
+#    - (b) a known, computable gain that must be divided back out, and a warning that the
+#          filter's phase lag is not constant with frequency
+#    - (c) harmless, because a threshold set on the filtered data absorbs it
+#
+# 3. A 12-bit converter on a +-5 V range is replaced with a 16-bit converter on a +-0.25 V
+#    range to "get more resolution" on a signal that occasionally peaks at 6 g through a
+#    100 mV/g sensor. The measured error:
+#    - (a) falls by a factor of 16, as the extra bits imply
+#    - (b) rises, because the peaks now clip, and no number of bits repairs a clipped sample
+#    - (c) is unchanged, since the RMS of the record barely moves
+#
+# 4. A colleague integrates acceleration to velocity and, to stop the output ramping away,
+#    high-passes the acceleration at 2 Hz before integrating. The velocity RMS comes out
+#    nearly twice the true value. The reason is:
+#    - (a) 2 Hz is too low a corner; 10 Hz would work
+#    - (b) the high-pass has a low-frequency start-up transient of its own, and integration
+#          amplifies low frequencies by 1/f, so the filter's transient dominates the result
+#    - (c) trapezoidal integration is biased and the rectangular rule should be used
+#
+# 5. An accelerometer's sensitivity has drifted 8% since its last calibration and the DAQ's
+#    configuration still holds the old value. Which of these is unaffected?
+#    - (a) the overall RMS in g
+#    - (b) the alarm threshold expressed as an absolute level in mm/s
+#    - (c) a health index defined as today's RMS divided by that machine's own baseline RMS,
+#          where the baseline was recorded after the drift
+#
+# Answers, with the reasoning, are published in the course solution bundle.
+
+# %% [markdown]
+# One last cell, and it is the deliverable. Run the whole chain end to end — anti-alias
+# filter, sampler, ADC, window, band energy, gain compensation — and print the table module 3
+# starts from.
+
+# %%
+def _what_module_three_receives() -> None:
+    rate, factor = RATES[0]
+    # Size the input range for the worst case the machine produces, not for a quiet day.
+    worst = one_pole_lowpass(synthesise_acceleration(shock=True), FC_AA, FS_TRUE, AA_STAGES)
+    peak_v = float(np.max(np.abs(decimate_naive(worst, factor)))) \
+        * SENSITIVITY_MV_PER_G / 1000.0
+    full_scale = min(r for r in ADC_RANGES_V if r >= peak_v)
+    conditioned = decimate_naive(one_pole_lowpass(TRUE_G, FC_AA, FS_TRUE, AA_STAGES), factor)
+    digital = counts_to_g(
+        g_to_counts(conditioned, SENSITIVITY_MV_PER_G, full_scale, ADC_BITS),
+        SENSITIVITY_MV_PER_G, full_scale, ADC_BITS)
+    n = digital.size
+    freqs, amps = amplitude_spectrum(digital, rate, window=hann_window(n))
+    bin_hz = rate / n
+    print(f"{n} samples at {rate:.0f} Hz · ADC {ADC_BITS} bits on +-{full_scale:.2f} V "
+          f"(worst-case peak {peak_v * 1000:.0f} mV) · Hann window · bin {bin_hz:.2f} Hz")
+    print(f"\n{'line (Hz)':>10s} {'true (g)':>9s} {'band energy':>12s} "
+          f"{'compensated':>12s} {'error':>8s}")
+    for freq, amp, _ in TONES:
+        if freq > 0.4 * rate:
+            continue
+        band = (freqs >= freq - 3.0 * bin_hz) & (freqs <= freq + 3.0 * bin_hz)
+        energy = float(np.sqrt(np.sum(amps[band] ** 2) / 1.5))
+        gain = float(lowpass_response(freq, FC_AA, FS_TRUE, AA_STAGES)[0])
+        print(f"{freq:10.0f} {amp:9.3f} {energy:12.4f} {energy / gain:12.4f} "
+              f"{100 * (energy / gain / amp - 1):+7.2f}%")
+    print("\nthat is the deliverable: one band-energy reading per machine line, through a")
+    print("chain whose every distortion has been measured and whose passband gain has been")
+    print("divided back out. Module 3 computes its condition indicators on exactly this, and")
+    print(f"the {[f for f, _, _ in TONES if f > 0.4 * rate][0]:.0f} Hz resonance is not in "
+          f"the table at all — it is above the band this chain")
+    print("was specified for, and it is now gone rather than hiding inside the gear line.")
+
+
+_try("what module 3 receives", _what_module_three_receives)
+
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You have the measurement chain, and more usefully you have the arithmetic to interrogate
+# one you did not build: fold a frequency, run the fold backwards, predict a filter's gain,
+# measure it, count clipped samples, and check which unit a limit was written in.
+#
+# Module 3 computes condition indicators — RMS, crest factor, kurtosis, band energy, the
+# envelope spectrum — on the output of this chain, and each of those features is sensitive to
+# a different thing you just measured. Kurtosis is destroyed by clipping. Band energy is the
+# only amplitude reading that survives leakage. An envelope spectrum around a resonance is
+# worthless if the resonance was filtered off before the sampler, and dangerous if it was
+# aliased into the band instead.
+#
+# The habit to carry forward: **a number from an instrument is a claim, and the chain that
+# produced it is the evidence.** Ask for the sampling rate, the anti-alias corner and the
+# input range before you ask for the data.
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_amplitude_spectrum),
+                          ("exercise 2", _check_peak_in_band),
+                          ("exercise 3", _check_alias_frequency),
+                          ("exercise 4", _check_candidate_true_frequencies),
+                          ("exercise 5", _check_one_pole_lowpass),
+                          ("exercise 6", _check_lowpass_response),
+                          ("exercise 7", _check_measure_gain_and_lag),
+                          ("exercise 8", _check_hann_window),
+                          ("exercises 9 and 10", _check_adc),
+                          ("exercises 11 and 12", _check_integration)):
+        _try(_name, _check)
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

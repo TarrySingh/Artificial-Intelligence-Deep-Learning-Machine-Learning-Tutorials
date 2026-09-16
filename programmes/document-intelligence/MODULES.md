@@ -1,8 +1,8 @@
 # P02 · Module map — Document and contract intelligence for regulated operations
 
-Eleven modules. **One is built.** The other ten are specified here and have no directory; if
-you go looking for `lessons/P02-L02-*` you will not find it, and that is deliberate — this file
-does not pretend unbuilt work exists.
+Eleven modules. **Five are built** — 1 to 4 and 10. The other six are specified here and have no
+directory; if you go looking for `lessons/P02-L05-*` you will not find it, and that is
+deliberate — this file does not pretend unbuilt work exists.
 
 Every module is a lab a student *does*: a notebook they run and fill in, or a C exercise they
 compile. Every module declares a compute tier and is held to it by `tools/execute.py`.
@@ -12,10 +12,15 @@ matplotlib, tokenizers and pytest, plus `clang` and `make`. There is no PDF libr
 engine and no model API on any required path, so every corpus is generated deterministically
 inside its lesson from a fixed seed. The labs below are designed within that, not around it.
 
-| # | Status | Lesson id | Tier |
-|---|---|---|---|
-| 1 | **BUILT** | `P02-L01-extraction-evaluation` | `cpu8` |
-| 2-11 | specified | — | `cpu8` (module 10 is `cpu8`, language C) |
+| # | Status | Lesson id | Tier | Measured · rubric |
+|---|---|---|---|---|
+| 1 | **BUILT** | `P02-L01-extraction-evaluation` | `cpu8` | 0.2 s · 29 MiB · 84 pts / 21 cases |
+| 2 | **BUILT** | `P02-L02-layout-reading-order` | `cpu8` | 0.2 s · 31 MiB · 94 pts / 23 cases |
+| 3 | **BUILT** | `P02-L03-sequence-labelling` | `cpu8` | 0.7 s · 34 MiB · 90 pts / 20 cases |
+| 4 | **BUILT** | `P02-L04-table-extraction` | `cpu8` | 7.3 s · 30 MiB · 94 pts / 21 cases |
+| 5-9 | specified | — | `cpu8` | — |
+| 10 | **BUILT** | `P02-L10-streaming-scanner-in-c` | `cpu8`, language **C** | 4.3 s · 65 MiB · 39 pts / 12 cases |
+| 11 | specified | — | `cpu8` | — |
 
 ---
 
@@ -59,9 +64,12 @@ and will spend the rest of the programme filing bugs against models that were al
 
 ---
 
-## Module 2 — Ingestion and layout without a PDF library *(specified)*
+## Module 2 — Ingestion and layout without a PDF library
 
-**Tier `cpu8`.** **Lab:** reading order from geometry. The student is given synthetic pages as
+**Status: BUILT.** `lessons/P02-L02-layout-reading-order/` · tier `cpu8` · measured 0.2 s,
+31 MiB · 94 rubric points across 23 autograded cases.
+
+**Lab:** reading order from geometry. The student is given synthetic pages as
 token boxes (text, x, y, width, height, page) covering single-column, two-column and
 table-bearing layouts. They implement recursive XY-cut segmentation, a reading-order sort within
 each block, and a header/footer detector; then score their reading order against the gold
@@ -69,17 +77,23 @@ sequence with Kendall's tau and a block-level boundary F1, using the harness fro
 finish by measuring how much field-extraction F1 moves when reading order is wrong, which is the
 argument for caring about layout at all.
 
-## Module 3 — From rules to a tagger: sequence labelling over document tokens *(specified)*
+## Module 3 — From rules to a tagger: sequence labelling over document tokens
 
-**Tier `cpu8`.** **Lab:** implement an averaged structured perceptron in numpy over BIO tags on
+**Status: BUILT.** `lessons/P02-L03-sequence-labelling/` · tier `cpu8` · measured 0.7 s,
+34 MiB · 90 rubric points across 20 autograded cases.
+
+**Lab:** implement an averaged structured perceptron in numpy over BIO tags on
 the module 2 token stream, with hand-built features (shape, prefix, neighbouring token,
 line position). Train it, then score it with module 1's harness — same scorer, different
 extractor, which is the whole point. They compare against the rule-based baseline on the same
 axes and identify which field types the tagger actually improved.
 
-## Module 4 — Table extraction: structure and content are two different scores *(specified)*
+## Module 4 — Table extraction: structure and content are two different scores
 
-**Tier `cpu8`.** **Lab:** reconstruct rows and columns from token geometry by projection
+**Status: BUILT.** `lessons/P02-L04-table-extraction/` · tier `cpu8` · measured 7.3 s,
+30 MiB · 94 rubric points across 21 autograded cases.
+
+**Lab:** reconstruct rows and columns from token geometry by projection
 profiling and clustering, handle a spanning header and a row split across a page break, then
 implement two scorers — cell-content F1 and a structure score in the spirit of TEDS — and show a
 case where content is nearly perfect while structure is wrong, and a case where the reverse is
@@ -126,9 +140,12 @@ the budget allocation, solve it by sweep and then by a greedy marginal-yield rul
 Pareto frontier of quality against cost per document, and write the one-paragraph
 recommendation a finance partner would sign.
 
-## Module 10 — The scanner in C: fixed memory over an unbounded export *(specified)*
+## Module 10 — The scanner in C: fixed memory over an unbounded export
 
-**Tier `cpu8`, language C.** **Lab:** implement a streaming field scanner over a multi-gigabyte
+**Status: BUILT.** `lessons/P02-L10-streaming-scanner-in-c/` · tier `cpu8`, language **C** ·
+measured 4.3 s, 65 MiB · 39 rubric points across 12 autograded cases.
+
+**Lab:** implement a streaming field scanner over a multi-gigabyte
 synthetic document export in C, in constant memory, with explicit handling of quoted fields,
 embedded newlines and a truncated final record; graded by a test binary built with `clang` and
 `make`. They measure throughput and peak RSS against the Python version from module 1 and learn

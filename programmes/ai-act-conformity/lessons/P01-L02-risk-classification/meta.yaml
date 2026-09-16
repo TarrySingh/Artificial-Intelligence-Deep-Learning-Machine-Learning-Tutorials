@@ -1,0 +1,176 @@
+id: P01-L02-risk-classification
+title: Turn the AI Act's risk tiers into a decision procedure that returns its own reasoning, the obligations that follow and the date each one binds
+track: P01
+programme: ai-act-conformity
+flagship: F09           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 60
+language: python        # python | c | cpp
+prerequisites:
+  - T10-L01-ai-act-conformity-pack
+  - P01-L01-article-12-logging
+objectives:
+  - "Implement the Article 6(3) derogation, including the profiling rule that overrides it and the Article 6(4) documentation duty that claiming it creates"
+  - "Implement an ordered interview that reaches a risk tier in the fewest questions and records which question was decisive"
+  - "Compute the obligations a tier implies, the date each one binds, and which of them bind today rather than later"
+  - "Seal a classification into a hash-covered record and diff two records across a system change, reporting which obligations appeared and which vanished"
+  - "Explain why a panel's disagreement is best reported as the earliest question they split on rather than as a spread of verdicts"
+datasets:
+  - name: "SYSTEMS and PANEL — nine fictional AI system descriptions and four analyst intake forms"
+    licence: "CC0-1.0"
+    url: "none — authored in this repository, constructed inside lesson.py"
+    origin: authored-for-this-lesson
+    cached_at: "none — module-level literals in lesson.py, nothing is read from disk"
+    gated: false
+    downloads: none
+    synthetic: true
+    notes: >-
+      Not a third-party dataset. Every system, flag, justification and date is invented for
+      this lesson and declared synthetic; none describes a real product, company or provider.
+      The fixtures are constructed to cover one branch of the decision procedure each, plus
+      two that fail the derogation for different reasons and a panel that splits at two
+      different questions. The legal texts the rulebook encodes are not data files: they are
+      cited in claims.yaml with their source URLs and access dates.
+points: 69              # = sum of RUBRIC points in tests/test_lesson.py
+status: reviewed        # draft | executed | reviewed | shipped
+# Authoring notes, 2026-09-16.
+#
+# All four gates run from the repo root on the venv interpreter. The measured figures below
+# were written back by tools/execute.py and were not typed.
+#
+# What this lesson is, against MODULES.md module 2. The spec asked for an interview, an
+# explanation trace, a signed classification record, a reclassify/diff across a system change,
+# a disagreement report over borderline cases, and Article 6(3) with the profiling override and
+# the documentation duty. All six are here as six graded exercises. The one deviation from the
+# spec's wording: the diff function is called `diff_records` and takes two sealed records
+# rather than being called `reclassify` and taking two system descriptions. Records, not
+# descriptions, are what a pack actually holds six months apart, and diffing the sealed objects
+# is what lets the tamper-evidence carry through — `reclassify(old_system, new_system)` would
+# have re-derived both sides and could not have caught an edited record.
+#
+# Relationship to the prerequisites. T10-L01's `classify()` read flags off a dictionary and
+# returned a tier; this lesson makes the student earn the Annex III flag through Article 6(3)
+# and returns the trail as well. The overlap is the obligation/date table, which the brief
+# requires, and it is narrowed here: the date ladder is the same six rungs, but the obligation
+# set adds the two derogation duties T10-L01 has no tier for, and adds `binding_now` and
+# `next_deadline`, which T10-L01 does not compute. From P01-L01 it reuses `canonical_bytes`
+# verbatim — given, not re-taught, not graded — so the classification record seals the same way
+# the log entries do and can be appended to that log as one event per record.
+#
+# Dependencies: the Python standard library only. No numpy (unlike P01-L01), no pyyaml (unlike
+# T10-L01), no assets directory, no disk read, no network. `datasets: []` would have been a
+# dodge here, so the synthetic fixtures are declared as a dataset with `synthetic: true`.
+#
+# Honesty note carried in the lesson itself. Two of the nine obligation dates — the Article
+# 6(4) documentation duty and the Article 49(2) registration duty that attach to a claimed
+# derogation — are NOT sourced. No retrieved source states a date for them in terms. The
+# OBLIGATIONS table carries a `basis` field, the cell that prints the table counts and names
+# the inferred ones, section 6's prose says which and why, and claims.yaml records the whole
+# thing under `not_claimed`. Nothing the rubric grades depends on those two dates being right.
+#
+# Rubric mutation testing. 23 tests, 69 points. 39 variants of the reference solution were
+# built OUTSIDE the lesson tree and graded through tools/grade.py: 34 plausible-wrong ones,
+# and 5 CONTROLS that are differently-shaped RIGHT answers and must still score 100%.
+# Final: 34 of 34 caught, scoring 53/69 to 67/69 (77% to 97%) — every one loses the points it
+# broke and keeps the rest, which is what partial credit is for — and 5 of 5 controls at 100%,
+# so the rubric rejects wrong answers without rejecting differently-shaped right ones.
+#
+# Two rubric defects found by the author's own first grading run and fixed before mutation
+# testing: a seal test that "mutated" a field to the value it already held (so it proved
+# nothing), and a diff test asserting a changed answer where the trail is in fact byte for
+# byte identical. The second turned into the lesson's sharpest case and is now graded
+# deliberately: `policy-drafter` loses its Article 50(2) marking duty while `q6_transparency`
+# still answers True, because q6 records the OR of two flags and the other one is still set.
+# An implementation that reverse-engineers `changed_answers` from the obligation diff invents
+# a disagreement the interview never recorded, and now fails.
+#
+# Mutation testing then found two more, both in the panel report, both of which scored 69/69:
+#
+#   * `unanimous` computed as "there is no pivot". It is not the same property: two analysts
+#     can split at q4 — one says the system profiles, the other says it poses a significant
+#     risk — and still land on the same tier. The shipped PANEL never exercised that, so a
+#     wrong implementation was invisible. There is now a graded case for it, and it carries
+#     the finding that matters: a panel agreeing on the outcome for two different reasons has
+#     not agreed, because the two reasons imply different fixes.
+#   * Analyst ids left in insertion order inside each tier. On the shipped PANEL insertion
+#     order happens to equal sorted order. A case whose keys are deliberately the reverse
+#     ("zulu" before "alpha") now distinguishes them.
+#
+# One variant initially recorded as MISSED was reclassified as a control after being checked
+# rather than patched around: reading the pivot answers with a `next(..., None)` default, so
+# analysts who were not asked the pivot map to None. At the FIRST question a panel splits on,
+# every analyst was necessarily asked it — the interview only branches on answers that were
+# unanimous up to that point — so the two forms cannot differ. It is now c04 and must stay at
+# 100%. Contorting the rubric to fail a correct implementation would have been the easy,
+# wrong fix.
+#
+# Sync: solutions/lesson_solution.py is GENERATED from lesson.py by splicing the six bodies
+# into the six stubs, so the two files cannot drift. They differ only inside those bodies plus
+# an appended self-check answer section with no counterpart in the student file. The
+# self-check key in lesson.py is salted SHA-256 digests, so the answers are not readable off
+# the student's own page.
+#
+# Open for the owner: the two inferred dates above would be worth replacing with a sourced
+# reading if the Digital Omnibus text ever becomes retrievable — EUR-Lex still returns an
+# empty body for CELEX 32026R1744, as recorded in claims.yaml and independently in T10-L01.
+# Also, MODULES.md marks module 2 `specified`; the owner updates that table centrally, so this
+# lesson does not touch it.
+#
+# ---------------------------------------------------------------------------------------
+# INDEPENDENT REVIEW, 2026-09-16. All four gates re-run from the repo root; claims re-fetched.
+#
+# 40 fresh mutants and 6 controls were built OUTSIDE the lesson tree and graded through
+# tools/grade.py. First pass: 34 of 40 caught (53/69 to 67/69 — every one loses only the
+# points it broke), 6 SURVIVORS at 69/69. All 6 were confirmed non-equivalent by measuring
+# the reference against the mutant on a concrete input, then fixed by tightening hidden
+# cases inside existing tests. Points unchanged at 69, so no rubric entry was added or
+# repriced. Re-run: 40 of 40 caught (58/69 to 67/69), 6 of 6 controls still 100%.
+#
+# The six rubric defects, each a property no shipped fixture exercised:
+#   * `next_deadline` could return the LAST date ahead instead of the earliest. The only
+#     graded case was a transparency system with exactly ONE date ahead, where min and max
+#     coincide. Fixed with a chatty high-risk system that owes marking on 2026-12-02 and
+#     Chapter III on 2027-12-02.
+#   * `majority_tier` could ignore the counts and return the most SEVERE tier anyone reached.
+#     On the shipped PANEL those two rules agree. Fixed with a 3-1 panel whose majority is
+#     `minimal` — severity is the TIE-BREAK, not the rule, and a lone dissenter must not
+#     outvote a panel.
+#   * `requires_reassessment` could also fire on a changed answer that moved no obligation.
+#     The lesson already grades the mirror (an obligation moves, the trail does not); the
+#     reverse was ungraded. Fixed with cv-ranker swapping the profiling override for a
+#     declared significant risk: q4's answer changes, tier and duties and dates do not.
+#   * `claimed` could be hard-wired False. It was only ever asserted False. It is the field
+#     that separates "never claimed" from "claimed and refused", which is what decides
+#     whether the Article 6(4) duty arose at all.
+#   * `condition` could be dropped in the not-claimed branch. credit-scorer sets no condition
+#     flag, so the case was invisible. Fixed with a system that meets 6(3)(b) and never
+#     claimed it — "you could have argued this" is a finding.
+#   * q1/q2/q5 could record the raw field instead of the documented boolean. Only q3, q4 and
+#     q6 answers were graded. A free-text practice string inside a sealed trail also makes a
+#     reworded flag read as a changed answer in the next diff.
+#
+# Checked and NOT changed: `pivot_answers` read with a `next(..., None)` default is genuinely
+# equivalent (at the FIRST split every analyst was necessarily asked the question), re-verified
+# here as control c06 rather than taken from the author's note; two further differently-shaped
+# right answers (gaps as a comprehension over DOCUMENTATION_DUTIES, obligations as a lookup
+# table) also stay at 100%.
+#
+# One prose defect fixed in both files: `diff_records`' docstring said "exactly these seven
+# keys" above a list of eight, while the lesson's own check said "eight documented names".
+#
+# Verified true: all four Article 6 quotes, the Article 49(2) quote and both Article 50 FAQ
+# quotes re-fetched on 2026-09-16 and match claims.yaml verbatim; the Commission page carries
+# the 2027-12-02 and 2028-08-02 dates as recorded. Both prerequisite ids resolve to real
+# lessons (lessons/T10-L01-ai-act-conformity-pack, P01-L01-article-12-logging). The five
+# self-check digests really do hash the published answers b,b,c,c,b. Longest prose run before
+# a runnable cell is 36 lines, inside the ~40 the contract allows. The lesson delivers all six
+# artefacts MODULES.md module 2 specified, with the `reclassify` -> `diff_records` deviation
+# the author declared above.
+#
+# Left for the owner, not defects: section 9's prose names the shipped panel's pivot ("question
+# 3") in an illustration of what a useful report says, a few lines before the student computes
+# it — true, and a small spoiler. `measured_seconds: 0.0` is a real measurement, not a missing
+# one: the lesson is pure standard library and runs in under 50 ms.
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: re-ran all four gates; 40 mutants + 6 controls through tools/grade.py; 6 rubric defects found at 100% and fixed by tightening hidden cases (next_deadline earliest-vs-last, majority_tier count-vs-severity, requires_reassessment on a changed answer alone, claimed always False, condition dropped when unclaimed, q1/q2/q5 recording raw fields); 40/40 caught after, reference 100%, stub 0%, points unchanged at 69; all claims.yaml sources re-fetched and quotes verified verbatim."
+measured_seconds: 0.0
+measured_peak_mib: 21

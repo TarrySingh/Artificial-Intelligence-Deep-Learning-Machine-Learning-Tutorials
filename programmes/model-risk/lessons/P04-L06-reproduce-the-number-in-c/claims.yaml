@@ -1,0 +1,136 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run —
+# every sum, every ULP distance, every digit count, the unit roundoff, the bound and the ratio
+# between the bound and the observed gap — and are therefore not claims; they do not appear
+# here.
+#
+# This lesson is about reproducing a number exactly, so the standard it holds itself to is the
+# one it teaches. Two deliberate NON-claims are recorded at the foot of this file.
+claims:
+  - id: numpy-sum-is-pairwise-not-recursive
+    claim: >-
+      numpy's sum (and np.add.reduce) does not in general perform a plain left-to-right
+      accumulation: it often uses partial pairwise summation, and the improved precision is
+      always provided when no axis is given. The lesson uses this twice — in section 4, to
+      show that the student's own pairwise sum and numpy's pairwise sum land on different
+      doubles, and in the common-mistakes section, to say that reconciling a numpy figure
+      against a spreadsheet is comparing two different algorithms rather than two runs of
+      one.
+    where: "lesson.py section 4 (exercise 2 introduction and _check_pairwise_sum output); section 12 (common mistakes)"
+    source_url: https://numpy.org/doc/stable/reference/generated/numpy.sum.html
+    source_title: "numpy.sum — NumPy v2 Manual, Notes"
+    quote: >-
+      For floating point numbers the numerical precision of sum (and np.add.reduce) is in
+      general limited by directly adding each number individually to the result causing
+      rounding errors in every step. However, often numpy will use a numerically better
+      approach (partial pairwise summation) leading to improved precision in many use-cases.
+      This improved precision is always provided when no axis is given.
+    accessed: 2026-09-16
+
+  - id: math-fsum-tracks-partial-sums
+    claim: >-
+      Python's math.fsum returns an accurate floating-point sum by tracking multiple
+      intermediate partial sums, and its accuracy rests on IEEE-754 guarantees with
+      round-half-even; the documentation records that on some non-Windows builds an
+      intermediate sum may be double-rounded and come out wrong in its least significant bit.
+      This lesson uses math.fsum as its reference total, and the documented least-significant-
+      bit caveat is why every check and every rubric case allows the compensated sum up to two
+      representable steps rather than demanding exact equality.
+    where: "lesson.py section 5 (exercise 3 introduction, _check_kahan_sum); tests/test_lesson.py::test_kahan_sum_recovers_what_the_others_lose"
+    source_url: https://docs.python.org/3/library/math.html
+    source_title: "math — Mathematical functions, Python 3 documentation (math.fsum)"
+    quote: >-
+      Return an accurate floating-point sum of values in the iterable. Avoids loss of
+      precision by tracking multiple intermediate partial sums.
+    quote_context: >-
+      The same entry continues: "The algorithm's accuracy depends on IEEE-754 arithmetic
+      guarantees and the typical case where the rounding mode is half-even. On some
+      non-Windows builds, the underlying C library uses extended precision addition and may
+      occasionally double-round an intermediate sum causing it to be off in its least
+      significant bit."
+    accessed: 2026-09-16
+
+  - id: kahan-1965-compensated-summation
+    claim: >-
+      Compensated summation — the second accumulator that carries the part of each addition
+      the first one could not represent — was published by W. Kahan in 1965, as a one-page
+      note in Communications of the ACM, volume 8, issue 1, page 40, titled "Pracniques:
+      further remarks on reducing truncation errors". The lesson attributes the algorithm to
+      that note, and names the form the student implements the Kahan-Babuska-Neumaier form —
+      the branched variant, which differs from the 1965 original in handling an addend larger
+      than the running sum, a case the lesson's own self-test exercises directly.
+    where: "lesson.py section 5; lesson.c EXERCISE 3 comment block; tests/test_lesson.py::test_kahan_handles_an_addend_larger_than_the_running_sum"
+    source_url: https://api.crossref.org/works/10.1145/363707.363723
+    source_title: "Crossref metadata record for DOI 10.1145/363707.363723 — W. Kahan, Communications of the ACM 8(1):40, January 1965"
+    quote: >-
+      Pracniques: further remarks on reducing truncation errors
+    quote_context: >-
+      The Crossref record gives author W. Kahan (University of Toronto), container-title
+      Communications of the ACM, volume 8, issue 1, page 40, published 1965. The ACM Digital
+      Library landing page for the same DOI, https://dl.acm.org/doi/10.1145/363707.363723,
+      refused an automated fetch (HTTP 403) on the access date, so the bibliographic record
+      was taken from Crossref, which is the registration authority for the DOI. The lesson
+      quotes no sentence from the article itself and makes no claim about its contents beyond
+      authorship, venue and date.
+    accessed: 2026-09-16
+
+  - id: higham-1993-summation-methods-compared
+    claim: >-
+      The comparison this lesson runs — several summation methods, ranked by how far each
+      lands from the exact total on one array — is the shape of a published analysis: N. J.
+      Higham, "The accuracy of floating-point summation", SIAM Journal on Scientific
+      Computing, volume 14, issue 4, pages 783-799, 1993. The lesson cites it as the place a
+      reader goes for the error analysis it deliberately does not derive, and claims nothing
+      about its results.
+    where: "lesson.py section 5 (further reading pointer); meta.yaml design notes"
+    source_url: https://research.manchester.ac.uk/en/publications/the-accuracy-of-floating-point-summation/
+    source_title: "THE ACCURACY OF FLOATING-POINT SUMMATION — Research Explorer, The University of Manchester"
+    quote: >-
+      THE ACCURACY OF FLOATING-POINT SUMMATION
+    quote_context: >-
+      The institutional repository record gives author N J Higham, journal SIAM Journal on
+      Scientific Computing, volume 14, issue 4, pages 783-799, year 1993. The publisher's
+      page is behind a paywall and the author's PDF did not yield extractable text on the
+      access date, so no sentence from the paper is quoted anywhere in this lesson and no
+      bound is attributed to it. The one bound the lesson does state — (n-1) * u * sum_abs —
+      is derived in the notebook from first principles, in two sentences, and is checkable by
+      the reader.
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026
+    claim: >-
+      On 17 April 2026 the Federal Reserve Board issued revised guidance on model risk
+      management as SR 26-2, superseding SR 11-7 of 4 April 2011 and SR 21-8 of 9 April 2021,
+      and the agencies say they revised it to clarify model risk management principles and to
+      emphasise a risk-based approach tailored to a banking organisation's model risk profile.
+      This lesson cites it for one sentence of context in section 1, and for the observation
+      that it prescribes no number of agreeing digits — which is the gap the lesson fills with
+      a bound the student computes.
+    where: "lesson.py section 1 (the one sentence of regulatory context in the notebook)"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "SR 26-2: Revised Guidance on Model Risk Management — Board of Governors of the Federal Reserve System"
+    quote: >-
+      clarify model risk management principles and to emphasize a risk-based approach to model
+      risk management that is tailored to a banking organization's model risk profile and the
+      size and complexity of its operations
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. THE TWO TEAMS. The opening scenario — a first line and a second line reporting a
+#    portfolio total that differs in the sixth decimal place — is a teaching frame, not a
+#    reported incident. No firm, no date and no figure is attributed to anyone. The numbers
+#    the student sees are produced by their own build, from a synthetic portfolio generated in
+#    the notebook, and the notebook says so at the top of section 1.
+#
+# 2. THE ORDERING FOLKLORE. Section 6 refers to the advice "add the small ones first" and
+#    declines to assert it. On this lesson's signed portfolio, ascending-magnitude order
+#    measured WORSE than as-generated order, and the notebook prints that table rather than
+#    repeating the rule. The rule has a real basis for all-positive sums and the lesson does
+#    not have a source establishing its scope, so it is presented as something to measure on
+#    your own data before quoting it in a report, and nothing more.
+#
+# 3. IEEE 754 ITSELF. The lesson asserts nothing about the standard that it does not measure.
+#    The significand width, DBL_EPSILON, the unit roundoff and the agreement between C and
+#    Python on all three are printed by the student's own binary and interpreter in section 1,
+#    so the standard is never cited and never needs to be.

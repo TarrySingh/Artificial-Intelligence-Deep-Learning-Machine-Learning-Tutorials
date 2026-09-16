@@ -1,0 +1,67 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output — record counts, seconds, MB/s, peak
+# RSS, the speedup — are computed by the code they run and are therefore not claims; they are
+# absent from this file on purpose.
+#
+# This lesson downloads nothing and reads no external dataset: the export is generated
+# deterministically inside lesson.c from a fixed seed, so there is nothing to license. The
+# lesson asserts nothing about the size of any real-world export; where the prose talks about
+# an export larger than memory, the only evidence offered is the growth table the student runs
+# in section 11.
+claims:
+  - id: rfc4180-quoting-rule
+    claim: >-
+      The CSV rules this lesson's scanner implements are not invented here. RFC 4180 section 2
+      states that fields containing line breaks, double quotes or commas should be enclosed in
+      double quotes. That is the rule the naive split-on-comma in section 2 of the notebook
+      violates, and the rule the kQuoted state exists to honour.
+    where: "lesson.py section 2 (why line.split(',') is not a scanner); lesson.c EXERCISE 3 grammar"
+    source_url: https://www.rfc-editor.org/rfc/rfc4180
+    source_title: "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files"
+    quote: >-
+      Fields containing line breaks (CRLF), double quotes, and commas should be enclosed in
+      double-quotes.
+    quote_context: "section 2, rule 6"
+    accessed: 2026-09-16
+
+  - id: rfc4180-escaped-quote
+    claim: >-
+      A double quote appearing inside a quoted field is escaped by writing it twice. This is
+      why the kQuoteSeen state exists at all: on reading a quote inside a quoted field the
+      scanner cannot yet tell a closing quote from the first half of an escape, and must wait
+      for the next byte — which may arrive in the next chunk.
+    where: "lesson.c EXERCISE 3 grammar (kQuoteSeen); lesson.py section 7 chunk-invariance check"
+    source_url: https://www.rfc-editor.org/rfc/rfc4180
+    source_title: "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files"
+    quote: >-
+      If double-quotes are used to enclose fields, then a double-quote appearing inside a field
+      must be escaped by preceding it with another double quote.
+    quote_context: "section 2, rule 7"
+    accessed: 2026-09-16
+
+  - id: rfc4180-final-line-break-optional
+    claim: >-
+      The last record of a CSV file may or may not end with a line break. This is the single
+      rule that separates a legal final record from a truncated one, and it is the whole
+      argument of EXERCISE 4: a scanner that treats a missing final newline as truncation
+      silently loses the last record of every export written by a tool that does not emit one.
+    where: "lesson.py section 8 (scan_finish) and section 14 self-check question 2; lesson.c EXERCISE 4"
+    source_url: https://www.rfc-editor.org/rfc/rfc4180
+    source_title: "RFC 4180 — Common Format and MIME Type for Comma-Separated Values (CSV) Files"
+    quote: "The last record in the file may or may not have an ending line break."
+    quote_context: "section 2, rule 2"
+    accessed: 2026-09-16
+
+  - id: ru-maxrss-unit-is-platform-specific
+    claim: >-
+      ru_maxrss is the maximum resident set size used by a process, and its UNIT is not the
+      same everywhere: the Linux manual page documents it in kibibytes, while other systems
+      report bytes. The lesson therefore does not assert a unit anywhere — lesson.c prints the
+      raw counter and the notebook measures the unit in a separate process that touches a known
+      number of bytes, then converts.
+    where: "lesson.c peak_rss_raw() and cmd_rssunit(); lesson.py section 10 (rss_scale)"
+    source_url: https://man7.org/linux/man-pages/man2/getrusage.2.html
+    source_title: "getrusage(2) — Linux manual page"
+    quote: "This is the maximum resident set size used (in KiB)."
+    quote_context: "description of ru_maxrss; the page says KiB, not kilobytes"
+    accessed: 2026-09-16

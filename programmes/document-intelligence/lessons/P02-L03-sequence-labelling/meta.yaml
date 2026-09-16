@@ -1,0 +1,120 @@
+id: P02-L03-sequence-labelling
+title: From rules to a tagger — sequence labelling over document tokens, scored by module 1's harness
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P02-L01-extraction-evaluation
+  - P02-L02-layout-reading-order
+objectives:
+  - "Implement a BIO feature template over a document token stream — shape, affix, neighbouring token, line head, line position and one conjunction — and name the feature that carries the work"
+  - "Implement Viterbi decoding and demonstrate a case where greedy per-token tagging returns a lower-scoring sequence"
+  - "Implement the structured perceptron update, including the transition half, and show that one wrong tag breaks two bigrams"
+  - "Decode BIO tags back into field values, including the stray I- case a decoder is free to emit"
+  - "Measure the trained tagger against the rule baseline with module 1's harness and state which field types it improved and which it did not"
+datasets: []            # none: the token stream is generated deterministically inside the
+                        # lesson (build_token_docs, seed 20260916) and is declared SYNTHETIC.
+                        # There is no PDF library, OCR engine or model API in this environment,
+                        # so nothing is downloaded and nothing is licensed.
+points: 90              # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-16. All four gates run from the repo root on the venv interpreter; the
+# measured figures at the bottom were written back by tools/execute.py and never typed.
+#
+# WHAT THIS MODULE IS. MODULES.md module 3: an averaged structured perceptron in numpy over BIO
+# tags on the module 2 token stream, hand-built features, trained and then scored with module
+# 1's harness — same scorer, different extractor — against the rule-based baseline, ending in a
+# statement of which field types the tagger actually improved. Built as specified.
+#
+# TWO DELIBERATE DEVIATIONS FROM THE SPEC, both stated in the notebook:
+#  1. The token stream is regenerated inside this lesson rather than imported from P02-L02. A
+#     student bundle is one lesson directory, so a cross-lesson import would not survive the
+#     build. The Token record carries exactly what module 2 produces (text, line, pos, page)
+#     plus `line_head`, the lower-cased first token of the line, which is module 2's line
+#     segmentation made available as a feature.
+#  2. The weights are averaged once per training DOCUMENT rather than once per update. It is a
+#     coarser approximation of Collins's averaged perceptron and costs one vectorised add
+#     instead of a timestamp table. The notebook says so, and prints the raw and averaged
+#     held-out scores side by side at every epoch instead of asserting which is better.
+#
+# A RESULT THE LESSON DID NOT PLAN AND DOES NOT HIDE. On this corpus greedy decoding scores a
+# HIGHER held-out macro F1 than Viterbi with the same weights. The cause is measured in the
+# notebook, not asserted: the transition array carries a span-length prior fitted on training
+# suppliers whose names average 3.00 tokens, the held-out suppliers average 4.07, and Viterbi —
+# the decoder that actually reads the transitions — truncates them to 3.47 while greedy, which
+# reads none, lands on 4.07. Section 14 prints all four numbers. The lesson reports Viterbi
+# throughout, because that is the decoder the model was trained with, and it turns the surprise
+# into the point: a decoder is a component with a measurable contribution, and the harness from
+# module 1 is what measures it. The "common mistakes" bullet and self-check question 6 were
+# rewritten after the measurement, not before it.
+#
+# MUTATION TESTING. 19 plausible-wrong variants of the reference solution were built in a
+# scratch directory outside the lesson and graded, plus 2 controls. Measured scores, not
+# predicted ones. Every mutant loses the points for the behaviour it breaks and keeps the rest,
+# so partial credit survives all 19:
+#   1. word_shape does not collapse runs                        -> 72/90
+#   2. pos feature reads the list index, not tok.pos            -> 87/90
+#   3. feature template drops the head|shape conjunction        -> 80/90
+#   4. decoder is greedy argmax per token                       -> 74/90
+#   5. viterbi takes argmax on the wrong axis                   -> 69/90
+#   6. perceptron_update skips the transition half              -> 85/90
+#   7. transitions updated only at mismatched positions         -> 85/90
+#   8. span reader drops a stray I- tag                         -> 85/90
+#   9. span reader lets the LAST span of a field win            -> 87/90
+#  10. sequence_scores returns the transpose                    -> 77/90
+#  11. improvement_table omits fields both extractors missed    -> 85/90
+#  12. fields_improved sorts by delta descending                -> 86/90
+#  13. START row hard-coded to this lesson's 13                 -> 76/90
+#  14. viterbi ignores the START row                            -> 86/90
+#  15. emission update is one-sided (gold up, pred untouched)   -> 84/90
+#  16. features keep the token's original case                  -> 85/90
+#  17. sequence_scores averages instead of summing              -> 85/90
+#  18. fields_improved treats min_delta as strict               -> 86/90
+#  19. span tokens joined with no separator                     -> 75/90
+# Mutants 4, 5, 10 and 19 are the instructive ones: each loses more than its own case is worth,
+# because a decoder or a span reader that is wrong in a well-shaped way also drags down the
+# corpus-level case that trains on the lesson's own documents. That is the bug's real blast
+# radius, not a grading accident. Two variants (14 and 16) survived a first pass and the
+# RUBRIC was tightened until they did not: 14 was slipping through a START-row case whose
+# correct answer happened to be tag 0, and 16 through a feature case whose token had no
+# letters in it.
+# Two further variants are deliberate CONTROLS — differently shaped and equally correct:
+# word_shape rewritten with itertools.groupby, and viterbi_decode rewritten with plain Python
+# loops instead of numpy broadcasting. Both score 90/90, so the rubric rejects wrong answers
+# without rejecting right ones it did not expect.
+#
+# INDEPENDENT REVIEW, 2026-09-16. All four gates re-run from the repo root, not taken on trust:
+# execute PASS (0.8s / 34 MiB against a 90s cpu8 budget), grade --solution 100%, grade (stub) 0%,
+# jupytext converts. All four claims.yaml sources re-fetched and each quote confirmed verbatim.
+# 22 fresh mutants were built in a scratch directory outside the lesson and graded. 19 of the 22
+# died on the rubric as authored; three survived at 90/90, and two of those were rubric DEFECTS
+# that are now fixed:
+#   * `decode_spans` that treats `O` as a token to SKIP rather than a span boundary. It buffers
+#     the same tokens as the reference on all 200 documents of this corpus — measured, 0
+#     disagreements, identical macro F1 — and diverged only on `B-x I-x O I-x`, which no case
+#     tested. `test_decode_spans_absent_and_first_span_wins` now grades it; the mutant scores
+#     87/90.
+#   * `improvement_table` that hard-codes "normalised" and ignores its `mode` argument. The old
+#     `set(exact) == set(FIELDS)` assertion carried a comment claiming it graded the pass-through
+#     and in fact graded only the key set. It now scores both sides on records whose exact and
+#     normalised verdicts differ, so a table that forwards `mode` to neither side (85/90) or to
+#     only one side (85/90) both fail.
+# The third survivor is NOT a defect: floor-dividing in `Tagger.averaged()` costs a measured
+# 0.9639 -> 0.9056 held-out macro F1, but `averaged()` is provided scaffolding, not a graded
+# stub, so it is outside the rubric's contract and no student can write it. The corpus test's
+# wide band is deliberate and earns its keep — a plain-Python rewrite of `viterbi_decode` and an
+# itertools.groupby rewrite of `word_shape` both still score 90/90.
+# Two further fixes gates cannot see: all six self-check answers were (b), which is a set a
+# student can pass without reading (options for questions 2, 4 and 6 reordered, answers now
+# b/c/b/a/b/c, matching the spread in P02-L01, P02-L02 and T00-L01); and one student-facing
+# `_check_improvement` assertion had no failure message.
+# Reported by the reviewer and since resolved by the owner: the directory and `id` were the bare
+# `P02-L03`, where every sibling uses a descriptive slug; both are now `P02-L03-sequence-labelling`.
+# Still open, and the owner's call: the closing prose run (post-Viterbi discussion + a six-question
+# self-check) is 70 lines against a 39-41 line house maximum in the three sibling lessons.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16 — four gates re-run; 22 mutants graded, 19 died as authored, 2 rubric defects found and fixed (decode_spans O-boundary, improvement_table mode pass-through), 1 survivor proved out-of-contract by measurement; all four claims.yaml sources re-fetched and quotes confirmed."
+measured_seconds: 0.7
+measured_peak_mib: 34

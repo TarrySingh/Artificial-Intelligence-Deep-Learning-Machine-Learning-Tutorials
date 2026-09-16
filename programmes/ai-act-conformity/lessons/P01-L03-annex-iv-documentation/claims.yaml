@@ -1,0 +1,266 @@
+# Every factual claim this lesson makes about the world, with a source and the date the
+# source was read. Numbers a student sees in output — how many sections emit, how many stamps
+# need attention, the SHA-256 digests, the days-to-deadline — are computed by the code they
+# run from the synthetic artefacts in lesson.py. They are not claims and do not appear here.
+#
+# This lesson is engineering material about the data structures a documentation duty implies.
+# It is not legal advice, and nothing here substitutes for the Official Journal text or for
+# professional advice on a specific system.
+#
+# SOURCING RULE, inherited from T10-L01 and P01-L01: a `quote` field contains text actually
+# retrieved from `source_url` on the `accessed` date. Where the authoritative text could not
+# be retrieved it is recorded under `authoritative_text_url` with a `retrieval_note`, and the
+# claim is carried by sources that were retrieved. No quote in this file is reconstructed from
+# memory or stitched together across an ellipsis.
+#
+# WHAT IS NOT A CLAIM. The mapping from Annex IV's nine points to the specific field paths in
+# lesson.py's ANNEX_IV schema is the LESSON'S OWN modelling choice, stated as such in section
+# 3 of lesson.py. It is not sourced here because it is not a claim about the world: a real
+# provider's schema differs because their pipeline outputs differ. Likewise the provider, the
+# system, every artefact and every figure in section 2 of lesson.py are synthetic, declared as
+# synthetic in meta.yaml, and describe no real product.
+claims:
+  - id: article-11-1-drawn-up-and-kept-up-to-date
+    kind: regulatory
+    claim: >-
+      Article 11(1) of the AI Act requires the technical documentation of a high-risk AI
+      system to be drawn up before the system is placed on the market or put into service AND
+      to be kept up to date. The second half is the whole premise of this lesson: a document
+      that was true when it was signed and has drifted since is a document that no longer
+      satisfies the article, which is why every section here is generated from a typed
+      artefact and carries a content digest that makes drift detectable.
+    where: "lesson.py opening cell; section 9 (staleness); meta.yaml objectives"
+    source_url: https://artificialintelligenceact.eu/article/11/
+    source_title: "EU Artificial Intelligence Act — Article 11: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      The technical documentation of a high-risk AI system shall be drawn up before that
+      system is placed on the market or put into service and shall be kept up-to date.
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-16
+    note: >-
+      Secondary source: a reproduction of the Official Journal text of Regulation (EU)
+      2024/1689, used here for article text and numbering, cross-checkable against EUR-Lex
+      CELEX 32024R1689.
+
+  - id: annex-iv-opening-and-nine-points
+    kind: regulatory
+    claim: >-
+      Annex IV states that the technical documentation referred to in Article 11(1) shall
+      contain at least the listed information, as applicable to the relevant AI system, and
+      then lists nine numbered points: (1) a general description of the AI system; (2) a
+      detailed description of the elements of the AI system and of the process for its
+      development; (3) detailed information about the monitoring, functioning and control of
+      the AI system; (4) a description of the appropriateness of the performance metrics;
+      (5) a detailed description of the risk management system; (6) a description of relevant
+      changes made through the lifecycle; (7) the harmonised standards applied or the
+      solutions adopted instead; (8) a copy of the EU declaration of conformity; and (9) a
+      detailed description of the post-market performance evaluation system. "At least" and
+      "as applicable" are why the lesson's schema is a defended modelling choice rather than a
+      transcription.
+    where: "lesson.py section 1 (ANNEX_IV_POINTS) and section 3 (the ANNEX_IV schema)"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation Referred to in Article 11(1) (reproduction of the OJ text)"
+    quote: >-
+      The technical documentation referred to in Article 11(1) shall contain at least the
+      following information, as applicable to the relevant AI system
+    accessed: 2026-09-16
+    corroborating_source_url: https://www.praxikon.com/en/ai-act/bijlage/4
+    corroborating_source_title: "Annex IV AI Act: Technical documentation referred to in Article 11(1), official text (reproduction; reached by a 301 redirect from aiactblog.nl)"
+    corroborating_note: >-
+      A second, independently published reproduction was retrieved on the same date and
+      carries the same point numbering and the same wording for points 1 and 3.
+
+  - id: annex-iv-point-4-performance-metrics
+    kind: regulatory
+    claim: >-
+      Annex IV point 4 requires a description of the appropriateness of the performance
+      metrics for the specific AI system. It asks for an argument about the metric, not only
+      a number — which is why section 4 of the lesson's schema requires a justification field
+      alongside the metric, its value and its interval, and why a section that can produce the
+      number but not the justification is refused.
+    where: "lesson.py section 3 (ANNEX_IV section 4) and section 8 (the emitted document)"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A description of the appropriateness of the performance metrics for the specific AI
+      system
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-5-risk-management-system
+    kind: regulatory
+    claim: >-
+      Annex IV point 5 requires a detailed description of the risk management system in
+      accordance with Article 9. The lesson's section 5 therefore requires the register's
+      method, its identified risks, its mitigations and its residual risks — and the planted
+      defect is a residual-risk list holding one entirely blank template row, which is truthy
+      and sources nothing.
+    where: "lesson.py section 3 (ANNEX_IV section 5), section 5 (is_sourced), section 11"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A detailed description of the risk management system in accordance with Article 9
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-6-lifecycle-changes
+    kind: regulatory
+    claim: >-
+      Annex IV point 6 requires a description of relevant changes made by the provider to the
+      system through its lifecycle. This is why section 6 of the lesson's schema draws on both
+      the change log and the model registry's previous version, and so carries two provenance
+      stamps rather than one.
+    where: "lesson.py section 3 (ANNEX_IV section 6) and section 8 (two stamps on one section)"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A description of relevant changes made by the provider to the system through its
+      lifecycle
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-7-standards-or-other-solutions
+    kind: regulatory
+    claim: >-
+      Annex IV point 7 asks for a list of the harmonised standards applied in full or in part
+      whose references have been published in the Official Journal and, where no such
+      harmonised standards have been applied, a detailed description of the solutions adopted
+      to meet the Chapter III, Section 2 requirements, including a list of other relevant
+      standards and technical specifications applied. It is genuinely an either/or, which is
+      why the lesson's schema models it with an `any_of` group and why an empty list of
+      harmonised standards is not, on its own, a defect. Self-check question 4 turns on this.
+    where: "lesson.py section 3 (ANNEX_IV section 7), section 6 (any_of), self-check question 4"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A list of the harmonised standards applied in full or in part the references of which
+      have been published in the Official Journal of the European Union; where no such
+      harmonised standards have been applied, a detailed description of the solutions adopted
+      to meet the requirements set out in Chapter III, Section 2, including a list of other
+      relevant standards and technical specifications applied
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-8-declaration-of-conformity
+    kind: regulatory
+    claim: >-
+      Annex IV point 8 requires a copy of the EU declaration of conformity referred to in
+      Article 47. In this programme that declaration is module 8's output, so the lesson's
+      SOURCES deliberately contain no `declaration` artefact and section 8 of the generated
+      document is refused with both of its paths named as missing. That is the honest state of
+      a pack at module 3, and a generator that emitted a blank section 8 instead would be
+      producing exactly the green pack this module exists to prevent.
+    where: "lesson.py section 2 (no declaration artefact), section 6, section 8 (NOT EMITTED)"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A copy of the EU declaration of conformity referred to in Article 47
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-9-post-market-performance
+    kind: regulatory
+    claim: >-
+      Annex IV point 9 requires a detailed description of the system in place to evaluate the
+      AI system's performance in the post-market phase in accordance with Article 72,
+      including the post-market monitoring plan referred to in Article 72(3). The lesson's
+      section 9 is generated from a post-market plan artefact for that reason, and module 7 of
+      this programme is where that artefact comes from.
+    where: "lesson.py section 3 (ANNEX_IV section 9) and the closing cell"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      A detailed description of the system in place to evaluate the AI system performance in
+      the post-market phase in accordance with Article 72, including the post-market
+      monitoring plan referred to in Article 72(3)
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-2g-validation-and-testing
+    kind: regulatory
+    claim: >-
+      Annex IV point 2(g) requires the validation and testing procedures used, including
+      information about the validation and testing data and their main characteristics; the
+      metrics used to measure accuracy, robustness and compliance with the other Chapter III,
+      Section 2 requirements as well as potentially discriminatory impacts; and test logs and
+      test reports dated and signed by the responsible persons. The lesson's section 2
+      therefore requires a validation report's procedures and test logs alongside the dataset
+      manifest, and its planted defect is the manifest's blank labelling procedure.
+    where: "lesson.py section 3 (ANNEX_IV section 2, basis line) and the NOT EMITTED table"
+    source_url: https://artificialintelligenceact.eu/annex/4/
+    source_title: "EU Artificial Intelligence Act — Annex IV: Technical Documentation (reproduction of the OJ text)"
+    quote: >-
+      the validation and testing procedures used, including information about the validation
+      and testing data used and their main characteristics; metrics used to measure accuracy,
+      robustness and compliance with other relevant requirements set out in Chapter III,
+      Section 2, as well as potentially discriminatory impacts; test logs and all test reports
+      dated and signed by the responsible persons, including with regard to pre-determined
+      changes as referred to under point (f)
+    accessed: 2026-09-16
+
+  - id: annex-iv-point-3-human-oversight-measures
+    kind: regulatory
+    claim: >-
+      Annex IV point 3 requires detailed information about the monitoring, functioning and
+      control of the AI system, in particular its capabilities and limitations in performance
+      including the degrees of accuracy for specific persons or groups; the foreseeable
+      unintended outcomes and sources of risks to health and safety, fundamental rights and
+      discrimination; the human oversight measures needed in accordance with Article 14; and
+      specifications on input data. The human-oversight item is the one the lesson's
+      control_design artefact deliberately does not carry, because that is module 5's output —
+      so section 3 is refused with that exact path named.
+    where: "lesson.py section 2 (control_design), section 6, section 8 (NOT EMITTED)"
+    source_url: https://www.praxikon.com/en/ai-act/bijlage/4
+    source_title: "Annex IV AI Act: Technical documentation referred to in Article 11(1), official text (reproduction; reached by a 301 redirect from aiactblog.nl)"
+    quote: >-
+      Detailed information about the monitoring, functioning and control of the AI system, in
+      particular with regard to: its capabilities and limitations in performance, including
+      the degrees of accuracy for specific persons or groups of persons on which the system is
+      intended to be used and the overall expected level of accuracy in relation to its
+      intended purpose; the foreseeable unintended outcomes and sources of risks to health and
+      safety, fundamental rights and discrimination in view of the intended purpose of the AI
+      system; the human oversight measures needed in accordance with Article 14, including the
+      technical measures put in place to facilitate the interpretation of the outputs of AI
+      systems by the deployers; specifications on input data, as appropriate
+    corroborating_source_url: https://artificialintelligenceact.eu/annex/4/
+    accessed: 2026-09-16
+    note: >-
+      Quoted from the second reproduction because that is where the full sub-point text of
+      point 3 was retrieved on the access date; the first reproduction, cited throughout the
+      rest of this file, returned the same opening wording for the point.
+
+  - id: high-risk-application-dates-after-the-omnibus
+    kind: regulatory
+    claim: >-
+      After the Digital Omnibus on AI, which entered into force on 27 July 2026, the Chapter
+      III high-risk duties — Article 11 technical documentation among them — apply from
+      2 December 2027 for Annex III stand-alone high-risk systems and from 2 August 2028 for
+      AI integrated into products covered by Annex I product-safety law. Those are the two
+      rungs the lesson prints, and the days-to-deadline figures next to them are computed from
+      AS_OF by the code the student runs.
+    where: "lesson.py section 1 (the TIMETABLE cell)"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      For systems integrated into products such as lifts or toys, the rules will apply from
+      2 August 2028
+    corroborating_quote: >-
+      the rules for high-risk use cases in certain sensitive areas (Annex III) have been
+      extended to 2 December 2027
+    corroborating_quote_2: "entered into force on 27 July 2026"
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+    retrieval_note: >-
+      The authoritative EUR-Lex text of CELEX 32026R1744 was not retrieved for this lesson;
+      two independent reviewers of the prerequisite lesson T10-L01 recorded it returning
+      HTTP 202 with an empty body on 2026-09-16 across three URL forms and two HTTP clients.
+      This lesson cites the Commission's own statement of the dates and records that the
+      enacting text was not retrieved, as the rest of the programme does.
+    accessed: 2026-09-16
+
+# --- Explicitly NOT claimed ------------------------------------------------------------
+# * No claim is made that this generator's output would be ACCEPTED by any authority,
+#   notified body or market surveillance authority. It checks that every emitted section has
+#   a source; it cannot check that the source is true, and lesson.py's common-mistakes section
+#   says so in those words.
+# * No standard is named in the lesson's fictional `standards` artefact. Naming a real
+#   management or risk standard as "applied" by a fictional provider would be a claim about a
+#   document this lesson has not read, so the artefact describes "the provider's own control
+#   set" instead.
+# * The Annex IV sub-point letters beyond 1(a)-(h), 2(g) and point 3 are not enumerated in
+#   lesson.py, because only those were retrieved verbatim on the access date. The schema's
+#   section 2 therefore cites "Annex IV point 2, including 2(g)" rather than claiming a
+#   sub-point breakdown that was not read.

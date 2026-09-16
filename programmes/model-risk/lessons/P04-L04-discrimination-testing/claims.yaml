@@ -1,0 +1,146 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# This lesson is about how sure you are of a number, so the standard it holds itself to is the
+# one it teaches. Three deliberate NON-claims are recorded at the foot of this file: the
+# material AUC difference, the required power and the significance level are policy inputs the
+# notebook passes in as arguments, and the lesson nowhere says where they come from, because
+# it has no source that says so.
+claims:
+  - id: auc-is-the-probability-of-a-correct-ranking
+    claim: >-
+      The area under a receiver operating characteristic curve is the probability that a
+      randomly chosen positive case is ranked with greater suspicion than a randomly chosen
+      negative case. This is the definition section 1 computes by brute force in
+      concordance_by_pairs, and it is the quantity every exercise in this lesson estimates.
+    where: "lesson.py section 1 (prose and the concordance_by_pairs docstring)"
+    source_url: https://jhanley.biostat.mcgill.ca/software/Hanley_McNeil_Radiology_82.pdf
+    source_title: >-
+      Hanley and McNeil — The Meaning and Use of the Area under a Receiver Operating
+      Characteristic (ROC) Curve, Radiology 143(1):29-36, April 1982
+    quote: >-
+      the area represents the probability that a randomly chosen diseased subject is
+      (correctly) rated or ranked with greater suspicion than a randomly chosen non-diseased
+      subject.
+    quote_context: >-
+      Read on 2026-09-16 from the full text of the paper hosted by its first author at McGill
+      University. The journal of record is Radiology 143(1):29-36,
+      https://pubs.rsna.org/doi/10.1148/radiology.143.1.7063747, DOI
+      10.1148/radiology.143.1.7063747, PMID 7063747, which is paywalled.
+    accessed: 2026-09-16
+
+  - id: auc-equals-the-wilcoxon-mann-whitney-statistic
+    claim: >-
+      The probability of a correct ranking that the ROC area represents is the same quantity
+      estimated by the nonparametric Wilcoxon statistic. That equivalence is what turns an
+      O(n_pos * n_neg) pairwise count into a single sort, and it is exactly what exercise 1
+      implements as the Mann-Whitney rank identity.
+    where: "lesson.py section 2 (exercise 1 prose and the auc_by_ranks docstring); tests/test_lesson.py::test_auc_matches_pairwise_with_ties"
+    source_url: https://jhanley.biostat.mcgill.ca/software/Hanley_McNeil_Radiology_82.pdf
+    source_title: >-
+      Hanley and McNeil — The Meaning and Use of the Area under a Receiver Operating
+      Characteristic (ROC) Curve, Radiology 143(1):29-36, April 1982
+    quote: >-
+      this probability of a correct ranking is the same quantity that is estimated by the
+      already well-studied nonparametric Wilcoxon statistic.
+    quote_context: >-
+      The lesson does not ask the student to take the equivalence on trust: _check_auc and
+      tests/test_lesson.py both compare the rank identity against the pairwise count on a
+      sample engineered to be full of ties, to twelve decimal places.
+    accessed: 2026-09-16
+
+  - id: delong-correlated-roc-areas
+    claim: >-
+      When two or more empirical ROC curves are constructed from tests performed on the SAME
+      individuals, an analysis of the differences between the curves must take the correlated
+      nature of the data into account. DeLong, DeLong and Clarke-Pearson published a
+      nonparametric approach to it in 1988, deriving an estimated covariance matrix from the
+      theory of generalised U-statistics. Exercise 5 implements that covariance, and section 7
+      measures what ignoring it costs.
+    where: "lesson.py sections 5, 6 and 7 (paired comparison, delong_test, the power study); tests/test_lesson.py::test_delong_covariance_term"
+    source_url: https://scholars.duke.edu/publication/712661
+    source_title: >-
+      DeLong, DeLong and Clarke-Pearson — Comparing the areas under two or more correlated
+      receiver operating characteristic curves: a nonparametric approach, Biometrics
+      44(3):837-845, 1988
+    quote: >-
+      When two or more empirical curves are constructed based on tests performed on the same
+      individuals, statistical analysis on differences between curves must take into account
+      the correlated nature of the data. This paper presents a nonparametric approach to the
+      analysis of areas under correlated ROC curves, by using the theory on generalized
+      U-statistics to generate an estimated covariance matrix.
+    quote_context: >-
+      Read on 2026-09-16 from the publication record held by Duke University, the authors'
+      own institution, which carries the paper's abstract in full. The journal of record is
+      Biometrics 44(3):837-845, DOI 10.2307/2531595, PMID 3203132, which is paywalled.
+      The lesson does not cite the paper for its ALGEBRA: the structural components and the
+      variance formula the student implements are checked against an independent pure-Python
+      reference in tests/test_lesson.py, not against a quoted expression.
+    accessed: 2026-09-16
+
+  - id: bootstrap-estimates-a-sampling-distribution-from-the-sample
+    claim: >-
+      The bootstrap estimates the sampling distribution of a statistic from the observed data
+      alone, without a distributional assumption about the population. That is why exercise 3
+      can put an interval around a rank statistic that has no elementary closed-form variance,
+      and why the lesson can compare it against DeLong's analytic variance rather than
+      treating either as the truth.
+    where: "lesson.py section 4 (exercise 3 prose) and section 10 (the two interval routes scored side by side)"
+    source_url: https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full
+    source_title: >-
+      Efron — Bootstrap Methods: Another Look at the Jackknife, The Annals of Statistics
+      7(1):1-26, January 1979
+    quote: >-
+      We discuss the following problem: given a random sample X = (X1, X2, ... , Xn) from an
+      unknown probability distribution F, estimate the sampling distribution of some
+      prespecified random variable R(X, F)
+    quote_context: >-
+      The opening sentence of the paper's abstract, quoted up to the comma that introduces
+      the phrase "on the basis of the observed data x"; the subscripted variables are written
+      inline here because this file is plain text. DOI 10.1214/aos/1176344552.
+    accessed: 2026-09-16
+
+  - id: interagency-mrm-guidance-2026-outcomes-analysis
+    claim: >-
+      The revised interagency model risk management guidance issued on 17 April 2026, which
+      the OCC carries as Bulletin 2026-13, names model validation and monitoring — including
+      validating conceptual soundness and outcomes analyses — among the practices it covers.
+      Discrimination testing is outcomes analysis, which is the one sentence of regulatory
+      context this notebook contains.
+    where: "lesson.py section 1 (the single paragraph of regulatory context)"
+    source_url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    source_title: "OCC Bulletin 2026-13, Model Risk Management: Revised Guidance, 17 April 2026"
+    quote: "validating conceptual soundness and outcomes analyses"
+    quote_context: >-
+      The bulletin lists the practices covered as "model development and model use; model
+      validation and monitoring", with the quoted phrase describing what validation and
+      monitoring includes. It also states that the guidance "does not set forth enforceable
+      standards or prescriptive requirements". The Federal Reserve carries the same
+      interagency document as SR 26-2,
+      https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm.
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -------------------------------------------------------------------
+#
+# The lesson states each of the three below as a POLICY INPUT passed in as an argument, never
+# as a fact about the world, and it has no source for any of them. Recording them here stops
+# the omission looking like an oversight.
+#
+#   * MATERIAL_AUC_DIFF = 0.010. The smallest AUC difference this notebook's fictional policy
+#     would act on. It is a threshold a firm sets, and the lesson's own point is that the
+#     threshold has to be written down BEFORE the numbers are seen. No regulator, standard or
+#     paper prescribes a figure, and this lesson does not invent one: `measurability()` takes
+#     it as an argument and the rubric grades the boundary behaviour, not the value.
+#   * POWER = 0.80 and ALPHA = 0.05. Conventional, and convention is not a source. They are
+#     arguments with defaults, and test_mdd_formula grades that changing either moves the
+#     minimum detectable difference in the right direction.
+#   * The binormal separation mu = 1.20 used in the coverage study is a modelling choice made
+#     so the true AUC lands near 0.80, which is roughly where a credit scorecard sits. It is
+#     not a claim about any real portfolio; the DATA_NOTE says the sample is synthetic and
+#     binormal_true_auc derives the exact truth from mu in one line of algebra.
+#
+# Also deliberately NOT claimed: that DeLong's variance and the percentile bootstrap agree.
+# Section 10 scores both routes on the same drawn samples and PRINTS the gap it measured,
+# rather than asserting agreement in prose. The numbers in that output are computed by the
+# student's own code on their own machine.

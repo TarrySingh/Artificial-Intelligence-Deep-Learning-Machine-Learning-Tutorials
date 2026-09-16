@@ -1,0 +1,277 @@
+# Every factual claim this lesson makes about the world, with a source and the date the
+# source was read. Numbers a student sees in output — the stratum counts, the overlap counts,
+# the correlation, the drift statistics, the subgroup error rates, every power figure — are
+# computed by the code they run from the synthetic table built in lesson.py section 2. They
+# are not claims about the world and do not appear here. The table itself is synthetic and
+# declared as such in meta.yaml.
+#
+# This lesson is engineering material about the checks a data-governance duty implies. It is
+# not legal advice, and nothing here substitutes for the Official Journal text or for
+# professional advice on a specific system.
+#
+# SOURCING RULE, inherited from P01-L01 and T10-L01: a `quote` field contains text actually
+# retrieved from `source_url` on the `accessed` date. No quote is reconstructed from memory
+# or stitched across an ellipsis. Where the authoritative text could not be retrieved
+# directly it is recorded under `authoritative_text_url` and the claim is carried by sources
+# that WERE retrieved. EUR-Lex refused automated retrieval on the access date, so every
+# article quotation below was taken from two INDEPENDENT reproductions of the consolidated
+# text and compared word for word; both are listed.
+claims:
+  - id: article-10-2-governance-practices
+    claim: >-
+      Article 10(2) requires training, validation and testing data sets to be subject to data
+      governance and management practices appropriate for the intended purpose of the
+      high-risk AI system, and enumerates eight matters those practices must concern in
+      particular, lettered (a) to (h). It enumerates PRACTICES, not thresholds: nothing in
+      the paragraph says how representative is representative enough, which is why every
+      threshold in this lesson is labelled as the lesson's own modelling choice.
+    where: "lesson.py section 1 (the DUTIES table) and the disclaimer in the opening cell"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      Training, validation and testing data sets shall be subject to data governance and
+      management practices appropriate for the intended purpose of the high-risk AI system.
+      Those practices shall concern in particular:
+    corroborating_url: https://ai-act-law.eu/article/10/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-16
+    retrieval_note: >-
+      EUR-Lex returned an empty body to automated retrieval on the access date. The wording
+      above was retrieved from euaiact.com and compared character by character against the
+      independent reproduction at ai-act-law.eu; the two agree.
+
+  - id: article-10-2-b-origin-of-data
+    claim: >-
+      Article 10(2)(b) names data collection processes and the origin of the data — and, for
+      personal data, the original purpose of the collection — as one of the governance
+      practices. This is the provision behind the provenance check: a split with no traceable
+      source is a governance defect, not a documentation preference.
+    where: "lesson.py section 1 (art10_2_b_origin) and section 7 (provenance_report)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      data collection processes and the origin of data, and in the case of personal data, the
+      original purpose of the data collection;
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+
+  - id: article-10-2-c-labelling
+    claim: >-
+      Article 10(2)(c) names data-preparation processing operations, annotation and labelling
+      among them, as a governance practice. This is why the provenance exercise checks the
+      provenance of the LABELS and not only of the rows: a label is produced by a method, and
+      an unrecorded method is an unrecorded preparation operation.
+    where: "lesson.py section 1 (art10_2_c_preparation) and section 7 (label_source, LABEL_METHODS)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      relevant data-preparation processing operations, such as annotation, labelling,
+      cleaning, updating, enrichment and aggregation;
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+
+  - id: article-10-2-f-bias-examination
+    claim: >-
+      Article 10(2)(f) requires an examination in view of possible biases that are likely to
+      affect the health and safety of persons, have a negative impact on fundamental rights
+      or lead to discrimination prohibited under Union law, especially where data outputs
+      influence inputs for future operations. It requires an EXAMINATION and specifies no
+      method, no subgroup definition and no threshold — so the minimum-support rule, the
+      detectability rule and the 30-row floor in this lesson are engineering choices the
+      lesson argues for, not requirements it quotes.
+    where: "lesson.py section 1 (art10_2_f_bias_exam) and section 8 (bias_probe, MIN_SUPPORT)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      examination in view of possible biases that are likely to affect the health and safety
+      of persons, have a negative impact on fundamental rights or lead to discrimination
+      prohibited under Union law, especially where data outputs influence inputs for future
+      operations;
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+    note: >-
+      The lesson is careful here for the same reason P01-L01 is careful about Article 12(3):
+      the tempting wrong lesson is to present a particular bias metric as "what Article 10
+      requires". The paragraph requires that an examination happen and says nothing about how.
+
+  - id: article-10-2-g-bias-measures
+    claim: >-
+      Article 10(2)(g) requires appropriate measures to detect, prevent and mitigate possible
+      biases identified according to point (f). Detection and mitigation are separate duties,
+      which is why this lesson's bias probe ends in a verdict and a named finding rather than
+      in a score.
+    where: "lesson.py section 1 (art10_2_g_bias_measures)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      appropriate measures to detect, prevent and mitigate possible biases identified
+      according to point (f);
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+
+  - id: article-10-2-h-gaps-and-how-addressed
+    claim: >-
+      Article 10(2)(h) requires the identification of relevant data gaps or shortcomings that
+      prevent compliance with the Regulation, AND how those gaps and shortcomings can be
+      addressed. The second half is the reason `gap_report()` carries an `action` for every
+      gap: a list of gaps with no remedies answers only half the provision.
+    where: "lesson.py section 1 (art10_2_h_gaps), section 5 (gap_report, REMEDIES)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      the identification of relevant data gaps or shortcomings that prevent compliance with
+      this Regulation, and how those gaps and shortcomings can be addressed.
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+
+  - id: article-10-3-quality-and-where-the-qualifier-sits
+    claim: >-
+      Article 10(3) requires training, validation and testing data sets to be relevant,
+      sufficiently representative, and to the best extent possible, free of errors and
+      complete in view of the intended purpose; to have the appropriate statistical
+      properties, including as regards the persons or groups of persons in relation to whom
+      the system is intended to be used; and it permits those characteristics to be met at
+      the level of individual data sets or of a combination of them. The lesson additionally
+      READS the qualifier "to the best extent possible" as attaching to "free of errors and
+      complete" rather than to "relevant" and "sufficiently representative".
+    where: "lesson.py section 1 (art10_3_quality, and the paragraph on where the qualifier sits), self-check question 5"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      Training, validation and testing data sets shall be relevant, sufficiently
+      representative, and to the best extent possible, free of errors and complete in view of
+      the intended purpose. They shall have the appropriate statistical properties, including,
+      where applicable, as regards the persons or groups of persons in relation to whom the
+      high-risk AI system is intended to be used. Those characteristics of the data sets may
+      be met at the level of individual data sets or at the level of a combination thereof.
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+    note: >-
+      The READING is the lesson's, not the source's, and both the notebook and the solution's
+      answer key say so in those words. What is quoted is the sentence; what is claimed about
+      where the qualifier bites is an argument from the sentence's structure, offered so a
+      student can disagree with it. It is not a statement about how any authority has
+      construed the paragraph, and no case law was consulted.
+
+  - id: article-10-4-setting
+    claim: >-
+      Article 10(4) requires data sets to take into account, to the extent required by the
+      intended purpose, the characteristics or elements particular to the specific
+      geographical, contextual, behavioural or functional setting within which the high-risk
+      AI system is intended to be used. This is the provision the declared population and the
+      coverage check stand on: "representative" is undefined until a setting is declared.
+    where: "lesson.py section 1 (art10_4_setting) and section 5 (DECLARED_POPULATION)"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended"
+    quote: >-
+      Data sets shall take into account, to the extent required by the intended purpose, the
+      characteristics or elements that are particular to the specific geographical,
+      contextual, behavioural or functional setting within which the high-risk AI system is
+      intended to be used.
+    corroborating_url: https://ai-act-law.eu/article/10/
+    accessed: 2026-09-16
+
+  - id: article-10-5-deleted-by-the-omnibus
+    claim: >-
+      Regulation (EU) 2026/1744, the Digital Omnibus on AI, DELETED Article 10(5) — the
+      narrow permission for providers of high-risk AI systems to process special categories
+      of personal data for bias detection and correction — and relocated that legal basis to
+      a new Article 4a, which extends it beyond providers of high-risk systems. Article 10(1)
+      and Article 10(6) now cross-refer to Article 4a(1). Paragraphs 2, 3 and 4 — the ones
+      this lesson tests — were not amended.
+    where: "lesson.py section 1 (OMNIBUS_NOTES, art10_5) and self-check question 3"
+    source_url: https://www.euaiact.com/article/10
+    source_title: "Article 10: Data and Data Governance — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      For the development of high-risk AI systems not using techniques involving the training
+      of AI models, paragraphs 2, 3 and 4 of this Article and Article 4a(1) shall apply only
+      to the testing data sets.
+    corroborating_url: https://cypheron.cz/en/resources/ai-act/omnibus-2026
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744
+    accessed: 2026-09-16
+    note: >-
+      Retrieved as paragraph 6 of the consolidated Article 10 on euaiact.com, which marks the
+      position between paragraphs 4 and 6 as "Point deleted by Regulation (EU) 2026/1744";
+      ai-act-law.eu independently prints Article 10 with no paragraph 5 and with the same
+      Article 4a(1) cross-reference in paragraph 6. The quoted sentence is the operative
+      evidence: paragraph 6 of the ORIGINAL 2024 text referred to paragraphs 2, 3, 4 and 5 of
+      Article 10, and the consolidated text refers to Article 4a(1) in place of 10(5). The
+      characterisation of Article 4a's scope is carried by the cypheron.cz analysis and is
+      labelled in the lesson as what the omnibus did, not as quoted article text.
+
+  - id: omnibus-chapter-iii-dates
+    claim: >-
+      Regulation (EU) 2026/1744 was published in the Official Journal on 24 July 2026 and
+      entered into force on 27 July 2026. It moved the application of Chapter III — which
+      contains Article 10 — to 2 December 2027 for stand-alone high-risk systems under
+      Article 6(2) and Annex III, and to 2 August 2028 for systems that are high-risk under
+      Article 6(1) and Annex I.
+    where: "lesson.py section 1 (OMNIBUS_NOTES, the two dates)"
+    source_url: https://cypheron.cz/en/resources/ai-act/omnibus-2026
+    source_title: "What Regulation 2026/1744 changed in the AI Act"
+    quote: >-
+      2 December 2027: Chapter III, Sections 1-3 apply for systems high-risk under
+      Article 6(2) (Annex III); 2 August 2028: Chapter III, Sections 1-3 apply for systems
+      high-risk under Article 6(1) (Annex I)
+    corroborating_url: https://www.cyberlawwatch.com/2026/07/31/eu-digital-omnibus-on-ai-enters-into-force/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744
+    accessed: 2026-09-16
+    note: >-
+      Both dates matter and short summaries routinely carry only the first. The second date,
+      2 August 2028 for Annex I product-embedded systems, is corroborated independently by
+      the K&L Gates Cyber Law Watch note of 31 July 2026, which also carries the 27 July 2026
+      entry into force. The same pair of dates is stated in this programme's own README and
+      in P01-L01, and is repeated here rather than cross-referenced so this lesson's claim
+      stands on its own sources.
+
+  - id: rule-of-three-and-its-exact-form
+    claim: >-
+      When no event of interest is observed in n independent trials, the interval from 0 to
+      3/n is an approximate 95% confidence interval for the underlying rate — the "rule of
+      three", brought into the medical literature by Hanley and Lippman-Hand in JAMA in 1983.
+      The approximation comes from solving (1 - p)**n = 0.05, since n*ln(1 - p) = ln(0.05),
+      which is about -2.996. This lesson implements the EXACT solution, 1 - 0.05**(1/n),
+      rather than 3/n, and says in its own common-mistakes list that the approximation is
+      fine to use and not fine to write in an evidence pack without saying so.
+    where: "lesson.py section 3 (min_detectable_share and its prose), section 10 common mistakes, self-check question 2"
+    source_url: https://en.wikipedia.org/wiki/Rule_of_three_(statistics)
+    source_title: "Rule of three (statistics)"
+    quote: >-
+      the interval from 0 to 3/n is a 95% confidence interval for the rate of occurrences in
+      the population
+    corroborating_url: https://jhanley.biostat.mcgill.ca/c607/ch08/zero_numerator.pdf
+    accessed: 2026-09-16
+    note: >-
+      The derivation quoted on the same page is "(1 - p)^n = 0.05 so n ln(1 - p) = ln .05
+      ~ -2.996". The original paper is Hanley, J. A. and Lippman-Hand, A., "If nothing goes
+      wrong, is everything all right? Interpreting zero numerators", JAMA 249(13):1743-1745,
+      1983; it is cited on the page above and a copy is hosted at the corroborating URL. A
+      tertiary source is used for the statement of the rule because the rule is mathematics
+      rather than a fact about the world: the lesson's own code recomputes it, and the
+      notebook's public check fails an implementation that returns the 3/n approximation.
+
+  - id: two-proportion-minimum-detectable-difference
+    claim: >-
+      The sample size needed to detect a difference between two proportions at a stated
+      significance level and power combines BOTH normal quantiles — the one for the
+      significance level and the one for the power — with the binomial standard deviations of
+      the two proportions. Rearranged for a fixed pair of group sizes, that gives the minimum
+      detectable difference this lesson uses:
+      (z_(1-alpha/2) + z_(1-beta)) * sqrt(p*(1-p)*(1/n_a + 1/n_b)).
+      The consequence the lesson grades is that omitting the power term returns a floor about
+      30% smaller than the truth — equivalently, the honest floor is about 43% larger than the
+      alpha-only one. The lesson prints both directions of that ratio from the student's own
+      implementation rather than stating either of them in prose.
+    where: "lesson.py section 3 (min_detectable_difference), sections 6 and 8 (drift and bias power)"
+    source_url: https://www.itl.nist.gov/div898/handbook/prc/section2/prc242.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 7.2.4.2: Sample sizes required (proportion)"
+    quote: >-
+      N >= ( z_(1-alpha/2) sqrt[p_0(1-p_0)] + z_(1-beta) sqrt[p_1(1-p_1)] / delta )^2
+    accessed: 2026-09-16
+    note: >-
+      The lesson uses the pooled-variance form, p(1-p) under both roots, which is the usual
+      simplification when the two rates are close and is the conservative choice when the
+      pooled rate is nearer 0.5 than either group's. The two quantiles are hard-coded as
+      Z_ALPHA_95 and Z_BETA_80 and then CHECKED in the setup cell: the notebook recomputes
+      the standard normal CDF from math.erf and asserts that they integrate to 0.975 and
+      0.800, so no student has to take the constants on trust.

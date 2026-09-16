@@ -11,5 +11,11 @@ solutions/lesson_bin
 # environment
 .venv/
 .DS_Store
+# iCloud Drive sync duplicates. This tree lives under ~/Documents, which iCloud syncs, and a
+# build running while it syncs leaves copies named "lesson_bin 2", "assets 3" and so on. They
+# are never wanted: the build products are ignored above and the asset directories are real.
+lesson_bin [0-9]
+assets [0-9]
+*.o [0-9]
 # NOTE: solutions/ and tests/ are deliberately NOT ignored. They are version-controlled and
 # excluded from the student bundle by tools/build_student_bundle.py (QUALITY.md gate 7).

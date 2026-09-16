@@ -1,0 +1,1255 @@
+# %% [markdown]
+# # P01-L04 · Data governance you can test
+#
+# **You will build:** five executable checks over a training, validation and test split —
+# leakage, representativeness, drift, provenance and a subgroup bias probe — and the thing
+# that makes them evidence rather than reassurance: a **power statement** attached to every
+# verdict, saying how small an effect that check could have found.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, no download, no network
+# · **Prerequisites:** `T10-L01-ai-act-conformity-pack`, `P01-L01-article-12-logging`
+#
+# Article 10 asks for data that is representative and examined for bias. Almost every data
+# governance record you will ever read answers that with a sentence. A sentence cannot be
+# re-run, cannot be regression-tested, and cannot tell you what it would have missed.
+#
+# By the end you will be able to:
+#
+# 1. Implement two power tools — the exact rule-of-three share floor and the two-proportion
+#    minimum detectable difference — and attach one to every verdict you emit.
+# 2. Implement a leakage check that finds exact and re-entered duplicates across splits and
+#    an identifier that predicts the target, and state its detection limit.
+# 3. Implement a representativeness check against a declared population, including the
+#    stratum the data contains and the declaration never mentioned, and emit the
+#    Article 10(2)(h) gap report that says how each gap can be addressed.
+# 4. Implement a train-versus-test drift check over categorical and numeric features.
+# 5. Implement a provenance check over data licences and label methods, and explain why its
+#    honest power statement is not about power at all.
+# 6. Implement a subgroup bias probe with a minimum-support rule, and explain why a 100 %
+#    error rate on three people is not the finding it looks like.
+#
+# > **This is engineering, not legal advice.** The article numbers, the quoted wording and
+# > the dates are sourced in `claims.yaml` with their URLs and access dates. The thresholds
+# > below — a 30-row support floor, a 0.10 total variation distance, a 5 % undocumented-label
+# > tolerance — are **this lesson's modelling choices**, argued for where they appear. They
+# > are not statements about what any authority would accept. For a real system, read the
+# > Official Journal text and take professional advice.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import hashlib
+import math
+import sys
+from datetime import date
+from typing import Any, Callable
+
+import numpy as np
+
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+
+# The date this examination is run. Fixed, so every number below is reproducible.
+AS_OF = date(2026, 9, 16)
+SYSTEM_ID = "loan-copilot"
+
+
+def normal_cdf(z: float) -> float:
+    """The standard normal CDF, from math.erf. Given to you; not graded."""
+    return 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
+
+
+# The two normal quantiles every power statement in this lesson uses. They are asserted
+# rather than trusted: the cell below recomputes what they integrate to.
+Z_ALPHA_95 = 1.959963985      # two-sided 95%: P(Z <= z) = 0.975
+Z_BETA_80 = 0.841621234       # 80% power:     P(Z <= z) = 0.800
+
+print(f"as of {AS_OF.isoformat()} · system {SYSTEM_ID}")
+print(f"Phi(Z_ALPHA_95) = {normal_cdf(Z_ALPHA_95):.6f}  (must be 0.975000)")
+print(f"Phi(Z_BETA_80)  = {normal_cdf(Z_BETA_80):.6f}  (must be 0.800000)")
+assert abs(normal_cdf(Z_ALPHA_95) - 0.975) < 1e-6
+assert abs(normal_cdf(Z_BETA_80) - 0.800) < 1e-6
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other five.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+def power(statistic: str, value: float, statement: str) -> dict:
+    """The uniform shape every verdict in this lesson carries. Given to you; not graded.
+
+    Example:
+        >>> power("min_detectable_share", 0.002, "A stratum below 0.2% may be absent.")
+        {'statistic': 'min_detectable_share', 'value': 0.002,
+         'statement': 'A stratum below 0.2% may be absent.'}
+    """
+    return {"statistic": statistic, "value": float(value), "statement": statement}
+
+
+# %% [markdown]
+# ## 1. What Article 10 asks for
+#
+# Article 10(2) lists the data governance practices a high-risk system's training, validation
+# and test sets must be subject to. Five of the eight are testable in code, and they are the
+# five this lesson tests. Each is quoted verbatim against its source in `claims.yaml`.
+#
+# The one to read twice is 10(3). Note where the qualifier sits: data sets "shall be
+# relevant, sufficiently representative, and **to the best extent possible**, free of errors
+# and complete in view of the intended purpose". Best efforts attach to freedom from errors
+# and to completeness. They do not, on this reading of the sentence, attach to relevance or
+# to representativeness. That is a reading of a sentence rather than a ruling, and this
+# lesson flags it as one — but it is the reading that decides whether the coverage failure
+# you are about to find can be excused by how hard somebody tried.
+
+# %%
+DUTIES = {
+    "art10_2_b_origin": ("Article 10(2)(b)", "data collection processes and the origin of data"),
+    "art10_2_c_preparation": ("Article 10(2)(c)",
+                              "data-preparation operations: annotation, labelling, cleaning"),
+    "art10_2_f_bias_exam": ("Article 10(2)(f)", "examination in view of possible biases"),
+    "art10_2_g_bias_measures": ("Article 10(2)(g)",
+                                "measures to detect, prevent and mitigate the biases found"),
+    "art10_2_h_gaps": ("Article 10(2)(h)",
+                       "identify data gaps and how they can be addressed"),
+    "art10_3_quality": ("Article 10(3)",
+                        "relevant, sufficiently representative, and to the best extent "
+                        "possible free of errors and complete"),
+    "art10_4_setting": ("Article 10(4)",
+                        "geographical, contextual, behavioural or functional setting"),
+}
+print(f"{'duty':26s} {'article':20s} what it requires")
+for _key, (_article, _what) in DUTIES.items():
+    print(f"{_key:26s} {_article:20s} {_what}")
+print(f"\n{len(DUTIES)} duties, and every one of them is a claim somebody has to be able to "
+      "test rather than assert")
+
+# %% [markdown]
+# ### What the Digital Omnibus moved, and what it did not
+#
+# Regulation (EU) 2026/1744 pushed the Chapter III dates back and **deleted Article 10(5)**,
+# the narrow permission to process special categories of personal data for bias detection.
+# That basis now lives in a new Article 4a, and 10(1) and 10(6) cross-refer to Article 4a(1).
+#
+# This matters for what you are about to build. The bias probe in section 8 works on region
+# and age band, which are ordinary features of a credit file. Probing a protected
+# characteristic you do not hold is a different exercise with a different legal basis, and it
+# is no longer Article 10's to give.
+
+# %%
+OMNIBUS_NOTES = {
+    "2027-12-02": "Chapter III (Article 10 among it) applies to Annex III stand-alone high-risk",
+    "2028-08-02": "Chapter III applies to Annex I product-embedded high-risk",
+    "art10_5": "DELETED by Regulation (EU) 2026/1744; the special-category basis for bias "
+               "detection now sits in the new Article 4a, and Article 10(1) and 10(6) "
+               "cross-refer to Article 4a(1)",
+}
+for _key, _what in OMNIBUS_NOTES.items():
+    _state = "date" if _key[0].isdigit() else "text"
+    print(f"{_key:12s} [{_state}] {_what}")
+print(f"\nSo this lesson tests {len(DUTIES)} duties that survived and builds NO special-category "
+      "processing: that legal basis moved out of Article 10 entirely.")
+
+# %% [markdown]
+# ## 2. The data set — synthetic, generated here, defective on purpose
+#
+# Nothing is loaded from disk and nothing is downloaded. The table below is **synthetic**,
+# built in this cell from one seed and explicit per-stratum counts, so two runs of this
+# notebook agree to the last digit and every number you see is one your own machine computed.
+#
+# It is a column store: a dict of equal-length numpy arrays. No pandas, deliberately — the
+# point of this module is that you can implement a governance check with arrays and a loop,
+# on any machine, without a vendor's toolkit between you and the evidence.
+#
+# The defects are planted, and you are being told they exist but not where. There are six.
+
+# %%
+DECLARED_POPULATION = {
+    ("north", "18-29"): 0.04, ("north", "30-49"): 0.08, ("north", "50+"): 0.05,
+    ("south", "18-29"): 0.06, ("south", "30-49"): 0.12, ("south", "50+"): 0.07,
+    ("east", "18-29"): 0.05, ("east", "30-49"): 0.10, ("east", "50+"): 0.06,
+    ("west", "18-29"): 0.09, ("west", "30-49"): 0.18, ("west", "50+"): 0.10,
+}
+
+SPLIT_PLAN = {
+    "train": {("north", "18-29"): 0, ("north", "30-49"): 118, ("north", "50+"): 74,
+              ("south", "18-29"): 88, ("south", "30-49"): 176, ("south", "50+"): 103,
+              ("east", "18-29"): 73, ("east", "30-49"): 147, ("east", "50+"): 3,
+              ("west", "18-29"): 132, ("west", "30-49"): 420, ("west", "50+"): 148,
+              ("overseas", "30-49"): 18},
+    "val": {("north", "18-29"): 12, ("north", "30-49"): 24, ("north", "50+"): 15,
+            ("south", "18-29"): 18, ("south", "30-49"): 36, ("south", "50+"): 21,
+            ("east", "18-29"): 15, ("east", "30-49"): 30, ("east", "50+"): 18,
+            ("west", "18-29"): 27, ("west", "30-49"): 54, ("west", "50+"): 30},
+    "test": {("north", "18-29"): 3, ("north", "30-49"): 24, ("north", "50+"): 15,
+             ("south", "18-29"): 18, ("south", "30-49"): 36, ("south", "50+"): 21,
+             ("east", "18-29"): 15, ("east", "30-49"): 30, ("east", "50+"): 18,
+             ("west", "18-29"): 60, ("west", "30-49"): 300, ("west", "50+"): 60},
+}
+
+# How many of each test stratum's rows the deployed model gets WRONG. Fixed, so the bias
+# probe's numbers are reproducible rather than a property of a random draw.
+TEST_ERRORS = {("north", "18-29"): 3, ("north", "30-49"): 3, ("north", "50+"): 2,
+               ("south", "18-29"): 2, ("south", "30-49"): 4, ("south", "50+"): 3,
+               ("east", "18-29"): 2, ("east", "30-49"): 4, ("east", "50+"): 2,
+               ("west", "18-29"): 21, ("west", "30-49"): 30, ("west", "50+"): 7}
+
+POSITIVE_RATE = {"north": 0.25, "south": 0.30, "east": 0.28, "west": 0.32, "overseas": 0.30}
+CHANNELS = ("branch", "online")
+UNAPPROVED_TEST_ROWS = (7, 19, 31, 43, 55)
+N_EXACT_DUPLICATES = 12
+N_NEAR_DUPLICATES = 8
+
+
+def _build_table() -> dict:
+    """Build the synthetic column store. Deterministic: one seed, explicit per-stratum counts."""
+    rng = np.random.default_rng(20271202)
+    cols: dict[str, list] = {k: [] for k in ("split", "region", "age_band", "channel",
+                                             "income", "dti", "label", "label_source",
+                                             "spread", "wrong")}
+    for split, plan in SPLIT_PLAN.items():
+        base_income = 28000 if split == "test" else 20000
+        local = 0
+        for (region, age_band), count in plan.items():
+            positives = int(round(POSITIVE_RATE[region] * count))
+            errors = TEST_ERRORS.get((region, age_band), 0) if split == "test" else 0
+            for k in range(count):
+                label = 1 if k < positives else 0
+                wrong = k < errors if split == "test" else (local % 8 == 0)
+                spread = float(rng.uniform(0.02, 0.44))
+                if split == "train":
+                    source = "" if local % 100 == 0 else (
+                        "repayment_proxy" if local % 5 == 3 else "adjudicated")
+                elif split == "test":
+                    source = ("" if local % 12 == 0 else
+                              "vendor_inferred" if local in UNAPPROVED_TEST_ROWS else
+                              "repayment_proxy" if local % 5 == 3 else "adjudicated")
+                else:
+                    source = "adjudicated"
+                cols["split"].append(split)
+                cols["region"].append(region)
+                cols["age_band"].append(age_band)
+                cols["channel"].append(CHANNELS[k % 2])
+                cols["income"].append(float(base_income + int(rng.integers(0, 90000))))
+                cols["dti"].append(float(np.round(rng.uniform(0.05, 0.65), 3)))
+                cols["label"].append(label)
+                cols["label_source"].append(source)
+                cols["spread"].append(spread)
+                cols["wrong"].append(bool(wrong))
+                local += 1
+    table = {"split": np.array(cols["split"]), "region": np.array(cols["region"]),
+             "age_band": np.array(cols["age_band"]), "channel": np.array(cols["channel"]),
+             "income": np.array(cols["income"], dtype=float),
+             "dti": np.array(cols["dti"], dtype=float),
+             "label": np.array(cols["label"], dtype=int),
+             "label_source": np.array(cols["label_source"])}
+    spread = np.array(cols["spread"], dtype=float)
+    wrong = np.array(cols["wrong"], dtype=bool)
+
+    # The leakage. Twenty applications from the training set turn up again in the test set:
+    # twelve byte-identical, eight re-entered with cent-level noise on income and a rounding
+    # difference on debt-to-income. Same stratum, so the coverage counts are untouched.
+    cell = (table["region"] == "west") & (table["age_band"] == "30-49")
+    donors = np.flatnonzero(cell & (table["split"] == "train"))[::17][:20]
+    recipients = np.flatnonzero(cell & (table["split"] == "test"))[-20:]
+    for n, (src, dst) in enumerate(zip(donors, recipients)):
+        table["channel"][dst] = table["channel"][src]
+        table["label"][dst] = table["label"][src]
+        if n < N_EXACT_DUPLICATES:
+            table["income"][dst] = table["income"][src]
+            table["dti"][dst] = table["dti"][src]
+        else:
+            table["income"][dst] = table["income"][src] + 0.37
+            table["dti"][dst] = table["dti"][src] + 0.0002
+
+    # The identifier. Applicant references were issued after the outcome was known, so the
+    # reference number and the target march in step. Nobody meant to do this; it is what a
+    # back-filled id column looks like.
+    order = np.argsort(table["label"], kind="stable")
+    ref = np.empty(len(order), dtype=int)
+    ref[order] = 100000 + np.arange(len(order)) * 7
+    table["applicant_ref"] = ref
+    table["row_id"] = np.arange(len(order), dtype=int)
+
+    # Scores come LAST, after the duplicated rows took their donors' labels with them.
+    # Build them earlier and a copied label silently flips twenty rows from right to wrong,
+    # which would move the bias probe's baseline for a reason that has nothing to do with
+    # the model. The per-row error pattern is fixed by construction; the score follows it.
+    high = (table["label"] == 1) != wrong
+    table["score"] = np.round(np.where(high, 0.5 + spread, spread), 4)
+    return table
+
+
+TABLE = _build_table()
+N_ROWS = len(TABLE["row_id"])
+for _split in ("train", "val", "test"):
+    _rows = TABLE["split"] == _split
+    _strata = set(zip(TABLE["region"][_rows].tolist(), TABLE["age_band"][_rows].tolist()))
+    print(f"{_split:6s} {int(_rows.sum()):5d} rows · {len(_strata)} strata present")
+print(f"total  {N_ROWS:5d} rows · columns: {', '.join(sorted(TABLE))}")
+
+# %% [markdown]
+# ### What the system declares about its own data
+#
+# A governance record is a comparison between what a provider *declared* and what the data
+# *is*. Everything below is the declaration: where each split came from, under what licence,
+# and which label-production methods the provider approved. The thresholds are this lesson's,
+# and each one is named so you can argue with it rather than inherit it.
+
+# %%
+SOURCES = {
+    "train": {"source_id": "nl-retail-2024", "licence": "CC-BY-4.0",
+              "url": "https://example.invalid/nl-retail-2024", "collected": "2024-06-30"},
+    "val": {"source_id": "nl-retail-2024-holdout", "licence": "proprietary-internal",
+            "url": "https://example.invalid/nl-retail-2024", "collected": "2024-06-30"},
+    "test": {"source_id": "partner-feed-2025", "licence": "CC-BY-4.0",
+             "url": "https://example.invalid/partner-feed-2025", "collected": "2025-11-14"},
+}
+ALLOWED_LICENCES = ("CC-BY-4.0", "CC0-1.0", "ODbL-1.0", "internal-consented")
+LABEL_METHODS = {"adjudicated": "approved", "repayment_proxy": "approved",
+                 "vendor_inferred": "unapproved"}
+MIN_SUPPORT = 30                  # rows below which no subgroup claim is made at all
+OVER_REPRESENTATION_FACTOR = 1.5  # observed share above this multiple of declared is a defect
+TVD_THRESHOLD = 0.10              # total variation distance that counts as categorical drift
+SMD_THRESHOLD = 0.20              # standardised mean difference that counts as numeric drift
+ID_TARGET_R_THRESHOLD = 0.30      # |r| between an identifier and the target that is suspicious
+UNDOCUMENTED_LABEL_THRESHOLD = 0.05
+DECISION_THRESHOLD = 0.5          # score at or above which the system predicts the positive
+NEAR_DTI_DP = 3                   # decimal places the source records debt-to-income to
+FEATURE_KINDS = {"region": "categorical", "age_band": "categorical",
+                 "channel": "categorical", "income": "numeric", "dti": "numeric"}
+REMEDIES = {
+    "empty": "acquire rows for this stratum, or narrow the declared purpose to exclude it",
+    "thin": "raise this stratum to at least the minimum support before claiming anything of it",
+    "over": "re-weight or re-sample until the observed share stops exceeding the declared one",
+    "undeclared": "either declare this stratum and justify it, or remove its rows",
+}
+print(f"min support {MIN_SUPPORT} rows · allowed licences {len(ALLOWED_LICENCES)} · "
+      f"label methods {sorted(set(LABEL_METHODS.values()))}")
+
+# %% [markdown]
+# ## 3. Exercise 1 — the two power tools
+#
+# Every verdict in this lesson carries a power statement, so build the arithmetic once.
+#
+# **The share floor.** You find zero rows of a declared stratum. Is that a gap, or did you
+# simply not look at enough rows? If the stratum's true share is `p`, the chance of drawing
+# none of it in `n` rows is `(1 - p)**n`. Set that to 5 % and solve: any share above
+# `1 - 0.05**(1/n)` would almost certainly have shown up, so its absence is evidence. Below
+# it, absence means nothing. The familiar "rule of three" (`3/n`) is the approximation to
+# this; implement the exact form, because at small `n` the two diverge and small `n` is
+# exactly when you are tempted to over-claim.
+#
+# **The difference floor.** You compare a subgroup's error rate with everybody else's. The
+# smallest difference a comparison of `n_a` against `n_b` can reliably find, at 95 %
+# confidence and 80 % power, is `(z_alpha + z_beta) * sqrt(p*(1-p) * (1/n_a + 1/n_b))`. Two
+# things fall out of that formula and both matter: the smaller group dominates it, and
+# leaving out `z_beta` — using only the confidence term — reports a floor about a third too
+# small. The demo cell below computes both directions of that ratio from your own code, so
+# the figure is one you measured rather than one you read here.
+
+# %%
+def min_detectable_share(n: int, confidence: float = 0.95) -> float:
+    """Smallest population share whose ABSENCE from `n` rows is evidence of absence.
+
+    Solve `(1 - p)**n = 1 - confidence` for p. Return 1.0 when `n` is zero or negative: a
+    sample of nothing rules nothing out, and reporting 0.0 there would invert the meaning.
+
+    Example:
+        >>> round(min_detectable_share(1), 6)
+        0.95
+        >>> round(min_detectable_share(1000), 7)      # 3/n would say 0.0030000
+        0.0029912
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def min_detectable_difference(n_a: int, n_b: int, p_pooled: float,
+                              z_alpha: float = Z_ALPHA_95,
+                              z_beta: float = Z_BETA_80) -> float:
+    """Smallest difference in rate between two groups this comparison could detect.
+
+    `(z_alpha + z_beta) * sqrt(p_pooled * (1 - p_pooled) * (1/n_a + 1/n_b))`, capped at 1.0,
+    because a difference between two rates cannot exceed 1 and a formula that returns 3.2
+    is telling you the comparison is blind rather than telling you a number. Return 1.0 when
+    either group is empty.
+
+    Example:
+        >>> round(min_detectable_difference(60, 540, 0.1383333), 5)
+        0.13163
+        >>> min_detectable_difference(2, 2, 0.5)
+        1.0
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_power_tools() -> None:
+    assert abs(min_detectable_share(1) - 0.95) < 1e-12, (
+        "with one row, the only share whose absence is evidence at 95% is 0.95 — "
+        "min_detectable_share(1) must be 1 - 0.05**(1/1), not 3/1 and not 1.0"
+    )
+    big, small = min_detectable_share(100), min_detectable_share(10000)
+    assert big > small, (
+        f"more rows must detect a SMALLER share; you got {big:.5f} for n=100 and "
+        f"{small:.5f} for n=10000 — check which way round n sits in the exponent"
+    )
+    assert abs(min_detectable_share(1000) - 0.0029912) < 2e-6, (
+        f"min_detectable_share(1000) is {min_detectable_share(1000):.7f}; the exact form "
+        "1 - 0.05**(1/1000) gives 0.0029912. The 'rule of three' shortcut 3/n gives 0.0030000, "
+        "which is the approximation, not the thing itself"
+    )
+    assert min_detectable_share(0) == 1.0, "n <= 0 rules nothing out: return 1.0"
+
+    mde = min_detectable_difference(60, 540, 0.1383333333333333)
+    assert abs(mde - 0.13163) < 5e-4, (
+        f"min_detectable_difference(60, 540, 0.13833) is {mde:.5f}, expected about 0.13163 — "
+        "the formula is (z_alpha + z_beta) * sqrt(p*(1-p)*(1/n_a + 1/n_b)); dropping z_beta, "
+        "dropping the sqrt or using only one group's n are the three usual slips"
+    )
+    balanced = min_detectable_difference(300, 300, 0.1383333333333333)
+    assert balanced < mde, (
+        "a balanced comparison detects a smaller difference than a lopsided one of the same "
+        "total size; yours does not, so 1/n_a + 1/n_b is probably not what you summed"
+    )
+    assert min_detectable_difference(2, 2, 0.5) == 1.0, (
+        "a rate difference cannot exceed 1. Cap the return at 1.0 so an under-powered "
+        "comparison reports 'blind' rather than an impossible number"
+    )
+    assert min_detectable_difference(0, 100, 0.5) == 1.0, "an empty group detects nothing: 1.0"
+    print("exercise 1 looks right — both power tools agree with their closed forms")
+
+
+# %%
+_try("exercise 1", _check_power_tools)
+
+# %% [markdown]
+# Run the next cell once your stubs work. These two numbers are the reason the rest of the
+# lesson is worth doing: they are the boundary between a finding and a shrug.
+
+# %%
+def _show_power() -> None:
+    print(f"n=1500 train rows -> a stratum below {min_detectable_share(1500):.5f} of the "
+          "population could be absent by chance alone,")
+    print("so its absence is not evidence of a gap.")
+    full = min_detectable_difference(60, 540, 0.14)
+    print(f"a 60-row subgroup against the other 540 -> gaps below {full:.4f} are invisible "
+          "to this sample.")
+    # What dropping the power term actually costs, measured rather than quoted. Both
+    # directions of the same ratio are printed because only one of them is "understated by".
+    alpha_only = min_detectable_difference(60, 540, 0.14, z_beta=0.0)
+    print(f"drop z_beta and the same comparison claims a floor of {alpha_only:.4f}: "
+          f"{100 * (1 - alpha_only / full):.0f}% smaller than the truth, or put the other way "
+          f"round, the honest floor is {100 * (full / alpha_only - 1):.0f}% larger than the "
+          "one you would have published.")
+    print(f"3/20 = {3 / 20:.6f} against an exact {min_detectable_share(20):.6f}: the rule of "
+          f"three runs {100 * ((3 / 20) / min_detectable_share(20) - 1):.1f}% high at n = 20.")
+
+
+_try("power demo", _show_power)
+
+# %% [markdown]
+# ## 4. Exercise 2 — leakage across the splits
+#
+# Leakage is the defect that makes every later number a lie, so it goes first. Three shapes
+# of it are in this table and two of them are duplicates: an application that sat in training
+# and turns up again in test, either byte-identical or **re-entered** — same person, same
+# application, keyed in again with cent-level noise on income and a rounding difference on
+# debt-to-income.
+#
+# That second shape forces a decision you have to make explicitly: what counts as "the same
+# row"? Match on raw floats and you miss every re-entry. Match on a loose tolerance and you
+# start merging unrelated applicants, and your overlap count measures your tolerance rather
+# than your data. This lesson takes the defensible middle: match at **the precision the
+# source actually records** — whole units of income, `NEAR_DTI_DP` places of debt-to-income —
+# and then states that precision as the check's detection limit.
+#
+# The third shape has nothing to do with duplicates. `applicant_ref` is an identifier, and
+# identifiers are not features. Correlate it with the target anyway.
+
+# %%
+def exact_key(table: dict, i: int) -> tuple:
+    """The identity of row `i` as recorded, to the last float. Given to you; not graded."""
+    return (str(table["region"][i]), str(table["age_band"][i]), str(table["channel"][i]),
+            float(table["income"][i]), float(table["dti"][i]))
+
+
+def near_key(table: dict, i: int, dti_dp: int = NEAR_DTI_DP) -> tuple:
+    """The identity of row `i` at the precision its source records.
+
+    Same three categorical fields as `exact_key`, then income rounded to a whole unit **as an
+    int**, then debt-to-income rounded to `dti_dp` places. The int matters: `round(x)` returns
+    a float, and two keys that differ only by `50000.0` versus `50000` are two keys.
+
+    Example:
+        >>> t = {"region": np.array(["north"]), "age_band": np.array(["30-49"]),
+        ...      "channel": np.array(["branch"]), "income": np.array([50000.37]),
+        ...      "dti": np.array([0.3722])}
+        >>> near_key(t, 0)
+        ('north', '30-49', 'branch', 50000, 0.372)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def pearson_r(x: np.ndarray, y: np.ndarray) -> float:
+    """Pearson correlation between two columns. Given to you; not graded."""
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    xc, yc = x - x.mean(), y - y.mean()
+    denom = math.sqrt(float((xc ** 2).sum()) * float((yc ** 2).sum()))
+    return 0.0 if denom == 0 else float((xc * yc).sum() / denom)
+
+
+def leakage_report(table: dict, train_split: str = "train", test_split: str = "test") -> dict:
+    """Find training rows that reappear in the test split, and an id column that predicts.
+
+    Returns a dict with:
+      "exact_overlap"    int, TEST rows whose `exact_key` appears anywhere in train
+      "near_overlap"     int, TEST rows whose `near_key` appears anywhere in train. This
+                         CONTAINS the exact matches; it is not the extra ones on their own.
+      "overlap_row_ids"  sorted list of the row_id of every near-overlapping test row
+      "id_target_r"      float, the ABSOLUTE Pearson r between applicant_ref and label,
+                         over the whole table
+      "verdict"          "fail" if there is any finding, else "pass"
+      "findings"         list of human-readable strings, one per distinct defect ACTUALLY
+                         found: exact duplicates; FURTHER near duplicates, raised only when
+                         the near count exceeds the exact one; and an identifier whose |r|
+                         reaches ID_TARGET_R_THRESHOLD. Each finding names the quantity it
+                         reports — a row count, or the correlation measured — so an
+                         inspector can act on it without re-running your code.
+      "power"            power("min_detectable_r", floor, statement) where floor is the
+                         smallest |r| distinguishable from zero at 95% over n rows,
+                         `math.tanh(Z_ALPHA_95 / math.sqrt(n - 3))`, and the statement says
+                         both that the duplicate count is a census and what it cannot see.
+
+    Build the two train key sets ONCE, then scan the test rows against them. Comparing every
+    test row with every training row works and is 900,000 comparisons you did not need.
+
+    Example:
+        >>> rep = leakage_report(TABLE)      # doctest: +SKIP
+        >>> rep["exact_overlap"], rep["verdict"]
+        (12, 'fail')
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_leakage() -> None:
+    a, b = near_key(TABLE, 0), near_key(TABLE, 0)
+    assert isinstance(a, tuple) and len(a) == 5, (
+        f"near_key returns a 5-tuple (region, age_band, channel, income, dti); yours is {a!r}"
+    )
+    assert a == b and hash(a) == hash(b), "near_key must be hashable and stable"
+    assert isinstance(a[3], int), (
+        f"the income element must be an int so two equal keys compare equal; yours is "
+        f"{type(a[3]).__name__}. int(round(float(income))) is the intended form"
+    )
+    probe = {"region": np.array(["north", "north"]), "age_band": np.array(["30-49", "30-49"]),
+             "channel": np.array(["branch", "branch"]), "income": np.array([50000.0, 50000.37]),
+             "dti": np.array([0.372, 0.3722])}
+    assert near_key(probe, 0) == near_key(probe, 1), (
+        "two records of the SAME application, one carrying cent-level noise, must share a "
+        "near key — round income to whole units and dti to NEAR_DTI_DP places"
+    )
+    assert exact_key(probe, 0) != exact_key(probe, 1), "and they must not share an exact key"
+    apart = {"region": np.array(["north", "north"]), "age_band": np.array(["30-49", "30-49"]),
+             "channel": np.array(["branch", "branch"]), "income": np.array([50000.0, 54000.0]),
+             "dti": np.array([0.372, 0.372])}
+    assert near_key(apart, 0) != near_key(apart, 1), (
+        "two different applicants 4000 apart on income must NOT collide — a tolerance wide "
+        "enough to merge them turns this check into a false-positive generator"
+    )
+
+    rep = leakage_report(TABLE)
+    assert rep["exact_overlap"] == 12, (
+        f"exact_overlap is {rep['exact_overlap']}, expected 12 — count TEST rows whose exact "
+        "key appears anywhere in train, not train rows and not unique keys"
+    )
+    assert rep["near_overlap"] == 20, (
+        f"near_overlap is {rep['near_overlap']}, expected 20 — the near set CONTAINS the exact "
+        "matches; it is not the 8 extra ones on their own"
+    )
+    assert rep["id_target_r"] > ID_TARGET_R_THRESHOLD, (
+        f"applicant_ref vs label came out at {rep['id_target_r']:.3f}; it should be far above "
+        f"{ID_TARGET_R_THRESHOLD}. Correlate the id column with the LABEL, in absolute value"
+    )
+    assert rep["verdict"] == "fail", "this table leaks three ways; the verdict is 'fail'"
+    assert len(rep["findings"]) == 3, (
+        f"three distinct findings are present (exact, near, id); you reported "
+        f"{len(rep['findings'])}"
+    )
+    assert abs(rep["power"]["value"] - math.tanh(Z_ALPHA_95 / math.sqrt(N_ROWS - 3))) < 1e-9, (
+        "the power value is the smallest |r| distinguishable from zero over all rows: "
+        "tanh(Z_ALPHA_95 / sqrt(n - 3))"
+    )
+    print(f"exercise 2 looks right — {rep['exact_overlap']} exact, "
+          f"{rep['near_overlap'] - rep['exact_overlap']} near, |r| = {rep['id_target_r']:.3f}")
+
+
+# %%
+_try("exercise 2", _check_leakage)
+
+# %% [markdown]
+# ## 5. Exercise 3 — representativeness, and the gap report
+#
+# "Sufficiently representative" is meaningless until somebody says representative **of what**.
+# `DECLARED_POPULATION` is that statement: twelve strata of region by age band, with the share
+# each is claimed to hold. Your job is to hold the training split against it.
+#
+# Four things can be wrong with a stratum, and the order you test them in is part of the
+# exercise:
+#
+# - **undeclared** — the data contains a stratum the declaration never mentions. This is a
+#   finding about the *declaration*, and it outranks everything else, because you cannot judge
+#   the coverage of a population you have described wrongly. It is also the one an
+#   implementation that loops over `DECLARED_POPULATION` never sees.
+# - **empty** — declared, and zero rows.
+# - **thin** — fewer than `MIN_SUPPORT` rows: present, but unable to support a claim.
+# - **over** — more than `OVER_REPRESENTATION_FACTOR` times its declared share. Over-
+#   representation is a representativeness defect too. A model that saw one region three times
+#   more often than it will meet it is not calibrated for the population it was declared for.
+
+# %%
+def coverage_report(table: dict, declared: dict = DECLARED_POPULATION, split: str = "train",
+                    min_support: int = MIN_SUPPORT,
+                    over_factor: float = OVER_REPRESENTATION_FACTOR) -> dict:
+    """Compare an actual split against a declared population, stratum by stratum.
+
+    A stratum is a `(region, age_band)` tuple. Report every stratum in `declared` UNION every
+    stratum observed in the split — an observed stratum missing from the declaration is the
+    finding that matters most, and iterating over `declared` alone hides it.
+
+    Returns a dict with:
+      "split"    the split name; "n" its row count
+      "strata"   {stratum: {"count", "observed_share", "declared_share", "status"}}, where
+                 observed_share is count/n, declared_share is 0.0 for an undeclared stratum,
+                 and status is decided IN THIS ORDER: "undeclared" if the stratum is not in
+                 `declared`; else "empty" if count is 0; else "thin" if count < min_support;
+                 else "over" if observed_share > declared_share * over_factor; else "ok".
+      "counts"   {"ok", "thin", "empty", "over", "undeclared"} -> how many strata each
+      "verdict"  "pass" only when EVERY stratum is "ok"
+      "power"    power("min_detectable_share", min_detectable_share(n), statement)
+
+    Example:
+        >>> cov = coverage_report(TABLE)         # doctest: +SKIP
+        >>> cov["n"], cov["counts"]["empty"]
+        (1500, 1)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def gap_report(coverage: dict, remedies: dict = REMEDIES) -> list:
+    """Turn a coverage report into the Article 10(2)(h) list: every gap, and what to do.
+
+    One dict per stratum whose status is NOT "ok" — including "over" and "undeclared", not
+    only the shortages. Each carries:
+      "stratum", "status", "count", "declared_share"
+      "shortfall_rows"  ceil(declared_share * n) - count for "empty" and "thin", else 0.
+                        Never negative.
+      "action"          remedies[status]
+
+    Sorted by declared share DESCENDING, ties broken by the stratum tuple, so the gap that
+    covers most of the declared population is read first.
+
+    Example:
+        >>> [g["stratum"] for g in gap_report(coverage_report(TABLE))][:1]   # doctest: +SKIP
+        [('west', '30-49')]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_coverage() -> None:
+    cov = coverage_report(TABLE)
+    assert cov["n"] == 1500, f"the training split holds 1500 rows, you counted {cov['n']}"
+    assert len(cov["strata"]) == 13, (
+        f"13 strata belong in this report — the 12 declared ones plus the one the data "
+        f"contains and the declaration never mentioned. You reported {len(cov['strata'])}; "
+        "iterating over the declared population alone is how the undeclared one disappears"
+    )
+    assert cov["strata"][("north", "18-29")]["status"] == "empty", (
+        "a declared stratum with zero rows is 'empty', not 'thin' and not missing from the "
+        "report altogether"
+    )
+    assert cov["strata"][("east", "50+")]["status"] == "thin", (
+        f"east/50+ holds {cov['strata'][('east', '50+')]['count']} rows, under MIN_SUPPORT, "
+        "so it is 'thin'"
+    )
+    assert cov["strata"][("west", "30-49")]["status"] == "over", (
+        "west/30-49 holds more than OVER_REPRESENTATION_FACTOR times its declared share; "
+        "over-representation is a representativeness defect too, not just a shortage"
+    )
+    assert cov["strata"][("overseas", "30-49")]["status"] == "undeclared", (
+        "the data contains a stratum the declared population does not list. That is a finding "
+        "about the DECLARATION, and it outranks every other status for this stratum"
+    )
+    assert cov["strata"][("overseas", "30-49")]["declared_share"] == 0.0, (
+        "an undeclared stratum's declared_share is 0.0, not None and not absent"
+    )
+    assert cov["counts"] == {"ok": 9, "thin": 1, "empty": 1, "over": 1, "undeclared": 1}, (
+        f"status tally came out {cov['counts']}, expected 9 ok / 1 thin / 1 empty / 1 over / "
+        "1 undeclared"
+    )
+    assert cov["verdict"] == "fail", "a split with four defective strata does not pass"
+    assert abs(cov["power"]["value"] - min_detectable_share(1500)) < 1e-12, (
+        "the coverage power value is min_detectable_share(n) for THIS split's n"
+    )
+
+    gaps = gap_report(cov)
+    assert len(gaps) == 4, (
+        f"the gap report lists every stratum that is not 'ok' — 4 of them. You listed "
+        f"{len(gaps)}; dropping 'over' or 'undeclared' reports only the gaps you like"
+    )
+    assert [g["stratum"] for g in gaps] == [("west", "30-49"), ("east", "50+"),
+                                            ("north", "18-29"), ("overseas", "30-49")], (
+        f"gaps must be ordered by declared share, largest first; you produced "
+        f"{[g['stratum'] for g in gaps]}"
+    )
+    by_stratum = {g["stratum"]: g for g in gaps}
+    assert by_stratum[("north", "18-29")]["shortfall_rows"] == 60, (
+        "an empty stratum declared at 4% of 1500 rows is 60 rows short — ceil(share * n) "
+        "minus the count"
+    )
+    assert by_stratum[("east", "50+")]["shortfall_rows"] == 87, (
+        "east/50+ is ceil(0.06 * 1500) - 3 = 87 rows short"
+    )
+    assert by_stratum[("west", "30-49")]["shortfall_rows"] == 0, (
+        "an over-represented stratum is not short of anything; its shortfall is 0"
+    )
+    assert all(g["action"] for g in gaps), (
+        "Article 10(2)(h) asks for the gaps AND how they can be addressed — every row carries "
+        "an action"
+    )
+    print(f"exercise 3 looks right — {cov['counts']} and {len(gaps)} gaps to answer for")
+
+
+# %%
+_try("exercise 3", _check_coverage)
+
+# %%
+def _show_gaps() -> None:
+    gaps = gap_report(coverage_report(TABLE))
+    print(f"{'stratum':22s} {'status':11s} {'n':>5s} {'declared':>9s} {'short':>6s}  action")
+    for row in gaps:
+        print(f"{row['stratum'][0] + '/' + row['stratum'][1]:22s} {row['status']:11s} "
+              f"{row['count']:>5d} {row['declared_share']:>9.3f} {row['shortfall_rows']:>6d}  "
+              f"{row['action'][:46]}")
+
+
+_try("gap report", _show_gaps)
+
+# %% [markdown]
+# ## 6. Exercise 4 — drift between training and test
+#
+# Article 10(3) wants the three sets to have appropriate statistical properties for one
+# intended purpose. If the test set was collected somewhere else, or later, then every
+# performance number measured on it describes a population the model was not trained for.
+#
+# Two statistics, because two kinds of feature. For a categorical feature, **total variation
+# distance**: half the sum of absolute differences between the two share vectors, taken over
+# the **union** of categories. The union is the trap — a category present in training and
+# absent from test contributes its whole training share to the distance, and an implementation
+# that walks the test set's categories scores it zero. For a numeric feature, the
+# **standardised mean difference**: the gap between the means over the pooled standard
+# deviation, so the answer does not change when somebody switches from euros to thousands.
+
+# %%
+def drift_report(table: dict, train_split: str = "train", test_split: str = "test",
+                 kinds: dict = FEATURE_KINDS) -> dict:
+    """Compare the training and test distributions, feature by feature.
+
+    For each name in `kinds`:
+      categorical -> "statistic" is the total variation distance,
+                     0.5 * sum(|share_train(c) - share_test(c)|) over the UNION of categories;
+                     "drifted" is statistic >= TVD_THRESHOLD
+      numeric     -> "statistic" is (mean_test - mean_train) / pooled_sd, signed, where
+                     pooled_sd = sqrt(((n1-1)*var_train + (n2-1)*var_test) / (n1+n2-2)) with
+                     ddof=1 variances; "drifted" is abs(statistic) >= SMD_THRESHOLD
+
+    Returns {"n_train", "n_test", "features": {name: {"kind", "statistic", "drifted"}},
+             "drifted": sorted list of drifted feature names, "verdict", "power"}, where the
+    power is power("min_detectable_share_difference",
+                   min_detectable_difference(n_train, n_test, 0.5), statement). p = 0.5
+    maximises the variance, so that one figure bounds every category at once.
+
+    Example:
+        >>> drift_report(TABLE)["drifted"]        # doctest: +SKIP
+        ['income', 'region']
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_drift() -> None:
+    rep = drift_report(TABLE)
+    assert rep["n_train"] == 1500 and rep["n_test"] == 600, (
+        f"split sizes came out {rep['n_train']}/{rep['n_test']}, expected 1500/600"
+    )
+    assert set(rep["features"]) == set(FEATURE_KINDS), "report every feature in FEATURE_KINDS"
+    region = rep["features"]["region"]
+    assert abs(region["statistic"] - 0.2333333333) < 1e-6, (
+        f"region's total variation distance is {region['statistic']:.6f}, expected 0.233333. "
+        "TVD is HALF the sum of absolute share differences, over the UNION of categories — "
+        "'overseas' appears in train and not in test, and it counts"
+    )
+    assert region["drifted"] is True, "region is over TVD_THRESHOLD, so it has drifted"
+    assert rep["features"]["age_band"]["drifted"] is False, (
+        f"age_band's TVD is {rep['features']['age_band']['statistic']:.4f}, under the "
+        "threshold — a report that flags everything is a report nobody reads"
+    )
+    income = rep["features"]["income"]
+    assert income["statistic"] > SMD_THRESHOLD, (
+        f"income's standardised mean difference is {income['statistic']:.4f}; the test split "
+        "was collected later and sits higher. Use the POOLED standard deviation with ddof=1"
+    )
+    assert abs(rep["features"]["dti"]["statistic"]) < SMD_THRESHOLD, (
+        "debt-to-income did not move; it must not be flagged"
+    )
+    assert rep["drifted"] == ["income", "region"], (
+        f"exactly region and income drifted, sorted; you reported {rep['drifted']}"
+    )
+    assert rep["verdict"] == "fail", "something drifted, so the verdict is 'fail'"
+    assert abs(rep["power"]["value"] - min_detectable_difference(1500, 600, 0.5)) < 1e-12, (
+        "the drift power value is min_detectable_difference(n_train, n_test, 0.5)"
+    )
+    print(f"exercise 4 looks right — drifted: {rep['drifted']}, "
+          f"region TVD {region['statistic']:.4f}, income SMD {income['statistic']:.4f}")
+
+
+# %%
+_try("exercise 4", _check_drift)
+
+# %% [markdown]
+# ## 7. Exercise 5 — provenance, of the data and of the labels
+#
+# Article 10(2)(b) asks for the collection process and the origin of the data; 10(2)(c) asks
+# for the preparation operations, annotation and labelling among them. Two questions, then.
+# Where did the rows come from, and where did the *answers* come from?
+#
+# The second is the one that gets skipped. A label is a claim about the world produced by a
+# method — an adjudicator's decision, a repayment proxy, a vendor's inference — and a data set
+# whose labels have no recorded method has no recoverable meaning, however clean its features.
+#
+# Two traps live in this exercise. A licence field that is a non-empty string is not a licence
+# you may use; test membership of `ALLOWED_LICENCES`, not truthiness. And an unapproved method
+# is not the same defect as a missing one: the first is a decision somebody made and can
+# defend, the second is a hole.
+
+# %%
+def provenance_report(table: dict, sources: dict = SOURCES,
+                      allowed: tuple = ALLOWED_LICENCES, methods: dict = LABEL_METHODS,
+                      threshold: float = UNDOCUMENTED_LABEL_THRESHOLD) -> dict:
+    """Check that every split traces to a licensed source, and every label to a method.
+
+    For each split present in the table, in sorted order, report:
+      "source_id", "licence"      from `sources` (empty strings when there is no record)
+      "licence_ok"                the licence is in `allowed` — membership, not truthiness
+      "n"                         rows in the split
+      "undocumented_labels"       rows whose label_source is empty or whitespace
+      "undocumented_share"        that count over THIS split's n
+      "unapproved_labels"         rows whose label_source maps to "unapproved" in `methods`
+      "reasons"                   one string per defect, in this order: no source record at
+                                  all, licence not allowed, undocumented share ABOVE
+                                  `threshold`, any unapproved labels
+      "status"                    "fail" when reasons is non-empty, else "ok"
+
+    Returns {"splits": {...}, "verdict", "power"}. The power is
+    power("smallest_detectable_share", 1/n_total, statement) — and the statement is the
+    interesting part. This check reads every row, so it is a census: its detection limit is
+    one row and its blind spot is not power at all. Say what it actually is.
+
+    Example:
+        >>> provenance_report(TABLE)["splits"]["train"]["status"]     # doctest: +SKIP
+        'ok'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_provenance() -> None:
+    rep = provenance_report(TABLE)
+    assert set(rep["splits"]) == {"train", "val", "test"}, "report all three splits"
+    train = rep["splits"]["train"]
+    assert train["status"] == "ok", (
+        f"train is the clean split; yours failed for {train['reasons']}"
+    )
+    assert train["undocumented_labels"] == 15, (
+        f"train has 15 rows whose label_source is empty; you counted "
+        f"{train['undocumented_labels']}. An empty string is undocumented — count emptiness, "
+        "not membership of LABEL_METHODS, or 'repayment_proxy' gets miscounted too"
+    )
+    val = rep["splits"]["val"]
+    assert val["licence_ok"] is False and val["status"] == "fail", (
+        f"val's licence is {val['licence']!r}, which is a non-empty string that is NOT on the "
+        "allowed list. Testing `if licence:` passes this one straight through"
+    )
+    assert val["undocumented_labels"] == 0, (
+        "val's labels are all documented; only its licence fails"
+    )
+    test = rep["splits"]["test"]
+    assert test["licence_ok"] is True, "the test split's licence IS allowed; it fails on labels"
+    assert test["undocumented_labels"] == 50, (
+        f"test has 50 undocumented labels, you counted {test['undocumented_labels']}"
+    )
+    assert abs(test["undocumented_share"] - 50 / 600) < 1e-12, (
+        "undocumented_share is the count over that split's own n, not over the whole table"
+    )
+    assert test["unapproved_labels"] == 5, (
+        f"5 test labels came from 'vendor_inferred', which LABEL_METHODS marks unapproved; "
+        f"you counted {test['unapproved_labels']}"
+    )
+    assert test["status"] == "fail" and len(test["reasons"]) == 2, (
+        f"test fails for two distinct reasons, you gave {len(test['reasons'])}: "
+        f"{test['reasons']}"
+    )
+    assert rep["verdict"] == "fail", "two of three splits fail, so the check fails"
+    assert abs(rep["power"]["value"] - 1.0 / N_ROWS) < 1e-15, (
+        "a census detects one row in n; the power value is 1/n over the WHOLE table"
+    )
+    print(f"exercise 5 looks right — train ok, val {val['reasons'][0][:28]}…, "
+          f"test {test['undocumented_labels']} undocumented + "
+          f"{test['unapproved_labels']} unapproved")
+
+
+# %%
+_try("exercise 5", _check_provenance)
+
+# %% [markdown]
+# ## 8. Exercise 6 — the bias probe, and the minimum-support rule
+#
+# Article 10(2)(f) asks for an examination in view of possible biases. Here is the examination
+# and here is the rule that makes it one.
+#
+# Compute the error rate in each `(region, age_band)` subgroup of the test split and compare
+# it with the baseline over the whole split. Then apply two gates, **in this order**:
+#
+# 1. **Support.** A subgroup with fewer than `MIN_SUPPORT` rows gets no verdict at all. Not
+#    "probably fine", not "worst in the table" — `insufficient_support`, named in the output,
+#    with no claim attached. The floor is inclusive: exactly `MIN_SUPPORT` rows clears it.
+# 2. **Detectability.** For the subgroups that clear the floor, flag a gap only when it
+#    exceeds that subgroup's own `min_detectable_difference` against the rest of the split.
+#    A fixed five-point threshold flags noise in small subgroups and misses real harm in
+#    large ones; the per-subgroup floor does neither.
+#
+# There is a subgroup in this test split with a 100 % error rate. It has three rows in it. It
+# is the loudest number in the table and it is not a finding, and an examination that reports
+# it as one is worse than no examination, because it sends the remediation budget to three
+# people while the real disparity goes unnamed.
+
+# %%
+def bias_probe(table: dict, split: str = "test", min_support: int = MIN_SUPPORT,
+               decision_threshold: float = DECISION_THRESHOLD) -> dict:
+    """Error rate by subgroup, with a support floor under every claim.
+
+    A prediction is `score >= decision_threshold`; an error is a prediction that differs from
+    the label. `baseline_error_rate` is the error rate over the whole split.
+
+    For each `(region, age_band)` subgroup observed in the split, in sorted order:
+      "n", "errors", "error_rate"
+      "gap"                  error_rate - baseline_error_rate, SIGNED
+      "min_detectable_gap"   min_detectable_difference(n, n_split - n, baseline_error_rate)
+      "supported"            n >= min_support
+      "status"               "insufficient_support" when not supported — checked FIRST, before
+                             any comparison; else "flagged" when abs(gap) >= the subgroup's
+                             own min_detectable_gap; else "ok"
+
+    Returns {"split", "n", "baseline_error_rate", "subgroups", "findings", "insufficient",
+             "verdict", "power"} where "findings" is the flagged subgroups sorted by absolute
+    gap descending (ties by the subgroup tuple), "insufficient" is the unsupported ones
+    sorted, the verdict fails when there is any finding, and the power is
+    power("largest_min_detectable_gap", worst, statement) — `worst` being the LARGEST
+    min_detectable_gap among the SUPPORTED subgroups, i.e. the least sensitive comparison
+    this probe actually made. Taking the maximum over all subgroups instead would report the
+    sensitivity of a comparison you declined to make.
+
+    Example:
+        >>> bias_probe(TABLE)["findings"]           # doctest: +SKIP
+        [('west', '18-29')]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_bias_probe() -> None:
+    rep = bias_probe(TABLE)
+    assert rep["n"] == 600, f"the test split holds 600 rows, you counted {rep['n']}"
+    assert abs(rep["baseline_error_rate"] - 83 / 600) < 1e-12, (
+        f"baseline error rate is {rep['baseline_error_rate']:.6f}, expected {83 / 600:.6f} — "
+        "compare the thresholded score against the label, over the whole split"
+    )
+    tiny = rep["subgroups"][("north", "18-29")]
+    assert tiny["n"] == 3 and tiny["error_rate"] == 1.0, (
+        "north/18-29 has 3 test rows and the model gets all three wrong"
+    )
+    assert tiny["status"] == "insufficient_support", (
+        "a 3-row subgroup with a 100% error rate is the loudest number in the table and the "
+        "least informative one. The support floor comes FIRST, before any gap comparison"
+    )
+    assert ("north", "18-29") not in rep["findings"], (
+        "the 3-row subgroup must not appear in findings — that is the whole point of the floor"
+    )
+    edge = rep["subgroups"][("east", "30-49")]
+    assert edge["n"] == 30 and edge["supported"] is True, (
+        "east/30-49 has exactly MIN_SUPPORT rows. The floor is inclusive: 30 >= 30 clears it"
+    )
+    assert rep["findings"] == [("west", "18-29")], (
+        f"exactly one subgroup is both supported and beyond its own detectable gap; you "
+        f"reported {rep['findings']}"
+    )
+    flagged = rep["subgroups"][("west", "18-29")]
+    assert abs(flagged["error_rate"] - 21 / 60) < 1e-12, "west/18-29 errs on 21 of 60"
+    assert flagged["gap"] > flagged["min_detectable_gap"] > 0, (
+        "west/18-29 is flagged because its gap EXCEEDS what this sample could detect; a "
+        "fixed 5-point threshold would have flagged noise elsewhere instead"
+    )
+    assert len(rep["insufficient"]) == 7, (
+        f"7 of the 12 subgroups are under the floor; you found {len(rep['insufficient'])}"
+    )
+    assert rep["verdict"] == "fail", "one supported subgroup is flagged, so the probe fails"
+    assert abs(rep["power"]["value"] - rep["subgroups"][("east", "30-49")]
+               ["min_detectable_gap"]) < 1e-12, (
+        "the power value is the LARGEST min_detectable_gap among SUPPORTED subgroups — the "
+        "least sensitive comparison the probe actually made. Taking the max over all "
+        "subgroups reports the sensitivity of a comparison you refused to make"
+    )
+    print(f"exercise 6 looks right — baseline {rep['baseline_error_rate']:.4f}, "
+          f"{len(rep['findings'])} finding, {len(rep['insufficient'])} under the floor")
+
+
+# %%
+_try("exercise 6", _check_bias_probe)
+
+# %%
+def _show_subgroups() -> None:
+    rep = bias_probe(TABLE)
+    print(f"{'subgroup':22s} {'n':>5s} {'err':>6s} {'gap':>8s} {'mde':>8s}  status")
+    for key, cell in rep["subgroups"].items():
+        print(f"{key[0] + '/' + key[1]:22s} {cell['n']:>5d} {cell['error_rate']:>6.3f} "
+              f"{cell['gap']:>8.3f} {cell['min_detectable_gap']:>8.3f}  {cell['status']}")
+    print("\nThe loudest row is north/18-29: a 100% error rate on three people. It is not a")
+    print("finding. The finding is west/18-29, whose gap is smaller and whose sample is not.")
+    print("Note also which stratum north/18-29 is: the one the training split has none of.")
+
+
+_try("subgroup table", _show_subgroups)
+
+# %% [markdown]
+# ## 9. The artefact
+#
+# Five verdicts, five power statements, and the gap list. This is the
+# `data_governance_record` the conformity pack has been holding a slot for, and unlike the
+# sentence it replaces, it can be re-run tomorrow against tomorrow's data.
+
+# %%
+def governance_record(table: dict = TABLE, as_of: date = AS_OF) -> dict:
+    """Assemble the data governance record. Given to you — it is the five checks in a row."""
+    checks = {"leakage": leakage_report(table), "coverage": coverage_report(table),
+              "drift": drift_report(table), "provenance": provenance_report(table),
+              "bias": bias_probe(table)}
+    return {"system_id": SYSTEM_ID, "as_of": as_of.isoformat(), "rows": len(table["row_id"]),
+            "checks": {name: {"verdict": rep["verdict"], "power": rep["power"]}
+                       for name, rep in checks.items()},
+            "gaps": gap_report(checks["coverage"]),
+            "verdict": "fail" if any(r["verdict"] == "fail" for r in checks.values()) else "pass"}
+
+
+def _show_record() -> None:
+    record = governance_record()
+    print(f"data governance record · {record['system_id']} · {record['as_of']} · "
+          f"{record['rows']} rows")
+    for name, cell in record["checks"].items():
+        print(f"\n  {name:10s} {cell['verdict'].upper():5s} "
+              f"{cell['power']['statistic']} = {cell['power']['value']:.5f}")
+        print(f"             {cell['power']['statement'][:96]}")
+    print(f"\n  OVERALL    {record['verdict'].upper()} · {len(record['gaps'])} declared gaps")
+
+
+_try("the record", _show_record)
+
+# %% [markdown]
+# ## 10. Common mistakes
+#
+# - **A verdict with no power statement.** "No bias detected" and "we could not have detected
+#   a disparity smaller than 18 points" are the same sentence, and only one of them is honest.
+#   A bias examination that cannot say what it would have missed is not an examination.
+# - **Looping over the declared population.** Every check in this lesson that compares data
+#   with a declaration has to walk the UNION. The stratum in the data that nobody declared,
+#   and the category in training that vanished from test, are both invisible to a loop over
+#   the declaration, and both are the finding.
+# - **Reading a tiny subgroup's rate as a result.** Three rows, three errors, 100 %. The
+#   support floor is not statistical fussiness; it is what stops a remediation budget being
+#   spent on noise while a real disparity goes unnamed.
+# - **Suppressing the tiny subgroup instead of reporting it.** The opposite error, and just as
+#   bad. `insufficient_support` is a finding about the DATA — it says this system cannot
+#   currently be examined for that group, which is itself a coverage gap.
+# - **A fixed bias threshold.** Five points means something different in a 30-row subgroup and
+#   a 300-row one. Compare each subgroup against what its own sample could detect.
+# - **Testing a licence for truthiness.** `if licence:` passes `"proprietary-internal"`,
+#   `"TBD"` and `"see contract"`. Test membership of the allow-list.
+# - **Counting unlabelled rows as documented.** An empty `label_source` is a hole; a
+#   `vendor_inferred` one is a decision. Two defects, two different remedies, and collapsing
+#   them loses the difference.
+# - **Widening a duplicate tolerance until the count looks right.** The overlap number then
+#   measures the tolerance rather than the data. Match at the precision the source records,
+#   and publish that precision as the detection limit.
+# - **Treating over-representation as harmless.** A region seen three times more often than it
+#   will be met is a representativeness defect, not a bonus.
+# - **Reporting the rule of three as the exact answer.** `3/n` is a fine approximation and a
+#   bad thing to write in an evidence pack without saying so. At n = 20 it runs nearly 8 %
+#   high, which the exercise 1 check measures rather than asserts.
+#
+# The first one is the one to watch. The cell below strips every power statement out of the
+# record and prints what is left, which is what most data governance records actually contain.
+
+# %%
+def _show_without_power() -> None:
+    record = governance_record()
+    print("the same record with the power statements deleted:\n")
+    for name, cell in record["checks"].items():
+        print(f"  {name:10s} {cell['verdict'].upper()}")
+    print(f"\n  OVERALL    {record['verdict'].upper()}")
+    print("\nEvery verdict survives. Every question an inspector would ask next does not:")
+    print("how small a gap would you have found? How thin is too thin? Same verdicts,")
+    print("no evidence. This is the difference the module is about.")
+
+
+_try("record without power", _show_without_power)
+
+# %% [markdown]
+# ## 11. Self-check
+#
+# 1. A bias probe reports a 100 % error rate in a subgroup of three test rows. The report
+#    should:
+#    - (a) flag it as the system's worst disparity — it is the largest gap in the table
+#    - (b) drop the subgroup silently; three rows are not worth reporting
+#    - (c) report it as insufficient support, name the subgroup, and make no claim about its
+#          error rate either way
+#    - (d) merge it into a neighbouring subgroup until the sample is large enough
+#
+# 2. A declared stratum has zero rows in a 1500-row training split. Is that evidence of a gap?
+#    - (a) no; absence of evidence is never evidence of absence
+#    - (b) yes; with 1500 rows the smallest share whose absence is attributable to chance is
+#          about 0.2 %, and this stratum was declared at 4 %
+#    - (c) yes; a declared stratum with no rows is a gap whatever the sample size
+#    - (d) only if it is also thin in the validation split
+#
+# 3. What did Regulation (EU) 2026/1744 do to Article 10?
+#    - (a) nothing; Article 10 was left untouched
+#    - (b) it rewrote 10(3) to drop "free of errors and complete"
+#    - (c) it deleted 10(5) and moved the special-category basis for bias detection into a new
+#          Article 4a, which 10(1) and 10(6) now cross-refer to
+#    - (d) it deleted Article 10 and folded data governance into Article 11
+#
+# 4. You widen the near-duplicate tolerance from one unit of income to five thousand, and the
+#    overlap count goes from 20 to 300. What have you learned?
+#    - (a) there was fifteen times more leakage than you thought
+#    - (b) nothing about leakage: the tolerance now matches unrelated applicants, which is why
+#          a duplicate check has to state its detection limit
+#    - (c) the exact-duplicate check is broken
+#    - (d) the test split is too small
+#
+# 5. Article 10(3) requires data sets to be "relevant, sufficiently representative, and to the
+#    best extent possible, free of errors and complete in view of the intended purpose".
+#    Where does the qualifier bite?
+#    - (a) on the whole sentence, so everything in it is a best-efforts duty
+#    - (b) on "free of errors and complete"; "relevant" and "sufficiently representative" sit
+#          outside it
+#    - (c) on "relevant" only
+#    - (d) nowhere; it is recital language, not an operative requirement
+#
+# Mark them in the next cell. The key is not written in this file — only a salted hash of it —
+# so you find out which are wrong without reading the answers off the page. The reasoning for
+# each is published in the course solution bundle.
+
+# %%
+# Salted hashes of the answers, not the answers. Nothing here tells you which letter is right.
+_SELF_CHECK_KEY = {
+    1: "ffd08bbe58a7b961",
+    2: "c97eb6a360c37392",
+    3: "9ba7afe5f2e57157",
+    4: "577227ae676de159",
+    5: "a134e87d7754153e",
+}
+
+_SELF_CHECK_HINT = {
+    1: "read the two gates at the top of section 8, and note that they are ordered.",
+    2: "run the power demo in section 3 and compare the two numbers it prints against 0.04.",
+    3: "look at the OMNIBUS_NOTES table in section 1 and at what 10(6) now cross-refers to.",
+    4: "re-read the paragraph in section 4 about what a loose tolerance measures.",
+    5: "read the sentence in section 1 again and ask which words the qualifier sits in front of.",
+}
+
+
+def check_self_check(answers: dict) -> None:
+    """Mark your self-check answers. Pass a dict of question number -> letter.
+
+    Example:
+        >>> check_self_check({1: "a"})          # doctest: +SKIP
+          q1  not 'a' — read the two gates at the top of section 8 ...
+          q2  no answer given
+        ...
+    """
+    right = 0
+    for question in sorted(_SELF_CHECK_KEY):
+        given = str(answers.get(question, "")).strip().lower()
+        digest = hashlib.sha256(f"P01-L04:q{question}:{given}".encode()).hexdigest()[:16]
+        if digest == _SELF_CHECK_KEY[question]:
+            right += 1
+            print(f"  q{question}  correct")
+        elif not given:
+            print(f"  q{question}  no answer given")
+        else:
+            print(f"  q{question}  not {given!r} — {_SELF_CHECK_HINT[question]}")
+    print(f"\n{len(_SELF_CHECK_KEY)} questions, {right} right")
+
+
+# Put your own letters in, then run this cell:
+# check_self_check({1: "a", 2: "a", 3: "a", 4: "a", 5: "a"})
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# Five checks that run, a gap report that says what to do about each gap, and a power
+# statement under every verdict. That is the object behind the conformity pack's
+# `data_governance_record` — a row that used to be a boolean and is now a thing you can
+# re-run against next quarter's data and diff.
+#
+# The pieces travel. The minimum-support rule is the same rule the human-oversight module
+# needs before it reports an override rate by reviewer, and the same one the accuracy module
+# needs before it reports a metric by segment. The drift statistics come back as the
+# post-market monitoring feed, computed over rolling windows instead of over two splits. And
+# the honest habit — every number with the smallest effect it could have found — is what makes
+# the rest of the pack defensible rather than merely complete.
+#
+# **Again, and finally: this is engineering, not legal advice.**
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_power_tools),
+                          ("exercise 2", _check_leakage),
+                          ("exercise 3", _check_coverage),
+                          ("exercise 4", _check_drift),
+                          ("exercise 5", _check_provenance),
+                          ("exercise 6", _check_bias_probe)):
+        _try(_name, _check)
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
+    # and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

@@ -1,0 +1,1106 @@
+# %% [markdown]
+# # P01-L03 · Annex IV technical documentation, generated rather than written
+#
+# **You will build:** a generator that assembles the Article 11 technical file out of
+# machine-readable artefacts — a model registry, a dataset manifest, the Article 12 log
+# design, a metrics file — and **refuses to emit a section it cannot source**. Plus the
+# per-section provenance stamp that says which artefact and which run produced it, and the
+# staleness report that catches the day the document quietly stopped being true.
+#
+# **Time:** ~70 minutes · **Runs on:** a laptop CPU, no download, no network
+# · **Prerequisites:** `T10-L01-ai-act-conformity-pack`, `P01-L01-article-12-logging`
+#
+# Article 11(1) is two duties in one sentence: the technical documentation "shall be drawn up
+# before that system is placed on the market or put into service **and shall be kept
+# up-to date**". The first half is a writing job. The second half is an engineering job, and
+# it is the one that fails silently: a hand-written technical file is true on the day it is
+# signed and drifts from then on, with nothing in the system that notices.
+#
+# By the end you will be able to:
+#
+# 1. Implement `field_value()` and `is_sourced()`, so "this section has a source" is a test
+#    over typed artefacts rather than a claim in a spreadsheet.
+# 2. Implement `check_section()` so it separates a field that is **absent** from a field that
+#    is **present and blank**, and reports an unmet either/or requirement as neither.
+# 3. Implement `provenance_stamp()` so every emitted section names the artefact, the run and
+#    the content digest it came from.
+# 4. Implement `render_document()` so it emits the sourced sections and refuses the rest,
+#    naming what each refusal is waiting for.
+# 5. Implement `staleness_report()` and explain why a content digest, not a modification
+#    time, is what decides whether a section has drifted.
+#
+# > **This is engineering, not legal advice.** It is an exercise in the data structures a
+# > documentation duty implies: schemas, sourcing, provenance, drift. The Annex IV points
+# > below are quoted and sourced in `claims.yaml` with their URLs and access dates. The
+# > mapping from those points to the specific field paths this lesson requires is the
+# > lesson's *own* modelling choice, argued for in section 3 — it is not a statement about
+# > what any authority would accept. For a real system, read the Official Journal text and
+# > take professional advice.
+
+# %%
+# Setup: everything the lesson needs, in one cell. Standard library only — a documentation
+# generator you cannot run without a vendor's SDK is a generator an auditor cannot re-run.
+import hashlib
+import json
+import sys
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Callable, NamedTuple
+
+print("python", sys.version.split()[0], "· stdlib only, no numpy, no network, no disk reads")
+
+# The date this pack is assembled. Fixed, so every number below is reproducible.
+AS_OF = date(2026, 9, 16)
+print("as of", AS_OF.isoformat())
+
+
+class _Missing:
+    """The sentinel `field_value` returns when a path does not exist at all.
+
+    It is deliberately NOT None: a source may legitimately record None, and a generator that
+    cannot tell "the field is absent" from "the field says nothing" cannot tell an engineer
+    which of the two to go and fix.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "<missing>"
+
+
+MISSING = _Missing()
+
+
+def canonical_bytes(obj: Any) -> bytes:
+    """One deterministic serialisation, so the same payload always hashes the same way.
+
+    Given to you here: you implemented and defended this in `P01-L01-article-12-logging`.
+    """
+    return json.dumps(obj, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def content_hash(payload: Any) -> str:
+    """The SHA-256 hex digest of an artefact's payload. Given to you; not graded."""
+    return hashlib.sha256(canonical_bytes(payload)).hexdigest()
+
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check: Callable[[], None]) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other five.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. What Annex IV asks for, and when it binds
+#
+# Annex IV says the technical documentation "shall contain at least the following
+# information, as applicable to the relevant AI system", then lists nine points. Each is
+# quoted verbatim against its source in `claims.yaml`. Run the cell for the list and for the
+# two dates that decide when this file has to exist.
+
+# %%
+ANNEX_IV_POINTS = {
+    "1": "a general description of the AI system",
+    "2": "a detailed description of its elements and of the process for its development",
+    "3": "detailed information about the monitoring, functioning and control of the system",
+    "4": "a description of the appropriateness of the performance metrics",
+    "5": "a detailed description of the risk management system, per Article 9",
+    "6": "a description of relevant changes made through the system's lifecycle",
+    "7": "the harmonised standards applied, or the solutions adopted where none were",
+    "8": "a copy of the EU declaration of conformity, per Article 47",
+    "9": "the system in place to evaluate post-market performance, per Article 72",
+}
+for _number, _what in ANNEX_IV_POINTS.items():
+    print(f"  point {_number}  {_what}")
+print(f"\n{len(ANNEX_IV_POINTS)} points, every one of which has to come from somewhere")
+
+TIMETABLE = {
+    "2027-12-02": "Chapter III, incl. Article 11, for Annex III stand-alone high-risk systems",
+    "2028-08-02": "Chapter III, incl. Article 11, for Annex I product-embedded high-risk systems",
+}
+for _iso, _what in sorted(TIMETABLE.items()):
+    _days = (date.fromisoformat(_iso) - AS_OF).days
+    print(f"{_iso}  {_days:>5d} days from {AS_OF.isoformat()}  {_what}")
+
+# %% [markdown]
+# ### Why generate it rather than write it
+#
+# "Kept up-to date" is the whole lesson. A document written by hand is a snapshot of nine
+# artefacts on one afternoon. Retrain the model, re-cut the splits, close a risk, ship a
+# change — and the file on the shared drive still says what it said, with no signal that it
+# has stopped matching the system it describes.
+#
+# So: every section is **generated from a typed artefact**, and carries a stamp saying which
+# artefact, which run of the pipeline that produced it, and the digest of exactly the bytes
+# it read. Regenerating is then cheap, and *checking whether regeneration is needed* is cheap
+# too — which is the only reason anyone actually does it.
+
+# %%
+class Artefact(NamedTuple):
+    """One machine-readable input to the document.
+
+    `run_id` and `generated_at` say which run of which pipeline produced it. `payload` is the
+    content, and it is the only part the content digest covers — see exercise 4 for why.
+    """
+
+    name: str
+    run_id: str
+    generated_at: str   # ISO-8601 UTC
+    payload: dict
+
+
+def _at(days_ago: int, hour: int = 6) -> str:
+    """An ISO-8601 UTC timestamp exactly `days_ago` days before AS_OF, at `hour`:00."""
+    moment = datetime(2026, 9, 16, hour, 0, 0, tzinfo=timezone.utc) - timedelta(days=days_ago)
+    return moment.isoformat().replace("+00:00", "Z")
+
+
+print("artefact type ready ·", Artefact("demo", "run-0", _at(0), {"k": "v"}).generated_at)
+
+# %% [markdown]
+# ## 2. The artefacts
+#
+# **Every artefact below is synthetic and is constructed in this cell.** Nothing is loaded
+# from disk, nothing is downloaded, and the fictional provider, system and figures are
+# invented for the exercise. They are shaped like the real thing and say nothing about any
+# real product.
+#
+# Four of them are deliberately incomplete, in four different ways. Do not go looking yet —
+# your checker is going to find them, and that is the exercise.
+
+# %%
+SOURCES: dict[str, Artefact] = {
+    "model_registry": Artefact(
+        "model_registry", "reg-2026-09-02", _at(14),
+        {"system": {"name": "loan-copilot", "version": "2026.3",
+                    "previous_version": "2026.2",
+                    "intended_purpose": "score consumer credit applications for a "
+                                        "mid-sized retail bank"},
+         "provider": {"name": "Meridian Credit Technologies BV",
+                      "contact": "conformity@meridian.invalid"},
+         "forms_placed_on_market": ["hosted API", "on-premise container"],
+         "hardware": {"target": "2 vCPU / 8 GiB container, CPU only"},
+         "user_interface": "reviewer console v4, screenshot reference UI-114",
+         "architecture": {"design_rationale": "gradient-boosted trees over 41 tabular "
+                                              "features, chosen for per-feature "
+                                              "attributions a reviewer can read",
+                          "computational_resources": "0.8 vCPU-hours per 10 000 "
+                                                     "applications"},
+         "development": {"methods_and_steps": "feature contract frozen at FC-11, weekly "
+                                              "retrain, release gate on the validation "
+                                              "report",
+                         "third_party_tools": ["an open-source gradient-boosting library"]}}),
+    "dataset_manifest": Artefact(
+        "dataset_manifest", "dm-2026-08-30", _at(17),
+        {"datasets": [{"split": "train", "rows": 184000, "window": "2019-2025"},
+                      {"split": "validation", "rows": 23000, "window": "2025H1"},
+                      {"split": "test", "rows": 23000, "window": "2025H2"}],
+         "data_requirements": "41 features, 3 of them derived; no special-category data",
+         "labelling_procedure": "",
+         "provenance": "internal originations, one documented extract per split"}),
+    "validation_report": Artefact(
+        "validation_report", "val-2026-09-05", _at(11),
+        {"procedures": "temporal holdout: 2025H1 validation, 2025H2 test, no shuffling",
+         "test_logs": ["TL-2026-09-05-a", "TL-2026-09-05-b"],
+         "signed_by": "u:ehsan"}),
+    "control_design": Artefact(
+        "control_design", "ctl-2026-08-21", _at(26),
+        {"capabilities_and_limitations": "ranks applications; does not decide them, and is "
+                                         "not calibrated below a 6-month credit history",
+         "expected_accuracy": "AUC-ROC 0.87 overall, 0.81 on thin-file applicants",
+         "foreseeable_unintended_outcomes": "systematic under-ranking of recent arrivals "
+                                            "whose credit history starts at migration",
+         "input_specifications": "FC-11 feature contract, all 41 fields, nulls rejected"}),
+    "event_log_design": Artefact(
+        "event_log_design", "log-2026-09-10", _at(6),
+        {"chain_algorithm": "SHA-256 over {seq, prev_hash, event}, anchor published daily",
+         "retention_minimum_days": 183,
+         "reconstruction": "one decision rebuilt in sequence order, with its deployment"}),
+    "metrics": Artefact(
+        "metrics", "met-2026-09-12", _at(4),
+        {"primary_metric": "AUC-ROC",
+         "value": 0.871,
+         "confidence_interval": [0.856, 0.884],
+         "justification": "ranking quality at a fixed reviewer budget is what the deployer "
+                          "actually operates on; accuracy at a threshold is not",
+         "groups_evaluated": ["age band", "region", "first-time applicant"],
+         "known_failure_modes": ["thin-file applicants under 21"],
+         "open_severe_findings": 0}),
+    "risk_register": Artefact(
+        "risk_register", "rsk-2026-08-11", _at(36),
+        {"method": "scored register, re-scored every quarter and on every release",
+         "identified_risks": [{"id": "R-3", "risk": "under-ranking of thin-file applicants"},
+                              {"id": "R-7", "risk": "reviewer defers to the score"}],
+         "mitigations": [{"id": "R-3", "control": "separate floor for thin-file cases"},
+                         {"id": "R-7", "control": "score hidden until reviewer commits"}],
+         "residual_risks": [{"risk": "", "accepted_by": "", "review_due": ""}]}),
+    "change_log": Artefact(
+        "change_log", "chg-2026-09-14", _at(2),
+        {"entries": [{"date": "2026-03-04", "change": "feature contract FC-10 to FC-11"},
+                     {"date": "2026-07-19", "change": "retrain cadence weekly, was monthly"}],
+         "assessment_of_substantial_modification": "neither change altered the intended "
+                                                   "purpose or the risk profile"}),
+    "standards": Artefact(
+        "standards", "std-2026-06-30", _at(78),
+        {"harmonised_applied": [],
+         "other_solutions": "the provider's own control set, mapped requirement by "
+                            "requirement to Chapter III, Section 2"}),
+    "pmm_plan": Artefact(
+        "pmm_plan", "pmm-2026-09-15", _at(1),
+        {"plan_reference": "PMM-2026-1",
+         "data_sources": ["deployer feed", "provider telemetry", "complaint intake"],
+         "review_cadence_days": 30}),
+}
+
+print(f"{len(SOURCES)} artefacts, produced by {len({a.run_id for a in SOURCES.values()})} "
+      f"distinct pipeline runs")
+print(f"{'artefact':20s} {'run':18s} {'generated':22s} top-level keys")
+for _name, _artefact in SOURCES.items():
+    print(f"{_name:20s} {_artefact.run_id:18s} {_artefact.generated_at:22s} "
+          f"{len(_artefact.payload)}")
+print("\nnote what is NOT in that list: there is no `declaration` artefact. The EU "
+      "declaration\nof conformity is module 8's output, and module 8 has not run.")
+
+# %% [markdown]
+# ## 3. The schema, and where its field paths come from
+#
+# A section spec is a **path list**, not a prose template. Each path is
+# `artefact.key.subkey`, so the schema says exactly which pipeline output has to produce the
+# section. `any_of` groups are for Annex IV point 7, which is genuinely an either/or: a list
+# of harmonised standards applied, *or*, where none were applied, a description of the
+# solutions adopted instead.
+#
+# **The honest bit.** Annex IV's nine points are quoted from the regulation. The *field
+# paths* below are this lesson's own decomposition of them, invented to fit the fictional
+# artefacts above. A real provider's schema would look different because their pipeline
+# outputs look different. What transfers is the shape: a point of Annex IV, mapped to named
+# fields, mapped to the artefact that has to produce them. A schema nobody can argue with is
+# a schema nobody checked.
+
+# %%
+class SectionSpec(NamedTuple):
+    """One Annex IV point, expressed as paths into the artefacts."""
+
+    number: str
+    title: str
+    requires: tuple = ()      # every path here must be sourced
+    any_of: tuple = ()        # each group: at least one of its paths must be sourced
+    basis: str = ""           # the Annex IV point this maps to
+
+
+ANNEX_IV = (
+    SectionSpec("1", "General description of the AI system",
+                requires=("model_registry.system.intended_purpose",
+                          "model_registry.provider.name",
+                          "model_registry.system.version",
+                          "model_registry.forms_placed_on_market",
+                          "model_registry.hardware.target",
+                          "model_registry.user_interface"),
+                basis="Annex IV point 1"),
+    SectionSpec("2", "Elements of the system, and the process for its development",
+                requires=("model_registry.architecture.design_rationale",
+                          "model_registry.development.methods_and_steps",
+                          "dataset_manifest.data_requirements",
+                          "dataset_manifest.datasets",
+                          "dataset_manifest.labelling_procedure",
+                          "validation_report.procedures",
+                          "validation_report.test_logs"),
+                basis="Annex IV point 2, including 2(g) validation and testing"),
+    SectionSpec("3", "Monitoring, functioning and control",
+                requires=("control_design.capabilities_and_limitations",
+                          "control_design.expected_accuracy",
+                          "control_design.foreseeable_unintended_outcomes",
+                          "control_design.human_oversight_measures",
+                          "control_design.input_specifications",
+                          "event_log_design.chain_algorithm",
+                          "event_log_design.retention_minimum_days"),
+                basis="Annex IV point 3"),
+    SectionSpec("4", "Appropriateness of the performance metrics",
+                requires=("metrics.primary_metric",
+                          "metrics.value",
+                          "metrics.confidence_interval",
+                          "metrics.justification",
+                          "metrics.groups_evaluated",
+                          "metrics.known_failure_modes",
+                          "metrics.open_severe_findings"),
+                basis="Annex IV point 4"),
+    SectionSpec("5", "The risk management system",
+                requires=("risk_register.method",
+                          "risk_register.identified_risks",
+                          "risk_register.mitigations",
+                          "risk_register.residual_risks"),
+                basis="Annex IV point 5, Article 9"),
+    SectionSpec("6", "Relevant changes made through the lifecycle",
+                requires=("change_log.entries",
+                          "change_log.assessment_of_substantial_modification",
+                          "model_registry.system.previous_version"),
+                basis="Annex IV point 6"),
+    SectionSpec("7", "Harmonised standards applied, or the solutions adopted instead",
+                any_of=(("standards.harmonised_applied", "standards.other_solutions"),),
+                basis="Annex IV point 7"),
+    SectionSpec("8", "A copy of the EU declaration of conformity",
+                requires=("declaration.signed_copy", "declaration.signed_on"),
+                basis="Annex IV point 8, Article 47"),
+    SectionSpec("9", "The system for evaluating post-market performance",
+                requires=("pmm_plan.plan_reference",
+                          "pmm_plan.data_sources",
+                          "pmm_plan.review_cadence_days"),
+                basis="Annex IV point 9, Article 72(3)"),
+)
+
+_paths = sum(len(s.requires) for s in ANNEX_IV)
+_choices = sum(len(s.any_of) for s in ANNEX_IV)
+_named = sorted({p.split(".")[0] for s in ANNEX_IV
+                 for p in s.requires + tuple(q for g in s.any_of for q in g)})
+print(f"{len(ANNEX_IV)} sections · {_paths} required paths · {_choices} either/or group(s)")
+print(f"{len(_named)} artefacts named by the schema: {', '.join(_named)}")
+print(f"of those, {len([n for n in _named if n not in SOURCES])} are not in SOURCES at all: "
+      f"{', '.join(n for n in _named if n not in SOURCES)}")
+
+# %% [markdown]
+# ## 4. Exercise 1 — `field_value()`: resolving a path
+#
+# The first stub walks a path into the artefacts. Two traps live in six lines of code.
+#
+# The first is the difference between **absent** and **empty**, which is why this returns the
+# `MISSING` sentinel rather than `None`: a source may legitimately record `None`, and the
+# generator has to be able to say which of the two it found.
+#
+# The second is that a path can die halfway. `metrics.primary_metric.foo` walks into a string
+# and asks it for a key. Raising there means one malformed schema entry takes down the whole
+# document build; returning `MISSING` means the completeness report names the path and the
+# other eight sections still get generated.
+
+# %%
+def field_value(sources: dict, path: str) -> Any:
+    """Resolve `path` against `sources` and return the value, or MISSING.
+
+    `path` is "artefact.key" or "artefact.key.subkey..." — the first segment names an
+    artefact in `sources`, the rest walks that artefact's `payload`.
+
+    Return MISSING, and never raise, when: the artefact is not in `sources`; any key along
+    the way is absent; the path tries to walk into something that is not a dict; or the path
+    has no dot at all (an artefact on its own is not a field).
+
+    Return the value exactly as stored otherwise — including 0, False, "" and [], which are
+    `is_sourced`'s problem in the next exercise and not yours here.
+
+    Example:
+        >>> field_value(SOURCES, "metrics.primary_metric")
+        'AUC-ROC'
+        >>> field_value(SOURCES, "metrics.open_severe_findings")
+        0
+        >>> field_value(SOURCES, "declaration.signed_on") is MISSING
+        True
+        >>> field_value(SOURCES, "metrics.primary_metric.length") is MISSING
+        True
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_field_value() -> None:
+    assert field_value(SOURCES, "metrics.primary_metric") == "AUC-ROC", (
+        "a two-segment path is artefact + payload key; you returned "
+        f"{field_value(SOURCES, 'metrics.primary_metric')!r}"
+    )
+    assert field_value(SOURCES, "model_registry.system.intended_purpose").startswith("score"), (
+        "a three-segment path keeps walking into the nested dict"
+    )
+    assert field_value(SOURCES, "metrics.open_severe_findings") == 0, (
+        "0 is a value the metrics pipeline measured; return it, do not fold it into MISSING"
+    )
+    assert field_value(SOURCES, "dataset_manifest.labelling_procedure") == "", (
+        "an empty string is PRESENT. Returning MISSING for it destroys the distinction the "
+        "whole lesson turns on"
+    )
+    assert field_value(SOURCES, "declaration.signed_on") is MISSING, (
+        "no `declaration` artefact exists, so every path into it is MISSING"
+    )
+    assert field_value(SOURCES, "metrics.nope") is MISSING, "absent key -> MISSING"
+    assert field_value(SOURCES, "metrics.primary_metric.length") is MISSING, (
+        "walking into a str must return MISSING, not raise: one bad schema entry must not "
+        "take down the other eight sections"
+    )
+    assert field_value(SOURCES, "metrics") is MISSING, (
+        "a path with no dot names an artefact, not a field, so there is no value to return"
+    )
+    print("exercise 1 ok · absent, empty, zero and half-dead paths all distinguished")
+
+
+_try("exercise 1", _check_field_value)
+
+# %% [markdown]
+# ## 5. Exercise 2 — `is_sourced()`: the rule that stops a green pack
+#
+# This is the trap the module exists for. A generator that happily prints
+#
+#     4. Performance metrics: —
+#
+# is *worse* than one that crashes, because it produces a document that looks finished. The
+# rule below is what makes "sourced" mean something, and it has two edges that are easy to
+# get wrong in opposite directions.
+#
+# **Do not use truthiness.** `0` is what the metrics pipeline measured when it counted open
+# severe findings, and `False` is a real answer to "does this system profile natural
+# persons". A checker written as `if not value` throws both away and reports a fully sourced
+# section as blank.
+#
+# **Do not stop at the container.** `residual_risks: [{"risk": "", "accepted_by": ""}]` is a
+# template row somebody pasted in and never filled. It is a non-empty list — truthy, len 1 —
+# and it sources nothing. So emptiness recurses: a list or dict is sourced when at least one
+# thing inside it is.
+
+# %%
+def is_sourced(value: Any) -> bool:
+    """True when `value` actually carries something a reader could rely on.
+
+    NOT sourced: MISSING; None; a string that is empty or only whitespace; an empty list,
+    tuple, set or dict; and — recursively — a container all of whose elements (for a dict:
+    all of whose VALUES) are themselves unsourced.
+
+    Sourced: everything else, explicitly including 0, 0.0 and False, which are measurements,
+    not absences.
+
+    Example:
+        >>> is_sourced(0), is_sourced(False), is_sourced("0")
+        (True, True, True)
+        >>> is_sourced(""), is_sourced("   "), is_sourced([]), is_sourced(MISSING)
+        (False, False, False, False)
+        >>> is_sourced([{"risk": "", "accepted_by": ""}])
+        False
+        >>> is_sourced([{"risk": "", "accepted_by": "u:ehsan"}])
+        True
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_is_sourced() -> None:
+    for value in (0, False, 0.0, "0", "x", [0], {"a": False}, 0.871, ["", "x"]):
+        assert is_sourced(value) is True, (
+            f"is_sourced({value!r}) must be True — a measured zero, a False and a container "
+            "with one real thing in it are all sources. Do not test truthiness"
+        )
+    for value in (MISSING, None, "", "   ", "\n\t ", [], {}, (), set()):
+        assert is_sourced(value) is False, (
+            f"is_sourced({value!r}) must be False — that is an absence dressed as a value"
+        )
+    blank_row = [{"risk": "", "accepted_by": "", "review_due": ""}]
+    assert is_sourced(blank_row) is False, (
+        "a non-empty list of entirely blank rows sources nothing; recurse into containers "
+        "instead of stopping at len() > 0"
+    )
+    assert is_sourced([{"risk": "", "accepted_by": "u:ehsan"}]) is True, (
+        "one real value anywhere inside makes the container sourced — the rule is 'any', "
+        "not 'all'"
+    )
+    assert is_sourced({"a": {"b": [None, ""]}}) is False, "recursion goes all the way down"
+    print("exercise 2 ok · zero survives, the blank template row does not")
+
+
+_try("exercise 2", _check_is_sourced)
+
+# %% [markdown]
+# ## 6. Exercise 3 — `check_section()`: naming what is missing
+#
+# Now the completeness checker. It reports **three different kinds of not-ready**, and the
+# distinction is the product: they send an engineer to three different places.
+#
+# * `missing` — the path is not in the artefact at all. Somebody has to add a field, or the
+#   schema is wrong.
+# * `empty` — the path is there and carries nothing. The pipeline ran and produced a blank.
+# * `unmet_choices` — an either/or group where *neither* option is sourced.
+#
+# An `any_of` path that is missing or empty is **not** reported in `missing` or `empty`. Only
+# the group verdict matters: a provider who applied no harmonised standards has nothing wrong
+# with their pack, and a report that nags about it teaches people to ignore the report.
+
+# %%
+class SectionStatus(NamedTuple):
+    """What `check_section` hands back. `artefacts` is what the SOURCED paths came from."""
+
+    number: str
+    title: str
+    complete: bool
+    artefacts: tuple
+    missing: tuple
+    empty: tuple
+    unmet_choices: tuple
+
+
+def check_section(spec: SectionSpec, sources: dict) -> SectionStatus:
+    """Decide whether `spec` can be emitted from `sources`, and say what is blocking it.
+
+    For each path in `spec.requires`, in order: MISSING goes in `missing`; present but not
+    `is_sourced` goes in `empty`; anything else is sourced.
+
+    For each group in `spec.any_of`, in order: if no path in the group is sourced, the group
+    itself (as a tuple of its paths) goes in `unmet_choices`. Its paths never appear in
+    `missing` or `empty`.
+
+    `complete` is True when all three lists are empty. `artefacts` is the sorted tuple of the
+    distinct artefact names the SOURCED paths came from — including sourced any_of paths, and
+    excluding artefacts that contributed nothing. All four collection fields are tuples.
+
+    Example:
+        >>> status = check_section(ANNEX_IV[7], SOURCES)   # point 8, no declaration artefact
+        >>> status.complete, status.artefacts
+        (False, ())
+        >>> status.missing
+        ('declaration.signed_copy', 'declaration.signed_on')
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_check_section() -> None:
+    one = check_section(ANNEX_IV[0], SOURCES)
+    assert isinstance(one, SectionStatus), f"return a SectionStatus, got {type(one).__name__}"
+    assert one.complete is True and one.missing == () and one.empty == (), (
+        f"section 1 is fully sourced by the model registry; you reported {one!r}"
+    )
+    assert one.artefacts == ("model_registry",), (
+        f"section 1 reads one artefact; you reported {one.artefacts!r} — artefacts is the "
+        "sorted DISTINCT set of artefact names behind the sourced paths"
+    )
+    two = check_section(ANNEX_IV[1], SOURCES)
+    assert two.missing == () and two.empty == ("dataset_manifest.labelling_procedure",), (
+        f"section 2's only defect is a field that is present and blank; you reported "
+        f"missing={two.missing!r} empty={two.empty!r}"
+    )
+    three = check_section(ANNEX_IV[2], SOURCES)
+    assert three.missing == ("control_design.human_oversight_measures",) and three.empty == (), (
+        f"section 3's only defect is a field nobody has produced yet; you reported "
+        f"missing={three.missing!r} empty={three.empty!r}"
+    )
+    four = check_section(ANNEX_IV[3], SOURCES)
+    assert four.complete is True, (
+        f"section 4 is complete: open_severe_findings is 0, which is a measurement. You "
+        f"reported {four.empty!r} as empty"
+    )
+    five = check_section(ANNEX_IV[4], SOURCES)
+    assert five.empty == ("risk_register.residual_risks",), (
+        f"section 5's blank template row is an EMPTY value, not a missing one; you reported "
+        f"missing={five.missing!r} empty={five.empty!r}"
+    )
+    seven = check_section(ANNEX_IV[6], SOURCES)
+    assert seven.complete is True and seven.unmet_choices == (), (
+        "section 7's either/or is satisfied by standards.other_solutions, even though "
+        "harmonised_applied is an empty list"
+    )
+    assert seven.missing == () and seven.empty == (), (
+        f"an any_of path that is empty is NOT a missing or empty field; you reported "
+        f"missing={seven.missing!r} empty={seven.empty!r}"
+    )
+    eight = check_section(ANNEX_IV[7], SOURCES)
+    assert eight.missing == ("declaration.signed_copy", "declaration.signed_on"), (
+        f"with no declaration artefact, BOTH its paths are missing; you reported "
+        f"{eight.missing!r}"
+    )
+    assert eight.artefacts == (), "nothing was sourced, so no artefact contributed"
+    print("exercise 3 ok · absent, blank and unmet-either/or are three different verdicts")
+
+
+_try("exercise 3", _check_check_section)
+
+# %%
+def _show_completeness() -> None:
+    """Run your checker over all nine sections. This is the report a reviewer reads."""
+    print(f"{'pt':3s} {'ok':3s} {'artefacts':34s} blocked by")
+    ready = 0
+    for spec in ANNEX_IV:
+        status = check_section(spec, SOURCES)
+        ready += status.complete
+        blockers = list(status.missing) + [f"{p} (blank)" for p in status.empty]
+        blockers += [f"neither of {g}" for g in status.unmet_choices]
+        print(f"{status.number:3s} {'yes' if status.complete else 'NO ':3s} "
+              f"{','.join(status.artefacts)[:34]:34s} {'; '.join(blockers)[:60]}")
+    print(f"\n{ready} of {len(ANNEX_IV)} sections can be sourced today. The other "
+          f"{len(ANNEX_IV) - ready} are\nwaiting on modules 4, 5 and 8 of this programme — "
+          "which is what an honest\nmid-programme pack looks like.")
+
+
+_try("completeness report", _show_completeness)
+
+# %% [markdown]
+# ## 7. Exercise 4 — `provenance_stamp()`: which artefact, which run, which bytes
+#
+# A section without provenance is a section nobody can re-derive. The stamp answers three
+# questions: *which artefact*, *which run of the pipeline that produced it*, and *exactly
+# which bytes were read*.
+#
+# The graded subtlety is what the digest covers. Hash the whole `Artefact` — name, run id,
+# timestamp and payload together — and the digest changes every single time the pipeline
+# runs, even when it produces byte-identical output. Your staleness report then flags all
+# nine sections every morning, everyone switches it off by Friday, and the drift you built it
+# to catch sails through. The digest covers the **payload** and nothing else.
+
+# %%
+def provenance_stamp(artefact: Artefact) -> dict:
+    """Stamp one artefact: where a generated section came from.
+
+    Return a dict with exactly these four keys:
+      "artefact"        the artefact's name
+      "run_id"          the run that produced it
+      "generated_at"    when that run produced it
+      "content_sha256"  content_hash() of the artefact's PAYLOAD, and of nothing else
+
+    Example:
+        >>> stamp = provenance_stamp(SOURCES["metrics"])
+        >>> sorted(stamp)
+        ['artefact', 'content_sha256', 'generated_at', 'run_id']
+        >>> stamp["content_sha256"] == content_hash(SOURCES["metrics"].payload)
+        True
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_provenance_stamp() -> None:
+    stamp = provenance_stamp(SOURCES["metrics"])
+    assert isinstance(stamp, dict) and set(stamp) == {
+        "artefact", "run_id", "generated_at", "content_sha256"}, (
+        f"a stamp carries exactly those four keys; yours has {sorted(stamp)}"
+    )
+    assert stamp["artefact"] == "metrics" and stamp["run_id"] == "met-2026-09-12", (
+        f"name and run come straight off the artefact; you produced {stamp!r}"
+    )
+    digest = stamp["content_sha256"]
+    assert isinstance(digest, str) and len(digest) == 64 and set(digest) <= set("0123456789abcdef"), (
+        f"content_sha256 is the 64-character lowercase hex digest, got {digest!r}"
+    )
+    rerun = SOURCES["metrics"]._replace(run_id="met-2026-09-13", generated_at=_at(3))
+    assert provenance_stamp(rerun)["content_sha256"] == digest, (
+        "a re-run that produced byte-identical output has the same content digest. Yours "
+        "moved, so you hashed the run id or the timestamp along with the payload — and a "
+        "staleness report built on that digest cries wolf every morning"
+    )
+    edited = SOURCES["metrics"]._replace(
+        payload={**SOURCES["metrics"].payload, "value": 0.842})
+    assert provenance_stamp(edited)["content_sha256"] != digest, (
+        "a changed payload must change the digest, or nothing is detectable at all"
+    )
+    print("exercise 4 ok · digest covers the payload, survives a re-run, moves on an edit")
+
+
+_try("exercise 4", _check_provenance_stamp)
+
+# %% [markdown]
+# ## 8. Exercise 5 — `render_document()`: the generator that refuses
+#
+# Now assemble. The rule that makes this a control rather than a template engine: a section
+# that does not pass `check_section` is **not emitted**. It goes on an omitted list with a
+# reason that names every path blocking it, so the message alone tells an engineer what to go
+# and fix. No placeholder, no em dash, no "TBC" — those are how a pack goes green while
+# sourcing nothing.
+
+# %%
+def render_document(specs: tuple, sources: dict) -> dict:
+    """Generate the document. Emit what is sourced; refuse, and explain, the rest.
+
+    Return {"sections": [...], "omitted": [...], "complete": bool}, both lists in `specs`
+    order.
+
+    An emitted section is a dict with keys "number", "title", "basis", "fields" and
+    "provenance":
+      "fields"      {path: value} for every SOURCED path — the required ones and any sourced
+                    any_of ones. Never a placeholder, and never an unsourced value.
+      "provenance"  one provenance_stamp() per distinct artefact in the status's `artefacts`,
+                    in that same (sorted) order.
+
+    An omitted section is a dict with keys "number", "title", "basis", "reason", "missing",
+    "empty" and "unmet_choices". The last three are the lists from the status. "reason" is a
+    non-empty string that CONTAINS every blocking path, including both paths of an unmet
+    either/or group.
+
+    "complete" is True only when nothing was omitted.
+
+    Example:
+        >>> doc = render_document(ANNEX_IV, SOURCES)
+        >>> doc["complete"], [s["number"] for s in doc["sections"]]
+        (False, ['1', '4', '6', '7', '9'])
+        >>> doc["sections"][0]["fields"]["model_registry.provider.name"]
+        'Meridian Credit Technologies BV'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_render_document() -> None:
+    doc = render_document(ANNEX_IV, SOURCES)
+    assert set(doc) == {"sections", "omitted", "complete"}, (
+        f"the document has exactly those three keys; yours has {sorted(doc)}"
+    )
+    emitted = [s["number"] for s in doc["sections"]]
+    assert emitted == ["1", "4", "6", "7", "9"], (
+        f"emit exactly the sourced sections, in schema order; you emitted {emitted}"
+    )
+    assert [s["number"] for s in doc["omitted"]] == ["2", "3", "5", "8"], (
+        f"the other four are refused; you omitted {[s['number'] for s in doc['omitted']]}"
+    )
+    assert doc["complete"] is False, (
+        "four sections are missing, so the document is not complete. A generator that "
+        "reports complete anyway is the failure this whole module is about"
+    )
+    for section in doc["sections"]:
+        for path, value in section["fields"].items():
+            assert is_sourced(value), (
+                f"section {section['number']} emitted {path} as {value!r} — an unsourced "
+                "value must block the section, never be rendered"
+            )
+    four = next(s for s in doc["sections"] if s["number"] == "4")
+    assert four["fields"]["metrics.open_severe_findings"] == 0, (
+        "the measured zero belongs in the document; do not drop it for being falsy"
+    )
+    seven = next(s for s in doc["sections"] if s["number"] == "7")
+    assert list(seven["fields"]) == ["standards.other_solutions"], (
+        f"section 7 emits only the sourced side of the either/or; you emitted "
+        f"{list(seven['fields'])}"
+    )
+    six = next(s for s in doc["sections"] if s["number"] == "6")
+    assert [p["artefact"] for p in six["provenance"]] == ["change_log", "model_registry"], (
+        f"section 6 reads two artefacts, stamped in sorted order; you stamped "
+        f"{[p['artefact'] for p in six['provenance']]}"
+    )
+    three = next(s for s in doc["omitted"] if s["number"] == "3")
+    assert "control_design.human_oversight_measures" in three["reason"], (
+        f"the reason must name the blocking path so the message alone is actionable; yours "
+        f"reads {three['reason']!r}"
+    )
+    print(f"exercise 5 ok · {len(doc['sections'])} sections emitted, "
+          f"{len(doc['omitted'])} refused with reasons")
+
+
+_try("exercise 5", _check_render_document)
+
+# %% [markdown]
+# ## 9. Exercise 6 — `staleness_report()`: the day the document stopped being true
+#
+# Article 11(1) wants the file *kept* up to date, so the last piece is the check that says
+# whether it still is. Two signals are available per artefact — the modification time and the
+# content digest — and only one of them is the arbiter.
+#
+# Key the report on the **timestamp** and it goes wrong in both directions at once. A nightly
+# pipeline that re-ran and produced identical bytes gets flagged as drift, so the report
+# cries wolf; and a file somebody edited in place, without re-running the pipeline that
+# stamps it, keeps its old timestamp and sails straight through. Both happen in the snapshot
+# below. Key the report on the **digest**: it answers "are these the bytes the document was
+# generated from", which is the actual question.
+
+# %%
+SOURCES_AS_FILED: dict[str, Artefact] = dict(SOURCES)
+# The registry as it read when the document was filed: version 2026.2, one release back. It
+# was then edited IN PLACE — the payload moved, the run id and the timestamp did not.
+SOURCES_AS_FILED["model_registry"] = SOURCES["model_registry"]._replace(
+    payload={**SOURCES["model_registry"].payload,
+             "system": {**SOURCES["model_registry"].payload["system"],
+                        "version": "2026.2", "previous_version": "2026.1"}})
+# The monitoring plan re-ran overnight and produced byte-identical output under a new run id.
+SOURCES_AS_FILED["pmm_plan"] = SOURCES["pmm_plan"]._replace(
+    run_id="pmm-2026-08-18", generated_at=_at(29))
+
+for _name in ("model_registry", "pmm_plan"):
+    _then, _now = SOURCES_AS_FILED[_name], SOURCES[_name]
+    print(f"{_name:16s} payload {'SAME' if _then.payload == _now.payload else 'CHANGED':8s} "
+          f"timestamp {'same' if _then.generated_at == _now.generated_at else 'changed'}")
+print("\none of those two is drift and one is noise. A timestamp tells you the wrong one.")
+
+
+# %%
+class Drift(NamedTuple):
+    """One filed section's stamp, re-checked against the sources as they are today."""
+
+    number: str
+    artefact: str
+    verdict: str            # "current" | "stale" | "source_missing"
+    hash_changed: bool
+    timestamp_changed: bool
+
+
+def staleness_report(document: dict, sources: dict) -> list:
+    """Re-check every stamp in `document` against `sources` as they are now.
+
+    Walk `document["sections"]` in order and, within each, its "provenance" stamps in order.
+    For each stamp produce one Drift:
+
+      artefact absent from `sources`   -> verdict "source_missing", and BOTH flags False:
+                                          with the artefact gone you cannot know whether the
+                                          content or the clock moved, and a report that
+                                          guesses is worse than one that says so.
+      content digest differs           -> verdict "stale", hash_changed True.
+      digest matches                   -> verdict "current".
+
+    `timestamp_changed` compares the artefact's `generated_at` against the one in the stamp,
+    and is reported for BOTH verdicts — it is diagnostic, never the decision. A stale section
+    whose timestamp did not change means somebody edited a source in place.
+
+    Example:
+        >>> doc = render_document(ANNEX_IV, SOURCES_AS_FILED)
+        >>> report = staleness_report(doc, SOURCES)
+        >>> [(d.number, d.artefact, d.verdict) for d in report][:2]
+        [('1', 'model_registry', 'stale'), ('4', 'metrics', 'current')]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_staleness_report() -> None:
+    filed = render_document(ANNEX_IV, SOURCES_AS_FILED)
+    report = staleness_report(filed, SOURCES)
+    assert all(isinstance(d, Drift) for d in report), "every row is a Drift"
+    assert len(report) == sum(len(s["provenance"]) for s in filed["sections"]), (
+        f"one row per stamp, not per section: {len(report)} rows for "
+        f"{sum(len(s['provenance']) for s in filed['sections'])} stamps"
+    )
+    by_key = {(d.number, d.artefact): d for d in report}
+    one = by_key[("1", "model_registry")]
+    assert one.verdict == "stale" and one.hash_changed and not one.timestamp_changed, (
+        f"the registry was edited in place: the bytes moved and the clock did not. You "
+        f"reported {one!r} — if this came back 'current', your report is keyed on the "
+        "timestamp and will miss every hand-edit for as long as it runs"
+    )
+    nine = by_key[("9", "pmm_plan")]
+    assert nine.verdict == "current" and not nine.hash_changed and nine.timestamp_changed, (
+        f"the monitoring plan re-ran and produced identical bytes: that is not drift. You "
+        f"reported {nine!r}"
+    )
+    unchanged = staleness_report(render_document(ANNEX_IV, SOURCES), SOURCES)
+    assert {d.verdict for d in unchanged} == {"current"}, (
+        "a document generated from today's sources and checked against today's sources is "
+        "current in every row"
+    )
+    gone = {k: v for k, v in SOURCES.items() if k != "metrics"}
+    lost = staleness_report(render_document(ANNEX_IV, SOURCES), gone)
+    row = next(d for d in lost if d.artefact == "metrics")
+    assert row.verdict == "source_missing" and not row.hash_changed, (
+        f"the metrics artefact is gone; say so rather than guessing. You reported {row!r}"
+    )
+    print("exercise 6 ok · the hand-edit is caught, the re-run is not flagged")
+
+
+_try("exercise 6", _check_staleness_report)
+
+# %% [markdown]
+# ## 10. The artefact: the document, its provenance table and its verdict
+#
+# Everything you built, run end to end. This is what you hand a reviewer.
+
+# %%
+def _emit_document() -> None:
+    doc = render_document(ANNEX_IV, SOURCES)
+    print("=" * 78)
+    print("ANNEX IV TECHNICAL DOCUMENTATION (generated) · loan-copilot · "
+          f"as of {AS_OF.isoformat()}")
+    print("=" * 78)
+    for section in doc["sections"]:
+        print(f"\n{section['number']}. {section['title']}   [{section['basis']}]")
+        for path, value in section["fields"].items():
+            rendered = json.dumps(value) if not isinstance(value, str) else value
+            print(f"    {path.split('.', 1)[1]:42s} {rendered[:60]}")
+        for stamp in section["provenance"]:
+            print(f"    · from {stamp['artefact']} run {stamp['run_id']} "
+                  f"({stamp['generated_at'][:10]}) sha256 {stamp['content_sha256'][:12]}…")
+    print("\n" + "-" * 78)
+    print("NOT EMITTED")
+    for section in doc["omitted"]:
+        print(f"  {section['number']}. {section['title']}\n      {section['reason']}")
+    print("-" * 78)
+    print(f"complete: {doc['complete']}  ·  {len(doc['sections'])} of {len(ANNEX_IV)} "
+          f"sections sourced")
+
+
+_try("the document", _emit_document)
+
+
+# %%
+def _emit_staleness() -> None:
+    filed = render_document(ANNEX_IV, SOURCES_AS_FILED)
+    report = staleness_report(filed, SOURCES)
+    print(f"{'pt':3s} {'artefact':18s} {'verdict':15s} {'hash':6s} {'clock':6s} reading")
+    for row in report:
+        reading = {"stale": "regenerate this section",
+                   "current": "no action",
+                   "source_missing": "find the artefact before trusting the section"}[row.verdict]
+        if row.verdict == "stale" and not row.timestamp_changed:
+            reading = "regenerate — and ask who edited the source by hand"
+        if row.verdict == "current" and row.timestamp_changed:
+            reading = "re-ran, identical bytes: not drift"
+        print(f"{row.number:3s} {row.artefact:18s} {row.verdict:15s} "
+              f"{str(row.hash_changed):6s} {str(row.timestamp_changed):6s} {reading}")
+    stale = [r for r in report if r.verdict != "current"]
+    print(f"\n{len(stale)} of {len(report)} stamps need attention. A report keyed on the "
+          f"clock instead\nwould have flagged "
+          f"{len([r for r in report if r.timestamp_changed])} and caught "
+          f"{len([r for r in report if r.verdict == 'stale' and r.timestamp_changed])} "
+          "of the real drift.")
+
+
+_try("the staleness verdict", _emit_staleness)
+
+# %% [markdown]
+# ## 11. Common mistakes
+#
+# * **Rendering a placeholder.** "Performance metrics: —" passes a human skim and sources
+#   nothing. If a section cannot be sourced, it does not get emitted; it gets a reason.
+# * **Testing truthiness instead of emptiness.** `if not value` discards a measured `0`, a
+#   `False` and a `0.0`. Those are results. Check for absence and blankness explicitly.
+# * **Stopping at the container.** `[{"risk": "", "accepted_by": ""}]` is a truthy list that
+#   says nothing. Recurse.
+# * **Hashing the whole artefact.** Fold the run id or the timestamp into the digest and
+#   every re-run reads as drift. Within a week the report is ignored; within a month it is
+#   switched off.
+# * **Keying staleness on the modification time.** It flags harmless re-runs and misses the
+#   hand-edit, which is the one you needed it for. The digest decides; the clock is a hint
+#   about *how* the change happened.
+# * **Confusing absent with blank in the reason.** "Add the field" and "the pipeline produced
+#   nothing" go to two different teams. Keep the two lists apart.
+# * **Nagging about an unmet either/or that is met.** Annex IV point 7 is satisfied by
+#   describing the solutions adopted when no harmonised standards were applied. A report that
+#   demands both trains its readers to ignore it.
+# * **Treating a green document as a compliant one.** This generator checks that every
+#   emitted section has a source. It does not check that the source is *true*, and no
+#   generator can. That is what modules 4 to 9 of this programme are for.
+
+# %% [markdown]
+# ## 12. Self-check
+#
+# 1. A generator prints "4. Performance metrics: —" when the metrics file is empty. The
+#    problem with that is:
+#    - (a) nothing, as long as the section is present
+#    - (b) it produces a document that passes a completeness check while sourcing nothing
+#    - (c) the em dash is not permitted in a technical file
+#    - (d) it should raise and abandon the whole document instead
+#
+# 2. Overnight, source A re-ran and produced byte-identical output with a new timestamp;
+#    source B was edited in place, so its bytes changed and its timestamp did not. A
+#    staleness report keyed on modification time alone will:
+#    - (a) catch both
+#    - (b) catch B and ignore A, which is the correct behaviour
+#    - (c) flag A, which needs nothing, and miss B, which is the real drift
+#    - (d) catch neither, because timestamps are monotonic
+#
+# 3. What should a section's content digest cover?
+#    - (a) the artefact's payload only
+#    - (b) the payload, the run id and the generated_at timestamp
+#    - (c) the rendered section text
+#    - (d) the whole document, once per build
+#
+# 4. A provider has applied no harmonised standards at all. Under Annex IV point 7 their
+#    technical file is:
+#    - (a) incomplete until a harmonised standard is applied
+#    - (b) satisfiable by a detailed description of the solutions adopted instead
+#    - (c) exempt from point 7
+#    - (d) only acceptable if a notified body agrees
+#
+# 5. A risk register records `residual_risks: [{"risk": "", "accepted_by": ""}]`. A checker
+#    written as `if not value: missing.append(path)` will:
+#    - (a) flag it, because the strings are empty
+#    - (b) accept it, because the list is truthy, and the pack goes green on a blank template
+#          row
+#    - (c) raise a TypeError on the list
+#    - (d) accept it, which is right: a residual risk of nothing is a good outcome
+#
+# Mark them in the next cell. The key is not written in this file — only a salted hash of it
+# — so you find out which are wrong without reading the answers off the page. The reasoning
+# for each is published in the course solution bundle.
+
+# %%
+# Salted hashes of the answers, not the answers. Nothing here tells you which letter is right.
+_SELF_CHECK_KEY = {
+    1: "096b5031d99b4c04",
+    2: "2e0afcaace42900b",
+    3: "2116ce69a9031cae",
+    4: "d79011e18a917208",
+    5: "e3ec8bdc81273e11",
+}
+
+_SELF_CHECK_HINT = {
+    1: "re-read the first two paragraphs of section 5, and ask what a reviewer concludes "
+       "from a document in which every section is present.",
+    2: "run the staleness verdict cell in section 10 and read the last two lines it prints.",
+    3: "read the failure message in the exercise 4 check that mentions a re-run.",
+    4: "look at what section 7 of the schema uses `any_of` for, and at the Annex IV point 7 "
+       "wording quoted in claims.yaml.",
+    5: "look at what `is_sourced` does with a non-empty list of blank rows, and at which "
+       "list check_section puts risk_register.residual_risks in.",
+}
+
+
+def check_self_check(answers: dict) -> None:
+    """Mark your self-check answers. Pass a dict of question number -> letter.
+
+    Example:
+        >>> check_self_check({1: "a"})          # doctest: +SKIP
+          q1  not 'a' — re-read the first two paragraphs of section 5 ...
+          q2  no answer given
+        ...
+    """
+    right = 0
+    for question in sorted(_SELF_CHECK_KEY):
+        given = str(answers.get(question, "")).strip().lower()
+        digest = hashlib.sha256(f"P01-L03:q{question}:{given}".encode()).hexdigest()[:16]
+        if digest == _SELF_CHECK_KEY[question]:
+            right += 1
+            print(f"  q{question}  correct")
+        elif not given:
+            print(f"  q{question}  no answer given")
+        else:
+            print(f"  q{question}  not {given!r} — {_SELF_CHECK_HINT[question]}")
+    print(f"\n{len(_SELF_CHECK_KEY)} questions, {right} right")
+
+
+# Put your own letters in, then run this cell:
+# check_self_check({1: "a", 2: "a", 3: "a", 4: "a", 5: "a"})
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A schema that names, path by path, which pipeline output has to produce each Annex IV
+# point; a checker that separates absent from blank from unmet-either/or; a stamp that makes
+# every emitted section re-derivable; a generator that refuses rather than pads; and a drift
+# report that is keyed on content rather than on a clock. The pack it produced is honestly
+# incomplete, and says which four sections it is waiting on.
+#
+# That document is the object behind `T10-L01-ai-act-conformity-pack`'s
+# `technical_documentation` evidence id — the id this module of the programme exists to fill.
+# The evidence table there records a boolean; what you built is the thing that boolean is
+# supposed to be about, and the completeness line printed in section 10 is what the id is
+# honestly worth today.
+#
+# Those four are the rest of this programme. Module 4 fills the data-governance evidence
+# behind section 2's labelling procedure, module 5 produces the human-oversight measures
+# section 3 is missing, and module 8 emits the EU declaration of conformity that section 8
+# needs — at which point you re-run this generator and the pack closes. Module 9 hands you a
+# pack that is already green and asks you to find the six places where it lies.
+#
+# **Again, and finally: this is engineering, not legal advice.**
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_field_value),
+                          ("exercise 2", _check_is_sourced),
+                          ("exercise 3", _check_check_section),
+                          ("exercise 4", _check_provenance_stamp),
+                          ("exercise 5", _check_render_document),
+                          ("exercise 6", _check_staleness_report)):
+        _try(_name, _check)
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
+    # and it ends this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

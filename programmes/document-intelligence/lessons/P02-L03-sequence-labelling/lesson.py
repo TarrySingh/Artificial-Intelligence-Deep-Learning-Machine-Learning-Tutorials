@@ -1,0 +1,1353 @@
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: percent
+#       format_version: '1.3'
+#   kernelspec:
+#     display_name: Python 3
+#     language: python
+#     name: python3
+# ---
+
+# %% [markdown]
+# # P02-L03-sequence-labelling · From rules to a tagger
+#
+# **You will build:** an averaged structured perceptron that labels every token of a document
+# with a BIO tag, decodes those tags into field values, and is then scored by the *same*
+# harness you built in module 1 — so that "the new extractor is better" becomes a number
+# somebody else can reproduce.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no download, no model
+# API · **Prerequisites:** P02-L01 (the extraction harness) and P02-L02 (reading order from
+# geometry).
+#
+# Module 1 gave you an instrument and a stand-in extractor. Module 2 gave you a token stream in
+# reading order. This module replaces the stand-in with something you train — and then makes
+# you prove the replacement was worth it, per field, on documents the model has never seen.
+#
+# The model is deliberately old-fashioned: hand-built features and a perceptron, about ninety
+# lines of numpy. That is not nostalgia. It is the smallest thing that has every moving part a
+# modern sequence labeller has — features, a structured decoder, a loss, held-out
+# generalisation — and it is small enough that when it is wrong you can find out *why* in an
+# afternoon instead of filing a ticket against a checkpoint.
+#
+# By the end you will be able to:
+#
+# 1. Represent field extraction as BIO sequence labelling over a document's token stream.
+# 2. Implement a feature template — shape, affix, neighbouring token, line position — and say
+#    which feature is doing the work.
+# 3. Implement Viterbi decoding and demonstrate a case where greedy tagging gets it wrong.
+# 4. Implement the structured perceptron update, including the transition half that most
+#    people forget.
+# 5. Score the tagger with module 1's harness and name the field types it actually improved.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import random
+import re
+import sys
+import time
+from typing import NamedTuple, Sequence
+
+import numpy as np
+
+_LESSON_T0 = time.perf_counter()
+print("python", sys.version.split()[0], "· numpy", np.__version__)
+print("no model API, no pretrained checkpoint, no download — the extractor in this notebook")
+print("is trained from zero on the documents below, on this CPU, in under a second.\n")
+
+# The schema is module 1's, unchanged, because the harness is module 1's, unchanged. The whole
+# point of this module is that the SCORER does not move when the EXTRACTOR does.
+SCHEMA: dict[str, str] = {
+    "invoice_id": "id",
+    "invoice_date": "date",
+    "total_amount": "money",
+    "currency": "id",
+    "counterparty": "text",
+    "payment_terms_days": "integer",
+}
+FIELDS = tuple(SCHEMA)
+
+# BIO: one tag per token. "B-total_amount" opens a span, "I-total_amount" continues it, "O" is
+# outside every span. Six fields give thirteen tags, and a document is a sequence of them.
+TAGS: tuple[str, ...] = ("O",) + tuple(
+    f"{prefix}-{field}" for field in FIELDS for prefix in ("B", "I"))
+TAG_INDEX: dict[str, int] = {tag: i for i, tag in enumerate(TAGS)}
+# Transition scores live in a (len(TAGS) + 1, len(TAGS)) array. The extra last row scores the
+# tag a sequence STARTS with, so position 0 needs no special case in the decoder.
+START_ROW = len(TAGS)
+
+MONTH_NAMES = ("January", "February", "March", "April", "May", "June",
+               "July", "August", "September", "October", "November", "December")
+MONTH_INDEX = {name.lower(): i + 1 for i, name in enumerate(MONTH_NAMES)}
+COMPANY_SUFFIXES = frozenset({
+    "gmbh", "bv", "nv", "ag", "kg", "ltd", "limited", "inc", "incorporated",
+    "plc", "llc", "sa", "sas", "srl", "spa", "oy", "ab", "as", "co", "kk",
+})
+
+_FAILED_CHECKS: list[str] = []
+
+
+def _try(label: str, check) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the other six.
+    """
+    try:
+        check()
+    except NotImplementedError:
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+
+
+# %% [markdown]
+# ## 1. The token stream, and the labels on it
+#
+# Module 2 turned page geometry into tokens in reading order. This module takes that stream as
+# its input. There is still no PDF library here, so the stream is generated deterministically
+# from a fixed seed — same documents, same tags, same numbers for every student.
+#
+# Each token carries its line, its position within that line, its page, and `line_head`: the
+# lower-cased first token of its line. On a form, the line head is the *label phrase* — the
+# word somebody printed to tell a human what follows — and it is the single most informative
+# piece of context a token has. Module 2's segmentation is what makes that field available.
+#
+# The framing is standard rather than invented here. Ramshaw and Marcus put it plainly in 1995:
+# "it is convenient to view chunking as a tagging problem by encoding the chunk structure in
+# new tags attached to each word" (arXiv cmp-lg/9505040). The same move is what the FUNSD form
+# benchmark calls *entity labeling* over scanned forms (arXiv 1905.13538).
+#
+# Run this and read one document token by token. Notice the distractor lines: a statement date
+# that is not the invoice date, a bank charge that is not the total, a "Total weight" in
+# kilograms on a line whose head is the word every amount rule anchors on.
+
+# %%
+class Token(NamedTuple):
+    text: str
+    line: int
+    pos: int
+    page: int
+    line_head: str
+
+
+_TRAIN_COMPANIES = (
+    "Nordwind Logistik GmbH", "Vantor Marine B.V.", "Helix Pharma Limited",
+    "Caldera Energy PLC", "Brightwater Analytics Ltd", "Orsini Costruzioni SRL",
+    "Kestrel Freight Inc", "Aalto Terveys Oy", "Meridian Custody AG",
+    "Lindqvist Verkstad AB", "Torrent Robotics Inc", "Vesper Maritime AS",
+)
+# Held-out suppliers, drawn from a DISJOINT pool and mostly longer. A supplier the model has
+# never seen is the realistic case: your vendor master grows every quarter.
+_TEST_COMPANIES = (
+    "Sable & Finch Holdings LLP", "Dunbar Reinsurance Group Ltd",
+    "Petrarca Chimica Industriale SpA", "Hollandse Kaasunie N.V.",
+    "Argent Clearing Services SA", "Kaneko Precision Instruments KK",
+)
+_ID_LABELS = ("Invoice No:", "Invoice:", "Our ref:", "Document no.", "Ref:")
+_DATE_LABELS = ("Date:", "Invoice date:", "Doc date", "Dated")
+_AMOUNT_LABELS = ("Amount due:", "Total payable", "Total:", "Balance due")
+_TERMS_LABELS = ("Payment terms:", "Terms:")
+_CURRENCIES = ("EUR", "USD", "GBP")
+
+
+def _id_tokens(year: int, serial: int, style: int) -> list[str]:
+    if style == 0:
+        return [f"INV-{year}-{serial:04d}"]
+    if style == 1:
+        return [f"INV/{year}/{serial:04d}"]
+    return ["Inv", str(year), f"{serial:04d}"]
+
+
+def _date_tokens(year: int, month: int, day: int, style: int) -> list[str]:
+    if style == 0:
+        return [f"{year:04d}-{month:02d}-{day:02d}"]
+    if style == 1:
+        return [f"{day:02d}/{month:02d}/{year:04d}"]
+    return [str(day), MONTH_NAMES[month - 1], str(year)]
+
+
+def _money_token(cents: int) -> str:
+    whole, part = divmod(cents, 100)
+    return f"{whole:,}.{part:02d}"
+
+
+def build_token_docs(n_docs: int = 200, n_train: int = 140, seed: int = 20260916) -> list[dict]:
+    """Deterministic token stream: one page per document, tokens in reading order.
+
+    Gold BIO tags and gold field values are generated together, so the two can never disagree —
+    which means any gap you measure later is the model's, never the corpus's.
+
+    Documents 0..n_train-1 are the training split and the rest are held out. The two splits
+    draw supplier names from disjoint pools, so held-out names are genuinely unseen.
+    """
+    rng = random.Random(seed)
+    docs = []
+    for d in range(n_docs):
+        is_train = d < n_train
+        pool = _TRAIN_COMPANIES if is_train else _TEST_COMPANIES
+        company = pool[rng.randrange(len(pool))]
+        year = rng.choice((2025, 2026))
+        month, day, serial = rng.randint(1, 12), rng.randint(1, 28), rng.randint(1, 9999)
+        currency = rng.choice(_CURRENCIES)
+        cents = rng.randint(1_50, 480_000_00)
+        terms = rng.choice(("14", "30", "30", "45", "60", None, None))
+
+        def tagged(texts: Sequence[str], field: str) -> list[tuple[str, str]]:
+            return [(t, f"{'B' if k == 0 else 'I'}-{field}") for k, t in enumerate(texts)]
+
+        def plain(texts: Sequence[str]) -> list[tuple[str, str]]:
+            return [(t, "O") for t in texts]
+
+        content: list[list[tuple[str, str]]] = []
+
+        id_toks = _id_tokens(year, serial, rng.randrange(3))
+        content.append(plain(rng.choice(_ID_LABELS).split()) + tagged(id_toks, "invoice_id"))
+
+        date_toks = _date_tokens(year, month, day, rng.randrange(3))
+        content.append(plain(rng.choice(_DATE_LABELS).split())
+                       + tagged(date_toks, "invoice_date"))
+
+        amount_tok = _money_token(cents)
+        money_span = (tagged([currency], "currency") + tagged([amount_tok], "total_amount")
+                      if rng.random() < 0.6 else
+                      tagged([amount_tok], "total_amount") + tagged([currency], "currency"))
+        # One document in six prints the amount with no label phrase in front of it at all.
+        # There is nothing for a rule to anchor on, and the line head is the currency code.
+        content.append(money_span if rng.random() < 0.17
+                       else plain(rng.choice(_AMOUNT_LABELS).split()) + money_span)
+
+        content.append(plain(["Remit", "to:"]) + tagged(company.split(), "counterparty"))
+
+        if terms is not None:
+            content.append(plain(rng.choice(_TERMS_LABELS).split())
+                           + plain(["Net"]) + tagged([terms], "payment_terms_days")
+                           + plain(["days"]))
+
+        distractors = [
+            plain(["Statement", "generated"]
+                  + _date_tokens(year, rng.randint(1, 12), rng.randint(1, 28), rng.randrange(3))),
+            plain(["Bank", "charge", rng.choice(_CURRENCIES), _money_token(rng.randint(500, 9500))]),
+            plain(["PO", f"PO-{year}-{rng.randint(1000, 9999)}"]),
+            plain(["Page", "1", "of", "1"]),
+            plain(["Customer", "number", str(rng.randint(100000, 999999))]),
+            plain(["Net", str(rng.choice((7, 10, 21))), "day", "dispute", "window"]),
+            # Two deliberate collisions with the anchors above: a money-shaped token on a line
+            # headed "Total", and a date on a line headed "Invoice". Neither is the field.
+            plain(["Total", "weight", _money_token(rng.randint(5_00, 900_00)), "kg"]),
+            plain(["Invoice", "period"]
+                  + _date_tokens(year, rng.randint(1, 12), rng.randint(1, 28), rng.randrange(3))),
+        ]
+        rng.shuffle(distractors)
+        body = content + distractors[: rng.randint(2, 4)]
+        rng.shuffle(body)
+        lines = [plain(["REMITTANCE", "ADVICE"])] + body
+
+        tokens: list[Token] = []
+        tags: list[str] = []
+        for li, line in enumerate(lines):
+            head = line[0][0].lower()
+            for pi, (text, tag) in enumerate(line):
+                tokens.append(Token(text=text, line=li, pos=pi, page=1, line_head=head))
+                tags.append(tag)
+
+        gold = {f: "" for f in FIELDS}
+        for field in FIELDS:
+            gold[field] = " ".join(tok.text for tok, tag in zip(tokens, tags)
+                                   if tag in (f"B-{field}", f"I-{field}"))
+
+        docs.append({"doc_id": f"DOC-{d:04d}", "split": "train" if is_train else "test",
+                     "tokens": tokens, "tags": tags, "gold": gold})
+    return docs
+
+
+DOCS = build_token_docs()
+TRAIN_DOCS = [d for d in DOCS if d["split"] == "train"]
+TEST_DOCS = [d for d in DOCS if d["split"] == "test"]
+
+print(f"{len(DOCS)} documents · {len(TRAIN_DOCS)} train / {len(TEST_DOCS)} held out · "
+      f"{sum(len(d['tokens']) for d in DOCS)} tokens · {len(TAGS)} tags")
+print("\nDOC-0000, token by token:")
+for _tok, _tag in zip(DOCS[0]["tokens"], DOCS[0]["tags"]):
+    print(f"  line {_tok.line} pos {_tok.pos:2d}  head={_tok.line_head:<12s} "
+          f"{_tok.text:<22s} {_tag}")
+
+# %% [markdown]
+# ## 2. The harness from module 1, unchanged
+#
+# Reproduced here so this notebook stands alone. Nothing about it has been touched: the same
+# normalisation policy, the same matcher, the same per-field precision/recall/F1 with a wrong
+# value counted as both a false positive and a false negative, the same unweighted macro
+# average. The fuzzy matching mode is gone, because module 1 measured what it costs on a money
+# field and the answer was "a payment incident".
+#
+# One thing normalisation now forgives that it did not in module 1. There, it forgave the
+# extractor's house style. Here, predicted and gold values are cut from the *same* token
+# stream, so a surface difference can only mean the span boundary moved — a prediction of
+# `EUR 1,234.50` where the gold is `1,234.50`, or a supplier name with the legal form dropped.
+# Same policy, different defect. Read the code, then move on.
+
+# %%
+class FieldScore(NamedTuple):
+    field: str
+    mode: str
+    tp: int
+    fp: int
+    fn: int
+    precision: float
+    recall: float
+    f1: float
+
+
+def normalise_value(value: str, field_type: str) -> str:
+    """Module 1's normaliser, unchanged."""
+    if field_type not in set(SCHEMA.values()):
+        raise ValueError(f"unknown field_type {field_type!r}")
+    raw = " ".join(value.split())
+    if not raw:
+        return ""
+    if field_type == "money":
+        body = re.sub(r"[^\d.,]", "", raw)
+        if body:
+            last_comma, last_dot = body.rfind(","), body.rfind(".")
+            if last_comma >= 0 and last_dot >= 0:
+                dec = max(last_comma, last_dot)
+                body = body[:dec].replace(",", "").replace(".", "") + "." + body[dec + 1:]
+            elif last_comma >= 0:
+                tail = body[last_comma + 1:]
+                body = (body[:last_comma] + "." + tail) if len(tail) == 2 \
+                    else body.replace(",", "")
+            try:
+                return f"{float(body):.2f}"
+            except ValueError:
+                pass
+        return raw.upper()
+    if field_type == "date":
+        m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", raw)
+        if m:
+            return f"{int(m.group(1)):04d}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+        m = re.match(r"^(\d{1,2})/(\d{1,2})/(\d{4})$", raw)
+        if m:
+            return f"{int(m.group(3)):04d}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+        m = re.match(r"^(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})$", raw)
+        if m and m.group(2).lower() in MONTH_INDEX:
+            return (f"{int(m.group(3)):04d}-{MONTH_INDEX[m.group(2).lower()]:02d}-"
+                    f"{int(m.group(1)):02d}")
+        return raw.upper()
+    if field_type == "integer":
+        m = re.search(r"\d+", raw)
+        return str(int(m.group(0))) if m else raw.upper()
+    if field_type == "id":
+        body = re.sub(r"[^A-Za-z0-9]", "", raw)
+        return body.upper() if body else raw.upper()
+    words = re.sub(r"[^\w\s]", " ", raw).lower().split()
+    while words and words[-1] in COMPANY_SUFFIXES:
+        words.pop()
+    return " ".join(words)
+
+
+def match_value(pred: str, gold: str, field_type: str, mode: str) -> bool:
+    """Module 1's matcher, minus the fuzzy mode module 1 talked you out of."""
+    if mode not in ("exact", "normalised"):
+        raise ValueError(f"unknown mode {mode!r}")
+    if not pred or not gold:
+        return False
+    if mode == "exact":
+        return pred == gold
+    return normalise_value(pred, field_type) == normalise_value(gold, field_type)
+
+
+def score_field(records: Sequence[dict], field: str, mode: str) -> FieldScore:
+    """Module 1's scorer, unchanged: a wrong value is a false positive AND a false negative."""
+    field_type = SCHEMA[field]
+    tp = fp = fn = 0
+    for record in records:
+        pred, gold = record["pred"].get(field, ""), record["gold"].get(field, "")
+        if not pred and not gold:
+            continue
+        if pred and not gold:
+            fp += 1
+        elif gold and not pred:
+            fn += 1
+        elif match_value(pred, gold, field_type, mode):
+            tp += 1
+        else:
+            fp += 1
+            fn += 1
+    precision = tp / (tp + fp) if tp + fp else 0.0
+    recall = tp / (tp + fn) if tp + fn else 0.0
+    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    return FieldScore(field, mode, tp, fp, fn, precision, recall, f1)
+
+
+def macro_f1(records: Sequence[dict], mode: str) -> float:
+    """Unweighted mean of per-field F1 over every field in SCHEMA."""
+    return float(np.mean([score_field(records, f, mode).f1 for f in FIELDS]))
+
+
+# %% [markdown]
+# ## 3. The rule-based baseline
+#
+# Before you train anything, you need the thing you are beating. This is the honest version of
+# what a team ships in week one: anchor on the label phrases somebody wrote down, then take the
+# rest of the line. It is not a straw man — on the fields it anchors, it is exactly right, and
+# a learned model has to earn the right to replace it.
+#
+# It has the two structural weaknesses every rule list has. First, the label phrases nobody
+# thought of: this corpus says "Our ref:" and "Doc date" as well as "Invoice No:" and "Date:".
+# Second, the fallback that fires on a look-alike elsewhere on the page: with no reliable label
+# for an amount, the baseline takes the first money-shaped token, and a page with a bank charge
+# or a weight on it decides the answer by layout order.
+#
+# Run it and read its scores through module 1's harness. Write the macro F1 down; it is the bar.
+
+# %%
+_MONEY_RE = re.compile(r"^\d{1,3}(?:,\d{3})*\.\d{2}$|^\d+\.\d{2}$")
+
+
+def _lines_of(tokens: Sequence[Token]) -> list[list[Token]]:
+    lines: list[list[Token]] = []
+    for tok in tokens:
+        while len(lines) <= tok.line:
+            lines.append([])
+        lines[tok.line].append(tok)
+    return lines
+
+
+def rule_baseline_extract(tokens: Sequence[Token]) -> dict[str, str]:
+    """Hand-written rules over the same token stream the tagger will see."""
+    out = {f: "" for f in FIELDS}
+    for line in _lines_of(tokens):
+        text = " ".join(t.text for t in line).lower()
+        after_one = " ".join(t.text for t in line[1:])
+        after_two = " ".join(t.text for t in line[2:])
+        if not out["invoice_id"]:
+            if text.startswith("invoice no:"):
+                out["invoice_id"] = after_two
+            elif text.startswith("invoice:") or text.startswith("ref:"):
+                out["invoice_id"] = after_one
+        if not out["invoice_date"]:
+            if text.startswith("invoice date:"):
+                out["invoice_date"] = after_two
+            elif text.startswith("date:"):
+                out["invoice_date"] = after_one
+        if not out["counterparty"] and text.startswith("remit to:"):
+            out["counterparty"] = after_two
+        if not out["payment_terms_days"] and ("payment terms:" in text
+                                              or text.startswith("terms:")):
+            m = re.search(r"\d+", text)
+            if m:
+                out["payment_terms_days"] = m.group(0)
+    for i, tok in enumerate(tokens):
+        if _MONEY_RE.match(tok.text):
+            out["total_amount"] = tok.text
+            for j in (i - 1, i + 1):
+                if 0 <= j < len(tokens) and tokens[j].text in _CURRENCIES:
+                    out["currency"] = tokens[j].text
+                    break
+            break
+    return out
+
+
+BASELINE_RECORDS = [{"doc_id": d["doc_id"], "gold": dict(d["gold"]),
+                     "pred": rule_baseline_extract(d["tokens"])} for d in TEST_DOCS]
+print("rule baseline on the held-out split, normalised mode:")
+for _f in FIELDS:
+    _s = score_field(BASELINE_RECORDS, _f, "normalised")
+    print(f"  {_f:20s} P={_s.precision:.3f} R={_s.recall:.3f} F1={_s.f1:.3f} "
+          f"(tp={_s.tp} fp={_s.fp} fn={_s.fn})")
+print(f"  macro F1 = {macro_f1(BASELINE_RECORDS, 'normalised'):.4f}   <- the bar")
+
+# %% [markdown]
+# ## 4. Exercise 1 — `word_shape`
+#
+# A tagger that only knows the literal string `1,234.50` has learned nothing it can reuse: that
+# exact token appears on one page in the corpus and never again. What generalises is its
+# *shape*. `word_shape` is the classic answer: map every character to its class, then collapse
+# runs, so `1,234.50` and `987,654.32` become the same feature and the model can learn about
+# both from either.
+
+# %%
+def word_shape(token: str) -> str:
+    """Collapse a token to its character classes: X upper, x lower, d digit, else itself.
+
+    Map each character first, then collapse runs of the SAME resulting class — punctuation
+    included, so `".."` collapses to `"."`.
+
+    Examples:
+        >>> word_shape("INV-2026-0042")
+        'X-d-d'
+        >>> word_shape("Invoice")
+        'Xx'
+        >>> word_shape("1,234.50")
+        'd,d.d'
+        >>> word_shape("B.V.")
+        'X.X.'
+        >>> word_shape("")
+        ''
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public check — run this as often as you like.
+def _check_word_shape() -> None:
+    cases = {"INV-2026-0042": "X-d-d", "Invoice": "Xx", "1,234.50": "d,d.d",
+             "B.V.": "X.X.", "": "", "Net": "Xx", "30": "d", "..": "."}
+    for raw, want in cases.items():
+        got = word_shape(raw)
+        assert got == want, (f"word_shape({raw!r}) = {got!r}, expected {want!r} — map each "
+                             "character to its class first, then collapse runs of the SAME "
+                             "class, punctuation included")
+    print("exercise 1 looks right")
+
+
+_try("exercise 1", _check_word_shape)
+
+# %% [markdown]
+# ## 5. Exercise 2 — `token_features`
+#
+# This is the model. Everything else is arithmetic. A linear tagger can only know what you tell
+# it, so the feature template is where your knowledge of the document goes.
+#
+# Twelve features per token: the token itself, its shape, its first and last three characters,
+# the neighbouring tokens and their shapes, the head of its line, its position in that line —
+# and one conjunction, `head|shape`. The conjunction is the one that matters. A linear model
+# scores `head=amount` and `shape=d,d.d` *additively*, so it cannot express "a money shape on
+# an amount line" as a thing distinct from the two separately. Hand it the pair and it can.
+# That is the whole reason hand-built feature templates are full of conjunctions.
+#
+# The `page` field on each token is unused here because these documents are one page each. On a
+# multi-page export you would add it, and a `page==1` conjunction with the line head besides.
+
+# %%
+def token_features(tokens: Sequence[Token], i: int) -> list[str]:
+    """The feature template: twelve strings describing token `i` in its context.
+
+    Exactly these, in this order:
+
+    1.  ``"bias"``
+    2.  ``"w=<lower-cased token text>"``
+    3.  ``"shape=<word_shape of the token text>"``
+    4.  ``"pre3=<first three characters of the lower-cased text>"``
+    5.  ``"suf3=<last three characters of the lower-cased text>"``
+    6.  ``"w-1=<lower-cased previous token, or the literal <BOS> at position 0>"``
+    7.  ``"w+1=<lower-cased next token, or the literal <EOS> at the last position>"``
+    8.  ``"shape-1=<word_shape of the previous token, or <BOS>>"``
+    9.  ``"shape+1=<word_shape of the next token, or <EOS>>"``
+    10. ``"head=<this token's line_head>"``
+    11. ``"pos=<position within the LINE, tok.pos, capped at 4>"``
+    12. ``"head|shape=<line_head>|<shape>"``
+
+    Example, for the token ``1,234.50`` at position 3 of the line ``Amount due: EUR 1,234.50``:
+        ['bias', 'w=1,234.50', 'shape=d,d.d', 'pre3=1,2', 'suf3=.50', 'w-1=eur',
+         'w+1=<EOS>', 'shape-1=X', 'shape+1=<EOS>', 'head=amount', 'pos=3',
+         'head|shape=amount|d,d.d']
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_token_features() -> None:
+    toks = [Token("Amount", 2, 0, 1, "amount"), Token("due:", 2, 1, 1, "amount"),
+            Token("EUR", 2, 2, 1, "amount"), Token("1,234.50", 2, 3, 1, "amount")]
+    got = token_features(toks, 3)
+    want = ["bias", "w=1,234.50", "shape=d,d.d", "pre3=1,2", "suf3=.50", "w-1=eur",
+            "w+1=<EOS>", "shape-1=X", "shape+1=<EOS>", "head=amount", "pos=3",
+            "head|shape=amount|d,d.d"]
+    assert len(got) == 12, f"token_features returned {len(got)} features, expected 12"
+    assert sorted(got) == sorted(want), (
+        "token_features gave the wrong set for the last token of 'Amount due: EUR 1,234.50'.\n"
+        f"  missing: {sorted(set(want) - set(got))}\n  unexpected: {sorted(set(got) - set(want))}")
+    first = token_features(toks, 0)
+    assert "w-1=<BOS>" in first and "shape-1=<BOS>" in first, \
+        "at position 0 the previous token is the literal string <BOS>, not an empty string"
+    assert "pos=0" in first, "pos is the position within the LINE (tok.pos), capped at 4"
+    print("exercise 2 looks right")
+
+
+_try("exercise 2", _check_token_features)
+
+# %% [markdown]
+# ## 6. Exercise 3 — `decode_spans`
+#
+# Tags are not field values. Somebody has to walk the tag sequence, cut out the spans and join
+# them back into strings the harness can score — and that somebody is a source of defects all
+# of its own. In particular, nothing in a Viterbi decoder forbids the sequence `O I-x`: the
+# decoder maximises a score, it does not enforce your tag grammar. A span reader that drops
+# stray `I-` tags on the floor throws away real spans and blames the model for it.
+
+# %%
+def decode_spans(tokens: Sequence[Token], tags: Sequence[str]) -> dict[str, str]:
+    """Turn a BIO tag sequence into one surface value per field in SCHEMA.
+
+    * ``B-f`` opens a span for field ``f``.
+    * ``I-f`` extends the open span when that span is already ``f``; otherwise it OPENS one.
+    * ``O`` closes whatever was open.
+    * Only the FIRST span of each field counts; these documents carry one of each.
+    * The value is the span's token texts joined by single spaces. A field with no span is "".
+
+    Example:
+        >>> toks = [Token("Remit", 0, 0, 1, "remit"), Token("to:", 0, 1, 1, "remit"),
+        ...         Token("Vantor", 0, 2, 1, "remit"), Token("Marine", 0, 3, 1, "remit")]
+        >>> decode_spans(toks, ["O", "O", "B-counterparty", "I-counterparty"])["counterparty"]
+        'Vantor Marine'
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_decode_spans() -> None:
+    toks = [Token("Remit", 0, 0, 1, "remit"), Token("to:", 0, 1, 1, "remit"),
+            Token("Vantor", 0, 2, 1, "remit"), Token("Marine", 0, 3, 1, "remit"),
+            Token("B.V.", 0, 4, 1, "remit")]
+    got = decode_spans(toks, ["O", "O", "B-counterparty", "I-counterparty", "I-counterparty"])
+    assert got["counterparty"] == "Vantor Marine B.V.", \
+        f"joined span wrong: {got['counterparty']!r} — join the token texts with single spaces"
+    assert got["invoice_id"] == "", "a field with no span must be the empty string, not missing"
+    stray = decode_spans(toks, ["O", "O", "O", "I-counterparty", "I-counterparty"])
+    assert stray["counterparty"] == "Marine B.V.", (
+        "an I- tag with no B- before it must OPEN a span. Viterbi can emit 'O I-x'; throwing "
+        f"those tokens away loses the span entirely (you returned {stray['counterparty']!r})")
+    two = decode_spans(toks, ["B-currency", "O", "B-currency", "O", "O"])
+    assert two["currency"] == "Remit", \
+        "only the FIRST span of a field counts; a later one must not overwrite it"
+    print("exercise 3 looks right")
+
+
+_try("exercise 3", _check_decode_spans)
+
+# %% [markdown]
+# Before you train a thing, prove the span reader is not the bug. Feed it the GOLD tags: it
+# must reproduce the gold field values on every document. If it does not, every number you
+# measure afterwards is measuring your span reader.
+
+# %%
+def _show_gold_roundtrip() -> None:
+    bad = [d["doc_id"] for d in DOCS if decode_spans(d["tokens"], d["tags"]) != d["gold"]]
+    print(f"documents whose gold tags decode back to their gold values: "
+          f"{len(DOCS) - len(bad)}/{len(DOCS)}")
+    assert not bad, f"decode_spans disagrees with gold on {len(bad)} documents, e.g. {bad[:3]}"
+    perfect = [{"doc_id": d["doc_id"], "gold": dict(d["gold"]),
+                "pred": decode_spans(d["tokens"], d["tags"])} for d in TEST_DOCS]
+    print(f"a perfect tagger therefore scores macro F1 = {macro_f1(perfect, 'normalised'):.4f} "
+          f"through this harness.\nThat ceiling is a property of the span reader, not of the "
+          f"model — and on a real corpus it is\nusually below 1.0, which is worth knowing "
+          f"before you go hunting for the missing points.")
+
+
+_try("gold round-trip", _show_gold_roundtrip)
+
+# %% [markdown]
+# ## 7. The model, and the feature index
+#
+# `Tagger` holds two arrays. `w` scores a tag against a token's active features; `t` scores a
+# tag against its predecessor, with the last row scoring the tag a sequence starts with.
+# `w_sum`/`t_sum` accumulate a checkpoint of the weights once per training document, and
+# `averaged()` divides by the number of checkpoints — the averaged variant of the perceptron
+# that Collins introduced for tagging problems in 2002 (ACL Anthology W02-1001), at document
+# rather than per-update granularity so it costs one vectorised add.
+#
+# The feature index is built from the TRAINING split only. That is not tidiness; a column
+# fitted on a document you are about to score with is a leak, and the held-out coverage number
+# printed below is the honest price of not taking it.
+
+# %%
+class Tagger:
+    """Weights for an averaged structured perceptron."""
+
+    def __init__(self, n_tags: int, n_feats: int):
+        self.w = np.zeros((n_tags, n_feats), dtype=float)
+        self.t = np.zeros((n_tags + 1, n_tags), dtype=float)
+        self.w_sum = np.zeros_like(self.w)
+        self.t_sum = np.zeros_like(self.t)
+        self.n_checkpoints = 0
+
+    def checkpoint(self) -> None:
+        self.w_sum += self.w
+        self.t_sum += self.t
+        self.n_checkpoints += 1
+
+    def averaged(self) -> "Tagger":
+        out = Tagger(self.w.shape[0], self.w.shape[1])
+        n = max(self.n_checkpoints, 1)
+        out.w = self.w_sum / n
+        out.t = self.t_sum / n
+        return out
+
+
+def build_feature_index(docs: Sequence[dict]) -> dict[str, int]:
+    """Every feature string seen in TRAINING, mapped to a column."""
+    index: dict[str, int] = {}
+    for doc in docs:
+        toks = doc["tokens"]
+        for i in range(len(toks)):
+            for feat in token_features(toks, i):
+                if feat not in index:
+                    index[feat] = len(index)
+    return index
+
+
+def encode_tokens(tokens: Sequence[Token], index: dict[str, int]) -> list[np.ndarray]:
+    """Feature ids per token. A feature unseen in training has no column and is dropped."""
+    out = []
+    for i in range(len(tokens)):
+        ids = [index[f] for f in token_features(tokens, i) if f in index]
+        out.append(np.array(ids, dtype=np.intp))
+    return out
+
+
+FEATURE_INDEX: dict[str, int] = {}
+TRAIN_ENC: list[list[np.ndarray]] = []
+TRAIN_GOLD_IDS: list[list[int]] = []
+
+
+def _build_index() -> None:
+    global FEATURE_INDEX, TRAIN_ENC, TRAIN_GOLD_IDS
+    FEATURE_INDEX = build_feature_index(TRAIN_DOCS)
+    TRAIN_ENC = [encode_tokens(d["tokens"], FEATURE_INDEX) for d in TRAIN_DOCS]
+    TRAIN_GOLD_IDS = [[TAG_INDEX[t] for t in d["tags"]] for d in TRAIN_DOCS]
+    covered = sum(sum(len(ids) for ids in encode_tokens(d["tokens"], FEATURE_INDEX))
+                  for d in TEST_DOCS)
+    total = 12 * sum(len(d["tokens"]) for d in TEST_DOCS)
+    print(f"{len(FEATURE_INDEX)} feature columns built from the {len(TRAIN_DOCS)} training "
+          f"documents.")
+    print(f"on held-out documents {100 * covered / total:.1f}% of feature slots land in a "
+          f"known column;\nthe rest are unseen strings that score zero for every tag. That "
+          f"gap is where a held-out\nsupplier name goes.")
+
+
+_try("feature index", _build_index)
+
+# %% [markdown]
+# ## 8. Exercise 4 — `sequence_scores`
+#
+# One matrix multiply's worth of work, written as a lookup because the features are sparse:
+# each token has twelve active columns out of a few thousand, so summing twelve columns of `w`
+# beats multiplying by a mostly-zero vector.
+
+# %%
+def sequence_scores(model: Tagger, feat_ids_seq: Sequence[np.ndarray]) -> np.ndarray:
+    """Emission scores: row i, column t is the score of tagging token i with tag t.
+
+    That score is the sum of ``model.w[t, f]`` over the active feature ids ``f`` of token i.
+    Return a float array of shape ``(len(feat_ids_seq), model.w.shape[0])`` — rows are tokens,
+    columns are tags. A token with no known features scores zero for every tag: an empty row,
+    not a crash.
+
+    Example:
+        >>> m = Tagger(2, 3); m.w[0] = [1., 2., 4.]; m.w[1] = [8., 16., 32.]
+        >>> sequence_scores(m, [np.array([0, 2]), np.array([], dtype=np.intp)])
+        array([[ 5., 40.],
+               [ 0.,  0.]])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_sequence_scores() -> None:
+    m = Tagger(2, 3)
+    m.w[0] = [1.0, 2.0, 4.0]
+    m.w[1] = [8.0, 16.0, 32.0]
+    got = sequence_scores(m, [np.array([0, 2]), np.array([], dtype=np.intp), np.array([1])])
+    assert got.shape == (3, 2), (f"shape {got.shape}, expected (3, 2) — rows are tokens and "
+                                 "columns are tags, not the other way round")
+    assert np.allclose(got[0], [5.0, 40.0]), \
+        f"row 0 = {got[0]}, expected [5. 40.] — sum the weights of the ACTIVE ids only"
+    assert np.allclose(got[1], [0.0, 0.0]), "a token with no known features scores zero"
+    assert np.allclose(got[2], [2.0, 16.0]), f"row 2 = {got[2]}, expected [2. 16.]"
+    print("exercise 4 looks right")
+
+
+_try("exercise 4", _check_sequence_scores)
+
+# %% [markdown]
+# ## 9. Exercise 5 — `viterbi_decode`
+#
+# The *structured* part of "structured perceptron". A greedy tagger picks the best tag at each
+# position independently and cannot represent "this tag is only good if the previous one was
+# that one". Viterbi maximises the score of the whole sequence in one pass of dynamic
+# programming, and it costs `n_tokens × n_tags²` — thirteen squared, per token, which is
+# nothing.
+#
+# The check below is a two-token case where greedy and Viterbi disagree. Make sure you see why
+# before you move on: that disagreement is the entire reason the transition array exists.
+# Whether it is a disagreement in your *favour* on a given corpus is a separate question, and
+# section 14 measures it rather than assuming the answer.
+
+# %%
+def viterbi_decode(emissions: np.ndarray, transitions: np.ndarray) -> list[int]:
+    """Highest-scoring tag sequence under emission and transition scores. Exact, not greedy.
+
+    ``emissions`` is ``(n_tokens, n_tags)``. ``transitions`` is ``(n_tags + 1, n_tags)``:
+    ``transitions[a, b]`` scores tag ``b`` following tag ``a``, and the extra last row (index
+    ``n_tags``) scores tag ``b`` at position 0.
+
+    The recurrence, with ``dp[i, t]`` the best total score of any path ending in tag t at i:
+
+        dp[0, t] = transitions[n_tags, t] + emissions[0, t]
+        dp[i, t] = max_a (dp[i-1, a] + transitions[a, t]) + emissions[i, t]
+
+    Keep the arg of that max per (i, t), then walk backwards from the best final tag. Return a
+    list of tag indices, one per token. An empty sequence returns ``[]``.
+
+    Example:
+        >>> em = np.array([[0., 1.], [0., 1.]])
+        >>> tr = np.zeros((3, 2)); tr[1, 1] = -5.0      # repeating tag 1 is punished
+        >>> viterbi_decode(em, tr)
+        [1, 0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_viterbi() -> None:
+    em = np.array([[0.0, 1.0], [0.0, 1.0]])
+    tr = np.zeros((3, 2))
+    tr[1, 1] = -5.0
+    got = viterbi_decode(em, tr)
+    assert got == [1, 0], (f"viterbi_decode gave {got}, expected [1, 0] — a greedy tagger picks "
+                           "[1, 1] because tag 1 wins at each position on its own; the "
+                           "transition penalty is what makes the second position flip")
+    start = np.zeros((3, 2))
+    start[2, 0] = 9.0
+    assert viterbi_decode(np.zeros((1, 2)), start) == [0], \
+        "the last row of `transitions` is the START row and scores the tag at position 0"
+    assert viterbi_decode(np.zeros((0, 2)), np.zeros((3, 2))) == [], "empty in, empty out"
+    long_em = np.tile([0.0, 0.1, -0.2], (7, 1))
+    assert len(viterbi_decode(long_em, np.zeros((4, 3)))) == 7, "one tag per token"
+    print("exercise 5 looks right")
+
+
+_try("exercise 5", _check_viterbi)
+
+# %% [markdown]
+# ## 10. Exercise 6 — `perceptron_update`
+#
+# The learning rule, and it fits on a postcard: decode, compare to the truth, push the weights
+# of the right answer up and the weights of the answer you gave down, at the places where they
+# differ. No gradient, no learning rate, no loss surface.
+#
+# The half people forget is the transitions. One wrong tag breaks **two** bigrams — the one
+# entering it and the one leaving it — so the transition pass runs over every position, not
+# only the mismatched ones. Skip it and the model has no reason to prefer a legal tag order,
+# and you will spend an afternoon wondering why `B-counterparty I-invoice_id` keeps appearing.
+
+# %%
+def perceptron_update(model: Tagger, feat_ids_seq: Sequence[np.ndarray],
+                      gold: Sequence[int], pred: Sequence[int]) -> int:
+    """Collins's structured perceptron update, in place. Returns the number of wrong tokens.
+
+    When the decoded sequence equals the gold sequence there is nothing to learn: change
+    nothing and return 0. Otherwise:
+
+    * **Emissions.** At every position where ``gold[i] != pred[i]``, add 1 to
+      ``model.w[gold[i], ids]`` and subtract 1 from ``model.w[pred[i], ids]``, where ``ids``
+      are that token's feature ids. Positions the decoder got right are left alone.
+    * **Transitions.** Walk the two sequences together. At position i the gold bigram is
+      ``(gold[i-1], gold[i])`` and the predicted bigram is ``(pred[i-1], pred[i])``. At
+      position 0 the predecessor is the START row — the LAST row of ``model.t``, index
+      ``model.w.shape[0]`` — so the rule works for a model of any size, not just this
+      lesson's. Where the two bigrams differ, add 1 to the gold one and subtract 1 from the
+      predicted one.
+
+    Return the count of positions where gold and pred differ.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_perceptron_update() -> None:
+    m = Tagger(3, 4)
+    feats = [np.array([0, 1]), np.array([2])]
+    assert perceptron_update(m, feats, [0, 1], [0, 1]) == 0, \
+        "a correct decode returns 0 mismatched tokens"
+    assert not m.w.any() and not m.t.any(), \
+        "a correct decode must leave BOTH weight arrays untouched"
+    n = perceptron_update(m, feats, [1, 2], [0, 2])
+    assert n == 1, f"returned {n}, expected 1 — count the positions where gold and pred differ"
+    assert np.allclose(m.w[1, [0, 1]], [1.0, 1.0]), "the gold tag's row goes UP at token 0"
+    assert np.allclose(m.w[0, [0, 1]], [-1.0, -1.0]), "the predicted tag's row goes DOWN"
+    assert not m.w[:, 2].any(), \
+        "token 1 was tagged correctly, so its features must not move at all"
+    assert m.t[3, 1] == 1.0 and m.t[3, 0] == -1.0, (
+        "position 0's predecessor is the START row — the last row of model.t, index "
+        "model.w.shape[0]. Hard-coding this lesson's 13 breaks on any other model.")
+    assert m.t[1, 2] == 1.0 and m.t[0, 2] == -1.0, (
+        "the bigram at position 1 is wrong too — (1,2) in gold against (0,2) predicted — even "
+        "though the tag at position 1 was right. One wrong tag breaks two bigrams.")
+    print("exercise 6 looks right")
+
+
+_try("exercise 6", _check_perceptron_update)
+
+# %% [markdown]
+# ## 11. Training
+#
+# Eight passes over 140 documents, calling your scorer, your decoder and your update. Watch two
+# columns: the training token error, which should fall to nothing because this task is
+# separable under your feature template, and the held-out macro F1, which should stop moving
+# well before the training error does.
+#
+# The two held-out columns are the raw weights and the averaged ones. Do not assume which wins
+# — read the numbers this corpus produces, and notice what happens to the gap as the training
+# error goes to zero.
+
+# %%
+def tag_document(model: Tagger, tokens: Sequence[Token], index: dict[str, int]) -> list[str]:
+    """Decode one document to a list of tag STRINGS."""
+    ids = viterbi_decode(sequence_scores(model, encode_tokens(tokens, index)), model.t)
+    return [TAGS[i] for i in ids]
+
+
+def records_from(model: Tagger, docs: Sequence[dict], index: dict[str, int]) -> list[dict]:
+    """Run the tagger over documents and hand the result to module 1's harness."""
+    return [{"doc_id": d["doc_id"], "gold": dict(d["gold"]),
+             "pred": decode_spans(d["tokens"], tag_document(model, d["tokens"], index))}
+            for d in docs]
+
+
+def train_tagger(n_epochs: int = 8, seed: int = 11, verbose: bool = True) -> Tagger:
+    """Structured perceptron training. Calls YOUR scorer, YOUR decoder and YOUR update.
+
+    Returns the RAW model — the weights as the last mistake left them. Call `.averaged()` on it
+    for the averaged parameters; this section measures the difference rather than asserting it.
+    """
+    model = Tagger(len(TAGS), len(FEATURE_INDEX))
+    order = list(range(len(TRAIN_DOCS)))
+    rng = random.Random(seed)
+    for epoch in range(1, n_epochs + 1):
+        rng.shuffle(order)
+        wrong = seen = 0
+        for k in order:
+            feats, gold = TRAIN_ENC[k], TRAIN_GOLD_IDS[k]
+            pred = viterbi_decode(sequence_scores(model, feats), model.t)
+            wrong += perceptron_update(model, feats, gold, pred)
+            seen += len(gold)
+            model.checkpoint()
+        if verbose:
+            raw = macro_f1(records_from(model, TEST_DOCS, FEATURE_INDEX), "normalised")
+            avg = macro_f1(records_from(model.averaged(), TEST_DOCS, FEATURE_INDEX),
+                           "normalised")
+            print(f"  epoch {epoch}: train token error {100 * wrong / seen:5.2f}%  ·  "
+                  f"held-out macro F1  raw {raw:.4f}  averaged {avg:.4f}")
+    return model
+
+
+TAGGER: Tagger | None = None
+TAGGER_RECORDS: list[dict] | None = None
+
+
+def _train() -> None:
+    global TAGGER, TAGGER_RECORDS
+    t0 = time.perf_counter()
+    print(f"training the structured perceptron ({len(TRAIN_DOCS)} documents per pass):")
+    raw_model = train_tagger()
+    TAGGER = raw_model.averaged()
+    TAGGER_RECORDS = records_from(TAGGER, TEST_DOCS, FEATURE_INDEX)
+    raw_f1 = macro_f1(records_from(raw_model, TEST_DOCS, FEATURE_INDEX), "normalised")
+    avg_f1 = macro_f1(TAGGER_RECORDS, "normalised")
+    print(f"trained in {time.perf_counter() - t0:.1f}s")
+    print(f"final weights   held-out macro F1 {raw_f1:.4f}")
+    print(f"averaged        held-out macro F1 {avg_f1:.4f}   ({avg_f1 - raw_f1:+.4f})")
+    print("Everything below uses the averaged weights.")
+
+
+_try("training", _train)
+
+# %% [markdown]
+# ## 12. Same scorer, different extractor
+#
+# Nothing in the harness changed. The records handed to it have the same shape they had in
+# module 1 — `doc_id`, `gold`, `pred` — and the scorer neither knows nor cares that a
+# perceptron produced them rather than a regex. That is what makes the comparison below mean
+# anything: two extractors, one instrument, one held-out split.
+
+# %%
+def _show_side_by_side() -> None:
+    if TAGGER_RECORDS is None:
+        raise NotImplementedError
+    print(f"{'field':22s}{'baseline F1':>13s}{'tagger F1':>12s}   {'delta':>7s}")
+    for f in FIELDS:
+        b = score_field(BASELINE_RECORDS, f, "normalised").f1
+        t = score_field(TAGGER_RECORDS, f, "normalised").f1
+        print(f"{f:22s}{b:13.3f}{t:12.3f}   {t - b:+7.3f}")
+    base, tag = macro_f1(BASELINE_RECORDS, "normalised"), macro_f1(TAGGER_RECORDS, "normalised")
+    print(f"{'macro F1':22s}{base:13.3f}{tag:12.3f}   {tag - base:+7.3f}")
+
+
+_try("side by side", _show_side_by_side)
+
+# %% [markdown]
+# Three documents where the two disagree, printed side by side. A number is an argument; a
+# document is evidence.
+
+# %%
+def _show_disagreements(limit: int = 3) -> None:
+    if TAGGER_RECORDS is None:
+        raise NotImplementedError
+    shown = 0
+    for base, tagged in zip(BASELINE_RECORDS, TAGGER_RECORDS):
+        diffs = [f for f in FIELDS
+                 if match_value(tagged["pred"][f], tagged["gold"][f], SCHEMA[f], "normalised")
+                 != match_value(base["pred"][f], base["gold"][f], SCHEMA[f], "normalised")]
+        if not diffs:
+            continue
+        print(f"{base['doc_id']}")
+        for f in diffs:
+            print(f"  {f:20s} gold={base['gold'][f]!r:34s}\n"
+                  f"  {'':20s} rule={base['pred'][f]!r:34s} tagger={tagged['pred'][f]!r}")
+        shown += 1
+        if shown >= limit:
+            break
+
+
+_try("disagreements", _show_disagreements)
+
+# %% [markdown]
+# ## 13. Exercise 7 — `improvement_table`
+#
+# "Macro F1 went up" is not a finding, it is a headline. The finding is which field types
+# moved, and in which direction — because a macro average that rises can hide a field that
+# fell, and the field that fell may be the one a downstream ledger reconciles against.
+#
+# Published evidence says this is where the money is. A May 2026 comparison found a
+# domain-trained small model reaching the strongest aggregate performance in its study at a
+# 78-97% cost reduction against frontier models, with fewer unsupported extractions
+# (arXiv 2605.05532). A small task-specific model is a live option, not a history lesson —
+# but only if you can say per field where it wins and where it does not.
+
+# %%
+class Improvement(NamedTuple):
+    field: str
+    field_type: str
+    baseline_f1: float
+    tagger_f1: float
+    delta: float
+
+
+def improvement_table(baseline_records: Sequence[dict], tagger_records: Sequence[dict],
+                      mode: str = "normalised") -> dict[str, Improvement]:
+    """Per-field F1 for both extractors, and the signed difference.
+
+    One entry for EVERY field in SCHEMA, in SCHEMA order, including fields where both
+    extractors scored 0.0 — a field nobody extracts is a finding, not an absence. Carry the
+    field TYPE as well as the name, because the type is what generalises to the next corpus.
+    ``delta`` is ``tagger_f1 - baseline_f1``. Score both sides with `score_field` and `mode`.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def fields_improved(table: dict[str, Improvement], min_delta: float = 0.01) -> list[str]:
+    """Field names whose delta is at least `min_delta`, worst-baseline-first.
+
+    Sort ascending on baseline F1 so the weakest field the tagger rescued is named first; ties
+    break on the field name, so the same table always gives the same order. A field that moved
+    by less than `min_delta` is not an improvement, it is noise.
+
+    Example:
+        >>> fields_improved({"a": Improvement("a", "id", 0.9, 0.95, 0.05),
+        ...                  "b": Improvement("b", "id", 0.2, 0.90, 0.70),
+        ...                  "c": Improvement("c", "id", 0.5, 0.50, 0.00)})
+        ['b', 'a']
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_improvement() -> None:
+    base = [{"doc_id": "D1", "gold": {f: "" for f in FIELDS} | {"currency": "EUR"},
+             "pred": {f: "" for f in FIELDS}}]
+    tagged = [{"doc_id": "D1", "gold": {f: "" for f in FIELDS} | {"currency": "EUR"},
+               "pred": {f: "" for f in FIELDS} | {"currency": "EUR"}}]
+    table = improvement_table(base, tagged)
+    assert list(table) == list(FIELDS), \
+        "one row per field in SCHEMA, in SCHEMA order, even when both sides scored nothing"
+    assert table["currency"].baseline_f1 == 0.0 and table["currency"].tagger_f1 == 1.0, (
+        f"currency scored baseline={table['currency'].baseline_f1} "
+        f"tagger={table['currency'].tagger_f1}, expected 0.0 and 1.0 — score each side with "
+        "`score_field` against ITS OWN records, not both against the same list")
+    assert abs(table["currency"].delta - 1.0) < 1e-12, "delta is tagger minus baseline"
+    assert table["currency"].field_type == "id", "carry the field TYPE, not just the name"
+    assert fields_improved(table) == ["currency"], \
+        f"fields_improved gave {fields_improved(table)}, expected ['currency']"
+    assert fields_improved(table, min_delta=2.0) == [], "nothing clears an impossible threshold"
+    print("exercise 7 looks right")
+
+
+_try("exercise 7", _check_improvement)
+
+# %% [markdown]
+# Now the work order. The cell below names the fields that moved and then *diagnoses* the ones
+# that fell: for each defect it asks whether the prediction overlapped the gold span but did
+# not equal it — a boundary error — or missed it entirely, or invented it. Those are three
+# different bugs with three different fixes, and one F1 number cannot tell them apart.
+
+# %%
+IMPROVEMENT: dict[str, Improvement] | None = None
+
+
+def _diagnose(records: Sequence[dict], field: str) -> dict[str, int]:
+    """Count this field's defects by kind. Measured, not asserted."""
+    kinds = {"boundary": 0, "miss": 0, "spurious": 0, "different_span": 0}
+    for record in records:
+        pred, gold = record["pred"][field], record["gold"][field]
+        if not pred and not gold:
+            continue
+        if match_value(pred, gold, SCHEMA[field], "normalised"):
+            continue
+        if gold and not pred:
+            kinds["miss"] += 1
+        elif pred and not gold:
+            kinds["spurious"] += 1
+        elif set(pred.split()) & set(gold.split()):
+            kinds["boundary"] += 1
+        else:
+            kinds["different_span"] += 1
+    return kinds
+
+
+def _show_improvement() -> None:
+    global IMPROVEMENT
+    if TAGGER_RECORDS is None:
+        raise NotImplementedError
+    IMPROVEMENT = improvement_table(BASELINE_RECORDS, TAGGER_RECORDS)
+    won = fields_improved(IMPROVEMENT)
+    lost = sorted(i.field for i in IMPROVEMENT.values() if i.delta <= -0.01)
+    flat = [f for f in FIELDS if f not in won and f not in lost]
+    print("the tagger improved  :", ", ".join(won) or "(nothing)")
+    print("the tagger regressed :", ", ".join(lost) or "(nothing)")
+    print("unchanged            :", ", ".join(flat) or "(nothing)")
+    print("\nwhere the tagger's remaining defects are, by kind:")
+    for f in FIELDS:
+        kinds = _diagnose(TAGGER_RECORDS, f)
+        if sum(kinds.values()):
+            print(f"  {f:20s} " + "  ".join(f"{k}={v}" for k, v in kinds.items() if v))
+    print("\nand the baseline's, for the same fields:")
+    for f in FIELDS:
+        kinds = _diagnose(BASELINE_RECORDS, f)
+        if sum(kinds.values()):
+            print(f"  {f:20s} " + "  ".join(f"{k}={v}" for k, v in kinds.items() if v))
+
+
+_try("improvement table", _show_improvement)
+
+# %% [markdown]
+# Read those two tables against each other before you read on. The rule list and the tagger do
+# not fail in the same way: a rule either fires or it does not, so its defects pile up as
+# misses and as confidently wrong spans picked up elsewhere on the page. A tagger almost always
+# fires — its defects pile up on the *edges* of spans, on the field whose vocabulary it has
+# never seen. Which of those two failure modes you would rather explain to an auditor is a real
+# question with a real answer, and it is not the same answer for every field.
+
+# %% [markdown]
+# ## 14. Common mistakes
+#
+# - **Training the feature index on everything.** Build it from the training split only. A
+#   column fitted on the document you are about to score is a leak, and it will make your
+#   held-out number look like your training number until the day it does not.
+# - **Forgetting the transition half of the update.** One wrong tag breaks two bigrams. Fix
+#   only the emissions and the model never learns that `O` cannot be followed by `I-x` for a
+#   different field — it just learns thirteen independent classifiers with extra steps.
+# - **Assuming the structured decoder pays for itself.** Viterbi is the right default and the
+#   only decoder the transition array means anything to — but "right by construction" is not
+#   the same as "ahead on this corpus". The cell below decodes the held-out split both ways
+#   through the same harness and prints the per-field difference. Run it before you defend
+#   either choice.
+# - **Dropping stray `I-` tags in the span reader.** Viterbi maximises a score; it does not
+#   obey your tag grammar. An `O I-x` sequence is a span the model found and your reader threw
+#   away, and the F1 loss lands on the model's file rather than yours.
+# - **Reporting the last weights and calling them the model.** The final vector is whatever the
+#   last mistake left behind. Average, then report — and if averaging turns out to make no
+#   difference on your corpus, that is a measurement you made, not an assumption you skipped.
+# - **Shipping on the macro average alone.** A macro F1 that rose can hide a field that fell.
+#   The `improvement_table` is the deliverable; the macro number is its summary.
+# - **Concluding "the model beat the rules".** It beat them on some field types and lost on
+#   another, on this corpus, at this training size. Both of those clauses matter, and the
+#   honest system in production is usually the rule where the rule is perfect and the model
+#   where it is not.
+# - **Believing a gain measured on the training split.** Everything reported here is held out,
+#   on suppliers drawn from a pool the model never saw. That is the only comparison worth
+#   making, and it is also the one that looks worst — which is why people skip it.
+
+# %% [markdown]
+# Run it. Same weights, same features, same span reader; the only difference is whether the
+# decoder is allowed to know what the previous tag was. The cell also prints, for whichever
+# field the two decoders disagree about most, the mean predicted span length beside the gold
+# mean and the training mean — because a decoder that is systematically short or long is a
+# different bug from one that is randomly wrong.
+
+# %%
+def _mean_span_len(records: Sequence[dict], field: str, key: str = "pred") -> float:
+    lengths = [len(r[key][field].split()) for r in records if r[key][field]]
+    return sum(lengths) / len(lengths) if lengths else 0.0
+
+
+def _show_greedy_vs_viterbi() -> None:
+    if TAGGER is None or TAGGER_RECORDS is None:
+        raise NotImplementedError
+    greedy_records = []
+    for doc in TEST_DOCS:
+        emissions = sequence_scores(TAGGER, encode_tokens(doc["tokens"], FEATURE_INDEX))
+        tags = [TAGS[int(np.argmax(row))] for row in emissions]
+        greedy_records.append({"doc_id": doc["doc_id"], "gold": dict(doc["gold"]),
+                               "pred": decode_spans(doc["tokens"], tags)})
+    print(f"{'field':22s}{'greedy':>9s}{'viterbi':>9s}{'delta':>9s}")
+    gaps = {}
+    for f in FIELDS:
+        g = score_field(greedy_records, f, "normalised").f1
+        v = score_field(TAGGER_RECORDS, f, "normalised").f1
+        gaps[f] = v - g
+        print(f"{f:22s}{g:9.3f}{v:9.3f}{v - g:+9.3f}")
+    gm, vm = macro_f1(greedy_records, "normalised"), macro_f1(TAGGER_RECORDS, "normalised")
+    print(f"{'macro F1':22s}{gm:9.3f}{vm:9.3f}{vm - gm:+9.3f}")
+
+    split = max(gaps, key=lambda f: abs(gaps[f]))
+    train_mean = (sum(len(d["gold"][split].split()) for d in TRAIN_DOCS if d["gold"][split])
+                  / max(sum(1 for d in TRAIN_DOCS if d["gold"][split]), 1))
+    print(f"\nthe two decoders disagree most on {split}. mean span length, in tokens:")
+    print(f"  gold (held out)   {_mean_span_len(TAGGER_RECORDS, split, 'gold'):.2f}")
+    print(f"  gold (training)   {train_mean:.2f}")
+    print(f"  greedy            {_mean_span_len(greedy_records, split):.2f}")
+    print(f"  viterbi           {_mean_span_len(TAGGER_RECORDS, split):.2f}")
+
+
+_try("greedy vs viterbi", _show_greedy_vs_viterbi)
+
+# %% [markdown]
+# Read the sign of that macro delta before you decide what it means, because it is not
+# guaranteed to be positive and on this corpus it is not.
+#
+# The transition array is learned from the training split, and on the training split the spans
+# of the field above are shorter than they are on the held-out split. Viterbi is the decoder
+# that *uses* that array, so it is the decoder that inherits the prior; greedy scores each
+# token on its own features and has no opinion about how long a span ought to be. Where the
+# held-out data matches the training prior, the structured decoder wins. Where it does not, the
+# structured decoder is confidently and systematically wrong in one direction — which is worse
+# than being randomly wrong, because it does not average out across a batch.
+#
+# The conclusion is not "use greedy". It is that a decoder is a component with a measurable
+# contribution, and the harness you built in module 1 is what measures it. Everything above
+# reports Viterbi, because that is the decoder the model was trained with and the one whose
+# failure you can now explain in one sentence.
+
+# %% [markdown]
+# ## 15. Self-check
+#
+# 1. Greedy decoding and Viterbi decoding disagree on a sequence. That happens when:
+#    - (a) the emission scores are negative
+#    - (b) a transition score outweighs a local emission preference, so the best whole-sequence
+#          path does not take the best tag at every position
+#    - (c) the feature template contains a conjunction
+#
+# 2. The notebook prints held-out macro F1 for the raw and the averaged weights at every epoch,
+#    and by the last epoch the two are identical. The right reading is:
+#    - (a) averaging is pointless and should be removed
+#    - (b) the averaging code has a bug
+#    - (c) training error reached zero, so no update fires and the running average converges on
+#          the weights themselves — averaging is insurance whose premium you only see while the
+#          model is still making mistakes
+#
+# 3. You delete the `head|shape` conjunction and keep `head=` and `shape=` separately. The
+#    tagger gets worse on `total_amount`. The reason is:
+#    - (a) fewer features always means worse accuracy
+#    - (b) the model scores features additively, so it cannot express "a money shape ON an
+#          amount line" as different from the two independently — and the page has a bank
+#          charge and a weight on it that are money-shaped too
+#    - (c) the conjunction was acting as a bias term
+#
+# 4. On the held-out split the tagger's `counterparty` defects are concentrated in one kind.
+#    Which, and why:
+#    - (a) boundary errors, because the supplier names were drawn from a disjoint pool, so the
+#          `w=` features are dead and the model is left placing the span's edges from shape and
+#          position alone
+#    - (b) misses, because the tagger never fires on unseen names
+#    - (c) spurious extractions, because `Remit to:` appears on every page
+#
+# 5. Your macro F1 rose from the rule baseline to the tagger. Before you swap the extractor in
+#    production, the first thing to check is:
+#    - (a) inference latency
+#    - (b) the per-field table, because a macro average that rose can hide a field that fell,
+#          and the field that fell may be the one the ledger reconciles against
+#    - (c) nothing; the macro number is the number
+#
+# 6. On this corpus, greedy decoding scores a higher held-out macro F1 than Viterbi with the
+#    same weights. The correct conclusion is:
+#    - (a) Viterbi is implemented wrongly; an exact decoder cannot lose to an approximate one
+#    - (b) transitions should always be dropped from a sequence labeller
+#    - (c) the transition array encodes a span-length prior learned on the training split, and
+#          the held-out split breaks it — so the exact decoder is exactly optimising a score
+#          that is itself mis-specified for this data
+#
+# Answers are published in the course solution bundle.
+
+# %% [markdown]
+# One last cell: the scorecard. Every line computed, which is the shape of the summary a model
+# risk reviewer will ask you for when you propose replacing a rule list with a model.
+
+# %%
+def _show_scorecard() -> None:
+    if TAGGER_RECORDS is None or IMPROVEMENT is None:
+        raise NotImplementedError
+    base_macro = macro_f1(BASELINE_RECORDS, "normalised")
+    tag_macro = macro_f1(TAGGER_RECORDS, "normalised")
+    worst = min(IMPROVEMENT.values(), key=lambda i: i.delta)
+    best = max(IMPROVEMENT.values(), key=lambda i: i.delta)
+    print(f"training documents      {len(TRAIN_DOCS)}")
+    print(f"held-out documents      {len(TEST_DOCS)} (suppliers disjoint from training)")
+    print(f"feature columns         {len(FEATURE_INDEX)}")
+    print(f"macro F1 rule baseline  {base_macro:.4f}")
+    print(f"macro F1 tagger         {tag_macro:.4f}  ({tag_macro - base_macro:+.4f})")
+    print(f"biggest gain            {best.field} ({best.field_type}) {best.delta:+.4f}")
+    print(f"biggest loss            {worst.field} ({worst.field_type}) {worst.delta:+.4f}")
+    print(f"fields improved         {len(fields_improved(IMPROVEMENT))} of {len(FIELDS)}")
+    print(f"recommendation          take the tagger on "
+          f"{', '.join(fields_improved(IMPROVEMENT))};\n"
+          f"                        keep the rule on {worst.field}, where it is still ahead")
+
+
+_try("scorecard", _show_scorecard)
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# You replaced a rule list with a model you trained, and — more to the point — you proved the
+# replacement with the instrument from module 1 rather than with a new one invented to flatter
+# the new extractor. The per-field table you produced is the artefact: it says take the model
+# here, keep the rules there, and it says so in numbers a reviewer can regenerate.
+#
+# You also got a result nobody promised you: the exact decoder losing to the approximate one on
+# a field whose held-out spans are longer than its training spans. That is what a harness is
+# for. A lesson that only ever confirms its own headline has not taught you to measure
+# anything — it has taught you to expect a particular number, which is the opposite skill.
+#
+# Module 4 does the same thing to tables, where content and structure turn out to need two
+# different scores. Module 5 swaps the hand-built feature template for a learned subword
+# vocabulary and asks the harder question of when the classifier should decline to answer at
+# all. The scorer does not move.
+
+# %%
+if __name__ == "__main__":
+    for _name, _check in (("exercise 1", _check_word_shape),
+                          ("exercise 2", _check_token_features),
+                          ("exercise 3", _check_decode_spans),
+                          ("exercise 4", _check_sequence_scores),
+                          ("exercise 5", _check_viterbi),
+                          ("exercise 6", _check_perceptron_update),
+                          ("exercise 7", _check_improvement)):
+        _try(_name, _check)
+    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    # A stub you have not reached yet is not a failure — it prints "not implemented yet" and
+    # the notebook carries on. A check that RAN and came back wrong is a failure, and it ends
+    # this run non-zero rather than letting a green exit code paper over it.
+    if _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

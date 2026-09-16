@@ -1,0 +1,120 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — every AUC, every threshold, every cost, the fitted coefficients, the
+# Parseval residual — and are therefore not claims. They do not appear here.
+#
+# Three things this lesson deliberately does NOT claim are recorded at the foot of the file,
+# because a reviewer should be able to see that each omission was a decision.
+claims:
+  - id: rfft-backward-normalisation
+    claim: >-
+      numpy.fft.rfft computes the one-dimensional n-point discrete Fourier transform of a
+      real-valued array, returns n/2 + 1 bins when n is even and (n + 1)/2 when n is odd, and
+      its `norm` parameter defaults to "backward" — meaning the forward transform carries no
+      scaling at all. The lesson uses exactly these three facts to justify the 2/n scaling in
+      `amplitude_spectrum` and the `if n % 2 == 0` guard on the Nyquist bin, and grades the
+      odd-length case separately because it is the only one that distinguishes a correct
+      guard from an unconditional halving.
+    where: "lesson.py section 5 (exercise 4 prose and docstring); tests/test_lesson.py::test_amplitude_spectrum_scaling and ::test_amplitude_spectrum_odd_length"
+    source_url: https://numpy.org/doc/stable/reference/generated/numpy.fft.rfft.html
+    source_title: "NumPy reference — numpy.fft.rfft"
+    quote: >-
+      If n is even, the length of the transformed axis is (n/2)+1. If n is odd, the length is
+      (n+1)/2.
+    quote_context: "Returns, `out`; the default normalisation is given under `norm` as \"Default is \\\"backward\\\"\""
+    accessed: 2026-09-16
+
+  - id: rfftfreq-bin-centres
+    claim: >-
+      numpy.fft.rfftfreq returns the DFT sample frequencies for use with rfft, as an array of
+      frequency bin centres "in cycles per unit of the sample spacing (with zero at the
+      start)", so that passing a sample spacing in seconds gives an axis in cycles per second.
+      This is why the lesson requires `np.fft.rfftfreq(n, 1.0 / fs)` rather than the default
+      spacing of 1: a band edge expressed in hertz only selects the right bins when the axis
+      is in hertz, and the failure is silent.
+    where: "lesson.py section 5 (exercise 4 docstring and _check_amplitude_spectrum); tests/test_lesson.py::test_amplitude_spectrum_freqs"
+    source_url: https://numpy.org/doc/stable/reference/generated/numpy.fft.rfftfreq.html
+    source_title: "NumPy reference — numpy.fft.rfftfreq"
+    quote: >-
+      The returned float array f contains the frequency bin centers in cycles per unit of the
+      sample spacing (with zero at the start).
+    accessed: 2026-09-16
+
+  - id: kurtosis-definition-and-normal-value
+    claim: >-
+      The US National Institute of Standards and Technology's Engineering Statistics Handbook
+      defines kurtosis for univariate data as the mean fourth power of the deviations from the
+      mean divided by the fourth power of the standard deviation, with N rather than N-1 in
+      the denominator, and states that the kurtosis of a standard normal distribution is
+      three. It records separately that the alternative definition subtracts three so that the
+      standard normal has a kurtosis of zero. The lesson uses the un-shifted figure, tells the
+      student that many libraries return the shifted one, and grades both the convention and
+      the choice of variance denominator.
+    where: "lesson.py section 4 (exercise 3 prose, docstring and _check_kurtosis); tests/test_lesson.py::test_kurtosis_is_not_excess and ::test_kurtosis_uses_population_variance"
+    source_url: https://www.itl.nist.gov/div898/handbook/eda/section3/eda35b.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 1.3.5.11 Measures of Skewness and Kurtosis"
+    quote: "The kurtosis for a standard normal distribution is three."
+    quote_context: >-
+      The formula given on the same page is kurtosis = sum((Y_i - Ybar)**4)/N over s**4, with
+      N in the denominator rather than N-1; the page also gives the excess definition, "used
+      so that the standard normal distribution has a kurtosis of zero".
+    accessed: 2026-09-16
+
+  - id: cwru-bearing-apparatus
+    claim: >-
+      The Case Western Reserve University Bearing Data Center describes its corpus as
+      acceleration measured on a test stand built around a 2 hp Reliance Electric motor, with
+      motor bearings seeded with faults by electro-discharge machining at diameters from 0.007
+      to 0.040 inches, introduced separately at the inner raceway, the rolling element and the
+      outer raceway. The lesson cites it only as the real corpus a student can point this same
+      code at afterwards, and describes it as seeded-fault accelerometer data at several motor
+      loads. Nothing in the lesson is computed from it.
+    where: "lesson.py closing section ('What you built, and where it goes next'); meta.yaml datasets entry cwru-bearing-zenodo"
+    source_url: https://engineering.case.edu/bearingdatacenter/welcome
+    source_title: "Welcome to the Case Western Reserve University Bearing Data Center Website"
+    quote: >-
+      Motor bearings were seeded with faults using electro-discharge machining (EDM). Faults
+      ranging from 0.007 inches in diameter to 0.040 inches in diameter were introduced
+      separately at the inner raceway, rolling element (i.e. ball) and outer raceway.
+    accessed: 2026-09-16
+
+  - id: cwru-bearing-zenodo-licence
+    claim: >-
+      A deposit of the Case Western Reserve University bearing data on Zenodo, DOI
+      10.5281/zenodo.10987113, carries the licence "Creative Commons Attribution 4.0
+      International" and is downloadable without registration. The Bearing Data Center's own
+      pages state no licence at all, which is why the Zenodo deposit and not the original
+      site is what meta.yaml names: gate 11 of QUALITY.md asks for a licence, and "the
+      university has not said" is not one.
+    where: "meta.yaml datasets entry cwru-bearing-zenodo; lesson.py closing section"
+    source_url: https://zenodo.org/records/10987113
+    source_title: "Case Western Reserve University Bearing Dataset Pt.2 — Zenodo, DOI 10.5281/zenodo.10987113"
+    quote: "Creative Commons Attribution 4.0 International"
+    quote_context: "the record's Rights/licence field"
+    accessed: 2026-09-16
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. THE DEFECT ORDER IS A PROPERTY OF THE GENERATOR, NOT OF ANY REAL BEARING.
+#    `DEFECT_ORDER = 3.57` is described in lesson.py as what the generator does — the seeded
+#    defect repeats 3.57 times per shaft revolution — and never as what a particular bearing
+#    geometry produces. Secondary sources quoting outer-race coefficients near 3.58 for the
+#    CWRU drive-end bearing were found, but no primary source stating one could be verified on
+#    2026-09-16, so no such sentence appears in the notebook. What the lesson needs from the
+#    number is only that it is not an integer, which is a fact about the generator and is
+#    visible in the code the student reads.
+#
+# 2. THE PRICES AND THE PREVALENCE ARE A SCENARIO. `PRICES` carries module 1's planned 9,000,
+#    unplanned 180,000 and false alarm 6,000 unchanged, and `PREVALENCE` is set to 4%. No
+#    source is cited because nothing is claimed: section 11 says in as many words that the
+#    bench's own 50% fault rate is not a fleet's, and the rubric grades that the threshold
+#    moves when the prevalence does. Quoting an industry-average downtime figure here would
+#    teach a student to inherit exactly the number this programme exists to send them out to
+#    measure.
+#
+# 3. NO STANDARD IS CITED FOR THE CONDITION INDICATORS. ISO 20816 and ISO 13373 are the
+#    obvious references for broad-band vibration severity and for condition monitoring
+#    practice. Both are behind a paywall: iso.org returned HTTP 403 to an unauthenticated
+#    fetch on 2026-09-16, so neither the scope nor any evaluation zone could be quoted from a
+#    primary source. The lesson therefore defines every feature from its own arithmetic and
+#    grades it against that arithmetic, and claims nothing about what any standard requires.
