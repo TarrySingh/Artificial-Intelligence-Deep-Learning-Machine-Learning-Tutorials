@@ -1,0 +1,93 @@
+<!--
+  planar_walker.xml — a seven-degree-of-freedom planar biped, written for AI Atlas lesson
+  F15-L05 (gait generation and the cost of transport).
+
+  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  (https://creativecommons.org/publicdomain/zero/1.0/). No download, no registration:
+  the file ships inside the lesson directory.
+
+  Why this model and not a 3D humanoid: the lesson is about rhythm, phase and energy
+  bookkeeping. Three root degrees of freedom (fore-aft slide, vertical slide, pitch hinge)
+  confine the machine to the x-z plane, so a student can reason about the whole gait with
+  four numbers per time step and still step it thousands of times on one CPU core.
+
+  The torso body sits at the origin, so a slide joint's coordinate IS a world coordinate:
+  qpos[0] is the hip's fore-aft position in metres and qpos[1] is the hip height in metres.
+
+  Generalised coordinates, in order (model.nq == 7):
+      0  root_x       hip fore-aft position     [m]
+      1  root_z       hip height                [m]
+      2  root_pitch   torso pitch               [rad]
+      3  hip_r        right hip                 [rad]  positive swings the leg forward
+      4  knee_r       right knee                [rad]  negative bends the knee, zero is straight
+      5  hip_l        left hip                  [rad]
+      6  knee_l       left knee                 [rad]
+
+  Actuators, in order (model.nu == 4): hip_r, knee_r, hip_l, knee_l.
+  Each is a position servo: data.ctrl[i] is a TARGET ANGLE in radians, not a torque.
+-->
+<mujoco model="atlas_planar_walker">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.003" integrator="implicitfast" gravity="0 0 -9.81"/>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global elevation="-15" azimuth="90"/>
+  </visual>
+
+  <default>
+    <geom type="capsule" condim="3" friction="1.0 0.05 0.05" density="1000"
+          solimp="0.95 0.99 0.003" solref="0.01 1" rgba="0.72 0.74 0.80 1"/>
+    <joint type="hinge" axis="0 1 0" damping="0.6" armature="0.02"/>
+    <position ctrllimited="true" forcelimited="true" forcerange="-150 150" kp="180" kv="8"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="40 2 0.1" pos="0 0 0" rgba="0.26 0.28 0.33 1"
+          condim="3" friction="1.0 0.05 0.05"/>
+
+    <body name="torso" pos="0 0 0">
+      <joint name="root_x" type="slide" axis="1 0 0" limited="false" damping="0" armature="0"/>
+      <joint name="root_z" type="slide" axis="0 0 1" limited="false" damping="0" armature="0"/>
+      <joint name="root_pitch" type="hinge" axis="0 1 0" limited="false" damping="0" armature="0"/>
+      <geom name="torso_geom" fromto="0 0 0 0 0 0.34" size="0.07"/>
+      <site name="hip_centre" pos="0 0 0" size="0.02"/>
+
+      <body name="thigh_r" pos="0 -0.075 0">
+        <joint name="hip_r" range="-0.95 0.95"/>
+        <geom name="thigh_r_geom" fromto="0 0 0 0 0 -0.40" size="0.05"/>
+        <body name="shin_r" pos="0 0 -0.40">
+          <joint name="knee_r" range="-1.60 0.0"/>
+          <geom name="shin_r_geom" fromto="0 0 0 0 0 -0.38" size="0.04"/>
+          <geom name="foot_r_geom" fromto="-0.055 0 -0.40 0.13 0 -0.40" size="0.035"/>
+        </body>
+      </body>
+
+      <body name="thigh_l" pos="0 0.075 0">
+        <joint name="hip_l" range="-0.95 0.95"/>
+        <geom name="thigh_l_geom" fromto="0 0 0 0 0 -0.40" size="0.05" rgba="0.62 0.66 0.74 1"/>
+        <body name="shin_l" pos="0 0 -0.40">
+          <joint name="knee_l" range="-1.60 0.0"/>
+          <geom name="shin_l_geom" fromto="0 0 0 0 0 -0.38" size="0.04" rgba="0.62 0.66 0.74 1"/>
+          <geom name="foot_l_geom" fromto="-0.055 0 -0.40 0.13 0 -0.40" size="0.035"
+                rgba="0.62 0.66 0.74 1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <position name="hip_r_act" joint="hip_r" ctrlrange="-0.95 0.95"/>
+    <position name="knee_r_act" joint="knee_r" ctrlrange="-1.60 0.0"/>
+    <position name="hip_l_act" joint="hip_l" ctrlrange="-0.95 0.95"/>
+    <position name="knee_l_act" joint="knee_l" ctrlrange="-1.60 0.0"/>
+  </actuator>
+
+  <keyframe>
+    <!-- One leg forward, one leg trailing with a bent knee: a plausible mid-stride pose.
+         qpos[1] = 0.80 puts the leading foot a few millimetres above the floor. -->
+    <key name="stride_start" qpos="0 0.80 0 0.30 -0.05 -0.30 -0.35"/>
+  </keyframe>
+</mujoco>

@@ -1,0 +1,78 @@
+id: F15-L01-first-contact
+title: Load MuJoCo's humanoid, step its physics, and read centre-of-mass height and real-time factor from state
+track: T11
+flagship: F15-humanoid-lab
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 60
+language: python        # python | c | cpp
+prerequisites: []       # none: first lesson of the flagship, and it assumes only Python
+objectives:
+  - "Locate any simulation quantity in either mjModel or mjData and justify which one holds it"
+  - "Implement step_for(seconds) so simulated time advances by a whole number of timesteps, never undershooting"
+  - "Compute whole-body centre-of-mass height from model mass and data.xipos, and show it differs from root height"
+  - "Measure this machine's real-time factor and explain why simulated time is not wall time"
+datasets:
+  - name: "MuJoCo humanoid model (model/humanoid/humanoid.xml)"
+    licence: "Apache-2.0"
+    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/model/humanoid/humanoid.xml"
+    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    copyright: "2021 DeepMind Technologies Limited"
+    cached_at: "assets/humanoid.xml"
+    bytes: 11287
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Single self-contained XML: primitive geoms only, procedurally generated textures, no
+      mesh, no include, no file= reference. Nothing is downloaded on a normal run; the lesson
+      resolves the cached copy and runs with no network. mujoco_menagerie is deliberately
+      avoided here because its mesh assets blow the cpu8 budget.
+points: 26
+# Audit and completion pass, 2026-09-16, of a lesson left at status "executed" but never
+# reviewed. All four gates re-run from the repo root on the venv interpreter; the measured
+# figures below were written back by tools/execute.py and never typed. The rubric was
+# mutation-tested against 12 plausible wrong implementations; 11 were caught as shipped, the
+# twelfth escaped and is recorded below.
+#
+# The escape: every real_time_factor probe used a duration that was an exact multiple of the
+# 0.005 s timestep (0.1, 0.2, 0.4, 0.5). On an exact multiple, steps * timestep equals the
+# `seconds` argument, so an implementation that returns the argument — which the docstring
+# expressly forbids, and which the rubric hint claims to grade — scored full marks. Both the
+# hidden case and the notebook's public check now probe on a non-multiple (0.207 s and
+# 0.507 s, 41.4 and 101.4 timesteps), which separates the two. 12 mutants, 12 caught, partial
+# credit intact in every case.
+#
+# Worst defect found: tests/test_lesson.py bound its 0.4 s measurement to `longer` and then
+# read it back as `long`, which is not a name in Python 3. The last rubric entry therefore
+# raised NameError for every submission, correct or not, so the reference implementation
+# scored 24/26 (92%) and gate B could never be green. Both real_time_factor behaviours that
+# entry exists to grade — the ratio being the right way up, and the step count responding to
+# the duration asked for — were ungraded in practice. Fixed and re-verified.
+#
+# Gate 7 leak, which is why this lesson was re-opened: the self-check pointed students at
+# `the course solution bundle`, a path the student bundle does not contain, so the only
+# feedback route for the four MCQs was a broken link. Replaced with the house SELF_CHECK
+# digest checker (as in F15-L08), which marks a letter without revealing it and names the
+# section to re-read. That also closed a gate 3 violation: 59 unbroken lines of prose ran
+# between the last runnable cell and __main__ (the house limit is ~40). A runnable
+# stale-xipos demonstration now splits the block; worst prose run is now 35 lines.
+#
+# Claims re-verified against the primary sources on 2026-09-16, all three quotes confirmed
+# verbatim. The timestep claim asserted a documented default of 0.002 but quoted only
+# "Simulation time step in seconds.", which does not evidence the default; the quote is now
+# the full sentence plus the attribute table's value. Added a claim for the one number the
+# prose types about the model (its 0.005 s timestep), sourced to the upstream XML and
+# confirmed against the vendored copy. Asset provenance checked: the Apache-2.0 header is
+# intact, 267 lines / 11,287 bytes as SOURCE.md states, and no mesh, include or file=
+# reference anywhere in it, so the offline guarantee holds.
+#
+# Verified but not changed: the rubric's partial credit (9 entries, 26 points, no
+# all-or-nothing), the crouched-keyframe assertion (keyframe 0 is "squat", COM 0.362 m
+# against 0.850 m standing, so the 0.1 m margin is ample), and every docstring worked
+# example, each re-run against the shipped model.
+status: reviewed        # draft | executed | reviewed | shipped
+# Kept to one line on purpose: tools/build_student_bundle.py strips a line starting with
+# "reviewed_by:" but not the indented continuation lines of a folded block, which would leave
+# the student bundle's meta.student.yaml malformed. The narrative lives in the comments above.
+reviewed_by: "Audit and completion pass 2026-09-16 — all 12 gates checked, 12 mutants tested, gate-7 leak and a NameError that capped the reference at 92% both fixed; notes above"
+measured_seconds: 0.2
+measured_peak_mib: 68

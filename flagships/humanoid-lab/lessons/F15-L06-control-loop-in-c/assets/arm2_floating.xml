@@ -1,0 +1,59 @@
+<!-- The SAME two-link arm as arm2.xml, with one line added: the base is no longer bolted to
+     the world, it carries a <freejoint/>. Authored for this lesson; nothing is downloaded.
+
+     This model exists for exactly one purpose, and it is not simulation. It is the model that
+     makes the difference between a joint's POSITION address and its VELOCITY address visible.
+
+     In arm2.xml every joint is a hinge, so nq == nv == 2 and qpos[i] happens to pair with
+     qvel[i]. Code written against that model can index qvel with a qpos address and be right
+     by accident, and it will go on being right until the day someone mounts the arm on a
+     floating base. Then:
+
+         the free joint takes 7 qpos entries (3 translation + a 4-entry quaternion)
+         but only 6 dofs in qvel,
+
+     so from the first hinge onward the two addresses are permanently one apart. The lesson
+     asks the student to find both addresses through mjModel's own tables — jnt_qposadr and
+     jnt_dofadr — rather than by assuming they agree, and this model is what proves they did.
+
+     Nothing here is ever stepped. The lesson loads it, reads addresses out of mjModel, and
+     deletes it. That is why the free base falling under gravity does not matter. -->
+<mujoco model="arm2_floating_f15l06">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" integrator="implicitfast" gravity="0 0 -9.81">
+    <flag contact="disable"/>
+  </option>
+
+  <default>
+    <joint type="hinge" axis="0 1 0" range="-3.0 3.0" damping="0.01" armature="0.05"/>
+    <geom type="capsule" rgba="0.72 0.74 0.78 1" contype="0" conaffinity="0"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 2"/>
+    <body name="base" pos="0 0 0.8">
+      <!-- The one line that separates this model from arm2.xml. -->
+      <freejoint name="root"/>
+      <geom name="base_g" type="box" size="0.05 0.05 0.03" mass="2.0"/>
+      <body name="upper" pos="0 0 0">
+        <joint name="shoulder"/>
+        <geom name="upper_g" fromto="0 0 0 0 0 -0.30" size="0.035" mass="1.0"/>
+        <body name="lower" pos="0 0 -0.30">
+          <joint name="elbow"/>
+          <geom name="lower_g" fromto="0 0 0 0 0 -0.25" size="0.028" mass="0.6"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="shoulder_m" joint="shoulder" gear="1" ctrlrange="-8 8"/>
+    <motor name="elbow_m"    joint="elbow"    gear="1" ctrlrange="-3 3"/>
+  </actuator>
+
+  <keyframe>
+    <!-- 9 numbers, not 4: 3 translation + 4 quaternion + 2 hinges. qvel would take 8. -->
+    <key name="hanging" qpos="0 0 0.8 1 0 0 0 0 0" qvel="0 0 0 0 0 0 0 0" ctrl="0 0"/>
+  </keyframe>
+</mujoco>

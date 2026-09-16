@@ -1,0 +1,770 @@
+# %% [markdown]
+# # F15-L06 · The control loop, in C
+#
+# **You will build:** a PD control loop written against MuJoCo's own C API — the address
+# arithmetic, the control law and the fixed-step loop — plus the measurement that says how
+# much of the gap between C and Python is physics and how much is the trip through Python.
+#
+# **Time:** ~70 minutes · **Runs on:** a laptop CPU, no GPU, no download
+# · **Prerequisites:** F15-L01 (mjModel vs mjData), F15-L03 (PD control in Python)
+#
+# By the end you will be able to:
+# 1. Implement a joint's `qpos` and `qvel` address lookup through `mjModel`'s own tables, and
+#    show that the two addresses differ on a model with a free joint.
+# 2. Implement a clamped PD control law over the actuator array in C and pass the binary's
+#    self-test.
+# 3. Implement a fixed-step control loop in C and show it advances simulated time by exactly
+#    one timestep per tick.
+# 4. Measure the same loop's throughput in C and in Python and report the per-tick overhead
+#    that separates them.
+# 5. Explain why a PD law leaves a steady-state error, from your own measurement of it.
+#
+# Most of what you write in this lesson lives in **`lesson.c`**. This notebook builds it,
+# drives it, checks it and measures it. Two exercises at the end are in Python, and they exist
+# so the comparison at the end is between two loops you wrote rather than a slogan.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import math
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+print("mujoco", mujoco.__version__, "· numpy", np.__version__, "· python",
+      sys.version.split()[0])
+
+# True in a notebook and when this file is run as a script; False when the autograder imports
+# it. Every check below is called under this guard, so the cell you are sitting in reports on
+# itself, while importing the lesson never runs anything.
+_IS_MAIN = __name__ == "__main__"
+
+try:
+    LESSON_DIR = Path(__file__).resolve().parent
+except NameError:  # a notebook has no __file__
+    LESSON_DIR = Path.cwd()
+
+C_SRC = "lesson.c"
+BIN = "lesson_bin"
+MODEL_REL = "assets/arm2.xml"
+FLOATING_REL = "assets/arm2_floating.xml"
+MODEL_PATH = LESSON_DIR / MODEL_REL
+FLOATING_PATH = LESSON_DIR / FLOATING_REL
+
+# The control task, mirrored exactly from lesson.c. Both languages must drive the same arm to
+# the same target with the same gains or no comparison between them means anything.
+TARGET = (0.8, -1.2)
+KP, KD = 40.0, 3.0
+TICKS = 1500
+BENCH_TICKS = 40_000
+SETTLE_TOL = 0.05        # kSettleTol in lesson.c
+
+_BUILD = None
+
+
+def build(verbose: bool = True):
+    """Compile the C source with make. Cached: the compiler runs once per session."""
+    global _BUILD
+    if _BUILD is None:
+        proc = subprocess.run(
+            ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
+             f"SRC={C_SRC}", f"BIN={BIN}"],
+            capture_output=True, text=True, timeout=600)
+        _BUILD = (proc.returncode == 0, (proc.stdout + proc.stderr).strip())
+    ok, out = _BUILD
+    if verbose:
+        print("build OK" if ok else "BUILD FAILED\n" + out)
+    return ok, out
+
+
+def run_c(*args, timeout: int = 300) -> str:
+    """Run the compiled binary and return its stdout.
+
+    Exit code 2 means one of the three C exercises is still a stub, so it is re-raised as
+    NotImplementedError — the grader then reports TODO instead of an error.
+    """
+    ok, out = build(verbose=False)
+    if not ok:
+        raise RuntimeError("the C build failed; run build() to see the compiler output\n" + out)
+    proc = subprocess.run([str(LESSON_DIR / BIN), *args],
+                          cwd=LESSON_DIR, capture_output=True, text=True, timeout=timeout)
+    if proc.returncode == 2:
+        raise NotImplementedError(proc.stderr.strip())
+    if proc.returncode != 0:
+        raise RuntimeError(f"{BIN} {' '.join(args)} exited {proc.returncode}\n{proc.stderr.strip()}")
+    return proc.stdout
+
+
+def metrics(text: str) -> dict:
+    """Parse the binary's `@ key=value` report lines into a dict of floats."""
+    return {k: float(v) for k, v in
+            (line[2:].split("=", 1) for line in text.splitlines() if line.startswith("@ "))}
+
+
+def rows(text: str, tag: str) -> list:
+    """Parse the binary's `<tag> v1 v2 ...` lines into a list of lists of floats."""
+    return [[float(v) for v in line.split()[1:]]
+            for line in text.splitlines() if line.startswith(tag + " ")]
+
+
+def make_test():
+    """Run `make test` — the C self-test. Returns (exit code, combined output)."""
+    proc = subprocess.run(
+        ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
+         f"SRC={C_SRC}", f"BIN={BIN}", "test"],
+        capture_output=True, text=True, timeout=600)
+    return proc.returncode, (proc.stdout + proc.stderr).strip()
+
+
+if _IS_MAIN:
+    build()
+
+# %% [markdown]
+# ## 1. Why this one is in C
+#
+# Everything you have written in this flagship so far has gone through the Python bindings.
+# Underneath them is a C library: MuJoCo's own documentation says "The simulator (or physics
+# engine) is written in C" and that it "exposes the full functionality of the simulator
+# through a compiler-independent shared-memory C API" (`claims.yaml`). `mujoco.mj_step` is not
+# a Python implementation of physics. It is a call into that library.
+#
+# This lesson writes the loop on the other side of that boundary. Not because C is a better
+# language, but because the C API is the thing the bindings are a view of — and a view is
+# easier to use correctly once you have seen what it is a view of.
+#
+# Run this first. It is the same arm in both languages, and it reports what the model holds.
+
+# %%
+def model_facts() -> dict:
+    """What the two shipped models contain. Read from the files, not typed here."""
+    out = {}
+    for name, path in (("pinned", MODEL_PATH), ("floating", FLOATING_PATH)):
+        m = mujoco.MjModel.from_xml_path(str(path))
+        out[name] = {"nq": int(m.nq), "nv": int(m.nv), "nu": int(m.nu),
+                     "njnt": int(m.njnt), "timestep": float(m.opt.timestep)}
+    return out
+
+
+if _IS_MAIN:
+    _facts = model_facts()
+    for _n, _f in _facts.items():
+        print(f"  {_n:9s} nq={_f['nq']} nv={_f['nv']} nu={_f['nu']} njnt={_f['njnt']} "
+              f"timestep={_f['timestep']} s -> {1 / _f['timestep']:.0f} Hz control rate")
+    print(f"\n  the pinned arm has nq == nv ({_facts['pinned']['nq']}); the floating one does "
+          f"not ({_facts['floating']['nq']} vs {_facts['floating']['nv']}). Section 3 is about "
+          f"why that matters.")
+
+# %% [markdown]
+# ## 2. The two structs the whole API is built on
+#
+# MuJoCo splits the world in two, and the split is the first thing to internalise:
+#
+# - **`mjModel`** — the robot. Masses, joint types, actuator limits, the address tables. The
+#   documentation says it "is expected to remain constant" (`claims.yaml`). It is what
+#   `mj_loadXML` returns, and every function takes it as `const mjModel*`.
+# - **`mjData`** — the moment. `qpos`, `qvel`, `ctrl`, `time`, and all the scratch space the
+#   solver needs. The docs call it "a scratch pad where all functions read their inputs and
+#   write their outputs". `mj_makeData` allocates one; `mj_step` advances it.
+#
+# One model, many data. That is why `mj_makeData` is called once outside the loop and never
+# inside it: MuJoCo "performs zero memory allocations after initialization" (`claims.yaml`),
+# and allocating per tick would hand that property away.
+#
+# The C loop in `lesson.c` is five calls. Open the file and find them:
+# `mj_loadXML` → `mj_makeData` → `mj_resetDataKeyframe` → `mj_step` (many) →
+# `mj_deleteData`/`mj_deleteModel`. That is the whole API surface this lesson needs.
+
+# %%
+# Your feedback loop is `make test`. Run it now — it should report three TODOs.
+if _IS_MAIN:
+    _code, _out = make_test()
+    print(_out)
+    print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a real failure)")
+
+# %% [markdown]
+# ## 3. Exercise 1 — `actuator_addresses` in `lesson.c`
+#
+# Given an actuator, find the joint it drives and that joint's two addresses: where its
+# position sits in `qpos`, and where its velocity sits in `qvel`. Three lookups:
+#
+# ```c
+# m->actuator_trnid[2*actuator]   // the joint id
+# m->jnt_qposadr[joint]           // its slot in qpos
+# m->jnt_dofadr[joint]            // its slot in qvel
+# ```
+#
+# The obvious shortcut is `qpos[actuator]` and `qvel[actuator]`. On the pinned arm that is
+# correct — which is what makes it a trap. MuJoCo's docs: `nq` "is larger than the number of
+# degrees of freedom nv whenever quaternions are used to represent 3D orientations. This
+# occurs when the model contains ball joints or free joints (i.e., in most models)"
+# (`claims.yaml`). A free joint takes seven `qpos` slots and six `qvel` rows, so every joint
+# after it sits at two different addresses.
+#
+# The check below runs your lookup against **both** models, which is the only way to tell a
+# real lookup from a lucky one.
+
+# %%
+def _check_addresses() -> None:
+    pinned = run_c("addrdump", "--model", MODEL_REL)
+    floating = run_c("addrdump", "--model", FLOATING_REL)
+    p_head, f_head = metrics(pinned), metrics(floating)
+    p_rows, f_rows = rows(pinned, "addr"), rows(floating, "addr")
+
+    assert len(p_rows) == int(p_head["nu"]) and len(f_rows) == int(f_head["nu"]), (
+        "addrdump printed a different number of rows than the model has actuators")
+    for i, (_, joint, qadr, vadr, _jt) in enumerate(p_rows):
+        assert (qadr, vadr) == (i, i), (
+            f"on the pinned arm actuator {i} should map to qpos {i} / qvel {i}, but you "
+            f"returned qpos {qadr:.0f} / qvel {vadr:.0f}")
+    # The discriminating case: a free joint makes the two address spaces diverge.
+    for i, (_, joint, qadr, vadr, _jt) in enumerate(f_rows):
+        assert qadr == vadr + 1, (
+            f"on the floating arm actuator {i} came back at qpos {qadr:.0f} / qvel "
+            f"{vadr:.0f}. The free joint ahead of it takes 7 qpos slots but only 6 qvel rows, "
+            "so its qpos address must be exactly one MORE than its qvel address. Look each "
+            "one up in its own table — jnt_qposadr for qpos, jnt_dofadr for qvel.")
+    assert f_head["nq"] - f_head["nv"] == 1, (
+        "the floating model should report nq one larger than nv")
+    print(f"exercise 1 looks right: pinned arm maps "
+          f"{[(int(r[2]), int(r[3])) for r in p_rows]}, floating arm maps "
+          f"{[(int(r[2]), int(r[3])) for r in f_rows]} (qpos, qvel)")
+    print(f"  the floating model's free joint costs {int(f_head['nq'])} qpos slots against "
+          f"{int(f_head['nv'])} qvel rows — that 1 is the whole reason the lookup exists")
+
+
+if _IS_MAIN:
+    _check_addresses()
+
+
+# %% [markdown]
+# ## 4. Exercise 2 — `pd_ctrl` in `lesson.c`
+#
+# One command per actuator, clamped to what that actuator will accept:
+#
+# ```c
+# tau = kp * (target[i] - qpos[qadr]) - kd * qvel[vadr];
+# ctrl_out[i] = clamp(tau, lo, hi);   // when m->actuator_ctrllimited[i]
+# ```
+#
+# `target` is indexed by **actuator**; `qpos` and `qvel` are indexed by the **addresses** from
+# exercise 1. Different index spaces. The limits are per actuator and are not symmetric in
+# general: `m->actuator_ctrlrange[2*i]` is the low bound, `[2*i + 1]` the high one.
+#
+# These limits are deliberately tight — 8 N m at the shoulder against a PD law that asks for
+# 32 on the first tick. If the clamp is wrong, the run below will tell you.
+
+# %%
+def _check_pd_ctrl() -> None:
+    # From the keyframe both commands are far past their limits, so both must sit on them.
+    at_start = rows(run_c("ctrldump", "--model", MODEL_REL, "--kp", "40", "--kd", "3",
+                          "--target", "0.8,-1.2"), "ctrl")
+    for i, (_, c, lo, hi) in enumerate(at_start):
+        assert lo - 1e-12 <= c <= hi + 1e-12, (
+            f"actuator {i} came back at {c:g}, outside its own ctrlrange [{lo:g}, {hi:g}] — "
+            "clamp with m->actuator_ctrlrange[2*i] and [2*i + 1], not one shared limit")
+    assert abs(at_start[0][1] - at_start[0][3]) < 1e-12, (
+        f"the shoulder is asked for 40*0.8 = 32 against a limit of {at_start[0][3]:g}, so it "
+        f"must come back at exactly {at_start[0][3]:g}; you returned {at_start[0][1]:g}")
+    assert abs(at_start[1][1] - at_start[1][2]) < 1e-12, (
+        f"the elbow is asked for 40*(-1.2) = -48 against a low limit of {at_start[1][2]:g}, "
+        f"so it must clamp to exactly that; you returned {at_start[1][1]:g}")
+
+    # Sitting on target at rest: every command must be exactly zero. A sign error dies here.
+    on_target = rows(run_c("ctrldump", "--model", MODEL_REL, "--kp", "40", "--kd", "3",
+                           "--target", "0.8,-1.2", "--qpos", "0.8,-1.2", "--qvel", "0,0"),
+                     "ctrl")
+    for i, (_, c, _lo, _hi) in enumerate(on_target):
+        assert abs(c) < 1e-12, (
+            f"with the arm exactly on target and at rest, actuator {i} still asks for {c:g}. "
+            "The error is (target - qpos), which is zero here — a non-zero command means the "
+            "error is the wrong way round.")
+
+    # A small error, well inside the limits, pins the arithmetic and the damping sign.
+    small = rows(run_c("ctrldump", "--model", MODEL_REL, "--kp", "10", "--kd", "2",
+                       "--target", "0.8,-1.2", "--qpos", "0.7,-1.2", "--qvel", "0.2,0"),
+                 "ctrl")
+    want = 10.0 * 0.1 - 2.0 * 0.2
+    assert abs(small[0][1] - want) < 1e-9, (
+        f"error +0.1 rad, velocity +0.2 rad/s, kp = 10, kd = 2 must give "
+        f"10*0.1 - 2*0.2 = {want:g}; you returned {small[0][1]:g}. The damping term is "
+        "SUBTRACTED and it reads qvel directly.")
+    print(f"exercise 2 looks right: from the keyframe the law asks for 32 and -48 and gets "
+          f"{at_start[0][1]:g} and {at_start[1][1]:g} after clamping; on target it asks for "
+          f"exactly 0; a 0.1 rad error at kp = 10 gives {small[0][1]:.3f}")
+
+
+if _IS_MAIN:
+    _check_pd_ctrl()
+
+
+# %% [markdown]
+# ## 5. Exercise 3 — `run_loop` in `lesson.c`
+#
+# The fixed-step loop, in this order, once per tick:
+#
+# 1. `pd_ctrl(...)` — commands from the **current** state
+# 2. copy `ctrl` into `d->ctrl` — the engine's only input channel
+# 3. `mj_step(m, d)` — advance the physics exactly once
+# 4. `stats_tick(...)` — record what happened (given; not your problem)
+#
+# Step first and every command lands one tick late. Step twice and simulated time runs at
+# double the rate your controller believes. Skip step 2 and the arm never moves at all:
+# computing a command and applying one are different acts.
+
+# %%
+def _check_run_loop() -> None:
+    text = run_c("run", "--model", MODEL_REL, "--kp", str(KP), "--kd", str(KD),
+                 "--ticks", str(TICKS))
+    met = metrics(text)
+    want_time = TICKS * met["timestep"]
+    assert met["ticks_done"] == TICKS, (
+        f"stats_tick ran {met['ticks_done']:.0f} times over {TICKS} ticks — call it exactly "
+        "once per tick")
+    assert abs(met["sim_seconds"] - want_time) < 1e-9, (
+        f"after {TICKS} ticks the clock reads {met['sim_seconds']:.6f} s, but one mj_step per "
+        f"tick at {met['timestep']} s is {want_time:.6f} s — "
+        + ("you are stepping more than once per tick"
+           if met["sim_seconds"] > want_time else "you are stepping fewer times than ticks"))
+    assert met["final_abs_err"] < 0.1, (
+        f"the arm finished {met['final_abs_err']:.3f} rad from target; it started about 1.2 "
+        "rad away. If it barely moved, ctrl is never reaching d->ctrl.")
+    assert met["settle_tick"] >= 0, (
+        "the arm never settled inside the tolerance band and stayed there")
+    assert 0.0 < met["saturated_fraction"] < 0.5, (
+        f"{met['saturated_fraction']:.1%} of ticks were saturated. Some saturation is "
+        "expected on the first swing; none at all means the clamp is not firing, and most of "
+        "the run means the command never comes off the limit.")
+    print(f"exercise 3 looks right: {met['ticks_done']:.0f} ticks = "
+          f"{met['sim_seconds']:.3f} s simulated, settled at tick {met['settle_tick']:.0f} "
+          f"({met['settle_seconds']:.2f} s), saturated for "
+          f"{met['saturated_fraction']:.1%} of the run")
+
+
+if _IS_MAIN:
+    _check_run_loop()
+
+
+# %% [markdown]
+# ## 6. The droop, and why it is not a bug
+#
+# The arm settles *near* the target, not on it. That is what a PD law does to a loaded joint:
+# to hold a torque it must hold an error, because torque is all it has. The steady-state
+# error is the gravitational load divided by the gain.
+#
+# `d->qfrc_bias` is MuJoCo's name for the force needed to hold the current pose still. The
+# `run` command prints it beside the error, so you can check the relationship rather than
+# take it on trust. This is the same effect you measured in Python in F15-L03; here it falls
+# out of a loop you wrote in C.
+
+# %%
+def droop_report() -> list:
+    """Per-actuator final error against qfrc_bias / kp, measured from the C run."""
+    text = run_c("run", "--model", MODEL_REL, "--kp", str(KP), "--kd", str(KD),
+                 "--ticks", str(TICKS))
+    out = []
+    for i, err, bias, bias_over_kp, ctrl in rows(text, "err"):
+        out.append({"actuator": int(i), "final_error": err, "qfrc_bias": bias,
+                    "bias_over_kp": bias_over_kp, "ctrl": ctrl,
+                    "ratio": err / bias_over_kp if bias_over_kp else float("nan")})
+    return out
+
+
+if _IS_MAIN:
+    print(f"  {'act':>3} {'final error':>13} {'qfrc_bias':>11} {'bias/kp':>13} {'ratio':>8}")
+    for _r in droop_report():
+        print(f"  {_r['actuator']:>3} {_r['final_error']:>13.9f} {_r['qfrc_bias']:>11.4f} "
+              f"{_r['bias_over_kp']:>13.9f} {_r['ratio']:>8.4f}")
+    print("\n  the last column is the measurement: steady-state error IS the gravitational "
+          "load divided by kp.")
+
+# %% [markdown]
+# ## 7. Exercise 4 — the same loop, in Python
+#
+# Now write the loop again, here, in Python. Same arm, same gains, same keyframe — the only
+# thing that changes is the language. That is what makes the comparison in section 9 an
+# apples-to-apples one.
+#
+# The three helpers below mirror the ones given to you in `lesson.c`. Use them, so the two
+# loops differ only in the language they are written in.
+
+# %%
+def py_addresses(model, i: int):
+    """The Python mirror of actuator_addresses() — (joint, qpos address, qvel address)."""
+    joint = int(model.actuator_trnid[i, 0])
+    return joint, int(model.jnt_qposadr[joint]), int(model.jnt_dofadr[joint])
+
+
+def py_at_limit(model, ctrl) -> int:
+    """1 if any command is sitting on its own ctrlrange bound. Mirrors at_limit()."""
+    for i in range(int(model.nu)):
+        if not model.actuator_ctrllimited[i]:
+            continue
+        lo, hi = model.actuator_ctrlrange[i]
+        if ctrl[i] >= hi - 1e-12 or ctrl[i] <= lo + 1e-12:
+            return 1
+    return 0
+
+
+def py_max_abs_error(model, data, target) -> float:
+    """Largest distance any actuated joint is from its target. Mirrors max_abs_error()."""
+    worst = 0.0
+    for i in range(int(model.nu)):
+        _j, qadr, _v = py_addresses(model, i)
+        worst = max(worst, abs(target[i] - float(data.qpos[qadr])))
+    return worst
+
+
+def fresh():
+    """A (model, data) pair reset to the model's first keyframe, exactly as reset_start()."""
+    model = mujoco.MjModel.from_xml_path(str(MODEL_PATH))
+    data = mujoco.MjData(model)
+    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_forward(model, data)
+    return model, data
+
+
+def python_pd_loop(model, data, target, kp: float, kd: float, ticks: int,
+                   trace_every: int = 0) -> dict:
+    """Run the PD control loop in Python, exactly as run_loop() does in lesson.c.
+
+    For each tick k in range(ticks), in this order: compute one command per actuator with
+    `kp * (target[i] - qpos[qadr]) - kd * qvel[vadr]`, clamped to that actuator's own
+    ctrlrange when `model.actuator_ctrllimited[i]`; write the commands into `data.ctrl`; call
+    `mujoco.mj_step(model, data)` exactly once; then record the tick.
+
+    Use py_addresses / py_at_limit / py_max_abs_error so this is the same computation the C
+    version performs, not merely a similar one.
+
+    Example (one tick from the keyframe saturates both actuators, as in C):
+        >>> model, data = fresh()
+        >>> out = python_pd_loop(model, data, (0.8, -1.2), 40.0, 3.0, 1)
+        >>> out["ticks_done"], out["saturated_ticks"]
+        (1, 1)
+        >>> abs(out["sim_seconds"] - float(model.opt.timestep)) < 1e-12
+        True
+
+    Returns:
+        dict with exactly these five keys:
+          "ticks_done"      int, how many ticks ran
+          "sim_seconds"     float, data.time after the loop
+          "final_abs_err"   float, py_max_abs_error at the end
+          "saturated_ticks" int, ticks where py_at_limit was 1 for the applied command
+          "trace"           list of rows [k, time, qpos.., qvel.., ctrl..] — one row when
+                            trace_every > 0 and k % trace_every == 0, else an empty list.
+                            Each row is [k, time, q0, q1, v0, v1, c0, c1], recorded AFTER
+                            the step, with the control that produced it.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_python_loop() -> None:
+    model, data = fresh()
+    mine = python_pd_loop(model, data, TARGET, KP, KD, TICKS, trace_every=25)
+    expected = {"ticks_done", "sim_seconds", "final_abs_err", "saturated_ticks", "trace"}
+    assert set(mine) == expected, (
+        f"keys were {sorted(mine)}, expected {sorted(expected)} — spell them as in the "
+        "docstring")
+    theirs = metrics(run_c("run", "--model", MODEL_REL, "--kp", str(KP), "--kd", str(KD),
+                           "--ticks", str(TICKS)))
+    assert mine["ticks_done"] == theirs["ticks_done"], (
+        f"Python ran {mine['ticks_done']} ticks, C ran {theirs['ticks_done']:.0f}")
+    assert abs(mine["sim_seconds"] - theirs["sim_seconds"]) < 1e-9, (
+        f"Python's clock finished at {mine['sim_seconds']!r} and C's at "
+        f"{theirs['sim_seconds']!r} — one of the loops is stepping a different number of times")
+    gap = abs(mine["final_abs_err"] - theirs["final_abs_err"])
+    assert gap < 1e-12, (
+        f"Python ended {mine['final_abs_err']!r} from target and C ended "
+        f"{theirs['final_abs_err']!r} (gap {gap:.2e}). These call the SAME compiled mj_step, "
+        "so they should agree to the last bit. Check the order: commands from the current "
+        "state, then write d.ctrl, then step.")
+    assert mine["saturated_ticks"] == theirs["saturated_ticks"], (
+        f"Python counted {mine['saturated_ticks']} saturated ticks, C counted "
+        f"{theirs['saturated_ticks']:.0f} — count the tick where the APPLIED command sits on "
+        "its limit, checked after clamping")
+    c_trace = rows(run_c("run", "--model", MODEL_REL, "--kp", str(KP), "--kd", str(KD),
+                         "--ticks", str(TICKS)), "trace")
+    assert len(mine["trace"]) == len(c_trace), (
+        f"Python recorded {len(mine['trace'])} trace rows, C recorded {len(c_trace)} — record "
+        "when k % trace_every == 0")
+    worst = max((abs(a - b) for pr, cr in zip(mine["trace"], c_trace) for a, b in zip(pr, cr)),
+                default=0.0)
+    assert worst < 1e-12, (
+        f"the two trajectories diverge by {worst:.3e} at some sampled tick. Same engine, same "
+        "start, same gains: they must agree bit for bit.")
+    print(f"exercise 4 looks right: {len(c_trace)} sampled ticks agree between C and Python "
+          f"to within {worst:.1e}; both end {mine['final_abs_err']:.9f} rad from target")
+
+
+if _IS_MAIN:
+    _check_python_loop()
+
+
+# %% [markdown]
+# ## 8. Exercise 5 — what the gap between them actually is
+#
+# Both loops call the same compiled `mj_step`. MuJoCo's bindings are documented as "low-level
+# bindings that are meant to give as close to a direct access to the MuJoCo library as
+# possible" (`claims.yaml`) — they are not a second physics engine. So the difference you are
+# about to measure is not faster physics; it is the cost of the trip through Python, paid once
+# per tick.
+#
+# That distinction has a testable consequence: the gap should look like a roughly constant
+# number of microseconds **per tick**, not a constant multiplier on the physics. Write the
+# arithmetic that turns two throughputs into that number.
+
+# %%
+def loop_overhead(c_ticks_per_second: float, py_ticks_per_second: float) -> dict:
+    """Turn two measured throughputs into the per-tick cost that separates them.
+
+    Example:
+        >>> o = loop_overhead(1_000_000.0, 200_000.0)
+        >>> o["c_tick_us"], o["py_tick_us"], o["overhead_us"]
+        (1.0, 5.0, 4.0)
+        >>> o["ratio"], o["c_max_hz"], o["py_max_hz"]
+        (5.0, 1000000, 200000)
+
+    Returns:
+        dict with exactly these six keys:
+          "c_tick_us"   float, microseconds per tick in C: 1e6 / c_ticks_per_second
+          "py_tick_us"  float, microseconds per tick in Python
+          "overhead_us" float, py_tick_us - c_tick_us. The per-tick price of the trip
+                        through Python, in microseconds. Keep the sign: if C were the
+                        slower of the two this would be negative, and that is information.
+          "ratio"       float, c_ticks_per_second / py_ticks_per_second
+          "c_max_hz"    int, the fastest whole-Hz control loop C could close at this
+                        throughput: floor(c_ticks_per_second). Round DOWN — a rate you can
+                        only just miss is a rate you cannot run.
+          "py_max_hz"   int, the same for Python
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_overhead() -> None:
+    o = loop_overhead(1_000_000.0, 200_000.0)
+    expected = {"c_tick_us", "py_tick_us", "overhead_us", "ratio", "c_max_hz", "py_max_hz"}
+    assert set(o) == expected, f"keys were {sorted(o)}, expected {sorted(expected)}"
+    assert o["c_tick_us"] == 1.0 and o["py_tick_us"] == 5.0, (
+        f"1e6 ticks/s is 1.0 us per tick and 2e5 is 5.0; you returned {o['c_tick_us']} and "
+        f"{o['py_tick_us']} — microseconds per tick is 1e6 / ticks_per_second")
+    assert o["overhead_us"] == 4.0, (
+        f"overhead_us was {o['overhead_us']}, expected 5.0 - 1.0 = 4.0 (Python's per-tick "
+        "cost minus C's, not the other way round)")
+    assert o["ratio"] == 5.0, f"ratio was {o['ratio']}, expected 1e6/2e5 = 5.0"
+    assert o["c_max_hz"] == 1_000_000 and isinstance(o["c_max_hz"], int), (
+        f"c_max_hz was {o['c_max_hz']!r}; one tick per control period means the ceiling IS "
+        "the throughput, floored to a whole Hz")
+    # A case that can tell flooring from rounding: 333333.7 -> 333333, not 333334.
+    odd = loop_overhead(1_234_567.8, 333_333.7)
+    assert odd["py_max_hz"] == 333_333, (
+        f"py_max_hz was {odd['py_max_hz']}, expected floor(333333.7) = 333333 — round DOWN")
+    assert odd["c_max_hz"] == 1_234_567, (
+        f"c_max_hz was {odd['c_max_hz']}, expected floor(1234567.8) = 1234567")
+    print(f"exercise 5 looks right: at 1e6 vs 2e5 ticks/s the per-tick overhead is "
+          f"{o['overhead_us']:.1f} us and the ratio is {o['ratio']:.1f}x")
+
+
+if _IS_MAIN:
+    _check_overhead()
+
+
+# %% [markdown]
+# ## 9. The payoff — measure the language, not the folklore
+#
+# Both loops, on identical work, on this machine. Every number below is produced by code you
+# wrote; none of them is typed into this notebook. Your ratio will not match anyone else's,
+# which is the point: measure it, do not repeat it.
+
+# %%
+def python_throughput(ticks: int = BENCH_TICKS) -> dict:
+    """Time the Python loop on exactly the work `bench` does in C."""
+    model, data = fresh()
+    t0 = time.perf_counter()
+    out = python_pd_loop(model, data, TARGET, KP, KD, ticks, trace_every=0)
+    wall = time.perf_counter() - t0
+    return {"ticks": ticks, "wall_seconds": wall, "ticks_per_second": ticks / wall,
+            "us_per_tick": wall * 1e6 / ticks, "final_abs_err": out["final_abs_err"]}
+
+
+def report() -> None:
+    run = metrics(run_c("run", "--model", MODEL_REL, "--kp", str(KP), "--kd", str(KD),
+                        "--ticks", str(TICKS)))
+    print("the control run")
+    print(f"  {run['ticks']:.0f} ticks at {run['timestep']} s = {run['sim_seconds']:.2f} s "
+          f"simulated, kp = {run['kp']:.0f}, kd = {run['kd']:.0f}")
+    print(f"  settled at tick {run['settle_tick']:.0f} ({run['settle_seconds']:.2f} s), "
+          f"saturated for {run['saturated_fraction']:.1%} of the run")
+    print(f"  finished {run['final_abs_err']:.9f} rad from target")
+
+    c = metrics(run_c("bench", "--model", MODEL_REL, "--ticks", str(BENCH_TICKS)))
+    py = python_throughput()
+    o = loop_overhead(c["ticks_per_second"], py["ticks_per_second"])
+    print(f"\nidentical work, two languages: {int(c['ticks']):,} ticks of the same loop")
+    print(f"  C      {c['wall_seconds'] * 1e3:8.1f} ms  {c['ticks_per_second']:12,.0f} ticks/s"
+          f"  {c['us_per_tick']:7.3f} us/tick")
+    print(f"  Python {py['wall_seconds'] * 1e3:8.1f} ms  {py['ticks_per_second']:12,.0f} ticks/s"
+          f"  {py['us_per_tick']:7.3f} us/tick")
+    print(f"  ratio {o['ratio']:.1f}x · per-tick overhead {o['overhead_us']:.2f} us")
+    print(f"\nthe control rate each loop could close, one tick per period")
+    print(f"  C      up to {o['c_max_hz']:,} Hz")
+    print(f"  Python up to {o['py_max_hz']:,} Hz")
+    print(f"  both agree on the physics: C ended {c['final_abs_err']:.12f} rad from target, "
+          f"Python {py['final_abs_err']:.12f}")
+
+    print(f"\nwhere each loop's ceiling actually is, one tick per control period")
+    print(f"  {'rate':>12} {'budget/tick':>14} {'C':>10} {'Python':>10}")
+    for hz in (1_000, 10_000, 100_000, 500_000, 1_000_000):
+        budget_us = 1e6 / hz
+        print(f"  {hz:>9,} Hz {budget_us:>11.3f} us "
+              f"{'fits' if o['c_tick_us'] <= budget_us else 'MISSES':>10} "
+              f"{'fits' if o['py_tick_us'] <= budget_us else 'MISSES':>10}")
+    print("\n  Read the top row first: at any rate a real robot actually runs, BOTH loops fit "
+          "with\n  room to spare, and choosing C for a 1 kHz joint controller would buy you "
+          "nothing.\n  The overhead only decides anything when one control period has to buy "
+          "MANY ticks —\n  which is exactly what a sampling planner does, and what F15-L07 is "
+          "about.")
+
+
+# %% [markdown]
+# ## 10. Common mistakes
+#
+# - **`qvel[qadr]`.** Using a position address to index velocity. Correct on the pinned arm,
+#   wrong the day the robot gets a floating base. In C nothing complains either way: you read
+#   a neighbour's velocity, or you run off the end of the array, and the loop carries on.
+# - **Computing a command without applying it.** `d->ctrl` is the only channel `mj_step` reads.
+#   Symptom: the arm hangs where it started while your control array looks perfect.
+# - **Stepping before controlling.** Every command lands one tick late. Invisible at low gain;
+#   at high gain the loop rings and you blame the gain.
+# - **Clamping to one shared limit.** Ranges are per actuator and need not be symmetric. Here
+#   the elbow's limit is smaller than the shoulder's.
+# - **Clamping an unlimited actuator.** Check `actuator_ctrllimited[i]` first; an unlimited
+#   actuator's `ctrlrange` is meaningless and clamping to it throttles the controller silently.
+# - **Hard-coding the timestep.** Read `m->opt.timestep`. The model owns that number.
+# - **Calling `mj_makeData` inside the loop.** MuJoCo allocates nothing after setup; do not
+#   undo that. Allocate once, step many times.
+# - **Quoting a speed-up you did not measure.** The ratio below is a property of this model,
+#   this machine and this loop.
+
+# %%
+# The first mistake, made concrete — no C needed. This is the address confusion, in Python,
+# on the floating model, where it actually bites.
+if _IS_MAIN:
+    _fm = mujoco.MjModel.from_xml_path(str(FLOATING_PATH))
+    _fd = mujoco.MjData(_fm)
+    mujoco.mj_resetDataKeyframe(_fm, _fd, 0)
+    _fd.qvel[:] = np.arange(1, int(_fm.nv) + 1) / 10.0   # a distinct velocity in every row
+    mujoco.mj_forward(_fm, _fd)
+    print(f"  the floating arm has nq={int(_fm.nq)} qpos slots but only "
+          f"nv={int(_fm.nv)} qvel rows")
+    print(f"  qvel = {np.array(_fd.qvel).round(2).tolist()}")
+    for _i in range(int(_fm.nu)):
+        _j, _q, _v = py_addresses(_fm, _i)
+        if _q < int(_fm.nv):
+            _wrong = (f"qvel[qadr={_q}] = {_fd.qvel[_q]:.2f}  <- a DIFFERENT joint's velocity")
+        else:
+            _wrong = (f"qvel[qadr={_q}] is past the end of an {int(_fm.nv)}-row array")
+        print(f"  actuator {_i}: correct qvel[{_v}] = {_fd.qvel[_v]:.2f}   but {_wrong}")
+    print("\n  two different failures from one mistake: the first actuator silently damps "
+          "against\n  another joint, the second indexes past the end of the array entirely.")
+    print("  numpy raises on the second. C does not — qvel is a bare double*, so the same "
+          "line\n  reads whatever happens to sit after the array and the loop carries on.")
+
+# %% [markdown]
+# ## 11. Self-check
+#
+# Set your answers in `SELF_CHECK` below and run the cell. It marks them without revealing
+# them, and names the section to re-read for any you get wrong.
+#
+# 1. You want to evaluate eight rollouts of the same robot on eight threads. What do you
+#    allocate eight of?
+#    - (a) eight `mjModel` and eight `mjData`
+#    - (b) one `mjModel`, shared, and eight `mjData`
+#    - (c) eight `mjModel` and one shared `mjData`
+#    - (d) one of each, with a mutex around `mj_step`
+#
+# 2. Your loop works for a year on a pinned arm, then produces nonsense the week the arm is
+#    mounted on a floating base. The most likely cause?
+#    - (a) the gains need retuning for the extra mass
+#    - (b) you indexed `qvel` with a `qpos` address; the free joint takes seven `qpos` slots
+#          against six `qvel` rows, so the two stopped agreeing
+#    - (c) `mj_step` handles free joints differently
+#    - (d) the actuator `ctrlrange` changed
+#
+# 3. You move `mj_step` above `pd_ctrl` inside the loop body. What have you built?
+#    - (a) the same loop; the order within a tick does not matter
+#    - (b) a compile error, because `d` is `const` there
+#    - (c) a loop with a one-tick delay: every command is applied to the state that came
+#          after the one it was computed from
+#    - (d) a loop that runs at half the control rate
+#
+# 4. Your C loop reports roughly eight times the ticks per second of your Python loop. What is
+#    that factor?
+#    - (a) C computes the physics faster than Python does
+#    - (b) both call the same compiled `mj_step`; the gap is per-call overhead around it,
+#          which is why it reads as a near-constant number of microseconds per tick
+#    - (c) Python defaults to a different integrator
+#    - (d) the GIL is serialising the physics
+#
+# 5. Your arm settles a measured 0.047 rad below target, and `kp` times that error equals
+#    `qfrc_bias` almost exactly. What is the right conclusion?
+#    - (a) the loop has a bug in the error sign
+#    - (b) the run needs more ticks to converge
+#    - (c) nothing is wrong: a PD law holds a torque only by holding an error, so the droop is
+#          the gravitational load divided by `kp` — remove it with a higher gain, an integral
+#          term, or by feeding `qfrc_bias` forward
+#    - (d) the timestep is too large
+#
+# Answers, with reasoning, are published in the course solution bundle.
+
+# %%
+import hashlib
+
+SELF_CHECK = {1: "?", 2: "?", 3: "?", 4: "?", 5: "?"}
+
+_ANSWER_DIGESTS = {1: "f89c23d8b9c4a2fb", 2: "80b50a5e0d4d2a4d", 3: "cf6be7fe6ffd7a1c",
+                   4: "9e00f43925593a9b", 5: "c9c745b3f2ba419c"}
+_ANSWER_SECTIONS = {
+    1: "section 2 — which of the two structs is the robot and which is the moment",
+    2: "section 3 and the address table your own code printed for the floating arm",
+    3: "section 5 — the four numbered steps, and why their order is the exercise",
+    4: "section 8 — what the bindings are documented to be, and section 9's us/tick column",
+    5: "section 6 — the ratio column you measured, not the folklore about PD control",
+}
+
+
+def _check_self_check(answers: dict = None) -> None:
+    """Mark the five multiple-choice answers in SELF_CHECK, naming where to look again."""
+    answers = SELF_CHECK if answers is None else answers
+    wrong = []
+    for q, digest in sorted(_ANSWER_DIGESTS.items()):
+        got = str(answers.get(q, "?")).strip().lower()
+        if hashlib.sha256(f"F15-L06-q{q}-{got}".encode()).hexdigest()[:16] != digest:
+            wrong.append(q)
+    for q in sorted(_ANSWER_DIGESTS):
+        note = f"  -> re-read {_ANSWER_SECTIONS[q]}" if q in wrong else ""
+        print(f"  q{q}: {'wrong' if q in wrong else 'right'}{note}")
+    assert not wrong, (
+        f"questions {wrong} are still wrong. Each one names the section that answers it "
+        "above — go back to the measurement you ran there rather than guessing a letter.")
+    print("self-check: all five right")
+
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A control loop on the far side of the binding layer: the address lookup that survives a
+# floating base, a clamped PD law over the actuator array, and a fixed-step loop whose
+# simulated clock you can account for tick by tick. Then the measurement that says what the
+# language is worth here — a per-tick overhead, not a faster physics engine.
+#
+# F15-L07 spends that headroom. It puts a sampling planner in C++ around the same `mj_step`,
+# where one control tick costs thousands of rollouts and the throughput you just measured is
+# what decides whether the planner can run at all.
+
+# %%
+if __name__ == "__main__":
+    report()

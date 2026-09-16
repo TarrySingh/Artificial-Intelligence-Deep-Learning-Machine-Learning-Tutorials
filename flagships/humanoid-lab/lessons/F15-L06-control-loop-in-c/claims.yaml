@@ -1,0 +1,177 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements.
+#
+# Numbers a student SEES IN OUTPUT — the address tables, the settle tick, the saturated
+# fraction, the droop, the ticks-per-second of each language and the ratio between them — are
+# computed by the code they run on their own machine. They are measurements, not claims, and
+# they are deliberately absent from this file.
+#
+# What IS here: what language MuJoCo is written in and what it exposes, the documented
+# division of labour between mjModel and mjData, the documented reason nq can exceed nv, the
+# documented behaviour of the five C functions this lesson calls, what the Python bindings
+# are, the model timestep default, and the engine's licence.
+claims:
+
+  # --- why this lesson is in C at all -------------------------------------------------
+
+  - id: mujoco-engine-written-in-c
+    claim: >-
+      The MuJoCo physics engine itself is written in C. The surrounding pieces are not all C —
+      the XML parser and the model compiler are C++ — but the simulator a control loop calls
+      into is a C library.
+    where: "lesson.py section 1 ('why the engine is written in C') and the closing section."
+    source_url: https://mujoco.readthedocs.io/en/stable/programming/index.html
+    source_kind: primary (the project's own programming guide)
+    quote: "The simulator (or physics engine) is written in C."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The same page's component list also reads "The XML parser is written
+      in C++.", "The compiler is written in C++.", "The abstract visualizer is written in C."
+      and "The UI framework is written in C.", which is why this lesson's claim is scoped to
+      the simulator rather than to the whole project.
+
+  - id: mujoco-exposes-a-c-api
+    claim: >-
+      MuJoCo exposes its functionality through a C API over shared memory, which is what makes
+      it callable from a compiled control loop without any binding layer in between.
+    where: "lesson.py section 1 and section 2 (what the Python bindings are standing on)."
+    source_url: https://mujoco.readthedocs.io/en/stable/programming/index.html
+    source_kind: primary (the project's own programming guide)
+    quote: "The library exposes the full functionality of the simulator through a compiler-independent shared-memory C API."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16, verbatim. Corroborated on the overview page, which opens "MuJoCo is
+      a C/C++ library with a C API, intended for researchers and developers."
+
+  - id: mujoco-preallocates-in-mjdata
+    claim: >-
+      MuJoCo performs no memory allocation after initialisation; all working memory is
+      preallocated inside mjData. This is why a C control loop can call mj_step in a tight
+      loop without the allocator ever appearing in the profile.
+    where: "lesson.py section 2 (why mj_makeData is called once, outside the loop) and section 7 (what the timing comparison is and is not measuring)."
+    source_url: https://mujoco.readthedocs.io/en/stable/overview.html
+    source_kind: primary (the project's own overview)
+    quote: "MuJoCo's runtime performs zero memory allocations after initialization – all working memory is preallocated in `mjData`."
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; sentence appears as quoted, en-dash included."
+
+  # --- the two structs the whole lesson is about ---------------------------------------
+
+  - id: mjmodel-constant-mjdata-scratch
+    claim: >-
+      MuJoCo splits simulation state into two C structs: mjModel holds the model description
+      and is expected to remain constant, while mjData holds the dynamic variables and is the
+      scratch pad every function reads its inputs from and writes its outputs to.
+    where: "lesson.py section 2 ('mjModel is the robot, mjData is the moment'), the exercise 1 brief, and self-check question 1."
+    source_url: https://mujoco.readthedocs.io/en/stable/overview.html
+    source_kind: primary (the project's own overview)
+    quote: "mjModel contains the model description and is expected to remain constant."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The adjacent sentences read "MuJoCo separates simulation parameters
+      into two data structures (C structs) at runtime" and "`mjData` contains all dynamic
+      variables and intermediate results. It is used as a scratch pad where all functions read
+      their inputs and write their outputs." The programming guide states the same split:
+      "Defines the C structure mjModel which is the runtime representation of the model being
+      simulated." and "Defines the C structure mjData which is the workspace where all
+      computations read their inputs and write their outputs."
+
+  - id: mujoco-nq-exceeds-nv
+    claim: >-
+      The number of position coordinates nq is larger than the number of degrees of freedom nv
+      whenever the model uses quaternions to represent 3D orientation, which happens whenever
+      it contains ball joints or free joints. A position address in qpos is therefore not in
+      general the same number as the corresponding velocity address in qvel.
+    where: "lesson.py section 3 and the exercise 1 brief; assets/SOURCE.md ('the model that proves the address arithmetic'); self-check question 2. The specific address tables the student sees (qpos 7 / dof 6 and qpos 8 / dof 7 on the floating arm) are MEASURED by their own code from the shipped model, not asserted here."
+    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+    source_kind: primary (the project's own computation chapter)
+    quote: "The number of position coordinates nq is larger than the number of degrees of freedom nv whenever quaternions are used to represent 3D orientations. This occurs when the model contains ball joints or free joints (i.e., in most models)."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16, verbatim. The same section explains the geometry behind it ("one has
+      to consider the group of rigid body orientations SO(3)... Velocities live in the 3D
+      tangent space") and works an example whose nv = 13 is built from "3 for the ball joint,
+      one for each of the 4 hinge joints, and 6 for the free-floating object", which is the
+      free-joint 7-qpos / 6-dof split this lesson's companion model exhibits.
+
+  # --- the five C functions the student calls -------------------------------------------
+
+  - id: mujoco-c-api-function-semantics
+    claim: >-
+      The documented behaviour of the C functions this lesson calls is: mj_loadXML parses and
+      compiles an MJCF or URDF file and returns the low-level model; mj_makeData allocates the
+      mjData that corresponds to a given model; mj_step advances the simulation; mj_forward
+      computes forward dynamics without integrating in time; mj_resetDataKeyframe resets mjData
+      and sets its fields from a keyframe when 0 <= key < nkey; and mj_deleteData and
+      mj_deleteModel free the respective allocations.
+    where: "lesson.py sections 2 and 4, where each function is introduced before the student calls it; the lesson.c harness."
+    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+    source_kind: primary (the project's own API reference)
+    quote: "Parse XML file in MJCF or URDF format, compile it; return low-level model."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. Descriptions read, in order: mj_loadXML "Parse XML file in MJCF or
+      URDF format, compile it; return low-level model."; mj_makeData "Allocate mjData
+      corresponding to given model."; mj_step "Advance simulation, use control callback to
+      obtain external force and control."; mj_forward "Forward dynamics: same as mj_step but do
+      not integrate in time."; mj_resetDataKeyframe "Reset data. If 0 <= key < nkey, set fields
+      from specified keyframe."; mj_deleteData "Free memory allocation in mjData."; and
+      mj_deleteModel "Free memory allocation in model.". Independently corroborated against the
+      installed header in this environment (mujoco 3.13.0,
+      include/mujoco/mujoco.h), whose declarations match the documented signatures:
+      "MJAPI mjModel* mj_loadXML(const char* filename, const mjVFS* vfs, char* error, int error_sz);",
+      "MJAPI mjData* mj_makeData(const mjModel* m);" and "MJAPI void mj_step(const mjModel* m, mjData* d);".
+
+  # --- what the Python side of the comparison is ---------------------------------------
+
+  - id: mujoco-python-bindings-are-thin
+    claim: >-
+      MuJoCo's Python bindings are deliberately low-level wrappers over the same C library,
+      giving access to MuJoCo's own memory without copying it, rather than a reimplementation
+      of the physics. The two loops this lesson times therefore call identical engine code,
+      which is what makes the measured difference between them a property of the loop and not
+      of the physics.
+    where: "lesson.py section 7 (what the timing comparison is measuring) and section 8; self-check question 4 and its answer key."
+    source_url: https://mujoco.readthedocs.io/en/stable/python.html
+    source_kind: primary (the project's own Python bindings documentation)
+    quote: "These are low-level bindings that are meant to give as close to a direct access to the MuJoCo library as possible."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The page also states "The Python API is consistent with the
+      underlying C API", that the struct classes "provide access to the raw memory used by
+      MuJoCo without copying or buffering", that "some MuJoCo functions (e.g., mj_step) change
+      the content of fields in place", and that "The bindings releases the Python Global
+      Interpreter Lock (GIL) before calling the underlying MuJoCo function" — which is the
+      documented basis for this lesson's claim that the per-tick gap it measures is call
+      overhead around the same engine, not slower physics inside it.
+
+  # --- the model file ------------------------------------------------------------------
+
+  - id: mujoco-default-timestep
+    claim: >-
+      MuJoCo's documented default simulation timestep is 0.002 s. The lesson's model states
+      0.002 explicitly rather than relying on the default, and the code reads
+      m->opt.timestep rather than assuming any value.
+    where: "assets/arm2.xml and assets/arm2_floating.xml header comments; assets/SOURCE.md; lesson.py section 4, where the tick rate is derived from the timestep the model reports."
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (the project's own XML reference)
+    quote: "Simulation time step in seconds. This is the single most important parameter affecting the speed-accuracy trade-off which is inherent in every physics simulation."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The option/timestep entry carries the quoted description and gives
+      its default as 0.002. The value is also confirmed locally: the shipped model sets
+      timestep="0.002" and the lesson prints m->opt.timestep back out rather than asserting it.
+
+  - id: mujoco-licence-apache-2
+    claim: >-
+      MuJoCo is released under the Apache License, Version 2.0 — free, ungated, no
+      registration, commercial use permitted. It is the only third-party dependency on this
+      lesson's required path.
+    where: "meta.yaml datasets; assets/SOURCE.md."
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_kind: primary (the licence file in the project's own repository)
+    quote: "Apache License"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The file's header reads "Apache License" followed by "Version 2.0,
+      January 2004" and the standard Apache-2.0 body. No registration, field-of-use or
+      non-commercial restriction appears in it.

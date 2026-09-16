@@ -1,0 +1,26 @@
+name: lessons
+on: [push, pull_request]
+jobs:
+  execute:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv venv --python 3.12
+      - run: uv pip install -r requirements.txt
+      # Gate 9 and 10: every lesson runs clean inside its declared budget.
+      - run: |
+          fail=0
+          for d in lessons/*/ flagships/*/lessons/*/; do
+            [ -f "$d/meta.yaml" ] || continue
+            .venv/bin/python tools/execute.py "$d" || fail=1
+          done
+          exit $fail
+      # Gate 6: the reference solution must score 100% against the rubric.
+      - run: |
+          fail=0
+          for d in lessons/*/ flagships/*/lessons/*/; do
+            [ -f "$d/tests/test_lesson.py" ] || continue
+            .venv/bin/python tools/grade.py "$d" >/dev/null || { echo "rubric fails on $d"; fail=1; }
+          done
+          exit $fail

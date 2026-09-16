@@ -1,0 +1,149 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements.
+#
+# Numbers a student SEES IN OUTPUT — the stance margins, the torque at which the centre of
+# pressure stops moving, the largest push each controller survives, the forward/backward
+# ratio — are computed by the code they run. They are measurements, not claims, and they are
+# deliberately absent from this file. That is also why this lesson cites no source for "the
+# support polygon predicts the push you survive": it is not borrowed, it is measured here.
+#
+# What IS here: the definition of the centre of pressure and the condition it must satisfy,
+# and MuJoCo's documented semantics for every field and function the lesson relies on.
+claims:
+
+  # --- the balance condition the whole lesson is built on ------------------------------
+
+  - id: cop-inside-convex-hull-of-contacts
+    claim: >-
+      The centre of pressure cannot leave the convex hull of the ground contact points. This
+      is the constraint the lesson calls the support polygon, and it is a property of contact
+      itself rather than of any particular robot or controller: the ground can push, but it
+      cannot pull, so the pressure-weighted average of the contact points must lie within
+      their convex hull.
+    where: "lesson.py section 3 (what the support polygon is) and section 4 (the ankle-torque ceiling the student measures)"
+    source_url: https://underactuated.csail.mit.edu/humanoids.html
+    source_title: "Russ Tedrake, Underactuated Robotics (2024), Ch. 5: Highly-articulated Legged Robots"
+    source_kind: primary (the author's own textbook, the standard treatment of this material)
+    quote: "the CoP must live inside the convex hull of the ground contact points."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The chapter also defines the centre of pressure as the point on the
+      ground where the pressure-weighted average of the contact positions falls, and gives the
+      ZMP definition ("Point P is a 'zero-moment point' if at P, the rotational component of
+      the total spatial force (torque/moment) is zero"). The lesson does not rest on this
+      citation alone: section 4 measures the CoP directly from contact forces and watches it
+      stop at the polygon edge.
+
+  - id: cop-is-the-pressure-weighted-contact-average
+    claim: >-
+      When a robot stands on level ground, the individual contact forces can be summarised by
+      a single centre-of-pressure position on the ground plane. This is the definition the
+      lesson's provided `centre_of_pressure` helper implements: each contact's normal force
+      times its position, divided by the total normal force.
+    where: "lesson.py section 4 (the provided centre_of_pressure helper and the CoP sweep)"
+    source_url: https://arxiv.org/abs/2211.11644
+    source_title: "Wensing, Posa, Hu, Escande, Mansard, Del Prete — Optimization-Based Control for Dynamic Legged Robots"
+    source_kind: primary (the authors' own survey paper)
+    quote: >-
+      Rather than considering a collection of contact points, when walking on level ground,
+      the overall Center of Pressure (CoP) position can be considered
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16 from the full text at ar5iv.labs.arxiv.org/html/2211.11644. Cited for
+      the definition of the CoP only. The paper treats the support-polygon constraint as a
+      special case of a contact-wrench-cone condition, which is beyond this lesson's scope and
+      is not claimed here.
+
+  # --- MuJoCo semantics for every field this lesson reads or writes ---------------------
+
+  - id: mujoco-xfrc-applied-is-a-body-com-wrench
+    claim: >-
+      `mjData.xfrc_applied` holds a Cartesian force/torque applied to each body at that body's
+      centre of mass. It is a user input that the simulator does not overwrite, which is why
+      the lesson can use it to deliver a push of a chosen magnitude and duration, and why the
+      push must be written back to zero when the push window ends.
+    where: "lesson.py section 7 (the push delivered inside the rollout exercise, and the requirement to zero it again)"
+    source_url: https://mujoco.readthedocs.io/en/stable/programming/simulation.html
+    source_title: "MuJoCo documentation — Programming: Simulation"
+    source_kind: primary (the engine's own documentation)
+    quote: "Cartesian wrenches applied to the CoM of individual bodies."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The page adds that torques and wrenches "can also be applied directly
+      using mjData.qfrc_applied and mjData.xfrc_applied", and that this field is used by the
+      native viewer to apply mouse perturbations. The vendored header in the installed package,
+      .venv/lib/python3.12/site-packages/mujoco/include/mujoco/mjdata.h line 188, documents the
+      same field as "applied Cartesian force/torque (nbody x 6)", read on the same date from
+      MuJoCo 3.13.0.
+
+  - id: mujoco-subtree-com-and-linvel
+    claim: >-
+      MuJoCo computes `mjData.subtree_com`, the centre of mass of each subtree, during forward
+      kinematics, and `mjData.subtree_linvel`, the linear velocity of each subtree's centre of
+      mass, when `mj_subtreeVel` is called. Because body 0 is the world body, whose subtree is
+      the entire model, index 0 of each array is the whole-body quantity. The lesson uses
+      subtree_com[0] to check the student's own mass-weighted calculation and subtree_linvel[0]
+      to supply the centre-of-mass velocity its controller needs.
+    where: "lesson.py section 2 (the _check_com_ground_projection cross-check) and section 8 (the provided com_velocity helper)"
+    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+    source_title: "MuJoCo documentation — API Reference: Functions (mj_subtreeVel)"
+    source_kind: primary (the engine's own documentation)
+    quote: "Sub-tree linear velocity and angular momentum: compute `subtree_linvel`, `subtree_angmom`."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The vendored header mjdata.h in the installed MuJoCo 3.13.0 documents
+      `subtree_com` as "center of mass of each subtree (nbody x 3)" (line 232), `subtree_linvel`
+      as "linear velocity of subtree com (nbody x 3)" (line 302) and `xipos` as "Cartesian
+      position of body com (nbody x 3)" (line 218), all read on the same date. The lesson does
+      not take the identity on trust: the notebook's own check compares the student's
+      mass-weighted sum of `xipos` against `subtree_com[0]` and fails if they disagree.
+
+  - id: mujoco-contact-pos-and-force-frame
+    claim: >-
+      Each entry of `mjData.contact` records the contact point position, and the contact's
+      frame stores the contact normal in its first three entries, pointing from the first geom
+      to the second. `mj_contactForce` extracts a contact's 6D force/torque expressed in that
+      contact frame, so the force must be rotated into world coordinates before its vertical
+      component can be used. The lesson's provided centre-of-pressure helper does exactly that.
+    where: "lesson.py section 4 (the provided centre_of_pressure helper)"
+    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+    source_title: "MuJoCo documentation — API Reference: Functions (mj_contactForce)"
+    source_kind: primary (the engine's own documentation)
+    quote: "Extract 6D force:torque given contact id, in the contact frame."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The vendored header mjdata.h of MuJoCo 3.13.0 documents the mjContact
+      fields as `pos` — "position of contact point: midpoint between geoms" — and `frame` —
+      "normal is in [0-2], points from geom[0] to geom[1]" — read on the same date. The
+      helper's correctness is also checked by measurement rather than by citation: at rest the
+      total vertical contact force it sums must equal the machine's weight, and the notebook
+      asserts that.
+
+  - id: mujoco-ctrlrange-clamps-silently
+    claim: >-
+      MuJoCo clamps the control input to `ctrlrange` when that attribute is set, and for simple
+      motors clamping the control input is equivalent to clamping the force output. The
+      controller is not told that clamping occurred. This lesson's point is the opposite of
+      F15-L08's: here the motor's limit is generous and is not what stops the machine, so a
+      student must measure the ceiling the FOOT imposes rather than read the one the actuator
+      advertises.
+    where: "lesson.py section 5 (why the ankle-torque ceiling is not the ctrlrange) and section 12 (common mistakes)"
+    source_url: https://mujoco.readthedocs.io/en/stable/modeling.html
+    source_title: "MuJoCo documentation — Modeling (Actuators: force limits)"
+    source_kind: primary (the engine's own documentation)
+    quote: "If this actuator attribute is set, the input control value will be clamped."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The same section states "For simple motors, clamping the control
+      input is equivalent to clamping the force output." The lesson's actuator is a simple
+      motor with gear 1, so its ctrl value is a torque in newton-metres.
+
+  - id: mujoco-licence
+    claim: >-
+      MuJoCo is distributed under the Apache License, Version 2.0, so it is free to use,
+      including commercially, with no registration and no licence key.
+    where: "meta.yaml datasets; the lesson's claim that its whole toolchain is ungated"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_kind: primary (the project's own LICENSE file)
+    quote: "Apache License, Version 2.0, January 2004"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; the file is the Apache License, Version 2.0, January 2004."

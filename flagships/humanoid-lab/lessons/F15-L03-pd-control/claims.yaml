@@ -1,0 +1,38 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements.
+# Numbers a student sees in output are computed by the code they run and are not listed here.
+claims:
+  - id: mujoco-licence
+    claim: "MuJoCo is distributed under the Apache License, Version 2.0 (January 2004), so it is free to use, including commercially, with no registration."
+    where: "meta.yaml dependencies; the lesson relies on MuJoCo being installable with no licence gate."
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_kind: primary (the project's own LICENSE file)
+    accessed: 2026-09-16
+    verified: "fetched; first lines read 'Apache License' / 'Version 2.0, January 2004' / 'http://www.apache.org/licenses/'."
+
+  - id: qfrc-bias-definition
+    claim: "mjData.qfrc_bias holds C(qpos,qvel), the bias force: Coriolis, centrifugal and gravitational terms, computed by the recursive Newton-Euler algorithm with acceleration set to zero."
+    where: "lesson.py section 2 and the gravity_comp_torque docstring; self-check question 2."
+    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+    source_kind: primary (MuJoCo documentation, Computation chapter)
+    accessed: 2026-09-16
+    verified: "fetched; the notation table gives 'bias force: Coriolis, centrifugal, gravitational' for the term stored in mjData.qfrc_bias, computed by RNE with acceleration zero."
+    corroborating_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/include/mujoco/mjdata.h
+    corroborating_note: "the header declares 'mjtNum* qfrc_bias;  // C(qpos,qvel)  (nv x 1)'."
+
+  - id: equation-of-motion-and-inverse
+    claim: "MuJoCo's inverse dynamics is tau = M v_dot + c - J^T f, and mj_inverse requires qacc to be set before it is called; with qacc = 0 the recovered force is the bias force."
+    where: "lesson.py section 2, which asserts qfrc_bias equals qfrc_inverse at qacc = 0; self-check question 3."
+    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+    source_kind: primary (MuJoCo documentation, Computation chapter)
+    accessed: 2026-09-16
+    verified: "fetched; the chapter states the inverse dynamics form 'inverse: tau = M v_dot + c - J^T f'."
+    corroborating_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+    corroborating_note: "mj_inverse is documented as 'Inverse dynamics: qacc must be set before calling.'; mj_rne as 'Recursive Newton Euler: compute M(q) qacc + C(q,qvel). flg_acc=0 removes the inertial term (i.e. assumes qacc = 0).'"
+
+  - id: default-integrator-and-timestep
+    claim: "MuJoCo's default integrator is Euler (options: Euler, RK4, implicit, implicitfast, discrete) and the default timestep is 0.002 s; the lesson sets both explicitly."
+    where: "lesson.py MODEL_XML and section 6, which attributes the high-gain instability to a control law held constant across a finite explicit step."
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (MuJoCo XML reference, option element)
+    accessed: 2026-09-16
+    verified: "fetched; option/integrator is documented as '[Euler, RK4, implicit, implicitfast, discrete], \"Euler\"' and option/timestep as 'real, \"0.002\"'."

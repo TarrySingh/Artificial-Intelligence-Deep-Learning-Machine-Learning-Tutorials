@@ -1,0 +1,15 @@
+# generated, never hand-committed
+dist/
+*.ipynb
+__pycache__/
+*.pyc
+# build products of the C/C++ lessons
+*.o
+*.dSYM/
+lesson_bin
+solutions/lesson_bin
+# environment
+.venv/
+.DS_Store
+# NOTE: solutions/ and tests/ are deliberately NOT ignored. They are version-controlled and
+# excluded from the student bundle by tools/build_student_bundle.py (QUALITY.md gate 7).

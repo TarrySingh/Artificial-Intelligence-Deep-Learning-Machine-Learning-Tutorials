@@ -1,0 +1,8 @@
+mujoco
+numpy
+matplotlib
+jupytext
+nbclient
+nbformat
+tokenizers
+pytest

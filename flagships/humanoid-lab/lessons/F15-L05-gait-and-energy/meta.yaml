@@ -1,0 +1,72 @@
+id: F15-L05-gait-and-energy
+title: Generate an open-loop gait for a planar biped, account for its energy as the integral of torque times velocity, and cut its cost of transport with a budgeted search
+track: T11
+flagship: F15-humanoid-lab
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - F15-L01-first-contact      # mjModel vs mjData, stepping, reading qpos/qvel
+  - F15-L03-pd-control         # actuators, gains, and why a controller's authority is finite
+objectives:
+  - "Implement a parameterised rhythmic gait and state what each of its five parameters does to the trajectory"
+  - "Measure the mechanical energy a gait spends as the time integral of actuator torque times actuator velocity, and cross-check it in joint space"
+  - "Implement the dimensionless cost of transport and explain why a walker that covers no ground scores infinity rather than zero"
+  - "Measure the effect of the inter-leg phase offset, and show that the antiphase gait survives where the in-phase gait topples"
+  - "Run a rollout-capped coordinate search and report the margin it opens over a baseline gait"
+datasets:
+  - name: "planar_walker.xml — seven-DoF planar biped"
+    licence: "CC0-1.0"
+    url: "https://creativecommons.org/publicdomain/zero/1.0/"
+    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+    copyright: "Authored for this lesson by the AI Atlas project; dedicated to the public domain"
+    cached_at: "assets/planar_walker.xml"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Not a download. Capsules, hinges, two slide joints and a pitch hinge at the root, written
+      for this lesson and shipped inside it, so the lesson runs with no network at all. No
+      <mesh>, no file= attribute, no <include>. Measured at 6.4 microseconds per mj_step on the
+      authoring machine, which is what lets a 47-rollout search finish in a third of a second
+      instead of in a paragraph describing one. Provenance and the calibration reasoning are in
+      assets/SOURCE.md.
+  - name: "MuJoCo 3.13.0 (the physics engine itself)"
+    licence: "Apache-2.0"
+    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/3.13.0/LICENSE"
+    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/3.13.0/LICENSE"
+    copyright: "DeepMind Technologies Limited"
+    cached_at: "(installed in the environment; not vendored)"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Free, ungated, commercial use permitted, no registration. The only third-party dependency
+      on the lesson's required path besides numpy.
+points: 35
+# Authored 2026-09-16. Design notes, because two of these decisions are the lesson:
+#
+# The baseline gait WALKS rather than falls. An earlier draft used a falling baseline, which
+# made the search look spectacular (313x) and taught nothing: the "improvement" was almost
+# entirely the jump from a fall penalty to a finite cost of transport, not a better gait. With
+# a baseline that survives, both sides of the comparison are real costs of transport and the
+# measured margin means what it says. Coordinate descent from three different falling starts
+# was tried first and improved by 1.02x, 1.09x and 313x — the penalty surface is flat, and a
+# rubric resting on it would have been luck, not grading.
+#
+# Grading is on the MARGIN, never on a gait. No test names a frequency, an amplitude or a
+# parameter set. test_coordinate_search_beats_the_baseline_by_a_margin requires the search to
+# better the baseline by 1.5x against a measured 3.03x on the authoring machine, so a student
+# whose hardware finds a different local optimum still scores full marks.
+#
+# The energy metric is deliberately NOT the literature's c_mt. This lesson integrates
+# |tau * omega|, charging for braking as well as driving; Collins et al. count only positive
+# actuator work. The comparison table in section 7 prints that caveat rather than implying the
+# figures are like for like, and self-check question 4 grades whether the student noticed. The
+# distinction is recorded in claims.yaml under cot-this-lesson-is-not-cmt.
+#
+# Budget: the whole lesson is roughly 200 rollouts at about 5 ms each. The rollout cap
+# (MAX_ROLLOUTS = 120) is enforced in the graded function and is itself a rubric line, so a
+# student who writes an unbounded search fails a test rather than a deadline.
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: 1.4
+measured_peak_mib: 51

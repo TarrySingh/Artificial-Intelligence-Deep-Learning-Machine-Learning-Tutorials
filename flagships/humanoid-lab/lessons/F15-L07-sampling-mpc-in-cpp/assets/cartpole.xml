@@ -1,0 +1,57 @@
+<!-- Cart-pole for F15-L07 (sampling-based MPC in C++). Authored for this lesson: there is no
+     download, no include, no mesh and no external reference, so the lesson runs with the
+     network switched off.
+
+     Four deliberate choices, each of which the lesson depends on:
+
+     * angle="radian" pins MJCF's angle units to the units qpos already uses for a hinge, so
+       the keyframe below can say pi and mean pi. MJCF otherwise reads angles as degrees.
+     * contact is disabled. Nothing in a swing-up touches anything, and a contact-free
+       mj_step is the cheapest honest unit of work for a rollouts-per-second measurement.
+       Re-enable the flag and every line of the lesson still runs, just slower.
+     * the rail is long (2 m of travel each way). A short rail turns swing-up into a
+       constraint-satisfaction puzzle and makes the planner's success depend on the seed;
+       this lesson is about the sampling loop, not about the track running out.
+     * timestep overrides MuJoCo's documented default of 0.002 s (see claims.yaml), which is
+       why the code reads model->opt.timestep everywhere instead of assuming a value.
+
+     hinge = 0 is upright. The "hanging" keyframe starts the pole straight down, which is the
+     state no small-signal linear feedback controller can recover from and a sampling planner
+     can. -->
+<mujoco model="cartpole_f15l07">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.01" integrator="implicitfast">
+    <flag contact="disable"/>
+  </option>
+
+  <default>
+    <geom contype="0" conaffinity="0"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 2"/>
+    <geom name="rail" type="capsule" quat="0.707107 0 0.707107 0" size="0.02 2.2"
+          rgba="0.35 0.35 0.38 1"/>
+    <body name="cart" pos="0 0 0">
+      <joint name="slider" type="slide" axis="1 0 0" range="-2.0 2.0" damping="0.05"/>
+      <geom name="cart" type="box" size="0.1 0.05 0.05" mass="1" rgba="0.18 0.42 0.78 1"/>
+      <body name="pole" pos="0 0 0">
+        <joint name="hinge" type="hinge" axis="0 1 0" damping="0.01"/>
+        <geom name="pole" type="capsule" fromto="0 0 0 0 0 0.6" size="0.025" mass="0.1"
+              rgba="0.82 0.32 0.22 1"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="drive" joint="slider" gear="20" ctrlrange="-1 1"/>
+  </actuator>
+
+  <!-- Every run in this lesson, in C++ and in Python, starts here. Resetting to a named
+       keyframe rather than assigning qpos by hand is what lets the two languages be compared
+       on exactly the same initial state. -->
+  <keyframe>
+    <key name="hanging" qpos="0 3.14159265358979" qvel="0 0" ctrl="0"/>
+  </keyframe>
+</mujoco>

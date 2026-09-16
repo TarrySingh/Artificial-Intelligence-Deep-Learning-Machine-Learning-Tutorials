@@ -1,0 +1,110 @@
+<!--
+  balancer.xml — a planar ankle-and-hip balancer, written for AI Atlas lesson F15-L08
+  (sim-to-real, and what a free tier cannot teach you).
+
+  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
+  ships inside the lesson directory and the lesson never touches the network.
+
+  WHY THIS MODEL
+
+  The lesson's subject is the reality gap, not locomotion. It has to run four separate
+  studies — control latency, actuator saturation, sensor noise and domain randomisation —
+  and each one needs hundreds of independent rollouts to say anything with a straight face.
+  So the model is the smallest machine that still has a humanoid's defining problem: it is
+  an inverted pendulum that falls over unless something actively holds it up.
+
+  Contacts are disabled and the ankle is a pin joint rather than a foot on a floor. That is
+  a deliberate, declared simplification — it is itself one of the reality gaps the lesson
+  measures, and it is named as such in the notebook. The payoff is a contact-free mj_step
+  costing a couple of microseconds, which is what lets a student run a full randomised
+  study inside a CPU budget instead of reading about one.
+
+  GEOMETRY
+
+  Two links in the x-z plane, both hinging about the y axis:
+
+      ankle  hinge at the origin     shank rotates about the ground contact point
+      hip    hinge at z = 0.55       torso rotates relative to the shank
+
+  Positive angle pitches the machine FORWARD (+x). Upright is qpos = [0, 0].
+
+  Generalised coordinates (model.nq == 2):
+      0  ankle   shank angle from vertical  [rad]
+      1  hip     torso angle from the shank [rad]
+
+  Actuators (model.nu == 2), both direct torque motors, gear 1, so data.ctrl[i] is a
+  TORQUE IN NEWTON-METRES, not a target angle:
+      0  ankle_torque   ctrlrange -40 40   the strong joint, and still the one that saturates
+      1  hip_torque     ctrlrange -25 25
+
+  The ctrlrange values are the point of the actuator-saturation section. Holding this body
+  against gravity at a lean of theta costs roughly m*g*h*sin(theta) at the ankle, and with
+  m = 20 kg and the centre of mass near 0.68 m that is about 133 N*m per radian. A 40 N*m
+  ankle therefore recovers a small lean comfortably and cannot recover a large one, however
+  large a gain the controller asks for. MuJoCo clamps the request; the controller does not
+  get to know it was clamped unless it looks.
+
+  Masses are stated explicitly rather than derived from a density, so that every number in
+  the lesson's output traces back to something legible in this file.
+-->
+<mujoco model="atlas_f15l08_balancer">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.004" integrator="implicitfast" gravity="0 0 -9.81">
+    <!-- Nothing in this task touches anything. A contact-free step is the cheapest honest
+         unit of work for a study that needs thousands of rollouts. -->
+    <flag contact="disable"/>
+  </option>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global elevation="-15" azimuth="90"/>
+  </visual>
+
+  <default>
+    <geom type="capsule" contype="0" conaffinity="0" rgba="0.72 0.74 0.80 1"/>
+    <joint type="hinge" axis="0 1 0" armature="0.01"/>
+    <motor gear="1" ctrllimited="true"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="5 5 0.1" pos="0 0 0" rgba="0.26 0.28 0.33 1"
+          contype="0" conaffinity="0"/>
+
+    <body name="shank" pos="0 0 0">
+      <joint name="ankle" damping="0.30" range="-1.4 1.4"/>
+      <geom name="shank_geom" fromto="0 0 0 0 0 0.55" size="0.05" mass="6"/>
+
+      <body name="torso" pos="0 0 0.55">
+        <joint name="hip" damping="0.30" range="-1.0 1.0"/>
+        <geom name="torso_geom" fromto="0 0 0 0 0 0.60" size="0.07" mass="14"
+              rgba="0.62 0.66 0.74 1"/>
+        <site name="head" pos="0 0 0.60" size="0.02"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="ankle_torque" joint="ankle" ctrlrange="-40 40"/>
+    <motor name="hip_torque"   joint="hip"   ctrlrange="-25 25"/>
+  </actuator>
+
+  <keyframe>
+    <!-- The disturbance the controller is asked to reject: a forward lean of 0.15 rad with
+         0.5 rad/s of forward angular velocity already on the body.
+
+         This number is calibrated, not decorative. Holding the body statically at a lean of
+         theta costs about m*g*h*sin(theta) at the ankle, which for this model is roughly
+         133*sin(theta) N*m, so a 40 N*m ankle stalls at about 0.31 rad. Starting at 0.15 rad
+         and still falling forwards puts the recovery squarely in the region where the torque
+         limit is a live constraint: a good controller recovers with the saturation indicator
+         already lit, and a 20% heavier torso does not recover at all.
+
+         That margin is the whole lesson. Start much smaller and every reality gap is
+         survivable, so the student measures nothing; start much larger and nothing survives,
+         so the student measures nothing. -->
+    <key name="lean" qpos="0.15 -0.05" qvel="0.50 0.0"/>
+  </keyframe>
+</mujoco>

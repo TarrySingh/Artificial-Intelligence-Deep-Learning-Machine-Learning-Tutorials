@@ -1,0 +1,950 @@
+# %% [markdown]
+# # F15-L04 · Standing balance: the centre of mass and the support polygon
+#
+# **You will build:** a balance bench — the centre-of-mass ground projection, the support
+# polygon and the signed margin between them, a push you deliver through `xfrc_applied`, a
+# fall detector that reads state, and a centre-of-mass feedback controller whose largest
+# survivable shove you measure forwards and backwards.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, no GPU, no download
+# · **Prerequisites:** F15-L01 (mjModel/mjData, stepping, centre of mass from `xipos`),
+# F15-L03 (state feedback and gains)
+#
+# By the end you will be able to:
+# 1. Compute the centre-of-mass ground projection and verify it against MuJoCo's own
+#    `subtree_com`.
+# 2. Compute the support polygon and a signed margin, and measure that at rest the centre of
+#    pressure sits directly under the centre of mass.
+# 3. Measure the ankle torque at which the foot starts to lift, and show the ceiling belongs
+#    to the polygon rather than to the motor.
+# 4. Push the machine over and detect the fall from state.
+# 5. Build a centre-of-mass feedback controller and measure the largest push it survives in
+#    each direction.
+#
+# Every number in this notebook's output is computed by the code you run. Nothing in the
+# prose below is a figure someone typed in.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import hashlib
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+print("mujoco", mujoco.__version__, "· numpy", np.__version__)
+
+MODEL_FILENAME = "stander.xml"
+
+
+def stander_xml_path() -> Path:
+    """Locate the model that ships next to this notebook.
+
+    There is no download branch. The model was written for this lesson and lives in
+    `assets/`; if it is missing, the checkout is broken and saying so beats a silent fetch.
+    """
+    try:
+        here = Path(__file__).resolve().parent
+    except NameError:  # a notebook has no __file__
+        here = Path.cwd()
+    for candidate in (here / "assets" / MODEL_FILENAME,
+                      here.parent / "assets" / MODEL_FILENAME,
+                      Path.cwd() / "assets" / MODEL_FILENAME,
+                      Path.cwd().parent / "assets" / MODEL_FILENAME):
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        f"{MODEL_FILENAME} not found next to this lesson. It ships in assets/ and is never "
+        "downloaded; restore it from the lesson directory."
+    )
+
+
+def load_stander():
+    """Compile the model and hand back a fresh (model, data) pair."""
+    model = mujoco.MjModel.from_xml_path(str(stander_xml_path()))
+    return model, mujoco.MjData(model)
+
+
+MODEL, DATA = load_stander()
+TORSO_ID = mujoco.mj_name2id(MODEL, mujoco.mjtObj.mjOBJ_BODY, "torso")
+FOOT_GEOM_ID = mujoco.mj_name2id(MODEL, mujoco.mjtObj.mjOBJ_GEOM, "foot_geom")
+ANKLE = 3                      # index of the ankle joint in qpos and qvel
+
+# The experiment, fixed here and never re-typed further down.
+SETTLE_STEPS = 100             # let it stand quietly before anything happens
+PUSH_START_STEP = 100          # the shove begins here
+PUSH_STEPS = 100               # and lasts this many steps
+HORIZON_STEPS = 1000
+FALL_TILT = 0.35               # radians of torso tilt that count as fallen
+PUSH_LADDER = (20.0, 40.0, 60.0, 80.0, 100.0, 130.0, 160.0, 200.0)
+
+print(f"model: nq={MODEL.nq} nv={MODEL.nv} nu={MODEL.nu} dt={MODEL.opt.timestep} s")
+print(f"total mass {MODEL.body_mass.sum():.2f} kg, "
+      f"ankle torque limit {MODEL.actuator_ctrlrange[0][1]:.0f} N*m")
+print(f"push: {PUSH_STEPS * MODEL.opt.timestep:.2f} s long, starting at "
+      f"{PUSH_START_STEP * MODEL.opt.timestep:.2f} s; horizon "
+      f"{HORIZON_STEPS * MODEL.opt.timestep:.1f} s")
+
+# %% [markdown]
+# ## 1. What "standing" actually is
+#
+# A machine stands when the ground can push back hard enough, in the right place, to stop it
+# rotating. The ground can only push **up**, and only where the foot touches. That patch of
+# ground is the **support polygon**, and almost everything in this lesson is a consequence of
+# it being finite.
+#
+# Run the next cell. It settles the machine and prints what it is standing on.
+
+# %%
+def settle(model, data) -> None:
+    """Reset to the standing keyframe and let the contacts settle, with no control."""
+    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_forward(model, data)
+    for _ in range(SETTLE_STEPS):
+        data.ctrl[0] = 0.0
+        mujoco.mj_step(model, data)
+
+
+def torso_tilt(model, data) -> float:
+    """Signed angle of the torso's long axis away from vertical, in radians. Provided."""
+    zaxis = data.xmat[TORSO_ID].reshape(3, 3)[:, 2]
+    return float(np.arctan2(zaxis[0], zaxis[2]))
+
+
+settle(MODEL, DATA)
+STANCE_COM_X = float(DATA.subtree_com[0][0])   # the x it stands at, measured not assumed
+print(f"settled: {DATA.ncon} contact points, torso tilt {torso_tilt(MODEL, DATA):+.5f} rad")
+print(f"contact points (x, y): {np.round(np.array([c.pos[:2] for c in DATA.contact[:DATA.ncon]]), 4).tolist()}")
+print(f"it stands with its centre of mass at x = {STANCE_COM_X:+.6f} m")
+
+# %% [markdown]
+# ## 2. Exercise 1 — where the mass actually is
+#
+# The centre of mass of a multi-body machine is the mass-weighted average of its bodies'
+# centres of mass. MuJoCo gives you each body's own centre of mass in world coordinates as
+# `data.xipos` — note the `i`: `data.xpos` is the body *frame origin*, which for this torso
+# sits down at the ankle, nowhere near its mass.
+#
+# Body 0 is the world body. It has no mass and must not be included.
+
+# %%
+def com_ground_projection(model, data) -> np.ndarray:
+    """Return the (x, y) ground projection of the whole machine's centre of mass.
+
+    Mass-weighted average of `data.xipos` over every body EXCEPT body 0 (the world):
+
+        com = sum_i(mass_i * xipos_i) / sum_i(mass_i),  i = 1 .. model.nbody - 1
+
+    then keep the x and y components. "Ground projection" is just dropping z: the point on
+    the floor directly beneath the centre of mass.
+
+    Use `model.body_mass` and `data.xipos`, not `data.xpos`, and not the precomputed
+    `data.subtree_com` — the whole point is to build it and then check it against MuJoCo's.
+
+    Example (the settled standing pose):
+        >>> model, data = load_stander()
+        >>> settle(model, data)
+        >>> com = com_ground_projection(model, data)
+        >>> com.shape
+        (2,)
+        >>> bool(abs(com[1]) < 1e-9)      # planar machine: no sideways mass offset
+        True
+
+    Returns:
+        np.ndarray of shape (2,) — the x and y of the centre of mass.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_com_ground_projection() -> None:
+    model, data = load_stander()
+    settle(model, data)
+    got = com_ground_projection(model, data)
+    got = np.asarray(got, dtype=float)
+    assert got.shape == (2,), (
+        f"expected shape (2,), got {got.shape} — return only x and y, not all three "
+        "components of the centre of mass."
+    )
+    reference = np.asarray(data.subtree_com[0][:2], dtype=float)
+    assert np.allclose(got, reference, atol=1e-9), (
+        f"you got {got}, MuJoCo's own whole-body centre of mass is {reference}. The usual "
+        "causes: using data.xpos (the body frame origin) instead of data.xipos (the body's "
+        "centre of mass), or including body 0, the massless world body, in the average."
+    )
+    print(f"exercise 1 looks right: centre of mass at x={got[0]:+.6f}, y={got[1]:+.6f}, "
+          f"agreeing with MuJoCo's subtree_com to {np.abs(got - reference).max():.1e} m")
+
+
+# %% [markdown]
+# ## 3. Exercise 2 — the support polygon, and how much room is left
+#
+# For this machine the support polygon is the footprint of one box foot: four corners, which
+# the helper below computes from the geom's own size and orientation rather than from
+# anything typed. With two feet on the ground it would be the convex hull of both footprints,
+# and the margin function you are about to write would not change at all.
+#
+# The **signed margin** is the distance from a point to the nearest edge: positive inside,
+# negative outside, zero on the boundary. It is the single number that says how much room the
+# machine has left.
+
+# %%
+def support_polygon(model, data) -> np.ndarray:
+    """The four ground corners of the foot, in world (x, y), counter-clockwise. Provided.
+
+    Computed from the foot geom's half-sizes and its world orientation, so it stays correct
+    when the foot rotates. Returns an array of shape (4, 2).
+    """
+    sx, sy, sz = model.geom_size[FOOT_GEOM_ID]
+    local = np.array([[+sx, -sy, -sz], [+sx, +sy, -sz], [-sx, +sy, -sz], [-sx, -sy, -sz]])
+    rot = data.geom_xmat[FOOT_GEOM_ID].reshape(3, 3)
+    return (data.geom_xpos[FOOT_GEOM_ID] + local @ rot.T)[:, :2]
+
+
+def fore_aft_margins(polygon, com_x: float):
+    """(heel_margin, toe_margin): how far the centre of mass is from each end. Provided."""
+    return float(com_x - polygon[:, 0].min()), float(polygon[:, 0].max() - com_x)
+
+
+def support_margin(point, polygon) -> float:
+    """Signed distance from `point` to the nearest edge of a convex polygon.
+
+    `polygon` is an (N, 2) array of vertices in counter-clockwise order. For a
+    counter-clockwise polygon the inside lies to the LEFT of every directed edge, so for each
+    edge from `a` to `b`:
+
+        cross    = (b - a) x (point - a)        the 2-D scalar cross product,
+                                                (b-a)[0]*(p-a)[1] - (b-a)[1]*(p-a)[0]
+        distance = cross / |b - a|              signed: positive when the point is left of it
+
+    The margin is the MINIMUM of those signed distances over all edges. Positive means inside
+    (and tells you how far from the nearest edge), negative means outside, zero means exactly
+    on the boundary. A point on the boundary counts as inside.
+
+    Example (the unit square, counter-clockwise, and its centre):
+        >>> square = np.array([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]])
+        >>> round(support_margin(np.array([0.5, 0.5]), square), 6)
+        0.5
+        >>> round(support_margin(np.array([1.5, 0.5]), square), 6)
+        -0.5
+
+    Returns:
+        float — the signed distance to the nearest edge.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_support_margin() -> None:
+    square = np.array([[1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]])
+    centre = support_margin(np.array([0.5, 0.5]), square)
+    assert abs(centre - 0.5) < 1e-9, (
+        f"the centre of a unit square is 0.5 from every edge, you returned {centre}. If you "
+        "got 0.707 you are measuring to the corners rather than to the edges."
+    )
+    outside = support_margin(np.array([1.5, 0.5]), square)
+    assert abs(outside + 0.5) < 1e-9, (
+        f"a point 0.5 outside should give -0.5, you returned {outside}. Do not take an "
+        "absolute value: the sign is the whole point."
+    )
+    edge = support_margin(np.array([1.0, 0.5]), square)
+    assert abs(edge) < 1e-9, f"a point on the boundary should give 0.0, you returned {edge}"
+    model, data = load_stander()
+    settle(model, data)
+    poly = support_polygon(model, data)
+    com = np.asarray(com_ground_projection(model, data), dtype=float)
+    margin = support_margin(com, poly)
+    heel, toe = fore_aft_margins(poly, float(com[0]))
+    assert margin > 0, f"a standing machine must be inside its own polygon, got {margin}"
+    print(f"exercise 2 looks right. Standing:")
+    print(f"  footprint x from {poly[:, 0].min():+.4f} to {poly[:, 0].max():+.4f} m, "
+          f"y from {poly[:, 1].min():+.3f} to {poly[:, 1].max():+.3f} m")
+    print(f"  nearest edge of any kind: {margin:.4f} m  <- a SIDE edge; the foot is narrower "
+          "than it is long")
+    print(f"  heel margin {heel:.4f} m, toe margin {toe:.4f} m, "
+          f"ratio {toe / heel:.3f} — it has more room forwards than backwards")
+
+
+# %% [markdown]
+# ## 4. Where the ground actually pushes, and the ceiling that follows
+#
+# The **centre of pressure** is where the ground's push effectively acts: the
+# pressure-weighted average of the contact points. It cannot leave the support polygon,
+# because the ground can only push up and only where the foot is
+# (Tedrake, *Underactuated Robotics*, Ch. 5 — see `claims.yaml`).
+#
+# Two consequences, both of which you are about to measure rather than accept:
+#
+# 1. **At rest the centre of pressure sits directly under the centre of mass.** Nothing is
+#    accelerating, so the ground's push must line up with gravity's pull.
+# 2. **Ankle torque moves the centre of pressure, and only until it reaches the edge.** Past
+#    that, the foot rotates instead of the body — so the real torque ceiling belongs to the
+#    polygon, not to the motor.
+
+# %%
+def centre_of_pressure(model, data):
+    """(cop_x, total_vertical_force) from the contacts MuJoCo reported. Provided.
+
+    Each contact's 6D force comes back in the CONTACT frame, so it is rotated into world
+    coordinates before its vertical component is used.
+    """
+    total_fz, moment = 0.0, 0.0
+    force = np.zeros(6)
+    for i in range(data.ncon):
+        mujoco.mj_contactForce(model, data, i, force)
+        contact = data.contact[i]
+        world = contact.frame.reshape(3, 3).T @ force[:3]
+        total_fz += world[2]
+        moment += world[2] * contact.pos[0]
+    if abs(total_fz) < 1e-9:
+        return float("nan"), 0.0
+    return moment / total_fz, total_fz
+
+
+_m, _d = load_stander()
+settle(_m, _d)
+_cop_x, _fz = centre_of_pressure(_m, _d)
+_com_x = float(_d.subtree_com[0][0])
+print(f"at rest: centre of pressure x = {_cop_x:+.6f} m")
+print(f"         centre of mass     x = {_com_x:+.6f} m")
+print(f"         they differ by {abs(_cop_x - _com_x):.2e} m  <- not a coincidence: nothing "
+      "is accelerating")
+print(f"         total vertical contact force {_fz:.3f} N vs weight "
+      f"{MODEL.body_mass.sum() * 9.81:.3f} N")
+
+# %% [markdown]
+# ## 5. The torque ceiling the motor never mentions
+#
+# Now hold a constant ankle torque and watch the centre of pressure move. Past some torque the
+# foot stops lying flat: a corner lifts, and the machine is rotating about an edge rather than
+# balancing on a face. The cell below finds that torque by measurement, in both directions,
+# and compares it against the motor's advertised limit.
+
+# %%
+def flat_foot_torque_ceiling(sign: float, hold_steps: int = 150) -> float:
+    """Largest |ankle torque| that still leaves all four corners on the floor. Provided."""
+    last_flat = 0.0
+    for newtons in range(1, 36):
+        model, data = load_stander()
+        settle(model, data)
+        for _ in range(hold_steps):
+            data.ctrl[0] = sign * newtons
+            mujoco.mj_step(model, data)
+        if data.ncon == 4:
+            last_flat = float(newtons)
+        else:
+            return last_flat
+    return last_flat
+
+
+def _check_torque_ceiling() -> None:
+    model, data = load_stander()
+    settle(model, data)
+    poly = support_polygon(model, data)
+    com_x = float(data.subtree_com[0][0])
+    heel, toe = fore_aft_margins(poly, com_x)
+    weight = float(model.body_mass.sum()) * 9.81
+    limit = float(model.actuator_ctrlrange[0][1])
+
+    print(f"  {'ankle torque':>13s} {'centre of pressure':>19s} {'corners down':>13s}")
+    for tau in (-12.0, -6.0, 0.0, 6.0, 12.0):
+        model, data = load_stander()
+        settle(model, data)
+        for _ in range(150):
+            data.ctrl[0] = tau
+            mujoco.mj_step(model, data)
+        cop_x, _ = centre_of_pressure(model, data)
+        print(f"  {tau:>10.1f} N*m {cop_x:>+18.4f} m {data.ncon:>12d}")
+
+    heelward = flat_foot_torque_ceiling(+1.0)
+    toeward = flat_foot_torque_ceiling(-1.0)
+    print(f"\n  measured flat-foot ceiling: {heelward:.0f} N*m heelward, "
+          f"{toeward:.0f} N*m toeward")
+    print(f"  weight x margin predicts  : {weight * heel:.1f} N*m heelward, "
+          f"{weight * toe:.1f} N*m toeward")
+    print(f"  the motor will happily give you {limit:.0f} N*m in either direction")
+    assert heelward < limit and toeward < limit, (
+        "the foot should give out well before the motor does; if it did not, the model or "
+        "the measurement has changed"
+    )
+    assert heelward < toeward, (
+        "there is less room behind the centre of mass than in front of it, so the heelward "
+        "ceiling must be the smaller of the two"
+    )
+    print(f"\n  So the ankle can only use about {100 * heelward / limit:.0f}% of its torque "
+          "range before the foot starts to lift.")
+    print("  The measured ceiling sits below the weight-times-margin prediction, and it "
+          "should:\n  that prediction assumes the mass stays put, while in fact the body "
+          "leans as the torque\n  is applied, carrying the centre of mass toward the very "
+          "edge it is about to tip over.")
+
+
+# %% [markdown]
+# ## 6. Exercise 3 — what counts as fallen
+#
+# A fall is a statement about the machine's **attitude**, not about its margin. It is tempting
+# to write `has_fallen = support_margin(...) < 0`, and it is wrong in both directions: the
+# centre of mass can leave the polygon briefly and be recovered, and — as section 8 measures —
+# the machine can be comfortably inside the polygon and already doomed, because it is moving.
+#
+# Read the torso's tilt instead.
+
+# %%
+def has_fallen(model, data) -> bool:
+    """True when the torso has tilted more than `FALL_TILT` radians away from vertical.
+
+    Use `torso_tilt(model, data)`, which is provided above, and compare its ABSOLUTE value
+    against `FALL_TILT` — falling backwards counts too.
+
+    Do NOT use `support_margin` here. A machine whose centre of mass is outside its support
+    polygon is in trouble, but it has not yet fallen, and the two conditions are graded
+    separately for exactly that reason.
+
+    Example:
+        >>> model, data = load_stander()
+        >>> settle(model, data)
+        >>> has_fallen(model, data)              # standing quietly
+        False
+        >>> data.qpos[ANKLE] = 0.5               # folded well past the threshold
+        >>> mujoco.mj_forward(model, data)
+        >>> has_fallen(model, data)
+        True
+
+    Returns:
+        bool
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_has_fallen() -> None:
+    model, data = load_stander()
+    settle(model, data)
+    assert not has_fallen(model, data), "a machine standing quietly has not fallen"
+    data.qpos[ANKLE] = 0.5
+    mujoco.mj_forward(model, data)
+    assert has_fallen(model, data), (
+        f"tilt is {torso_tilt(model, data):+.3f} rad, past the {FALL_TILT} rad threshold, so "
+        "this counts as fallen. Compare abs(torso_tilt(...)) against FALL_TILT."
+    )
+    data.qpos[ANKLE] = -0.5
+    mujoco.mj_forward(model, data)
+    assert has_fallen(model, data), (
+        "tilted backwards past the threshold is just as fallen — take the absolute value."
+    )
+    print("exercise 3 looks right: attitude decides, in both directions")
+
+
+# %% [markdown]
+# ## 7. Exercise 4 — the push, and the rollout that measures it
+#
+# `data.xfrc_applied` holds a Cartesian force/torque applied to a body at its centre of mass.
+# It is a user input that MuJoCo never overwrites, which is what makes it a clean shove — and
+# also means **you** must write it back to zero when the push is over, or you are leaning on
+# the machine for the rest of the episode.
+
+# %%
+def rollout(model, data, controller, push_force: float,
+            horizon: int = HORIZON_STEPS) -> dict:
+    """Settle, shove, and report what happened.
+
+    In order:
+
+    1. `settle(model, data)` — every episode starts from the same quiet stance.
+    2. For each step `k` in `range(horizon)`:
+       a. Set `data.xfrc_applied[TORSO_ID, 0]` to `push_force` when
+          `PUSH_START_STEP <= k < PUSH_START_STEP + PUSH_STEPS`, and to `0.0` otherwise.
+          Index 0 of that row is the x component of the force.
+       b. `data.ctrl[0] = controller(model, data)` — write it unclamped; MuJoCo clamps to
+          `ctrlrange` itself.
+       c. `mujoco.mj_step(model, data)`.
+       d. Track the largest `abs(torso_tilt(...))` seen so far, and the smallest fore/aft
+          margin seen so far — `min(fore_aft_margins(support_polygon(model, data),
+          com_ground_projection(model, data)[0]))`.
+       e. When `k == PUSH_START_STEP + PUSH_STEPS - 1`, record that same fore/aft margin as
+          `margin_at_push_end`.
+       f. If `has_fallen(model, data)`, stop early.
+    3. Before returning, set `data.xfrc_applied[TORSO_ID, 0] = 0.0`, so the next rollout does
+       not inherit your push.
+
+    Example:
+        >>> model, data = load_stander()
+        >>> r = rollout(model, data, posture_controller(POSTURE_SOFT), 20.0)
+        >>> r["survived"], r["steps"]
+        (True, 1000)
+
+    Returns:
+        dict with exactly these five keys:
+          "survived"            bool, True only if it never fell
+          "steps"               int, steps actually taken
+          "peak_tilt"           float, largest absolute torso tilt seen, radians
+          "min_margin"          float, smallest fore/aft margin seen, metres
+          "margin_at_push_end"  float, the fore/aft margin the moment the push stopped
+                                (float("nan") if it fell before then)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def posture_controller(gains):
+    """A joint PD that holds the ankle at zero: the obvious first thing to try. Provided."""
+    kp, kd = gains
+
+    def control(model, data):
+        return -(kp * data.qpos[ANKLE] + kd * data.qvel[ANKLE])
+
+    return control
+
+
+def zero_controller(model, data):
+    """No control at all. Provided."""
+    return 0.0
+
+
+POSTURE_SOFT = (300.0, 60.0)
+POSTURE_STIFF = (2000.0, 120.0)
+
+
+def _check_rollout() -> None:
+    model, data = load_stander()
+    gentle = rollout(model, data, posture_controller(POSTURE_SOFT), 20.0)
+    assert set(gentle) == {"survived", "steps", "peak_tilt", "min_margin",
+                           "margin_at_push_end"}, (
+        f"keys were {sorted(gentle)} — return a dict with exactly those five names."
+    )
+    assert gentle["survived"] and gentle["steps"] == HORIZON_STEPS, (
+        f"a 20 N nudge should be shrugged off, but survived={gentle['survived']} after "
+        f"{gentle['steps']} steps. Check that the push window really ends, and that you call "
+        "settle() at the top."
+    )
+    assert float(data.xfrc_applied[TORSO_ID, 0]) == 0.0, (
+        "xfrc_applied is still set after the rollout returned. Zero it before returning, or "
+        "every later episode starts with your thumb on the machine."
+    )
+    shoved = rollout(model, data, zero_controller, 20.0)
+    assert not shoved["survived"], (
+        "with NO control at all, an inverted pendulum cannot survive any push; if it did, "
+        "the controller argument is not being called."
+    )
+    again = rollout(model, data, posture_controller(POSTURE_SOFT), 20.0)
+    assert again == gentle, (
+        "the same rollout run twice gave different answers, so state is leaking between "
+        "episodes — settle() must be the first thing rollout does."
+    )
+    print(f"exercise 4 looks right: 20 N survived with peak tilt "
+          f"{gentle['peak_tilt']:.4f} rad, margin never below "
+          f"{gentle['min_margin']:.4f} m")
+
+
+# %% [markdown]
+# ## 8. Exercise 5 — a controller that watches the mass, not the joint
+#
+# A joint PD regulates an angle. Balance is not an angle — it is where the mass is, relative
+# to the polygon. So feed the controller that instead:
+#
+#     torque = -(kp * (com_x - stance_x) + kd * com_vx + ka * ankle + kav * ankle_rate)
+#
+# The leading minus sign is not decorative, and the sign that "feels" right is the wrong one.
+# Positive ankle torque pushes the centre of pressure **backwards**; to catch a machine
+# falling forwards you want the pressure to move *ahead* of the mass, which takes negative
+# torque. You measured that table in section 5.
+
+# %%
+def com_velocity(model, data) -> np.ndarray:
+    """(vx, vy) of the whole machine's centre of mass. Provided — calls mj_subtreeVel."""
+    mujoco.mj_subtreeVel(model, data)
+    return np.asarray(data.subtree_linvel[0][:2], dtype=float)
+
+
+BASELINE_GAINS = (100.0, 600.0, 150.0, 20.0)
+
+
+def com_balance_torque(com_offset: float, com_vx: float, ankle_angle: float,
+                       ankle_rate: float, gains) -> float:
+    """Ankle torque from centre-of-mass feedback.
+
+    `gains` is `(kp, kd, ka, kav)`, all positive. Return exactly:
+
+        -(kp * com_offset + kd * com_vx + ka * ankle_angle + kav * ankle_rate)
+
+    `com_offset` is `com_x - STANCE_COM_X`: how far the mass has drifted from where it
+    stands. The `ka`/`kav` terms keep the ankle itself from flopping; without them the mass
+    is controlled and the joint is not.
+
+    Example:
+        >>> round(com_balance_torque(0.01, 0.0, 0.0, 0.0, BASELINE_GAINS), 6)
+        -1.0
+        >>> round(com_balance_torque(0.0, 0.1, 0.0, 0.0, BASELINE_GAINS), 6)
+        -60.0
+
+    Returns:
+        float — a torque in newton-metres.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def com_controller(gains):
+    """Wraps your two functions into a controller `rollout` can call. Provided."""
+    def control(model, data):
+        com = com_ground_projection(model, data)
+        return com_balance_torque(float(com[0]) - STANCE_COM_X,
+                                  float(com_velocity(model, data)[0]),
+                                  float(data.qpos[ANKLE]), float(data.qvel[ANKLE]), gains)
+    return control
+
+
+def _check_com_balance_torque() -> None:
+    zero = com_balance_torque(0.0, 0.0, 0.0, 0.0, BASELINE_GAINS)
+    assert abs(zero) < 1e-12, f"a machine exactly in its stance needs no torque, got {zero}"
+    forward = com_balance_torque(0.01, 0.0, 0.0, 0.0, BASELINE_GAINS)
+    assert forward < 0, (
+        f"the mass has drifted FORWARDS, so the torque must be negative to move the pressure "
+        f"ahead of it; you returned {forward:+.3f}. If you got +1.0, drop the leading minus."
+    )
+    assert abs(forward + 1.0) < 1e-9, f"expected -1.0 for this case, got {forward}"
+    moving = com_balance_torque(0.0, 0.1, 0.0, 0.0, BASELINE_GAINS)
+    assert abs(moving + 60.0) < 1e-9, f"expected -60.0 for this case, got {moving}"
+    model, data = load_stander()
+    result = rollout(model, data, com_controller(BASELINE_GAINS), 100.0)
+    assert result["survived"], (
+        f"the baseline gains are known to survive a 100 N push and yours fell after "
+        f"{result['steps']} steps. The most likely cause is a sign: check that a forward "
+        "drift produces a negative torque."
+    )
+    print(f"exercise 5 looks right: survived a 100 N push, peak tilt "
+          f"{result['peak_tilt']:.4f} rad")
+
+
+# %% [markdown]
+# ## 9. Exercise 6 — the largest push it survives
+#
+# Now the graded measurement: a ladder of pushes, each bigger than the last. The obvious
+# summary — "the biggest rung it survived" — is a trap, because **survival is not monotone**.
+# There are narrow magnitudes where a machine that fails a smaller shove happens to be caught
+# on the rebound of a bigger one, and section 10 prints one.
+#
+# So define it the honest way: the largest rung such that **every** rung up to and including
+# it was survived.
+
+# %%
+def survival_pattern(model, data, controller, ladder=PUSH_LADDER) -> list:
+    """Run one rollout per rung and return a list of booleans. Provided."""
+    return [bool(rollout(model, data, controller, force)["survived"]) for force in ladder]
+
+
+def largest_survivable_push(pattern, ladder=PUSH_LADDER) -> float:
+    """The largest rung with an unbroken run of survivals beneath it.
+
+    `pattern[i]` says whether `ladder[i]` was survived. Walk the ladder from the bottom and
+    stop at the FIRST False; return the last rung before it. If the very first rung already
+    fails, return 0.0.
+
+    This deliberately ignores any later survivals: a machine that survives 100 N but fails
+    80 N cannot be trusted with 100 N.
+
+    Example:
+        >>> largest_survivable_push([True, True, False, True, True],
+        ...                         [20.0, 40.0, 60.0, 80.0, 100.0])
+        40.0
+        >>> largest_survivable_push([False, True], [20.0, 40.0])
+        0.0
+
+    Returns:
+        float — a force in newtons.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_largest_survivable_push() -> None:
+    ladder = [20.0, 40.0, 60.0, 80.0, 100.0]
+    got = largest_survivable_push([True, True, False, True, True], ladder)
+    assert got == 40.0, (
+        f"expected 40.0 — the run of survivals breaks at 60 N, and the later survivals do not "
+        f"count — but you returned {got}. Returning 100.0 means you took the maximum "
+        "surviving rung rather than the prefix."
+    )
+    assert largest_survivable_push([False, False], [20.0, 40.0]) == 0.0, (
+        "if the smallest rung already fails, the answer is 0.0"
+    )
+    assert largest_survivable_push([True, True], [20.0, 40.0]) == 40.0, (
+        "if everything survives, the answer is the top rung"
+    )
+    print("exercise 6 looks right: it reports the prefix, not the maximum")
+
+
+# %% [markdown]
+# ## 10. The measurement this lesson exists for
+#
+# Three controllers, one ladder, both directions. Watch two things: which controller does
+# best, and — more interestingly — how little that matters in the backward direction.
+
+# %%
+def _check_comparison() -> None:
+    model, data = load_stander()
+    settle(model, data)
+    poly = support_polygon(model, data)
+    heel, toe = fore_aft_margins(poly, float(data.subtree_com[0][0]))
+
+    controllers = (("centre-of-mass feedback", com_controller(BASELINE_GAINS)),
+                   ("posture PD, soft", posture_controller(POSTURE_SOFT)),
+                   ("posture PD, stiff", posture_controller(POSTURE_STIFF)))
+
+    print(f"  {'controller':<26s} {'forward':>9s} {'backward':>9s}")
+    limits = {}
+    for name, ctrl in controllers:
+        fwd = largest_survivable_push(survival_pattern(model, data, ctrl, PUSH_LADDER),
+                                      PUSH_LADDER)
+        back_ladder = tuple(-f for f in PUSH_LADDER)
+        back = -largest_survivable_push(
+            survival_pattern(model, data, ctrl, back_ladder), back_ladder)
+        limits[name] = (fwd, back)
+        print(f"  {name:<26s} {fwd:>7.0f} N {back:>7.0f} N")
+
+    fwd_com = limits["centre-of-mass feedback"][0]
+    fwd_stiff = limits["posture PD, stiff"][0]
+    backs = [b for _, b in limits.values()]
+    assert fwd_com >= fwd_stiff, (
+        "on this ladder centre-of-mass feedback should do at least as well forwards as the "
+        "stiff posture controller"
+    )
+    print(f"\n  Forwards, the controller matters: {fwd_com:.0f} N against "
+          f"{fwd_stiff:.0f} N for the stiff posture PD.")
+    if len(set(backs)) == 1:
+        print(f"  Backwards, every controller stops at the same {backs[0]:.0f} N. There is "
+              f"only {heel:.3f} m of heel\n  behind the mass against {toe:.3f} m of toe in "
+              "front, and where the polygon leaves no\n  room, no amount of control buys "
+              "any.")
+    print("\n  That is the lesson: control quality only cashes in where the geometry has "
+          "left\n  something to work with.")
+
+
+# %% [markdown]
+# ## 11. Inside the polygon, and already lost
+#
+# One more measurement, and it is the one that should change how you read a margin. Below, a
+# push the machine does not survive — and the state at the moment the push STOPS looks fine.
+# The centre of mass is well inside the polygon and the torso is nearly upright. It falls
+# anyway, most of a second later, because position is not the whole state: it is moving.
+
+# %%
+def margin_and_fall_timeline(model, data, controller, push_force: float):
+    """(step the margin first went negative, step the fall was declared). Provided.
+
+    One instrumented episode, so the two events can be placed in time against each other.
+    Either value is None if that event never happened.
+    """
+    settle(model, data)
+    first_negative, fell_at = None, None
+    push_end = PUSH_START_STEP + PUSH_STEPS
+    for k in range(HORIZON_STEPS):
+        data.xfrc_applied[TORSO_ID, 0] = (push_force if PUSH_START_STEP <= k < push_end
+                                          else 0.0)
+        data.ctrl[0] = controller(model, data)
+        mujoco.mj_step(model, data)
+        margin = min(fore_aft_margins(support_polygon(model, data),
+                                      float(com_ground_projection(model, data)[0])))
+        if margin < 0 and first_negative is None:
+            first_negative = k + 1
+        if has_fallen(model, data):
+            fell_at = k + 1
+            break
+    data.xfrc_applied[TORSO_ID, 0] = 0.0
+    return first_negative, fell_at
+
+
+def _check_doomed_but_inside() -> None:
+    model, data = load_stander()
+    ctrl = com_controller(BASELINE_GAINS)
+    print(f"  {'push':>6s} {'survived':>9s} {'margin@push end':>16s} {'min margin':>11s} "
+          f"{'fell at step':>13s}")
+    rows = []
+    for force in (100.0, 110.0, 115.0, 130.0):
+        r = rollout(model, data, ctrl, force)
+        rows.append((force, r))
+        fell = "-" if r["survived"] else str(r["steps"])
+        print(f"  {force:>4.0f} N {str(r['survived']):>9s} "
+              f"{r['margin_at_push_end']:>+15.4f} m {r['min_margin']:>+10.4f} m {fell:>13s}")
+    doomed = [r for f, r in rows if not r["survived"]]
+    assert doomed, "at least one of these pushes should have toppled it"
+    worst = doomed[0]
+    assert worst["margin_at_push_end"] > 0, (
+        "the point of this cell is that the machine is still INSIDE its polygon when the "
+        "push ends and falls anyway; if that is no longer true the model has changed"
+    )
+    print(f"\n  Read the first failing row again: {worst['margin_at_push_end']:.4f} m of "
+          "margin still in hand when\n  the push stopped, and it fell anyway. A static "
+          "margin is a snapshot; what decides the\n  outcome is the margin together with "
+          "the speed the mass is carrying.")
+
+    left, fell = margin_and_fall_timeline(model, data, ctrl, 115.0)
+    assert left is not None and fell is not None and left < fell, (
+        "in the 115 N episode the centre of mass should leave the polygon well before the "
+        f"fall is declared, but got first-negative={left} and fall={fell}. If that has "
+        "changed, the conclusion printed below no longer holds."
+    )
+    print(f"\n  Now the converse, measured in that same 115 N episode. The centre of mass "
+          f"left the\n  polygon at step {left}; the fall was only declared at step {fell}. "
+          f"That is {(fell - left) * MODEL.opt.timestep:.3f} s spent\n  outside the support "
+          "polygon and still standing.")
+    print("\n  So the margin is neither a sufficient warning nor a definition of failure:")
+    print("  inside it, this machine was already lost; outside it, it was still upright.")
+    print("  That is exactly why has_fallen reads the torso's attitude and not the margin.")
+
+
+# %% [markdown]
+# ## 12. Common mistakes
+#
+# - **Using `data.xpos` for the centre of mass.** That is the body's frame origin. This
+#   torso's origin is down at the ankle; its mass is half a metre higher. `data.xipos` is the
+#   one you want.
+# - **Including body 0.** The world body is massless and sits at the origin. Including it
+#   changes nothing if you weight by mass and everything if you take a plain mean.
+# - **Taking the absolute value in `support_margin`.** The sign is the information. Outside
+#   must come back negative.
+# - **Measuring to the corners rather than the edges.** The distance from the centre of a unit
+#   square to the nearest edge is 0.5, not 0.707.
+# - **Treating `support_margin < 0` as "fallen".** It is neither necessary nor sufficient, and
+#   section 11 measures a machine that is inside the polygon and already doomed.
+# - **Forgetting to zero `xfrc_applied`.** MuJoCo will not clear it for you. Leave it set and
+#   every later episode is run with your thumb on the machine's chest.
+# - **Believing the motor's `ctrlrange`.** It is 60 N·m. The foot accepts about a fifth of
+#   that before a corner lifts. The binding constraint is the one you measured, not the one
+#   the model file advertises.
+# - **Reading "largest survivable push" as a maximum.** Survival is not monotone; take the
+#   prefix.
+
+# %%
+# Watch the non-monotonicity rather than taking it on trust: a stiff posture controller that
+# fails a smaller push and survives a larger one. Nothing here is typed; both are measured.
+def _check_non_monotonic() -> None:
+    model, data = load_stander()
+    stiff = posture_controller(POSTURE_STIFF)
+    outcomes = {}
+    for force in (80.0, 101.5):
+        outcomes[force] = rollout(model, data, stiff, force)["survived"]
+        print(f"  stiff posture PD, {force:5.1f} N push -> survived={outcomes[force]}")
+    assert not outcomes[80.0] and outcomes[101.5], (
+        "this cell exists to show survival is not monotone; if both pushes now agree, "
+        "re-read the pair before trusting the sentence below"
+    )
+    print("  A bigger shove survived where a smaller one did not. That is why the prefix, and")
+    print("  not the maximum, is the honest summary of a ladder.")
+
+# %% [markdown]
+# ## 13. Self-check
+#
+# 1. At rest you measured the centre of pressure and the centre-of-mass ground projection
+#    agreeing to about a micrometre. Why?
+#    - (a) they are two names for the same quantity
+#    - (b) a coincidence of this model's geometry
+#    - (c) in static equilibrium they must coincide — the ground's push has to line up with
+#          gravity's pull, or the machine would be rotating. It is a consequence of
+#          equilibrium, not a definition, and it stops holding the moment anything accelerates
+#    - (d) the measurement is wrong; they are never equal
+#
+# 2. The ankle motor's `ctrlrange` is ±60 N·m, but you measured the foot lifting at about a
+#    fifth of that. What sets the real ceiling?
+#    - (a) the motor's gear ratio
+#    - (b) the support polygon: ground pressure can only act inside the footprint, so the
+#          centre of pressure can only travel so far, and torque beyond that rotates the foot
+#          instead of the body
+#    - (c) MuJoCo's `ctrlrange` clamp
+#    - (d) the ankle joint's damping
+#
+# 3. At the push that topples it, the centre of mass is still well inside the polygon when the
+#    push ends and the torso is within a few hundredths of a radian of upright — yet it falls
+#    most of a second later. What does that show?
+#    - (a) the fall detector is broken
+#    - (b) the support-polygon condition is wrong
+#    - (c) a static margin does not decide the outcome: the mass is inside the polygon but
+#          carrying too much speed for the polygon to stop it
+#    - (d) the push was applied to the wrong body
+
+# %%
+# The numbers the last two questions are about, in front of you while you answer.
+print(f"fall threshold      : {FALL_TILT} rad of torso tilt")
+print(f"push ladder         : {[int(f) for f in PUSH_LADDER]} N")
+print(f"push window         : {PUSH_STEPS * MODEL.opt.timestep:.2f} s")
+print(f"ankle torque limit  : +-{MODEL.actuator_ctrlrange[0][1]:.0f} N*m")
+
+# %% [markdown]
+# 4. Forwards, the three controllers survive different pushes. Backwards, all three stop at
+#    exactly the same one. What is the best reading?
+#    - (a) the backward measurement is broken; three controllers cannot agree exactly
+#    - (b) the heel margin is roughly half the toe margin, so backwards the geometry runs out
+#          first and control quality buys nothing; forwards there is room, and the controllers
+#          separate
+#    - (c) backward pushes are always harder for every robot
+#    - (d) the controller needs larger gains for backward pushes
+#
+# 5. A stiff posture controller fails an 80 N push and survives a 101.5 N one. What should you
+#    conclude?
+#    - (a) the simulation is non-deterministic
+#    - (b) survival is not monotone in push size — there are narrow magnitudes that happen to
+#          be caught on the rebound — which is why the largest survivable push is defined as a
+#          prefix of the ladder rather than a maximum
+#    - (c) the 80 N result is a bug
+#    - (d) bisection is the right way to find the limit
+#
+# Answers, with reasoning, are published in the course solution bundle.
+
+# %%
+# Put your five letters here and run the cell. It marks them without revealing the answer:
+# a wrong letter sends you back to the section that measured it, which is the point.
+SELF_CHECK = {1: "?", 2: "?", 3: "?", 4: "?", 5: "?"}
+
+_ANSWER_DIGESTS = {1: "81834fc23b17f145", 2: "53c70eb91b2fc860", 3: "cf87226d350e25e0",
+                   4: "ce56af52013c315a", 5: "6fcf8ed7f38b55fd"}
+_ANSWER_SECTIONS = {
+    1: "section 4 — the centre of pressure you measured at rest, and why nothing is accelerating",
+    2: "section 5 — the flat-foot ceiling you measured against the motor's ctrlrange",
+    3: "section 11 — the margin at the end of the push, in the row that still fell",
+    4: "section 10 — the backward column, and the heel and toe margins from section 3",
+    5: "section 12 — the two pushes you ran at the foot of the common-mistakes list",
+}
+
+
+def _check_self_check(answers: dict = None) -> None:
+    """Mark the five multiple-choice answers in SELF_CHECK, naming where to look again."""
+    answers = SELF_CHECK if answers is None else answers
+    wrong = []
+    for q, digest in sorted(_ANSWER_DIGESTS.items()):
+        got = str(answers.get(q, "?")).strip().lower()
+        if hashlib.sha256(f"F15-L04-q{q}-{got}".encode()).hexdigest()[:16] != digest:
+            wrong.append(q)
+    for q in sorted(_ANSWER_DIGESTS):
+        note = f"  -> re-read {_ANSWER_SECTIONS[q]}" if q in wrong else ""
+        print(f"  q{q}: {'wrong' if q in wrong else 'right'}{note}")
+    assert not wrong, (
+        f"questions {wrong} are still wrong. Each one names the section that answers it "
+        "above — go back to the measurement you ran there rather than guessing a letter."
+    )
+    print("self-check: all five right")
+
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A balance bench: the centre of mass, the polygon it has to stay over, the margin between
+# them, a push, a fall detector, and a controller whose limits you measured in both directions
+# instead of assuming.
+#
+# F15-L05 sets this moving. Walking is the business of throwing the centre of mass outside the
+# support polygon on purpose and putting a foot down in time to catch it — which is only a
+# sensible thing to do once you can measure where the polygon is and how much margin is left.
+
+# %%
+if __name__ == "__main__":
+    _check_com_ground_projection()
+    _check_support_margin()
+    _check_torque_ceiling()
+    _check_has_fallen()
+    _check_rollout()
+    _check_com_balance_torque()
+    _check_largest_survivable_push()
+    _check_comparison()
+    _check_doomed_but_inside()
+    _check_non_monotonic()
+    _check_self_check()

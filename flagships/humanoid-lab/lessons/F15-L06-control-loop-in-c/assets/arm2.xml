@@ -1,0 +1,61 @@
+<!-- Two-link planar arm for F15-L06 (the control loop in C). Authored for this lesson: no
+     download, no <include>, no mesh, no file= reference, so the lesson runs with the network
+     switched off.
+
+     Four choices the lesson depends on:
+
+     * angle="radian" pins MJCF's angle units to the units qpos already uses for a hinge.
+       MJCF reads angle-valued attributes as DEGREES by default, but a hinge's qpos is always
+       radians, so without this line the ranges below and the numbers the C loop reads out of
+       d->qpos would be in different units.
+     * gravity is on and the arm is pinned at the shoulder, so it droops. A PD law with no
+       integral term cannot hold a loaded arm exactly on target; the steady-state error that
+       leaves behind is one of the things the student measures rather than reads about.
+     * the ctrlrange values are deliberately TIGHT (8 N m at the shoulder, 3 at the elbow)
+       against a gravitational load of a few N m and a PD law that asks for tens. A generous
+       actuator would never saturate, and the clamp the student writes in pd_ctrl would be
+       dead code they could delete without any check noticing. These limits make it
+       load-bearing.
+     * timestep is MuJoCo's documented default of 0.002 s (see claims.yaml), stated here
+       rather than left implicit. The C code still reads m->opt.timestep instead of assuming
+       it, which is the habit that survives the next model.
+
+     Both hinges sit at qpos 0 in the "hanging" keyframe: the arm points straight down, which
+     is the zero-gravitational-torque equilibrium. Every run in this lesson, in C and in
+     Python, resets to that keyframe BY INDEX, so the two languages start from a bit-identical
+     state rather than from two hand-assigned poses that might differ in the last bit. -->
+<mujoco model="arm2_f15l06">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" integrator="implicitfast" gravity="0 0 -9.81">
+    <!-- Nothing in this task touches anything. A contact-free mj_step is the cheapest honest
+         unit of work for the steps-per-second measurement the lesson ends on. -->
+    <flag contact="disable"/>
+  </option>
+
+  <default>
+    <joint type="hinge" axis="0 1 0" range="-3.0 3.0" damping="0.01" armature="0.05"/>
+    <geom type="capsule" rgba="0.72 0.74 0.78 1" contype="0" conaffinity="0"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 2"/>
+    <body name="upper" pos="0 0 0.8">
+      <joint name="shoulder"/>
+      <geom name="upper_g" fromto="0 0 0 0 0 -0.30" size="0.035" mass="1.0"/>
+      <body name="lower" pos="0 0 -0.30">
+        <joint name="elbow"/>
+        <geom name="lower_g" fromto="0 0 0 0 0 -0.25" size="0.028" mass="0.6"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <motor name="shoulder_m" joint="shoulder" gear="1" ctrlrange="-8 8"/>
+    <motor name="elbow_m"    joint="elbow"    gear="1" ctrlrange="-3 3"/>
+  </actuator>
+
+  <keyframe>
+    <key name="hanging" qpos="0 0" qvel="0 0" ctrl="0 0"/>
+  </keyframe>
+</mujoco>

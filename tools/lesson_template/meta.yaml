@@ -1,0 +1,18 @@
+id: TXX-LNN-slug
+title: What the student will be able to do, phrased as the deliverable
+track: TXX
+flagship: ""            # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 600
+language: python        # python | c | cpp
+prerequisites: []       # lesson ids
+objectives:
+  - "Implement ..."
+  - "Measure ..."
+  - "Explain why ..."
+datasets: []            # name, licence, direct URL — free and ungated only
+points: 10
+status: draft           # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: ""
+measured_peak_mib: ""

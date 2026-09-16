@@ -1,0 +1,79 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+claims:
+  - id: mujoco-default-timestep
+    claim: >-
+      MuJoCo's XML reference documents the default value of the <option> element's "timestep"
+      attribute as 0.002, measured in seconds. This lesson's model overrides it, which is why
+      the lesson reads model.opt.timestep instead of assuming a value.
+    where: "lesson.py section 8 (common mistakes: hard-coding the timestep)"
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_title: "MuJoCo XML reference — option element, timestep attribute"
+    quote: >-
+      Simulation time step in seconds. This is the single most important parameter affecting
+      the speed-accuracy trade-off which is inherent in every physics simulation.
+    quoted_default: '"0.002"  (the attribute table''s documented default for option/timestep)'
+    accessed: 2026-09-16
+
+  - id: humanoid-xml-declares-5ms-timestep
+    claim: >-
+      The humanoid model this lesson ships declares its own timestep of 0.005 s on line 17 of
+      the XML, as <option timestep="0.005"/>, overriding the documented 0.002 default. This is
+      the only number the lesson types into prose about the model, and it is why step_for's
+      worked example says 0.007 s costs two steps rather than four.
+    where: "lesson.py section 4 (step_for docstring worked example), solutions/ likewise"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/model/humanoid/humanoid.xml
+    source_title: "google-deepmind/mujoco — model/humanoid/humanoid.xml, <option> element"
+    quote: '<option timestep="0.005"/>'
+    verified_locally: >-
+      Confirmed in the vendored copy at assets/humanoid.xml line 17; the lesson also prints
+      model.opt.timestep at runtime, so a student never has to take the figure on trust.
+    accessed: 2026-09-16
+
+  - id: mjmodel-constant-mjdata-dynamic
+    claim: >-
+      mjModel holds the model description and is expected to remain constant, while mjData
+      holds all dynamic variables and intermediate results and is used as a scratch pad that
+      functions read inputs from and write outputs to.
+    where: "lesson.py section 1 (two objects, and the difference is the whole lesson)"
+    source_url: https://mujoco.readthedocs.io/en/stable/overview.html
+    source_title: "MuJoCo documentation — Overview"
+    quote: "mjModel contains the model description and is expected to remain constant."
+    accessed: 2026-09-16
+
+  - id: nq-exceeds-nv-with-quaternions
+    claim: >-
+      When free or ball joints are used, mjData.qpos has higher dimensionality than
+      mjData.qvel, because orientation is stored as a quaternion while angular velocity is a
+      3-vector, so qvel is not a simple element-wise time derivative of qpos.
+    where: "lesson.py section 2 (why nq is not nv) and self-check question 2"
+    source_url: https://mujoco.readthedocs.io/en/stable/programming/simulation.html
+    source_title: "MuJoCo documentation — Simulation"
+    quote: >-
+      In the presence of quaternions (i.e., when free or ball joints are used), the position
+      vector mjData.qpos has higher dimensionality than the velocity vector mjData.qvel
+    accessed: 2026-09-16
+
+  - id: humanoid-xml-licence
+    claim: >-
+      model/humanoid/humanoid.xml in the google-deepmind/mujoco repository is Copyright 2021
+      DeepMind Technologies Limited and licensed under the Apache License, Version 2.0, as
+      stated in the comment header of the file itself and in the repository's LICENSE file.
+      It is a single self-contained XML using primitive geoms, with no mesh or include
+      dependencies, which is why it is the asset for this lesson.
+    where: "meta.yaml datasets, assets/SOURCE.md, lesson.py setup cell"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/model/humanoid/humanoid.xml
+    source_title: "google-deepmind/mujoco — model/humanoid/humanoid.xml"
+    quote: "Licensed under the Apache License, Version 2.0"
+    accessed: 2026-09-16
+
+  - id: mujoco-repo-licence
+    claim: >-
+      The google-deepmind/mujoco repository's LICENSE file is the Apache License, Version 2.0
+      (January 2004).
+    where: "meta.yaml datasets licence field"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_title: "google-deepmind/mujoco — LICENSE"
+    quote: "Apache License Version 2.0, January 2004"
+    accessed: 2026-09-16

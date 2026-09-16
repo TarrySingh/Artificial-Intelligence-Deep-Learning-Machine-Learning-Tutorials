@@ -1,0 +1,48 @@
+id: F15-L02-kinematics-jacobians
+title: Build the translational Jacobian of a humanoid hand, verify it against finite differences of forward kinematics, and drive the hand onto a Cartesian target with damped least squares
+track: T11
+flagship: F15-humanoid-lab
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 60
+language: python        # python | c | cpp
+prerequisites:
+  - F15-L01-first-contact      # mjModel vs mjData, nq vs nv, forward kinematics as a stage
+objectives:
+  - "Implement world-position lookups for a named body and a named site, and measure how far apart the body frame origin, the body centre of mass and the site are on one rigid hand"
+  - "Build the 3-by-nv translational Jacobian with mj_jac and show that the two dofs which cannot move the hand have columns of exactly zero"
+  - "Verify that analytic Jacobian against central finite differences of your own forward kinematics and report the agreement against a stated tolerance of 1e-6"
+  - "Measure how finite-difference agreement degrades at both large and small step sizes, and identify from your own sweep the step size that minimises total error"
+  - "Implement damped least-squares inverse kinematics, report the Cartesian residual for a reachable and an unreachable target, and measure what the damping term prevents at a singular pose"
+datasets:
+  - name: "arm.xml — humanoid upper body, welded pelvis, ten hinge dofs"
+    licence: "CC0-1.0"
+    url: "https://creativecommons.org/publicdomain/zero/1.0/"
+    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+    copyright: "Authored for this lesson by the AI Atlas project; dedicated to the public domain"
+    cached_at: "assets/arm.xml"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Not a download. Written for this lesson and shipped inside it, so the lesson runs with
+      no network at all. Every joint is a hinge and the pelvis is welded, which makes
+      nq == nv == 10 and lets a student finite-difference forward kinematics by perturbing
+      qpos directly — a shortcut the lesson is explicit about losing on a model with a free
+      or ball joint. See assets/SOURCE.md for why the home pose is deliberately singular.
+  - name: "MuJoCo 3.13.0 (the physics engine itself)"
+    licence: "Apache-2.0"
+    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    copyright: "DeepMind Technologies Limited"
+    cached_at: "(installed in the environment; not vendored)"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Free, ungated, commercial use permitted, no registration. Declared here because it is
+      the only third-party dependency on the lesson's required path. The field comments this
+      lesson quotes for xpos, xipos, site_xpos and cdof were read from the vendored header
+      include/mujoco/mjdata.h inside the installed package; see claims.yaml.
+points: 44
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: 0.2
+measured_peak_mib: 55

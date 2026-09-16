@@ -1,0 +1,90 @@
+id: F15-L04-standing-balance
+title: Compute the centre of mass and the support polygon of a standing machine, push it over, and build the centre-of-mass feedback controller that catches it
+track: T11
+flagship: F15-humanoid-lab
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 120
+language: python        # python | c | cpp
+prerequisites:
+  - F15-L01-first-contact      # mjModel vs mjData, stepping, centre of mass from xipos
+  - F15-L03-pd-control         # state feedback, gains, and what a joint PD does and does not do
+objectives:
+  - "Implement the centre-of-mass ground projection from body masses and data.xipos, and verify it against MuJoCo's own subtree_com to machine precision"
+  - "Compute the support polygon from the foot geom, implement a signed support margin, and measure that at rest the centre of pressure and the centre-of-mass projection coincide"
+  - "Measure the ankle torque at which the foot starts to leave the floor, and show that the ceiling is set by the support polygon rather than by the actuator's ctrlrange"
+  - "Implement a push through xfrc_applied and a fall detector that reads state, and demonstrate that a centre of mass outside the support polygon is not yet a fall"
+  - "Implement a centre-of-mass feedback controller, measure the largest push it survives forwards and backwards on a graded ladder, and explain why it beats a joint-posture controller only in the direction where the support polygon leaves room to work"
+datasets:
+  - name: "stander.xml — planar ankle-balancer on a flat foot"
+    licence: "CC0-1.0"
+    url: "https://creativecommons.org/publicdomain/zero/1.0/"
+    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+    copyright: "Authored for this lesson by the AI Atlas project; dedicated to the public domain"
+    cached_at: "assets/stander.xml"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Not a download. Written for this lesson and shipped inside it, so the lesson runs with
+      no network at all. Unlike F15-L08's balancer this model keeps contacts ENABLED and does
+      not pin the ankle, because the support polygon does not exist without contact: the foot
+      is a box on a plane that can tip, skid or leave the ground. The footprint is
+      deliberately not centred on the ankle, so the toe margin is about twice the heel margin
+      and the asymmetry is measurable in the push the controller survives each way. See
+      assets/SOURCE.md for why the torso is excluded from collision and what broke when it
+      was not.
+  - name: "MuJoCo 3.13.0 (the physics engine itself)"
+    licence: "Apache-2.0"
+    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    copyright: "DeepMind Technologies Limited"
+    cached_at: "(installed in the environment; not vendored)"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Free, ungated, commercial use permitted, no registration. Declared here because it is
+      the only third-party dependency on the lesson's required path. The field comments this
+      lesson quotes for xfrc_applied, subtree_com, subtree_linvel and mjContact were read from
+      the vendored header include/mujoco/mjdata.h inside the installed package; see
+      claims.yaml.
+points: 36
+# Authored 2026-09-16. Four claims were DROPPED during authoring because measurement refuted
+# them. They are recorded here because a later reader will be tempted by each one again:
+#
+#  - "The footprint is the support polygon." Silently false in the first model, which let the
+#    torso capsule collide. Its lower cap reaches 0.01 m below the ankle, so the machine stood
+#    on its chest: one contact point carried the full body weight while the foot floated a
+#    centimetre off the floor. Found by printing ncon and the contact positions instead of
+#    assuming them. The torso is now excluded from collision and the lesson asserts ncon == 4.
+#
+#  - "A stiff posture controller topples with near-zero joint error." This was going to be the
+#    lesson's headline, and it is wrong. The 0.0098 rad that suggested it was the ankle angle
+#    AFTER the machine had finished falling and settled flat, not during the fall. Measured
+#    properly, the worst absolute ankle error while toppling is 0.347 rad for the stiff foil
+#    and 0.394 rad for the best-tuned one. The foil is not blind, and the lesson no longer
+#    says it is.
+#
+#  - "Stiffer posture control is worse." Refuted by the gain sweep: 76.8, 95.4, 73.2 N is not
+#    monotone in stiffness. Deleted rather than defended.
+#
+#  - "Bisection finds the largest survivable push." Bisection assumes survival is monotone in
+#    push magnitude, and it is not: the stiff foil fails at 80 N and survives at 101.5 N, both
+#    reproduced on freshly loaded models. An early draft reported a 102 N limit for a foil
+#    that demonstrably fails at 80 N. The lesson now defines the limit as the monotone PREFIX
+#    of a ladder, grades that definition on synthetic non-monotone patterns, and shows the
+#    student the offending pair of pushes in section 12.
+#
+# What the lesson does claim about control, measured on the prefix definition: forwards, the
+# centre-of-mass controller reaches 100 N on the shipped ladder against 80 N for the soft foil
+# and 60 N for the stiff one (on a fine 5 N grid: 110 / 95 / 75 N). Backwards, all three stop
+# at the same rung, because the heel margin is roughly half the toe margin and no amount of
+# control buys floor that is not there. That asymmetry, not a large survival advantage, is the
+# result the lesson is built on.
+#
+# Every number a student sees is computed by the code they run. The graded ladder is placed
+# clear of the controller's measured limit, which lies between 110 and 115 N: the last
+# surviving rung is 100 N and the first failing rung is 130 N, so a shift of more than 10% in
+# anyone's machine would be needed to flip a grade.
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: 1.1
+measured_peak_mib: 52

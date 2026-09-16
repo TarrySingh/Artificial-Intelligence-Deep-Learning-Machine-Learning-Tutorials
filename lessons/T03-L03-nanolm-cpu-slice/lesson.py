@@ -1,0 +1,1447 @@
+# %% [markdown]
+# # T03-L03 · The CPU slice of nanolm
+#
+# **You will build:** a character-level language model — token and position embeddings, one
+# causal self-attention head, a softmax cross-entropy loss — with its forward pass, its
+# backward pass, and a finite-difference proof that the backward pass is right. Then you will
+# train it on a laptop CPU and watch held-out loss fall below the corpus unigram entropy.
+#
+# **Time:** ~75 minutes · **Runs on:** a laptop CPU, no GPU, no download, far under 8 GiB
+# **Prerequisites:** numpy indexing and matrix multiplication, and the chain rule. No prior
+# transformer exposure, and no tokeniser lesson: this one builds its own character vocabulary.
+#
+# By the end you will be able to:
+# 1. Implement `softmax` and `cross_entropy` that survive logits of magnitude 1e4 without
+#    overflowing to `nan`.
+# 2. Implement causal single-head self-attention, and demonstrate it cannot see the future by
+#    perturbing a later position and measuring exactly zero change.
+# 3. Derive and implement the backward pass by hand, and verify every parameter gradient
+#    against central finite differences.
+# 4. Measure why a gradient check run at initialisation can pass a *broken* attention
+#    gradient, and choose a probe scale where it cannot.
+# 5. Train on a CPU and measure that held-out loss beats the corpus unigram entropy.
+#
+# **There is no autodiff here, and that is the pedagogy.** No PyTorch, no JAX, no
+# `tensor.backward()`. Every derivative in this file is one you write down yourself. An
+# autodiff framework would do this correctly and invisibly; doing it by hand once is what
+# makes it visible.
+#
+# **About the `if __name__ == "__main__":` guards.** They let the autograder import this file
+# without running the training loop. A Jupyter kernel sets `__name__` to `"__main__"`, so
+# every guarded cell still runs when you execute the notebook top to bottom.
+
+# %%
+# Setup. Everything the lesson needs, in one cell, with versions printed by the code itself.
+import sys
+import time
+
+import numpy as np
+
+print("python", sys.version.split()[0])
+print("numpy ", np.__version__)
+
+try:  # noqa: SIM105 - the failure is the point, so it is reported rather than swallowed
+    import torch
+
+    _TORCH = torch.__version__
+except ImportError:
+    _TORCH = "not installed — which is exactly why you are about to differentiate by hand"
+print("torch ", _TORCH)
+
+# Everything runs in float64. Finite-difference checking in float32 is a waste of time: the
+# round-off floor swamps the signal you are trying to measure.
+DTYPE = np.float64
+
+# %% [markdown]
+# ## 1. The corpus
+#
+# A language model needs text. This one uses a short excerpt of Shakespeare's
+# Sonnets — public domain, embedded below as a string literal, so this lesson downloads
+# nothing and runs with no network at all. Project Gutenberg's own header and footer are not
+# included; only the Shakespeare text is. See `claims.yaml` for the source and licence.
+#
+# Run the cell. Every number it prints is counted from the text, not typed by hand.
+
+# %%
+CORPUS = """From fairest creatures we desire increase,
+That thereby beauty's rose might never die,
+But as the riper should by time decease,
+His tender heir might bear his memory:
+But thou, contracted to thine own bright eyes,
+Feed'st thy light's flame with self-substantial fuel,
+Making a famine where abundance lies,
+Thyself thy foe, to thy sweet self too cruel:
+Thou that art now the world's fresh ornament,
+And only herald to the gaudy spring,
+Within thine own bud buriest thy content,
+And tender churl mak'st waste in niggarding:
+    Pity the world, or else this glutton be,
+    To eat the world's due, by the grave and thee.
+
+II
+
+When forty winters shall besiege thy brow,
+And dig deep trenches in thy beauty's field,
+Thy youth's proud livery so gazed on now,
+Will be a tatter'd weed of small worth held:
+Then being asked, where all thy beauty lies,
+Where all the treasure of thy lusty days;
+To say, within thine own deep sunken eyes,
+Were an all-eating shame, and thriftless praise.
+How much more praise deserv'd thy beauty's use,
+If thou couldst answer 'This fair child of mine
+Shall sum my count, and make my old excuse,'
+Proving his beauty by succession thine!
+    This were to be new made when thou art old,
+    And see thy blood warm when thou feel'st it cold.
+
+III
+
+Look in thy glass and tell the face thou viewest
+Now is the time that face should form another;
+Whose fresh repair if now thou not renewest,
+Thou dost beguile the world, unbless some mother.
+For where is she so fair whose unear'd womb
+Disdains the tillage of thy husbandry?
+Or who is he so fond will be the tomb,
+Of his self-love to stop posterity?
+Thou art thy mother's glass and she in thee
+Calls back the lovely April of her prime;
+So thou through windows of thine age shalt see,
+Despite of wrinkles this thy golden time.
+    But if thou live, remember'd not to be,
+    Die single and thine image dies with thee.
+
+IV
+
+Unthrifty loveliness, why dost thou spend
+Upon thyself thy beauty's legacy?
+Nature's bequest gives nothing, but doth lend,
+And being frank she lends to those are free:
+Then, beauteous niggard, why dost thou abuse
+The bounteous largess given thee to give?
+Profitless usurer, why dost thou use
+So great a sum of sums, yet canst not live?
+For having traffic with thyself alone,
+Thou of thyself thy sweet self dost deceive:
+Then how when nature calls thee to be gone,
+What acceptable audit canst thou leave?
+    Thy unused beauty must be tombed with thee,
+    Which, used, lives th' executor to be.
+
+V
+
+Those hours, that with gentle work did frame
+The lovely gaze where every eye doth dwell,
+Will play the tyrants to the very same
+And that unfair which fairly doth excel;
+For never-resting time leads summer on
+To hideous winter, and confounds him there;
+Sap checked with frost, and lusty leaves quite gone,
+Beauty o'er-snowed and bareness every where:
+Then were not summer's distillation left,
+A liquid prisoner pent in walls of glass,
+Beauty's effect with beauty were bereft,
+Nor it, nor no remembrance what it was:
+    But flowers distill'd, though they with winter meet,
+    Leese but their show; their substance still lives sweet.
+
+
+VI
+
+Then let not winter's ragged hand deface,
+In thee thy summer, ere thou be distill'd:
+Make sweet some vial; treasure thou some place
+With beauty's treasure ere it be self-kill'd.
+That use is not forbidden usury,
+Which happies those that pay the willing loan;
+That's for thyself to breed another thee,
+Or ten times happier, be it ten for one;
+Ten times thyself were happier than thou art,
+If ten of thine ten times refigur'd thee:
+Then what could death do if thou shouldst depart,
+Leaving thee living in posterity?
+    Be not self-will'd, for thou art much too fair
+    To be death's conquest and make worms thine heir.
+
+VII
+
+Lo! in the orient when the gracious light
+Lifts up his burning head, each under eye
+Doth homage to his new-appearing sight,
+Serving with looks his sacred majesty;
+And having climb'd the steep-up heavenly hill,
+Resembling strong youth in his middle age,
+Yet mortal looks adore his beauty still,
+Attending on his golden pilgrimage:
+But when from highmost pitch, with weary car,
+Like feeble age, he reeleth from the day,
+The eyes, 'fore duteous, now converted are
+From his low tract, and look another way:
+    So thou, thyself outgoing in thy noon:
+    Unlook'd, on diest unless thou get a son.
+
+VIII
+
+Music to hear, why hear'st thou music sadly?
+Sweets with sweets war not, joy delights in joy:
+Why lov'st thou that which thou receiv'st not gladly,
+Or else receiv'st with pleasure thine annoy?
+If the true concord of well-tuned sounds,
+By unions married, do offend thine ear,
+They do but sweetly chide thee, who confounds
+In singleness the parts that thou shouldst bear.
+Mark how one string, sweet husband to another,
+Strikes each in each by mutual ordering;
+Resembling sire and child and happy mother,
+Who, all in one, one pleasing note do sing:
+    Whose speechless song being many, seeming one,
+    Sings this to thee: 'Thou single wilt prove none.'
+
+IX
+
+Is it for fear to wet a widow's eye,
+That thou consum'st thyself in single life?
+Ah! if thou issueless shalt hap to die,
+The world will wail thee like a makeless wife;
+The world will be thy widow and still weep
+That thou no form of thee hast left behind,
+When every private widow well may keep
+By children's eyes, her husband's shape in mind:
+Look! what an unthrift in the world doth spend
+Shifts but his place, for still the world enjoys it;
+But beauty's waste hath in the world an end,
+And kept unused the user so destroys it.
+    No love toward others in that bosom sits
+    That on himself such murd'rous shame commits.
+
+X
+
+For shame! deny that thou bear'st love to any,
+Who for thyself art so unprovident.
+Grant, if thou wilt, thou art belov'd of many,
+But that thou none lov'st is most evident:
+For thou art so possess'd with murderous hate,
+That 'gainst thyself thou stick'st not to conspire,
+Seeking that beauteous roof to ruinate
+Which to repair should be thy chief desire.
+"""
+
+VOCAB = sorted(set(CORPUS))
+VOCAB_SIZE = len(VOCAB)
+STOI = {ch: i for i, ch in enumerate(VOCAB)}
+ITOS = {i: ch for ch, i in STOI.items()}
+
+
+def encode(text: str) -> np.ndarray:
+    """Map a string to an int64 array of character ids."""
+    return np.array([STOI[ch] for ch in text], dtype=np.int64)
+
+
+def decode(ids) -> str:
+    """Map a sequence of character ids back to a string."""
+    return "".join(ITOS[int(i)] for i in ids)
+
+
+DATA = encode(CORPUS)
+SPLIT = int(0.9 * len(DATA))
+TRAIN_DATA, VAL_DATA = DATA[:SPLIT], DATA[SPLIT:]
+
+print(f"corpus      {len(CORPUS)} characters")
+print(f"vocabulary  {VOCAB_SIZE} distinct characters")
+print(f"            {VOCAB!r}")
+print(f"train/val   {len(TRAIN_DATA)} / {len(VAL_DATA)} characters")
+print(f"round-trip  {decode(encode(CORPUS[:40]))!r}")
+
+# %% [markdown]
+# ## 2. Two baselines you must beat, both measured
+#
+# Loss here is mean negative log-likelihood in **nats** per character. Two reference points
+# matter, and both are properties of the text rather than of any model:
+#
+# - **Uniform**: a model that has learnt nothing and spreads probability evenly scores
+#   `ln(vocab_size)`.
+# - **Unigram entropy**: a model that has learnt only how often each character occurs, and
+#   nothing about context, scores the entropy of the character distribution.
+#
+# Beating uniform is trivial. Beating the unigram entropy is the real bar, because it is the
+# point at which your model is provably using *context*. That is the threshold this lesson
+# gates on, and the code computes it.
+
+# %%
+def unigram_entropy(data: np.ndarray, vocab_size: int) -> float:
+    """Entropy in nats of the character distribution of `data`. The no-context baseline."""
+    counts = np.bincount(data, minlength=vocab_size).astype(DTYPE)
+    p = counts / counts.sum()
+    p = p[p > 0]
+    return float(-(p * np.log(p)).sum())
+
+
+UNIFORM_BASELINE = float(np.log(VOCAB_SIZE))
+UNIGRAM_BASELINE = unigram_entropy(TRAIN_DATA, VOCAB_SIZE)
+
+print(f"uniform baseline        {UNIFORM_BASELINE:.4f} nats/char  (ln {VOCAB_SIZE})")
+print(f"unigram entropy (train) {UNIGRAM_BASELINE:.4f} nats/char  (counts only, no context)")
+print(f"context is worth at most{UNIFORM_BASELINE - UNIGRAM_BASELINE:8.4f} nats before a model "
+      "looks at a single neighbour")
+
+# %% [markdown]
+# ## 3. Exercise 1 — `softmax(x)`
+#
+# Softmax turns a vector of scores into a probability distribution. The textbook formula,
+# `exp(x) / sum(exp(x))`, is correct mathematics and broken arithmetic: `exp(1000)` overflows
+# to `inf` in float64, and `inf/inf` is `nan`.
+#
+# The fix is to subtract the row maximum first. Because `exp(x - m) / sum(exp(x - m))` equals
+# `exp(x) / sum(exp(x))` exactly — the `exp(m)` factors cancel — this changes nothing about
+# the answer and everything about whether you can compute it. After subtracting, the largest
+# exponent is `exp(0) == 1`, so nothing can overflow.
+
+# %%
+def softmax(x: np.ndarray) -> np.ndarray:
+    """Softmax over the LAST axis, computed so it cannot overflow.
+
+    Works on an array of any rank: (V,), (B, V), (B, T, V) all behave the same way, and only
+    the last axis is normalised. Keep the input's shape in the output.
+
+    Entries of `-np.inf` are allowed and must map to exactly 0.0 — this is how the causal
+    mask in exercise 3 reaches you, so do not clip or replace them.
+
+    Example:
+        >>> softmax(np.array([0.0, 0.0, 0.0]))
+        array([0.33333333, 0.33333333, 0.33333333])
+        >>> float(softmax(np.array([1000.0, 1000.0])).sum())   # must not be nan
+        1.0
+        >>> softmax(np.array([0.0, -np.inf]))
+        array([1., 0.])
+
+    Returns:
+        An array of the same shape as `x`, non-negative, summing to 1 along the last axis.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public check — run it as often as you like.
+def _check_softmax() -> None:
+    flat = softmax(np.array([0.0, 0.0, 0.0]))
+    assert flat.shape == (3,), f"softmax changed the shape to {flat.shape}; it must not"
+    assert abs(float(flat.sum()) - 1.0) < 1e-12, (
+        f"softmax([0,0,0]) sums to {float(flat.sum())}, not 1 — you normalised over the wrong "
+        "axis, or forgot to divide by the sum at all."
+    )
+
+    batched = softmax(np.arange(24, dtype=DTYPE).reshape(2, 3, 4))
+    sums = batched.sum(axis=-1)
+    assert batched.shape == (2, 3, 4), f"expected shape (2,3,4), got {batched.shape}"
+    assert np.allclose(sums, 1.0), (
+        f"row sums were {sums.ravel()} — normalise over the LAST axis only, and use "
+        "keepdims=True so the divide broadcasts back over that axis."
+    )
+
+    huge = softmax(np.array([10000.0, 10000.0, 9999.0]))
+    assert np.isfinite(huge).all(), (
+        "softmax overflowed to nan/inf on logits of 1e4 — you called np.exp on the raw input. "
+        "Subtract the max along the last axis (keepdims=True) before exponentiating."
+    )
+    assert abs(float(huge.sum()) - 1.0) < 1e-12, f"huge-logit row sums to {float(huge.sum())}"
+
+    masked = softmax(np.array([0.0, -np.inf, 1.0]))
+    assert masked[1] == 0.0, (
+        f"a -inf entry produced {masked[1]} instead of exactly 0.0 — do not clip -inf to a "
+        "large negative number; exp(-inf) is already exactly 0."
+    )
+
+    shifted = softmax(np.array([1.0, 2.0, 3.0]))
+    unshifted = softmax(np.array([1.0, 2.0, 3.0]) + 500.0)
+    assert np.allclose(shifted, unshifted), (
+        "adding a constant to every score changed the answer — softmax is shift-invariant, so "
+        "if these differ you subtracted something that varies along the wrong axis."
+    )
+    print(f"exercise 1 looks right: uniform row {flat}, 1e4 logits stayed finite")
+
+
+# %%
+# Instant feedback. Run this the moment you have filled in `softmax`, and re-run it as often
+# as you like — it names what is wrong, not merely that something is.
+if __name__ == "__main__":
+    _check_softmax()
+
+
+# %% [markdown]
+# ## 4. Exercise 2 — `cross_entropy(logits, targets)`
+#
+# The loss. For each position, the model emits `VOCAB_SIZE` scores; the loss is the negative
+# log probability it assigned to the character that actually came next, averaged over every
+# position in the batch.
+#
+# The naive route — softmax, then `np.log` of the chosen entry — underflows: a probability of
+# `1e-320` becomes `0.0`, and `log(0)` is `-inf`. Go through the log-sum-exp instead:
+#
+# ```
+# loss_i = logsumexp(logits_i) - logits_i[target_i]
+# ```
+#
+# which is algebraically identical to `-log(softmax(logits_i)[target_i])` but never forms the
+# tiny probability in the first place. Subtract the row max inside the `logsumexp` for the
+# same reason as in exercise 1, and add it back outside the log.
+
+# %%
+def cross_entropy(logits: np.ndarray, targets: np.ndarray) -> float:
+    """Mean negative log-likelihood in nats, averaged over every position.
+
+    Args:
+        logits: (B, T, V) raw scores — NOT probabilities, and not yet softmaxed.
+        targets: (B, T) int64 character ids, the character that actually followed.
+
+    Averages over all B*T positions, so the result does not grow when you enlarge the batch.
+    Use `np.take_along_axis(logits, targets[..., None], axis=-1)` to pull out the score of the
+    correct character without writing a Python loop.
+
+    Example (two positions, three symbols, both predictions perfectly confident):
+        >>> lg = np.array([[[0.0, 100.0, 0.0], [100.0, 0.0, 0.0]]])
+        >>> tg = np.array([[1, 0]])
+        >>> round(cross_entropy(lg, tg), 10)
+        0.0
+
+    Example (a uniform model scores ln(V) whatever the targets are):
+        >>> round(cross_entropy(np.zeros((1, 2, 4)), np.array([[0, 3]])), 6)
+        1.386294
+
+    Returns:
+        A single Python float, not an array.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_cross_entropy() -> None:
+    uniform = cross_entropy(np.zeros((2, 5, VOCAB_SIZE)), np.zeros((2, 5), dtype=np.int64))
+    assert isinstance(uniform, float), (
+        f"cross_entropy returned {type(uniform).__name__}; wrap the result in float()."
+    )
+    assert abs(uniform - UNIFORM_BASELINE) < 1e-12, (
+        f"all-zero logits scored {uniform:.6f}, but a uniform distribution over {VOCAB_SIZE} "
+        f"symbols must score ln({VOCAB_SIZE}) = {UNIFORM_BASELINE:.6f}. If you got "
+        f"{uniform / 10:.6f} you summed instead of averaging over the batch."
+    )
+
+    confident = cross_entropy(
+        np.array([[[0.0, 100.0, 0.0], [100.0, 0.0, 0.0]]]), np.array([[1, 0]])
+    )
+    assert confident < 1e-9, (
+        f"a model that puts essentially all mass on the right answer scored {confident:.6f}, "
+        "which should be ~0 — check you are selecting the TARGET's logit, not the largest one."
+    )
+
+    wrong_way = cross_entropy(
+        np.array([[[0.0, 100.0, 0.0], [100.0, 0.0, 0.0]]]), np.array([[0, 1]])
+    )
+    assert wrong_way > 10.0, (
+        f"a confidently WRONG model scored {wrong_way:.6f}; loss must be large when the "
+        "target's logit is the low one. A near-zero answer means you ignored `targets`."
+    )
+
+    big = cross_entropy(np.full((1, 3, 4), 1e4), np.zeros((1, 3), dtype=np.int64))
+    assert np.isfinite(big), (
+        "logits of 1e4 produced nan/inf — you exponentiated before subtracting the row max. "
+        "Use the log-sum-exp form with the max pulled out."
+    )
+    assert abs(big - np.log(4.0)) < 1e-9, (
+        f"equal logits of 1e4 over 4 symbols scored {big:.6f}; it is still a uniform "
+        f"distribution, so the answer is ln(4) = {np.log(4.0):.6f}."
+    )
+
+    scale_free = cross_entropy(np.zeros((4, 7, VOCAB_SIZE)), np.zeros((4, 7), dtype=np.int64))
+    assert abs(scale_free - uniform) < 1e-12, (
+        f"a (4,7) batch scored {scale_free:.6f} against {uniform:.6f} for a (2,5) batch — you "
+        "divided by B or by T alone. Average over every one of the B*T positions."
+    )
+    print(f"exercise 2 looks right: uniform {uniform:.4f} nats, confident {confident:.2e}, "
+          f"1e4 logits stayed finite at {big:.4f}")
+
+
+# %%
+if __name__ == "__main__":
+    _check_cross_entropy()
+
+
+# %% [markdown]
+# ## 5. Causal masking: the mask goes *before* the softmax
+#
+# A language model predicts the next character, so position `t` may look at positions
+# `0..t` and must not look at `t+1` onwards. If it could, it would read the answer off the
+# input and score a perfect training loss while learning nothing.
+#
+# The constraint is enforced by setting the scores of illegal pairs to `-inf` **in the input
+# of the softmax**. That is what Vaswani et al. describe (see `claims.yaml`), and the ordering
+# is not a detail: softmax *renormalises*. Masking afterwards — softmaxing everything, then
+# zeroing the future — leaves rows that no longer sum to 1, so every row is silently scaled by
+# a different amount. Masking first makes `exp(-inf) == 0` and the surviving entries normalise
+# among themselves, exactly as intended.
+#
+# A second question the ordering raises: what *value* should the mask write? `-np.inf` is the
+# honest answer, but plenty of code reaches for a big finite number instead. Whether that is
+# harmless or a real leak is a question about floating-point arithmetic, so the cell measures
+# it across several sentinels rather than asserting anything.
+#
+# Run this to see both the mask, the damage the wrong order does, and where the sentinel cliff
+# actually falls on this machine.
+
+# %%
+def causal_mask(t: int) -> np.ndarray:
+    """(T, T) boolean array: True where position i is ALLOWED to attend to position j."""
+    return np.tril(np.ones((t, t), dtype=bool))
+
+
+_m4 = causal_mask(4)
+print("causal mask (True = allowed):")
+print(_m4.astype(int))
+
+_scores = np.array([[0.0, 1.0, 2.0, 3.0]])
+_right = np.exp(np.where(_m4[0], _scores, -np.inf))
+_right = _right / _right.sum()
+_wrong = np.exp(_scores) / np.exp(_scores).sum()
+_wrong = np.where(_m4[0], _wrong, 0.0)
+print(f"\nrow 0, masked before softmax: {_right}  sums to {_right.sum():.6f}")
+print(f"row 0, masked after  softmax: {_wrong}  sums to {_wrong.sum():.6f}")
+print("the second row is not a probability distribution at all")
+
+
+def sentinel_leak(sentinel) -> float:
+    """Largest future attention weight surviving when the mask writes `sentinel`.
+
+    A sentinel blocks a connection only if `exp(sentinel)` underflows all the way to zero.
+    Above that cliff the "blocked" future keeps a small but genuinely non-zero weight.
+
+    Example:
+        >>> sentinel_leak(-np.inf)
+        0.0
+    """
+    rng = np.random.default_rng(0)
+    b, t, d = 2, 6, 4
+    x = rng.normal(0, 1, (b, t, d))
+    wq, wk = (rng.normal(0, 0.5, (d, d)) for _ in range(2))
+    raw = (x @ wq) @ (x @ wk).transpose(0, 2, 1) / np.sqrt(d)
+    scores = np.where(causal_mask(t)[None], raw, sentinel)
+    e = np.exp(scores - scores.max(axis=-1, keepdims=True))
+    a = e / e.sum(axis=-1, keepdims=True)
+    return float(np.abs(a[:, np.triu(np.ones((t, t), dtype=bool), k=1)]).max())
+
+
+print(f"\n{'mask sentinel':>14s} {'largest surviving future weight':>33s}")
+for _s in (-np.inf, -1e9, -1e3, -100.0, -50.0, -30.0):
+    print(f"{_s:14.4g} {sentinel_leak(_s):33.3e}")
+print(f"\nin float64 np.exp underflows to exactly 0 below about "
+      f"{np.log(np.nextafter(0.0, 1.0)):.1f}, so any sentinel\npast that cliff is "
+      "indistinguishable from -inf HERE — and a merely large negative one\nis not. -np.inf is "
+      "the only choice that stays correct at any score scale and in any\nprecision; the "
+      "cliff moves as soon as you leave float64.")
+
+# %% [markdown]
+# ## 6. Exercise 3 — `attention_forward(X, Wq, Wk, Wv)`
+#
+# One head. For every position, project the input into a **query** (what am I looking for), a
+# **key** (what do I offer) and a **value** (what do I pass on). Score every query against
+# every key, scale by `1/sqrt(D)`, mask, softmax, and take the weighted average of the values.
+#
+# The `1/sqrt(D)` is the "scaled" in scaled dot-product attention. Without it, the dot
+# products grow with `D`, the softmax saturates, and its gradients go to almost nothing — the
+# paper's own stated reason, recorded in `claims.yaml`.
+#
+# Your function must also return a **cache**: the intermediate arrays the backward pass in
+# exercise 5 will need. The key names are a contract, and the autograder checks them.
+
+# %%
+def attention_forward(x: np.ndarray, wq: np.ndarray, wk: np.ndarray, wv: np.ndarray):
+    """Causal single-head self-attention. Returns (context, cache).
+
+    Shapes: x is (B, T, D); wq, wk, wv are each (D, D); context comes back (B, T, D).
+
+    The five steps, in order:
+        Q = x @ wq,  K = x @ wk,  V = x @ wv                      each (B, T, D)
+        scores = (Q @ K.transpose(0, 2, 1)) * scale               (B, T, T), scale = 1/sqrt(D)
+        scores = -inf wherever causal_mask(T) is False            mask BEFORE the softmax
+        A = softmax(scores)                                       (B, T, T), rows sum to 1
+        context = A @ V                                           (B, T, D)
+
+    `scale` is 1/sqrt(D) where D is x.shape[-1] — read it from the array, do not hard-code it.
+    Call your own `softmax` from exercise 1; it already handles the -inf entries.
+
+    Example (one position can only attend to itself, so it returns its own value unchanged):
+        >>> x = np.array([[[1.0, 2.0]]])
+        >>> eye = np.eye(2)
+        >>> ctx, cache = attention_forward(x, eye, eye, eye)
+        >>> ctx
+        array([[[1., 2.]]])
+        >>> float(cache["A"][0, 0, 0])
+        1.0
+
+    Returns:
+        context: (B, T, D)
+        cache: dict with EXACTLY these keys, which exercise 5 consumes -
+            "X", "Wq", "Wk", "Wv"   the inputs, stored for the backward pass
+            "Q", "K", "V"           the three projections, each (B, T, D)
+            "A"                     the attention weights after softmax, (B, T, T)
+            "mask"                  the (T, T) boolean causal mask you used
+            "scale"                 the float 1/sqrt(D) you used
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+ATTENTION_CACHE_KEYS = {"X", "Wq", "Wk", "Wv", "Q", "K", "V", "A", "mask", "scale"}
+
+
+def _check_attention_forward() -> None:
+    rng = np.random.default_rng(0)
+    b, t, d = 2, 5, 4
+    x = rng.normal(0, 1, (b, t, d))
+    wq, wk, wv = (rng.normal(0, 0.5, (d, d)) for _ in range(3))
+    ctx, cache = attention_forward(x, wq, wk, wv)
+
+    assert ctx.shape == (b, t, d), f"context came back {ctx.shape}, expected {(b, t, d)}"
+    assert isinstance(cache, dict), f"the cache must be a dict, got {type(cache).__name__}"
+    missing = ATTENTION_CACHE_KEYS - set(cache)
+    assert not missing, (
+        f"the cache is missing {sorted(missing)} — exercise 5 needs every one of "
+        f"{sorted(ATTENTION_CACHE_KEYS)}."
+    )
+
+    a = cache["A"]
+    assert a.shape == (b, t, t), f"A came back {a.shape}, expected {(b, t, t)}"
+    assert np.allclose(a.sum(axis=-1), 1.0), (
+        f"attention rows sum to {a.sum(axis=-1).ravel()[:4]} instead of 1 — if some rows sum "
+        "to less than 1 you masked AFTER the softmax instead of before it."
+    )
+
+    future = a[:, np.triu(np.ones((t, t), dtype=bool), k=1)]
+    assert np.all(future == 0.0), (
+        f"the largest strictly-upper-triangular attention weight is {future.max():.3e}, not "
+        "exactly 0 — either you masked AFTER the softmax, or your mask sentinel is a finite "
+        "negative number too small in magnitude for exp to underflow to zero. Use -np.inf."
+    )
+
+    assert abs(float(cache["scale"]) - 1.0 / np.sqrt(d)) < 1e-12, (
+        f"scale was {cache['scale']}, expected 1/sqrt({d}) = {1 / np.sqrt(d):.6f} — read D "
+        "from x.shape[-1]."
+    )
+
+    # The decisive test: nothing after position t may change the answer at position t.
+    x2 = x.copy()
+    x2[:, -1, :] += 100.0
+    ctx2, _ = attention_forward(x2, wq, wk, wv)
+    drift = float(np.abs(ctx[:, :-1] - ctx2[:, :-1]).max())
+    assert drift == 0.0, (
+        f"changing the LAST position moved earlier outputs by {drift:.3e} — the head is "
+        "reading the future. Check the mask orientation: np.tril keeps the past, np.triu "
+        "keeps the future, and transposing the scores swaps the two."
+    )
+    print(f"exercise 3 looks right: rows sum to 1, future weights exactly 0, perturbing the "
+          f"last position moved earlier outputs by {drift:.1f}")
+
+
+# %%
+if __name__ == "__main__":
+    _check_attention_forward()
+
+
+# %% [markdown]
+# ## 7. The whole model, assembled
+#
+# The pieces you have written are most of a language model. The rest is two more matrix
+# multiplies, and they are provided so you can spend your effort on the gradients.
+#
+# ```
+# X       = E[inputs] + P[:T]        token embedding + position embedding   (B, T, D)
+# context = attention(X)            your exercise 3                        (B, T, D)
+# H       = X + context @ Wo        the residual connection                (B, T, D)
+# logits  = H @ W1 + b1             score every character at every position (B, T, V)
+# loss    = cross_entropy(logits)   your exercise 2                        scalar
+# ```
+#
+# The residual `X +` matters more than it looks: it gives the gradient a path back to the
+# embeddings that does not pass through the softmax, which is what keeps this trainable
+# without any normalisation layer.
+
+# %%
+D_MODEL = 48       # width of the residual stream
+CONTEXT = 32       # how many characters the model may look back over
+BATCH = 32         # sequences per training step
+INIT_SCALE = 0.02  # standard deviation of the initial weights
+
+
+def init_params(seed: int = 1234, scale: float = INIT_SCALE) -> dict:
+    """Fresh parameters. Every array is float64 and drawn from a seeded generator."""
+    rng = np.random.default_rng(seed)
+    return {
+        "E": rng.normal(0, scale, (VOCAB_SIZE, D_MODEL)),
+        "P": rng.normal(0, scale, (CONTEXT, D_MODEL)),
+        "Wq": rng.normal(0, scale, (D_MODEL, D_MODEL)),
+        "Wk": rng.normal(0, scale, (D_MODEL, D_MODEL)),
+        "Wv": rng.normal(0, scale, (D_MODEL, D_MODEL)),
+        "Wo": rng.normal(0, scale, (D_MODEL, D_MODEL)),
+        "W1": rng.normal(0, scale, (D_MODEL, VOCAB_SIZE)),
+        "b1": np.zeros(VOCAB_SIZE, dtype=DTYPE),
+    }
+
+
+def model_forward(params: dict, inputs: np.ndarray, targets=None):
+    """Full forward pass. Returns (loss, cache); loss is None when targets is None."""
+    t = inputs.shape[1]
+    x = params["E"][inputs] + params["P"][None, :t, :]
+    context, att_cache = attention_forward(x, params["Wq"], params["Wk"], params["Wv"])
+    h = x + context @ params["Wo"]
+    logits = h @ params["W1"] + params["b1"]
+    loss = None if targets is None else cross_entropy(logits, targets)
+    return loss, {"inputs": inputs, "targets": targets, "X": x, "context": context,
+                  "att": att_cache, "H": h, "logits": logits}
+
+
+def _check_model_forward() -> None:
+    params = init_params()
+    inputs = TRAIN_DATA[: CONTEXT * 2].reshape(2, CONTEXT)
+    targets = TRAIN_DATA[1 : CONTEXT * 2 + 1].reshape(2, CONTEXT)
+    loss, cache = model_forward(params, inputs, targets)
+    n_params = sum(v.size for v in params.values())
+    assert cache["logits"].shape == (2, CONTEXT, VOCAB_SIZE), cache["logits"].shape
+    assert abs(loss - UNIFORM_BASELINE) < 0.15, (
+        f"an untrained model scored {loss:.4f} but should start near the uniform baseline "
+        f"{UNIFORM_BASELINE:.4f}. A much larger value means the initial weights are too big."
+    )
+    print(f"model has {n_params} parameters and starts at {loss:.4f} nats/char, against a "
+          f"uniform baseline of {UNIFORM_BASELINE:.4f}")
+
+
+# %%
+# Your exercises 1 and 3 are now wired into a whole model. This is the parameter count the
+# closing section refers to, and it is counted here rather than quoted.
+if __name__ == "__main__":
+    _check_model_forward()
+
+
+# %% [markdown]
+# ## 8. Exercise 4 — `cross_entropy_backward(logits, targets)`
+#
+# Now the calculus. Softmax and cross-entropy are derived together because their composition
+# collapses to something remarkably clean: the gradient of the mean loss with respect to the
+# logits is just the predicted distribution minus a one-hot of the truth, divided by the
+# number of positions.
+#
+# ```
+# dL/dlogits = (softmax(logits) - onehot(targets)) / (B*T)
+# ```
+#
+# That is the whole derivative. It is worth noticing *why* it is so simple: the `exp` in the
+# softmax and the `log` in the cross-entropy cancel, which is the entire reason the two are
+# always paired. Divide by `B*T` because `cross_entropy` averaged over `B*T` positions — if
+# you forget, every gradient below is too large by that factor and finite differences will
+# tell you so immediately.
+
+# %%
+def cross_entropy_backward(logits: np.ndarray, targets: np.ndarray) -> np.ndarray:
+    """Gradient of `cross_entropy(logits, targets)` with respect to `logits`.
+
+    Args:
+        logits: (B, T, V) raw scores.
+        targets: (B, T) int64 character ids.
+
+    Build the one-hot without a Python loop: `np.put_along_axis(z, targets[..., None], 1.0,
+    axis=-1)` writes a 1.0 at each target position of a zero array.
+
+    Example (one position, two symbols, equal scores, truth is symbol 0):
+        >>> cross_entropy_backward(np.zeros((1, 1, 2)), np.array([[0]]))
+        array([[[-0.5,  0.5]]])
+
+    Returns:
+        An array shaped exactly like `logits`. Because each position's row of the softmax
+        sums to 1 and the one-hot sums to 1, every row of the result sums to 0.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_cross_entropy_backward() -> None:
+    g = cross_entropy_backward(np.zeros((1, 1, 2)), np.array([[0]]))
+    assert g.shape == (1, 1, 2), f"expected shape (1,1,2), got {g.shape}"
+    assert np.allclose(g, [[[-0.5, 0.5]]]), (
+        f"got {g.ravel()}, expected [-0.5, 0.5] — subtract the one-hot from the softmax in "
+        "that order, then divide by the number of positions."
+    )
+
+    rng = np.random.default_rng(1)
+    logits = rng.normal(0, 2, (3, 4, VOCAB_SIZE))
+    targets = rng.integers(0, VOCAB_SIZE, (3, 4))
+    grad = cross_entropy_backward(logits, targets)
+    rowsums = grad.sum(axis=-1)
+    assert np.allclose(rowsums, 0.0, atol=1e-12), (
+        f"rows of the gradient sum to {rowsums.ravel()[:4]} instead of 0 — that only happens "
+        "if the one-hot was not subtracted, or was subtracted in the wrong place."
+    )
+    assert abs(float(np.abs(grad).sum()) - 2.0 * 3 * 4 / (3 * 4)) < 1.0, (
+        "the gradient magnitude looks wrong by a large factor — did you divide by B*T?"
+    )
+
+    # Finite differences on a single logit: the definition of the derivative.
+    probe = (1, 2, 7)
+    h = 1e-6
+    up, down = logits.copy(), logits.copy()
+    up[probe] += h
+    down[probe] -= h
+    numeric = (cross_entropy(up, targets) - cross_entropy(down, targets)) / (2 * h)
+    analytic = float(grad[probe])
+    assert abs(numeric - analytic) < 1e-7, (
+        f"finite differences say {numeric:.9f} at logit {probe}, your formula says "
+        f"{analytic:.9f}. A ratio of about {analytic / numeric:.1f} between them is the "
+        "tell-tale of a missing or extra division by B*T."
+    )
+    print(f"exercise 4 looks right: rows sum to 0, and at one probed logit finite differences "
+          f"give {numeric:.9f} against your {analytic:.9f}")
+
+
+# %%
+if __name__ == "__main__":
+    _check_cross_entropy_backward()
+
+
+# %% [markdown]
+# ## 9. Exercise 5 — `attention_backward(d_context, cache)`
+#
+# The hard one, and the reason this lesson exists. Walk your forward pass backwards, one line
+# at a time. Every forward line becomes one or two backward lines:
+#
+# | forward | backward |
+# |---|---|
+# | `context = A @ V` | `dA = d_context @ V^T`, `dV = A^T @ d_context` |
+# | `A = softmax(scores)` | `dscores = A * (dA - sum(dA * A, last axis, keepdims))` |
+# | mask | zero `dscores` wherever the mask is False |
+# | `scores = (Q @ K^T) * scale` | multiply by `scale`, then `dQ = dscores @ K`, `dK = dscores^T @ Q` |
+# | `Q = X @ Wq` | `dWq = X^T @ dQ` (flatten batch and time first), `dX += dQ @ Wq^T` |
+#
+# Two traps live in that table.
+#
+# **The softmax Jacobian is not `A * dA`.** Softmax couples every entry in a row: raising one
+# score lowers all the others, because they must keep summing to 1. The correct row-wise
+# expression is `A * (dA - (dA * A).sum(-1, keepdims=True))`. Dropping the subtracted term is
+# the single most common error here, and it produces gradients that look plausible and are
+# wrong.
+#
+# **`dX` accumulates three times.** X fed the query, the key *and* the value projection, so
+# three gradients flow back into it and they add. Use `+`, never `=`.
+#
+# Flatten `(B, T, D)` to `(B*T, D)` with `.reshape(-1, D)` before forming the weight
+# gradients, because a weight is shared across every position of every sequence.
+
+# %%
+def attention_backward(d_context: np.ndarray, cache: dict):
+    """Backward pass of `attention_forward`. Returns (dX, dWq, dWk, dWv).
+
+    Args:
+        d_context: (B, T, D) gradient of the loss with respect to the `context` you returned.
+        cache: the dict your `attention_forward` built, with the documented keys.
+
+    Shapes out: dX is (B, T, D); dWq, dWk, dWv are each (D, D), matching the weights.
+
+    Transposing a batch of matrices is `.transpose(0, 2, 1)`, NOT `.T` — `.T` reverses every
+    axis and will silently transpose the batch dimension too.
+
+    Example (a single position attending only to itself, identity weights: the gradient of
+    the context flows straight through to X, plus the paths through Q and K which vanish
+    because a one-element softmax row is constant):
+        >>> x = np.array([[[1.0, 2.0]]])
+        >>> eye = np.eye(2)
+        >>> _, cache = attention_forward(x, eye, eye, eye)
+        >>> dx, dwq, dwk, dwv = attention_backward(np.ones((1, 1, 2)), cache)
+        >>> dx
+        array([[[1., 1.]]])
+        >>> dwq
+        array([[0., 0.],
+               [0., 0.]])
+
+    Returns:
+        (dX, dWq, dWk, dWv)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_attention_backward() -> None:
+    rng = np.random.default_rng(2)
+    b, t, d = 2, 4, 3
+    x = rng.normal(0, 0.6, (b, t, d))
+    wq, wk, wv = (rng.normal(0, 0.6, (d, d)) for _ in range(3))
+    weight = rng.normal(0, 1, (b, t, d))  # an arbitrary scalar objective: sum(context*weight)
+
+    ctx, cache = attention_forward(x, wq, wk, wv)
+    dx, dwq, dwk, dwv = attention_backward(weight, cache)
+
+    for name, got, want in (("dX", dx, x.shape), ("dWq", dwq, wq.shape),
+                            ("dWk", dwk, wk.shape), ("dWv", dwv, wv.shape)):
+        assert got.shape == want, f"{name} came back {got.shape}, expected {want}"
+
+    def objective(x_, wq_, wk_, wv_) -> float:
+        c, _ = attention_forward(x_, wq_, wk_, wv_)
+        return float((c * weight).sum())
+
+    h = 1e-6
+    for name, arr, analytic in (("X", x, dx), ("Wq", wq, dwq), ("Wk", wk, dwk),
+                                ("Wv", wv, dwv)):
+        flat = arr.reshape(-1)
+        worst = 0.0
+        for q in range(0, flat.size, max(1, flat.size // 4)):
+            old = flat[q]
+            flat[q] = old + h
+            up = objective(x, wq, wk, wv)
+            flat[q] = old - h
+            down = objective(x, wq, wk, wv)
+            flat[q] = old
+            numeric = (up - down) / (2 * h)
+            worst = max(worst, abs(numeric - float(analytic.reshape(-1)[q])))
+        assert worst < 1e-5, (
+            f"d{name} disagrees with finite differences by {worst:.3e}. If dWq and dWk are "
+            "the ones failing while dWv is fine, the softmax Jacobian is the suspect: it is "
+            "A * (dA - (dA*A).sum(-1, keepdims=True)), not A * dA. If dX alone is wrong, you "
+            "assigned instead of accumulating its three contributions."
+        )
+    print("exercise 5 looks right: dX, dWq, dWk and dWv all match central finite differences")
+
+
+# %%
+# The hardest check in the lesson. If it fails, read which of dX/dWq/dWk/dWv disagreed — the
+# message maps each pattern of failure onto the derivation mistake that causes it.
+if __name__ == "__main__":
+    _check_attention_backward()
+
+
+# %% [markdown]
+# ## 10. The full gradient check
+#
+# `model_backward` wires your two backward functions into the rest of the model. The embedding
+# gradient is the one line worth reading closely: many positions can hold the *same*
+# character, so their gradients must **add** into the same row of `E`. `dE[inputs] = dX`
+# would keep only the last one. `np.add.at` accumulates properly.
+#
+# Then `gradient_report` checks every parameter against central differences:
+#
+# ```
+# numeric = (loss(theta + h) - loss(theta - h)) / (2h)
+# ```
+#
+# Central differences, not forward differences, because their error shrinks with `h^2` rather
+# than `h`. A gradient is accepted when
+# `|numeric - analytic| <= atol + rtol * max(|numeric|, |analytic|)`.
+
+# %%
+FD_STEP = 1e-5
+FD_ATOL = 1e-9
+FD_RTOL = 1e-5
+GRADCHECK_SCALE = 0.2  # see section 11 — deliberately NOT the training init scale
+
+
+def model_backward(params: dict, cache: dict) -> dict:
+    """Gradients of the loss with respect to every parameter. Returns a dict keyed like params."""
+    d_model = cache["H"].shape[-1]
+    d_logits = cross_entropy_backward(cache["logits"], cache["targets"])
+    grads = {
+        "W1": cache["H"].reshape(-1, d_model).T @ d_logits.reshape(-1, VOCAB_SIZE),
+        "b1": d_logits.sum(axis=(0, 1)),
+    }
+    d_h = d_logits @ params["W1"].T
+    grads["Wo"] = cache["context"].reshape(-1, d_model).T @ d_h.reshape(-1, d_model)
+    d_context = d_h @ params["Wo"].T
+
+    d_x_attn, grads["Wq"], grads["Wk"], grads["Wv"] = attention_backward(d_context, cache["att"])
+    d_x = d_h + d_x_attn  # d_h is the residual path: H = X + context @ Wo
+
+    grads["P"] = d_x.sum(axis=0)
+    d_e = np.zeros_like(params["E"])
+    np.add.at(d_e, cache["inputs"], d_x)  # accumulate: a character can occur many times
+    grads["E"] = d_e
+    return grads
+
+
+def finite_difference_gradient(params, name, indices, inputs, targets, h=FD_STEP):
+    """Central-difference derivative of the loss at the flat `indices` of params[name]."""
+    flat = params[name].reshape(-1)
+    out = []
+    for q in indices:
+        old = flat[q]
+        flat[q] = old + h
+        up, _ = model_forward(params, inputs, targets)
+        flat[q] = old - h
+        down, _ = model_forward(params, inputs, targets)
+        flat[q] = old
+        out.append((up - down) / (2 * h))
+    return np.array(out)
+
+
+def gradient_report(scale=GRADCHECK_SCALE, probes=6, seed=900, verbose=True):
+    """Check every parameter's analytic gradient against finite differences. Returns rows."""
+    rng = np.random.default_rng(seed)
+    params = init_params(seed=seed, scale=scale)
+    params["b1"] = rng.normal(0, scale * 0.1, VOCAB_SIZE)  # a zero bias is a degenerate probe
+    starts = rng.integers(0, len(TRAIN_DATA) - CONTEXT - 1, size=4)
+    inputs = np.stack([TRAIN_DATA[s : s + CONTEXT] for s in starts])
+    targets = np.stack([TRAIN_DATA[s + 1 : s + 1 + CONTEXT] for s in starts])
+
+    _, cache = model_forward(params, inputs, targets)
+    grads = model_backward(params, cache)
+
+    rows = []
+    for name in ("E", "P", "Wq", "Wk", "Wv", "Wo", "W1", "b1"):
+        idx = rng.integers(0, params[name].size, size=probes)
+        numeric = finite_difference_gradient(params, name, idx, inputs, targets)
+        analytic = grads[name].reshape(-1)[idx]
+        err = np.abs(numeric - analytic)
+        tol = FD_ATOL + FD_RTOL * np.maximum(np.abs(numeric), np.abs(analytic))
+        rows.append((name, float(err.max()), float((err / tol).max()),
+                     float(np.sqrt((grads[name] ** 2).mean()))))
+    if verbose:
+        print(f"{'param':6s} {'grad RMS':>10s} {'max |num-ana|':>14s} {'fraction of tol':>16s}")
+        for name, abs_err, slack, rms in rows:
+            print(f"{name:6s} {rms:10.3e} {abs_err:14.3e} {slack:16.3f}"
+                  f"{'  OK' if slack <= 1.0 else '  FAIL'}")
+    return rows
+
+
+def _check_gradients() -> None:
+    rows = gradient_report()
+    bad = [(n, s) for n, _, s, _ in rows if s > 1.0]
+    assert not bad, (
+        f"these parameters failed the finite-difference check: {bad}. The number shown is the "
+        "error as a fraction of tolerance, so anything above 1.0 is a real disagreement."
+    )
+    worst = max(s for _, _, s, _ in rows)
+    print(f"\nall 8 parameter gradients agree with central finite differences; the worst was "
+          f"{worst:.3f} of the allowed tolerance")
+
+
+# %%
+if __name__ == "__main__":
+    _check_gradients()
+
+
+# %% [markdown]
+# ## 11. Why the probe point decides whether your check means anything
+#
+# A gradient check is only as good as the point it is run at, and the obvious point — freshly
+# initialised weights — is the worst one available for this model.
+#
+# At the training init scale the attention scores are tiny, so every softmax row is almost
+# perfectly uniform. Perturbing `Wq` or `Wk` then barely moves the loss at all, and the
+# finite-difference estimate drowns in floating-point round-off. A completely broken `dWq`
+# would sail through. Run this cell and read the two columns: the check above deliberately
+# uses the larger scale for exactly this reason.
+
+# %%
+def probe_scale_comparison(scales=(INIT_SCALE, GRADCHECK_SCALE)) -> None:
+    """Print attention-gradient magnitude at each init scale. Pure measurement, no claims."""
+    print(f"{'init scale':>11s} {'|dWq| RMS':>12s} {'|dWv| RMS':>12s} {'last-row max':>14s}")
+    for scale in scales:
+        params = init_params(seed=900, scale=scale)
+        starts = np.random.default_rng(3).integers(0, len(TRAIN_DATA) - CONTEXT - 1, size=4)
+        inputs = np.stack([TRAIN_DATA[s : s + CONTEXT] for s in starts])
+        targets = np.stack([TRAIN_DATA[s + 1 : s + 1 + CONTEXT] for s in starts])
+        _, cache = model_forward(params, inputs, targets)
+        grads = model_backward(params, cache)
+        print(f"{scale:11.3f} {np.sqrt((grads['Wq'] ** 2).mean()):12.3e} "
+              f"{np.sqrt((grads['Wv'] ** 2).mean()):12.3e} "
+              f"{float(cache['att']['A'][:, -1, :].max()):14.4f}")
+    print(f"\nthe last column is the largest weight in the FINAL attention row, which may "
+          f"look back\nover all {CONTEXT} positions; perfectly uniform attention would put "
+          f"{1.0 / CONTEXT:.4f} there.\nAt the smaller scale that row is essentially uniform "
+          "and |dWq| is orders of magnitude\nsmaller than every other gradient, so finite "
+          "differences have no signal to find and a\nbroken query/key gradient passes the "
+          "check by accident.")
+
+
+def step_size_sweep() -> None:
+    """Show the U-curve: truncation error at large h, round-off error at small h."""
+    params = init_params(seed=900, scale=GRADCHECK_SCALE)
+    starts = np.random.default_rng(4).integers(0, len(TRAIN_DATA) - CONTEXT - 1, size=2)
+    inputs = np.stack([TRAIN_DATA[s : s + CONTEXT] for s in starts])
+    targets = np.stack([TRAIN_DATA[s + 1 : s + 1 + CONTEXT] for s in starts])
+    _, cache = model_forward(params, inputs, targets)
+    analytic = model_backward(params, cache)["Wv"].reshape(-1)
+    idx = np.random.default_rng(5).integers(0, params["Wv"].size, size=5)
+    print(f"{'h':>10s} {'max relative error in dWv':>28s}")
+    for h in (1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-8, 1e-10):
+        numeric = finite_difference_gradient(params, "Wv", idx, inputs, targets, h=h)
+        rel = np.abs(numeric - analytic[idx]) / np.maximum(np.abs(analytic[idx]), 1e-30)
+        print(f"{h:10.0e} {float(rel.max()):28.3e}")
+    print("\nboth ends are bad: large h measures a chord instead of a tangent, small h\n"
+          "subtracts two nearly equal numbers and keeps only the round-off")
+
+
+# %%
+# Read the two tables together: the first says WHERE to probe, the second says with what h.
+if __name__ == "__main__":
+    probe_scale_comparison()
+    print()
+    step_size_sweep()
+
+
+# %% [markdown]
+# ## 12. Exercise 6 — `make_batch(data, batch_size, context_len, rng)`
+#
+# The last piece before training: cutting the corpus into examples. Pick `batch_size` random
+# start positions, take `context_len` characters from each as the input, and take the **same
+# window shifted right by one** as the target. Position `t` of the input is asked to predict
+# position `t` of the target, which is the next character in the text.
+#
+# The off-by-one is the whole exercise. If targets are the same window as inputs rather than
+# the window one step later, the model is asked to predict the character it was just given,
+# training loss collapses towards zero, and the samples are pure nonsense.
+
+# %%
+def make_batch(data: np.ndarray, batch_size: int, context_len: int, rng):
+    """Cut `batch_size` random (input, target) windows out of `data`.
+
+    Args:
+        data: 1-D int64 array of character ids.
+        batch_size: how many windows.
+        context_len: characters per window.
+        rng: a numpy Generator, so the caller controls reproducibility.
+
+    Draw the start positions with `rng.integers(0, len(data) - context_len, size=batch_size)`.
+    That upper bound is exclusive, so the largest start still leaves one character beyond the
+    window for the final target — using `len(data)` instead walks off the end.
+
+    Example (a toy corpus, so the shift is visible):
+        >>> toy = np.arange(10)
+        >>> xb, yb = make_batch(toy, 2, 4, np.random.default_rng(0))
+        >>> bool((yb[:, :-1] == xb[:, 1:]).all())     # target is the input shifted by one
+        True
+        >>> xb.shape, yb.shape
+        ((2, 4), (2, 4))
+
+    Returns:
+        (inputs, targets), both (batch_size, context_len) int64 arrays.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_make_batch() -> None:
+    toy = np.arange(20)
+    xb, yb = make_batch(toy, 3, 5, np.random.default_rng(0))
+    assert xb.shape == (3, 5) and yb.shape == (3, 5), (
+        f"expected two (3,5) arrays, got {xb.shape} and {yb.shape}"
+    )
+    assert (yb == xb + 1).all(), (
+        f"inputs start {xb[0]} and targets start {yb[0]} — on this toy corpus each target "
+        "must be its input plus one. If they are identical you sliced the same window twice; "
+        "the target window starts one character later."
+    )
+
+    xb2, yb2 = make_batch(TRAIN_DATA, BATCH, CONTEXT, np.random.default_rng(1))
+    assert xb2.dtype == np.int64, f"inputs came back {xb2.dtype}; they index an array, so int64"
+    assert xb2.max() < VOCAB_SIZE and yb2.max() < VOCAB_SIZE, (
+        "a character id landed outside the vocabulary — you indexed past the end of the corpus"
+    )
+    assert (yb2[:, :-1] == xb2[:, 1:]).all(), (
+        "on the real corpus the target window is not the input window shifted by one"
+    )
+    assert len({tuple(row) for row in xb2}) > 1, (
+        "every row of the batch is identical — draw one start position PER row, by passing "
+        "size=batch_size to rng.integers."
+    )
+    print(f"exercise 6 looks right: {xb2.shape} inputs, targets shifted by exactly one")
+
+
+# %%
+if __name__ == "__main__":
+    _check_make_batch()
+
+
+# %% [markdown]
+# ## 13. Train it
+#
+# Adam (Kingma and Ba, see `claims.yaml`) keeps a running mean and a running mean-square of
+# each gradient and divides one by the root of the other, so every parameter gets its own
+# effective step size. The constants below are this lesson's choices, not quotations from
+# anywhere. The optimiser is not what you are learning here — your gradients are.
+#
+# Training is a few thousand steps and takes well under a minute on a laptop CPU.
+
+# %%
+TRAIN_STEPS = 3000
+LEARNING_RATE = 3e-3
+ADAM_BETA1, ADAM_BETA2, ADAM_EPS = 0.9, 0.999, 1e-8
+MIN_MARGIN_NATS = 0.35  # how far below the unigram entropy held-out loss must land
+
+
+def adam_init(params: dict) -> dict:
+    """First and second moment accumulators, one pair per parameter."""
+    return {k: [np.zeros_like(v), np.zeros_like(v)] for k, v in params.items()}
+
+
+def adam_step(params, grads, state, step, lr=LEARNING_RATE):
+    """One Adam update, in place, with the bias correction applied to both moments."""
+    for k, p in params.items():
+        m, v = state[k]
+        m *= ADAM_BETA1
+        m += (1 - ADAM_BETA1) * grads[k]
+        v *= ADAM_BETA2
+        v += (1 - ADAM_BETA2) * grads[k] ** 2
+        m_hat = m / (1 - ADAM_BETA1 ** step)
+        v_hat = v / (1 - ADAM_BETA2 ** step)
+        p -= lr * m_hat / (np.sqrt(v_hat) + ADAM_EPS)
+
+
+def evaluate(params, data, batches=30, seed=5) -> float:
+    """Mean loss over `batches` freshly drawn windows. Used for held-out measurement."""
+    rng = np.random.default_rng(seed)
+    losses = []
+    for _ in range(batches):
+        inputs, targets = make_batch(data, BATCH, CONTEXT, rng)
+        loss, _ = model_forward(params, inputs, targets)
+        losses.append(loss)
+    return float(np.mean(losses))
+
+
+def train(steps=TRAIN_STEPS, seed=0, report_every=500):
+    """Train from a fresh init. Returns (params, history) with history in (step, loss) pairs."""
+    params = init_params()
+    state = adam_init(params)
+    rng = np.random.default_rng(seed)
+    history, started = [], time.perf_counter()
+    for step in range(1, steps + 1):
+        inputs, targets = make_batch(TRAIN_DATA, BATCH, CONTEXT, rng)
+        loss, cache = model_forward(params, inputs, targets)
+        adam_step(params, model_backward(params, cache), state, step)
+        if step % report_every == 0 or step == 1:
+            history.append((step, loss))
+            bar = "#" * int(40 * loss / UNIFORM_BASELINE)
+            print(f"  step {step:5d}  loss {loss:6.4f}  {bar}")
+    print(f"  trained {steps} steps in {time.perf_counter() - started:.1f} s")
+    return params, history
+
+
+def _check_training():
+    print("training (no GPU, no autodiff, one attention head):")
+    params, history = train()
+    train_loss = evaluate(params, TRAIN_DATA, seed=6)
+    val_loss = evaluate(params, VAL_DATA, seed=7)
+    margin = UNIGRAM_BASELINE - val_loss
+
+    print(f"\n  uniform baseline        {UNIFORM_BASELINE:.4f} nats/char")
+    print(f"  unigram entropy         {UNIGRAM_BASELINE:.4f} nats/char  <- the bar")
+    print(f"  final training loss     {train_loss:.4f} nats/char")
+    print(f"  final held-out loss     {val_loss:.4f} nats/char")
+    print(f"  margin over unigram     {margin:+.4f} nats  (must be >= {MIN_MARGIN_NATS})")
+    print(f"  overfitting gap         {val_loss - train_loss:+.4f} nats")
+
+    assert history[-1][1] < history[0][1], (
+        f"loss went from {history[0][1]:.4f} to {history[-1][1]:.4f} — it must fall. If it "
+        "rose, a gradient sign is flipped; the finite-difference check in section 10 finds it."
+    )
+    assert margin >= MIN_MARGIN_NATS, (
+        f"held-out loss {val_loss:.4f} beat the unigram entropy {UNIGRAM_BASELINE:.4f} by only "
+        f"{margin:.4f} nats, short of the {MIN_MARGIN_NATS} required. The model is not using "
+        "context: check the off-by-one in make_batch, and that the causal mask is not hiding "
+        "every position including the present one."
+    )
+    return params
+
+
+# %%
+# This is the long cell: a few thousand steps on a CPU. The loss printed every 500 steps must
+# fall, and the held-out margin over the unigram entropy is the gate the lesson is graded on.
+if __name__ == "__main__":
+    trained = _check_training()
+
+
+# %% [markdown]
+# ## 14. What it writes
+#
+# Now read the output honestly. A model this small — section 7 printed its exact parameter
+# count — with a single attention head, trained for a few thousand steps on a few thousand
+# characters, learns the *shape* of English
+# verse: line lengths, capitalisation after a newline, plausible letter runs, a handful of
+# real words. It does not learn meaning, and it never will at this size. That gap is the
+# lesson, not a failure — every mechanism here is the one used at scale, and only the scale
+# is missing.
+
+# %%
+def sample(params, n_chars=400, seed=3, temperature=1.0, prompt=None) -> str:
+    """Generate `n_chars` characters, one at a time, feeding each back in as context."""
+    rng = np.random.default_rng(seed)
+    context = list(encode(prompt if prompt is not None else CORPUS[:CONTEXT]))
+    out = []
+    for _ in range(n_chars):
+        window = np.array(context[-CONTEXT:], dtype=np.int64)[None, :]
+        _, cache = model_forward(params, window)
+        probs = softmax(cache["logits"][0, -1] / temperature)
+        nxt = int(rng.choice(VOCAB_SIZE, p=probs))
+        context.append(nxt)
+        out.append(nxt)
+    return decode(out)
+
+
+# %%
+# Nothing here is cherry-picked: this is the first sample at the default seed.
+if __name__ == "__main__":
+    print(sample(trained))
+
+
+# %% [markdown]
+# ## 15. Common mistakes
+#
+# - **`exp` before subtracting the max.** Correct mathematics, `nan` in practice. Both
+#   `softmax` and `cross_entropy` need the shift, and it changes nothing about the answer.
+# - **Masking after the softmax instead of before it.** Softmax renormalises, so zeroing the
+#   future afterwards leaves rows that sum to less than 1 and scales every row differently.
+#   Check for it by asserting `A.sum(-1) == 1`.
+# - **Masking with a finite sentinel instead of `-np.inf`.** Whether this is harmless or a
+#   real leak depends entirely on the number you picked, which is why section 5 measures it
+#   instead of asserting it. A sentinel far below the float64 underflow cliff is
+#   indistinguishable from `-inf`; a merely *large* negative number leaves a small non-zero
+#   weight on a connection that is supposed not to exist, and the backward pass then leaks
+#   gradient through it. `-np.inf` is the choice that needs no argument about magnitudes, and
+#   it stays right when the score scale or the precision changes underneath you.
+# - **`A * dA` as the softmax gradient.** The rows are coupled, so the correct expression
+#   subtracts the row's own weighted sum: `A * (dA - (dA * A).sum(-1, keepdims=True))`. Its
+#   symptom is `dWq` and `dWk` failing the finite-difference check while `dWv` passes, because
+#   `dWv` does not go through the softmax at all.
+# - **`dX = ...` instead of `dX += ...`.** X feeds the query, key and value projections and
+#   the residual path. Four contributions, all of which add.
+# - **`.T` on a `(B, T, D)` array.** That reverses all three axes. Batched transpose is
+#   `.transpose(0, 2, 1)`.
+# - **`dE[inputs] = dX`.** A character that occurs twice gets only its last gradient. Use
+#   `np.add.at(dE, inputs, dX)`, which accumulates.
+# - **Forgetting to divide by `B*T`.** Every gradient is then too large by that factor.
+#   Finite differences catch it immediately, which is the point of running them.
+# - **Gradient-checking at the training initialisation.** Section 11 measures why: the
+#   query/key gradients there are orders of magnitude smaller than every other gradient, so a
+#   broken `dWq` passes. Check at a larger scale.
+# - **Making `h` as small as possible.** Past a certain point the subtraction of two nearly
+#   equal losses keeps only round-off. Section 11's sweep shows the U-curve and where its
+#   minimum falls on this machine.
+
+# %%
+# Do not take that list on trust — watch the worst item on it get caught. This reproduces the
+# `A * dA` mistake and points finite differences at both versions of dWq.
+def _demo_wrong_jacobian() -> None:
+    """Break the softmax Jacobian on purpose, and measure how far wrong it goes."""
+    rng = np.random.default_rng(7)
+    b, t, d = 2, 5, 4
+    x = rng.normal(0, 0.8, (b, t, d))
+    wq, wk, wv = (rng.normal(0, 0.8, (d, d)) for _ in range(3))
+    w = rng.normal(0, 1, (b, t, d))
+    _, cache = attention_forward(x, wq, wk, wv)
+    good = attention_backward(w, cache)[1]  # the correct dWq
+
+    d_a = w @ cache["V"].transpose(0, 2, 1)  # and now the mistake, one line changed
+    d_scores = np.where(cache["mask"][None], cache["A"] * d_a, 0.0) * cache["scale"]
+    bad = x.reshape(-1, d).T @ (d_scores @ cache["K"]).reshape(-1, d)
+
+    flat, h, numeric = wq.reshape(-1), 1e-6, []
+    for i in range(flat.size):
+        old = flat[i]
+        flat[i] = old + h
+        up, _ = attention_forward(x, wq, wk, wv)
+        flat[i] = old - h
+        down, _ = attention_forward(x, wq, wk, wv)
+        flat[i] = old
+        numeric.append((float((up * w).sum()) - float((down * w).sum())) / (2 * h))
+    numeric = np.array(numeric)
+    print(f"  correct dWq    max |analytic - finite difference|  "
+          f"{np.abs(good.reshape(-1) - numeric).max():.3e}")
+    print(f"  `A * dA` dWq   max |analytic - finite difference|  "
+          f"{np.abs(bad.reshape(-1) - numeric).max():.3e}")
+    print("\nthe second is the error the list above warns about. It is glaring once finite\n"
+          "differences are pointed at it, and completely invisible without them.")
+
+
+if __name__ == "__main__":
+    _demo_wrong_jacobian()
+
+
+# %% [markdown]
+# ## 16. Self-check
+#
+# 1. You subtract the row maximum inside `softmax`. What does that do to the result?
+#    - (a) Nothing at all — it is exactly the same distribution, just computable.
+#    - (b) It sharpens the distribution slightly, which helps training.
+#    - (c) It flattens the distribution, which is why it prevents overflow.
+#    - (d) It changes the result, but by less than float64 precision.
+#
+# 2. A colleague computes `A = softmax(scores)` over all positions and *then* zeroes the
+#    entries above the diagonal. What breaks?
+#    - (a) Nothing; it is equivalent and slightly faster.
+#    - (b) The rows no longer sum to 1, so each position's output is scaled by an arbitrary
+#          amount that depends on how much probability mass the future was holding.
+#    - (c) Only the first row is affected, because it has no past to attend to.
+#    - (d) It leaks the future, because zeroing happens too late to stop the information.
+#
+# 3. You gradient-check at the freshly initialised weights and every parameter passes. You
+#    then discover `dWq` was returning zeros all along. How did the check pass?
+#    - (a) Finite differences cannot check query projections at all.
+#    - (b) The tolerance was too loose; a tighter one would have caught it.
+#    - (c) At that scale the softmax rows are nearly uniform, so the true `dWq` is orders of
+#          magnitude smaller than every other gradient — indistinguishable from zero given
+#          the round-off floor of the difference.
+#    - (d) Adam would have corrected it anyway, so the check was right to pass.
+#
+# 4. Why divide the attention scores by `sqrt(D)`?
+#    - (a) To keep the attention weights summing to 1.
+#    - (b) Because dot products of `D`-dimensional vectors grow with `D`, and large scores
+#          push the softmax into a region where its gradients are extremely small.
+#    - (c) To make the model invariant to the length of the sequence.
+#    - (d) It is a normalisation constant with no effect on training, kept for tradition.
+#
+# 5. Your training loss falls almost to zero within a hundred steps and the samples are
+#    gibberish. What is the most likely cause?
+#    - (a) The learning rate is too high.
+#    - (b) `make_batch` returned targets equal to the inputs, so the model is copying the
+#          character it was just handed rather than predicting the next one.
+#    - (c) The model is too large for the corpus.
+#    - (d) The unigram baseline was computed on the wrong split.
+#
+# Answers, with reasoning, are published in the course solution bundle.
+
+# %% [markdown]
+# ## 17. What this lesson does NOT cover
+#
+# Everything here is deliberately the smallest version that is still honest. Missing, in
+# roughly the order it starts to matter:
+#
+# - **Multi-head attention.** One head can express one relation per position. Real models
+#   split the width into several heads, attend in parallel, and concatenate.
+# - **Layer normalisation, and where it goes.** There is none here at all, which is why the
+#   initialisation scale had to be small and the residual path had to exist. Whether the norm
+#   sits before or after the sub-layer changes training stability substantially.
+# - **Depth.** One attention block. Stacking them is what turns a bigram-ish model into a
+#   language model, and is also where the residual stream starts to earn its name.
+# - **The MLP sub-layer.** Real blocks alternate attention with a position-wise feed-forward
+#   network; roughly two thirds of the parameters live there.
+# - **Initialisation scaling.** A fixed 0.02 standard deviation, chosen because it works at
+#   this size, rather than anything that scales with width or depth.
+# - **Learning-rate schedules, warm-up, gradient clipping, dropout, weight decay.**
+# - **Subword tokenisation.** Characters here. Real models use BPE or similar, which is the
+#   subject of `T03-L01-bpe-from-scratch` in this track.
+# - **KV caching.** Sampling re-runs the whole context for every character, which is why it
+#   is the slowest part of this notebook despite generating only a few hundred characters.
+# - **float32, and any of the performance engineering that follows from it.** float64 was
+#   chosen so finite differences are meaningful, not because it is what you would ship.
+#
+# All of these are picked up by the next slice of the nanolm flagship (F01), which stacks
+# these blocks into a real one; it is not built at the time of writing.
+#
+# ## What you built, and where it goes next
+#
+# You implemented, by hand, every derivative in a working transformer block, proved each one
+# against finite differences rather than trusting it, and trained the result to beat a
+# measured information-theoretic baseline on held-out text — with no autodiff and no GPU.
+# When you later write `loss.backward()`, you now know precisely what it is doing.
+
+# %%
+# The closing recap. Every figure is recomputed here rather than quoted from the prose above.
+if __name__ == "__main__":
+    print("--- what you built, measured ---")
+    print(f"  parameters               {sum(v.size for v in init_params().values())}")
+    print(f"  uniform baseline         {UNIFORM_BASELINE:.4f} nats/char")
+    print(f"  unigram entropy (train)  {UNIGRAM_BASELINE:.4f} nats/char")
+    print(f"  held-out after training  {evaluate(trained, VAL_DATA, seed=7):.4f} nats/char")
+    print("  every number above was computed by the code you just ran")

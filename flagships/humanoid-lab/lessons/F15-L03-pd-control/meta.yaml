@@ -1,0 +1,78 @@
+id: F15-L03-pd-control
+title: Build a joint PD controller with gravity compensation, measure the droop it removes, and find your loop's stability ceiling by sweeping the gain
+track: T11
+flagship: F15-humanoid-lab
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 60
+language: python        # python | c | cpp
+prerequisites:
+  - F15-L01-first-contact      # mjModel vs mjData, stepping, reading qpos/qvel
+objectives:
+  - "Implement pd_torque(q, qd, q_target, kp, kd) and verify it against pure-P, pure-D and combined cases to machine precision"
+  - "Measure the steady-state droop of an uncompensated PD joint and show it equals qfrc_bias / kp rather than a bug in the loop"
+  - "Implement gravity compensation from data.qfrc_bias and measure the factor by which it drops the steady-state error"
+  - "Sweep kp at fixed kd, produce the tracking-error curve, and locate the stability limit from measured error alone"
+  - "Explain why a once-per-step PD law diverges at high kp and again at high kd"
+datasets:
+  - name: "planar_two_link — shoulder-and-elbow arm, inline MJCF"
+    licence: "CC0-1.0"
+    url: "https://creativecommons.org/publicdomain/zero/1.0/"
+    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
+    copyright: "Authored for this lesson by the AI Atlas project; dedicated to the public domain"
+    cached_at: "(inline MODEL_XML string in lesson.py; nothing is read from disk)"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Not a download. Two capsules, two hinges, two direct-drive motors, written as a string
+      inside the notebook, so the lesson runs with no network and no asset directory. No
+      contacts and no joint damping: the only thing resisting the controller is the arm's own
+      inertia and the gravitational bias, which is exactly what the lesson measures. The
+      payoff is an mj_step of a few microseconds, so a full eight-gain sweep plus a five-gain
+      damping sweep finishes in about a second on a laptop CPU.
+  - name: "MuJoCo 3.13.0 (the physics engine itself)"
+    licence: "Apache-2.0"
+    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
+    copyright: "DeepMind Technologies Limited"
+    cached_at: "(installed in the environment; not vendored)"
+    retrieved: 2026-09-16
+    gated: false
+    notes: >-
+      Free, ungated, commercial use permitted, no registration. The only third-party
+      dependency on the lesson's required path; matplotlib is used for an optional PNG and
+      the lesson prints its results and carries on if it is absent.
+points: 32
+# Authored 2026-09-16. The reference implementation was inherited in a usable state and was
+# corrected in two places before this meta was written, both of them gate failures:
+#
+#  - Section 2 probed the velocity-dependent part of qfrc_bias at the straight target pose
+#    and printed [0. 0.], while the closing prose told the student they had "seen the
+#    Coriolis terms appear the moment the arm moved". They had not: the coupling between
+#    these two links carries a sin(elbow) factor and the elbow is at zero there. The demo now
+#    probes a straight pose AND a bent one and prints both, so the zero is explained by a
+#    second measurement instead of contradicted by prose (gate 12: the notebook must not
+#    claim what its own output denies).
+#  - The common-mistakes and self-check prose ran 55 lines with nothing runnable between them
+#    (gate 3 allows ~40). A measured demo of the bias sign error now splits them: it runs
+#    tau = PD - qfrc_bias and reports the ratio against the uncompensated droop, which is the
+#    2x signature the prose had only asserted.
+#
+# Rubric design: no test asserts a gain value. Exercise 3 is graded on a grid the notebook
+# never uses, and the stability limit is only ever read back out of measured error, so a
+# student who finds a different ceiling on different hardware still scores full marks.
+#
+# Rubric mutation-tested against 10 plausible wrong implementations: flipped error sign,
+# added rather than subtracted damping, a controller that writes through the live qpos view,
+# a clamped (non-linear) torque, a subtracted bias, a bias read at the target instead of the
+# current pose, a hand-written gravity constant, a sweep that drops its kd argument, one that
+# drops its gravity_comp argument, and one that does not sort. 10 of 10 caught, every one
+# with partial credit intact (scores 14-30 of 32, never 0 and never full marks).
+#
+# That pass found a defect in this rubric rather than in a student's work, which is the point
+# of running it: test_pd_torque_does_not_touch_the_live_mujoco_views handed pd_torque
+# Q_TARGET, which is [0, 0], so the classic `q -= q_target` mutation subtracted zero and the
+# test written expressly to catch it passed. It now uses a non-zero target, and catches it.
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: ""
+measured_seconds: 1.1
+measured_peak_mib: 90

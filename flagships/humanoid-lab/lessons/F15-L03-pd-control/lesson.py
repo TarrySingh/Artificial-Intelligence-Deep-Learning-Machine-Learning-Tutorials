@@ -1,0 +1,655 @@
+# %% [markdown]
+# # F15-L03 · Joint PD control and gravity compensation
+#
+# **You will build:** a joint-space PD controller for a two-link MuJoCo arm, a gravity
+# compensation term lifted from the model's own bias force, and a measured tracking-error
+# curve over a gain sweep that locates the stability limit of your control loop.
+#
+# **Time:** ~45 minutes · **Runs on:** a laptop CPU, no GPU, far under 8 GiB
+# **Prerequisites:** `F15-L01-first-contact` — you can load a model, step it, and read
+# `data.qpos` / `data.qvel`.
+#
+# By the end you will be able to:
+# 1. Implement `pd_torque(q, qd, q_target, kp, kd)` and check it against pure-P, pure-D and
+#    combined cases to machine precision.
+# 2. Measure the steady-state droop of an uncompensated PD joint and show it is
+#    `data.qfrc_bias / kp`, not a bug in your loop.
+# 3. Implement gravity compensation from `data.qfrc_bias` and measure the drop in
+#    steady-state error against the uncompensated run.
+# 4. Sweep `kp` at fixed `kd`, produce the tracking-error curve, and identify the stability
+#    limit from measured error alone.
+# 5. Explain why a once-per-step PD law diverges both at high `kp` and at high `kd`.
+#
+# Every number this notebook prints is computed by the code you run. No figure in it was
+# typed by a human, including the stability limit — which is a property of your loop on your
+# machine, and is allowed to differ from anyone else's.
+#
+# **About the `if __name__ == "__main__":` guards.** They let the autograder import this
+# file without running any simulation. A Jupyter kernel sets `__name__` to `"__main__"`, so
+# every guarded cell still runs when you execute the notebook top to bottom.
+
+# %%
+# Setup. Everything the lesson needs, in one cell, with versions printed by the code.
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+print("mujoco  ", mujoco.__version__)
+print("numpy   ", np.__version__)
+
+# %% [markdown]
+# ## 1. A position target is not a plan
+#
+# A joint target says where you want to be. It applies no force. Gravity does. Below is a
+# planar two-link arm — shoulder and elbow, both hinges about the y axis, no joint damping,
+# one direct-drive motor per joint. Start it exactly at the pose we will later ask it to
+# hold, send zero torque, and watch what the pose does on its own.
+
+# %%
+MODEL_XML = """
+<mujoco model="planar_two_link">
+  <compiler angle="radian" autolimits="true"/>
+  <option timestep="0.002" gravity="0 0 -9.81" integrator="Euler"/>
+  <worldbody>
+    <light pos="0 0 3"/>
+    <body name="upper" pos="0 0 1.0">
+      <joint name="shoulder" type="hinge" axis="0 1 0"/>
+      <geom name="upper_g" type="capsule" fromto="0 0 0 0.40 0 0" size="0.040" density="800"/>
+      <body name="lower" pos="0.40 0 0">
+        <joint name="elbow" type="hinge" axis="0 1 0"/>
+        <geom name="lower_g" type="capsule" fromto="0 0 0 0.35 0 0" size="0.035" density="800"/>
+      </body>
+    </body>
+  </worldbody>
+  <actuator>
+    <motor joint="shoulder" gear="1"/>
+    <motor joint="elbow" gear="1"/>
+  </actuator>
+</mujoco>
+"""
+
+Q_TARGET = np.array([0.0, 0.0])      # arm straight out along +x: worst case for gravity
+Q_START = np.array([-0.6, 0.8])      # where every episode begins, in radians
+T_SIM = 3.0                          # seconds of closed-loop simulation per episode
+TAIL_FRACTION = 0.25                 # last quarter of an episode counts as "steady state"
+Q_DIVERGE = 50.0                     # rad: past this the episode is called diverged
+QD_DIVERGE = 1.0e4                   # rad/s: same
+
+
+def build():
+    """Return a fresh (model, data) pair for the arm. No files, no network."""
+    model = mujoco.MjModel.from_xml_string(MODEL_XML)
+    return model, mujoco.MjData(model)
+
+
+def demo_freefall(seconds=0.5):
+    """Step the arm from Q_TARGET with zero torque and report where it ended up."""
+    model, data = build()
+    data.qpos[:] = Q_TARGET
+    data.qvel[:] = 0.0
+    for _ in range(int(round(seconds / model.opt.timestep))):
+        mujoco.mj_step(model, data)
+    print(f"dof = {model.nv}, timestep = {model.opt.timestep} s, "
+          f"link masses = {np.round(model.body_mass[1:], 3)} kg")
+    print(f"started at q = {Q_TARGET}")
+    print(f"after {seconds} s of zero torque, q = {np.round(data.qpos, 4)}")
+    print(f"drift from the target = {np.round(np.abs(data.qpos - Q_TARGET), 4)} rad")
+
+
+# %%
+if __name__ == "__main__":
+    demo_freefall()
+
+# %% [markdown]
+# ## 2. What the model already knows
+#
+# MuJoCo's equation of motion is `M(q) qacc + C(q, qd) = tau`. The term `C(q, qd)` — gravity,
+# Coriolis and centrifugal, plus passive forces — is sitting in `data.qfrc_bias` after any
+# forward pass. Hold the pose (`qacc = 0`, `qd = 0`) and the equation collapses to
+# `tau = qfrc_bias`: the exact torque needed to stand still.
+#
+# `mj_inverse` answers the same question the long way round. Set `data.qacc` and it writes
+# the required force to `data.qfrc_inverse`. With `qacc = 0` the two must agree. Check it
+# rather than believe it. Then probe the velocity-dependent half of `C` at two different
+# poses — the answer is not the same at both, and the reason is worth knowing before you
+# ever consider hand-writing a gravity formula.
+
+# %%
+def bias_and_inverse_at(q, qd=None):
+    """Return (qfrc_bias, qfrc_inverse) at pose q and velocity qd, with qacc set to zero."""
+    model, data = build()
+    data.qpos[:] = q
+    data.qvel[:] = 0.0 if qd is None else qd
+    mujoco.mj_forward(model, data)
+    bias = data.qfrc_bias.copy()
+    data.qacc[:] = 0.0
+    mujoco.mj_inverse(model, data)
+    return bias, data.qfrc_inverse.copy()
+
+
+Q_BENT = np.array([0.3, 0.9])        # a folded pose, used to expose the velocity terms
+QD_PROBE = np.array([1.5, -2.0])     # an arbitrary joint velocity to probe the bias with
+
+
+def demo_bias_vs_inverse():
+    bias, inv = bias_and_inverse_at(Q_TARGET)
+    print(f"at the target, qfrc_bias    = {np.round(bias, 6)} N m")
+    print(f"at the target, qfrc_inverse = {np.round(inv, 6)} N m")
+    print(f"max |difference|            = {np.max(np.abs(bias - inv)):.3e} N m")
+    # Now the velocity-dependent half of C(q, qd). Probe it at TWO poses, because the
+    # straight pose hides it: the coupling between these two links is proportional to
+    # sin(elbow), and the elbow is at zero there. Measure, do not assume.
+    for name, pose in (("straight", Q_TARGET), ("bent    ", Q_BENT)):
+        rest, _ = bias_and_inverse_at(pose)
+        moving, _ = bias_and_inverse_at(pose, qd=QD_PROBE)
+        print(f"{name} pose q = {np.round(pose, 3)}:  at rest {np.round(rest, 4)}"
+              f"  ->  moving {np.round(moving, 4)} N m")
+        print(f"                            velocity-dependent part = "
+              f"{np.round(moving - rest, 6)} N m")
+    print("Gravity is in the bias at both poses. The Coriolis and centrifugal part is not:")
+    print("it is proportional to sin(elbow), so only the bent pose shows it.")
+
+
+# %%
+if __name__ == "__main__":
+    demo_bias_vs_inverse()
+
+# %% [markdown]
+# ## 3. Exercise 1 — the PD law itself
+#
+# A proportional-derivative joint controller is one line of algebra: pull towards the target
+# in proportion to the position error, and resist motion in proportion to the velocity.
+#
+# `tau = kp * (q_target - q) - kd * qd`
+#
+# Two traps live in that line. The error is `target - measured`, not the other way round, and
+# the damping term is *subtracted* — it opposes whatever the joint is doing, and never looks
+# at the target at all. A third trap is not in the algebra at all: `data.qpos` and
+# `data.qvel` are live views into MuJoCo's own memory, so anything you do to them in place
+# happens to the robot.
+
+# %%
+def pd_torque(q, qd, q_target, kp, kd):
+    """Joint-space PD torque, one entry per degree of freedom.
+
+    Args:
+        q, qd: current joint positions and velocities, any sequence of length nv.
+        q_target: desired joint positions, same length.
+        kp, kd: scalar proportional and derivative gains.
+
+    Returns:
+        np.ndarray of torques. Inputs are never modified.
+
+    Example:
+        >>> pd_torque([0.1, -0.2], [0.0, 0.0], [0.0, 0.0], 100.0, 5.0)
+        array([-10.,  20.])
+        >>> pd_torque([0.0, 0.0], [1.0, -2.0], [0.0, 0.0], 100.0, 5.0)
+        array([-5., 10.])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public checks — run these as often as you like.
+def _check_pd_torque():
+    got = pd_torque([0.1, -0.2], [0.0, 0.0], [0.0, 0.0], 100.0, 5.0)
+    want = np.array([-10.0, 20.0])
+    assert np.allclose(got, want), (
+        f"pure-P case gave {got}, expected {want} — the error is (q_target - q); "
+        "if your signs are flipped you have written (q - q_target)")
+
+    got = pd_torque([0.0, 0.0], [1.0, -2.0], [0.0, 0.0], 100.0, 5.0)
+    want = np.array([-5.0, 10.0])
+    assert np.allclose(got, want), (
+        f"pure-D case gave {got}, expected {want} — the damping term is subtracted "
+        "(-kd * qd) and does not involve q_target")
+
+    got = pd_torque([0.25, 0.25], [0.25, 0.25], [0.25, 0.25], 250.0, 9.0)
+    assert np.allclose(got, [-2.25, -2.25]), (
+        f"at the target but still moving you returned {got}; the P term is zero there but "
+        "the D term is not")
+
+    q = np.array([0.3, -0.4])
+    qd = np.array([0.1, 0.2])
+    pd_torque(q, qd, Q_TARGET, 10.0, 1.0)
+    assert np.allclose(q, [0.3, -0.4]) and np.allclose(qd, [0.1, 0.2]), (
+        "pd_torque modified its inputs in place — MuJoCo hands you live views of qpos and "
+        "qvel, so write `q = np.asarray(q, dtype=float)` and never use `-=` on them")
+
+    out = pd_torque([0.0, 0.0], [0.0, 0.0], [0.0, 0.0], 500.0, 25.0)
+    assert np.allclose(out, [0.0, 0.0]), (
+        f"at rest, at the target, PD must be exactly zero torque; you returned {out}")
+    print("exercise 1 looks right: pure-P, pure-D, combined, non-mutating, zero at rest")
+
+
+# %%
+if __name__ == "__main__":
+    _check_pd_torque()
+
+# %% [markdown]
+# ## 4. The episode harness, and the droop you are about to explain
+#
+# `run_episode` is provided. It calls *your* controller once per timestep, refreshing the
+# forward pass first so `data.qfrc_bias` matches the current state, and returns measured
+# error statistics. Steady-state error is the per-joint mean absolute error over the last
+# quarter of the episode, reduced by the worst joint.
+#
+# Run it uncompensated and compare the steady-state error against `qfrc_bias / kp`.
+
+# %%
+KP_DEMO = 540.0     # a middling gain, used for the single-episode comparisons
+KD_FIXED = 5.0      # held constant everywhere kp is the variable
+KP_GRID = [20.0, 60.0, 180.0, 540.0, 1620.0, 4860.0, 14580.0, 43740.0]
+SSE_TOL = 1.0e-2    # rad: above this a gain is not holding the pose, stable or not
+
+
+def steady_state_error(err):
+    """Worst-joint mean absolute error over the final TAIL_FRACTION of an error history."""
+    err = np.abs(np.asarray(err, dtype=float))
+    tail = err[int((1.0 - TAIL_FRACTION) * len(err)):]
+    return float(np.max(tail.mean(axis=0)))
+
+
+def run_episode(kp, kd, gravity_comp=False, q_start=Q_START, q_target=Q_TARGET, t_sim=T_SIM):
+    """Close the loop around pd_torque (or gravity_comp_torque) and measure the error.
+
+    Returns a dict with kp, kd, gravity_comp, steady_state_error, rms_error, peak_error,
+    steps and diverged.
+    """
+    model, data = build()
+    data.qpos[:] = q_start
+    data.qvel[:] = 0.0
+    q_target = np.asarray(q_target, dtype=float)
+    n = int(round(t_sim / model.opt.timestep))
+    err = np.zeros((n, model.nv))
+    diverged = False
+    used = n
+    for i in range(n):
+        mujoco.mj_forward(model, data)          # refresh qfrc_bias at the current state
+        if gravity_comp:
+            tau = gravity_comp_torque(model, data, q_target, kp, kd)
+        else:
+            tau = pd_torque(data.qpos, data.qvel, q_target, kp, kd)
+        data.ctrl[:] = tau
+        mujoco.mj_step(model, data)
+        err[i] = q_target - data.qpos
+        if (not np.all(np.isfinite(data.qpos))
+                or np.max(np.abs(data.qpos)) > Q_DIVERGE
+                or np.max(np.abs(data.qvel)) > QD_DIVERGE):
+            diverged = True
+            used = i + 1
+            break
+    err = err[:used]
+    return {
+        "kp": float(kp),
+        "kd": float(kd),
+        "gravity_comp": bool(gravity_comp),
+        "steady_state_error": steady_state_error(err),
+        "rms_error": float(np.sqrt((err ** 2).mean())),
+        "peak_error": float(np.abs(err).max()),
+        "steps": int(used),
+        "diverged": diverged,
+    }
+
+
+def demo_droop():
+    rec = run_episode(KP_DEMO, KD_FIXED, gravity_comp=False)
+    bias, _ = bias_and_inverse_at(Q_TARGET)
+    predicted = np.max(np.abs(bias)) / KP_DEMO
+    print(f"kp = {KP_DEMO}, kd = {KD_FIXED}, no gravity term")
+    print(f"  measured steady-state error = {rec['steady_state_error']:.6f} rad")
+    print(f"  |qfrc_bias| / kp            = {predicted:.6f} rad")
+    print(f"  ratio measured / predicted  = {rec['steady_state_error'] / predicted:.4f}")
+    print(f"  torque the error is buying  = "
+          f"{KP_DEMO * rec['steady_state_error']:.4f} N m vs bias "
+          f"{np.max(np.abs(bias)):.4f} N m")
+    return rec
+
+
+# %%
+if __name__ == "__main__":
+    uncompensated = demo_droop()
+
+# %% [markdown]
+# ## 5. Exercise 2 — pay the bias force yourself
+#
+# The droop is not a tuning failure. At equilibrium the spring term is the *only* thing
+# balancing the bias force, so the joint must sit off-target by exactly enough to generate
+# it. Raising `kp` shrinks the error but never removes it, and it stiffens the loop, which
+# section 6 will show has a hard ceiling.
+#
+# So stop asking the spring to do it. Add the bias force the model already computed, and let
+# PD handle only the part gravity does not explain.
+
+# %%
+def gravity_comp_torque(model, data, q_target, kp, kd):
+    """PD torque plus the model's own bias force, ready for `data.ctrl`.
+
+    `data.qfrc_bias` is valid only after a forward pass at the current state; `run_episode`
+    calls `mj_forward` for you before it calls this. Read the sign off the equation of
+    motion: `M qacc + C = tau`, so holding still (`qacc = 0`) needs `tau = qfrc_bias`.
+
+    Do not recompute gravity by hand, and do not cache the bias outside the loop: read it
+    from `data` on every call, so it matches the pose the arm is in right now.
+
+    Args:
+        model: the MjModel (unused here, but part of the signature the harness calls).
+        data: the MjData, already forward-propagated this step.
+        q_target: desired joint positions.
+        kp, kd: scalar gains, passed straight through to pd_torque.
+
+    Returns:
+        np.ndarray of torques, one per degree of freedom.
+
+    Example:
+        With kp = kd = 0 this must return exactly `data.qfrc_bias`, element for element:
+        >>> gravity_comp_torque(model, data, Q_TARGET, 0.0, 0.0) - data.qfrc_bias
+        array([0., 0.])
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_gravity_comp():
+    model, data = build()
+    data.qpos[:] = [0.35, -0.45]
+    data.qvel[:] = [0.2, -0.1]
+    mujoco.mj_forward(model, data)
+    got = gravity_comp_torque(model, data, Q_TARGET, 0.0, 0.0)
+    assert np.allclose(got, data.qfrc_bias, atol=1e-12), (
+        f"with kp = kd = 0 the torque must be data.qfrc_bias exactly; you returned {got} "
+        f"against a bias of {data.qfrc_bias} — are you recomputing gravity by hand instead "
+        "of reading qfrc_bias?")
+
+    data.qpos[:] = [0.35, -0.45]
+    data.qvel[:] = [0.2, -0.1]
+    mujoco.mj_forward(model, data)
+    both = gravity_comp_torque(model, data, Q_TARGET, 120.0, 3.0)
+    pd_only = pd_torque(data.qpos, data.qvel, Q_TARGET, 120.0, 3.0)
+    assert np.allclose(both - pd_only, data.qfrc_bias, atol=1e-12), (
+        "your function is not PD + qfrc_bias; the difference from the pure PD torque came "
+        f"out as {both - pd_only}, expected {data.qfrc_bias}")
+
+    with_comp = run_episode(KP_DEMO, KD_FIXED, gravity_comp=True)
+    without = run_episode(KP_DEMO, KD_FIXED, gravity_comp=False)
+    assert not with_comp["diverged"], (
+        "the compensated episode diverged at a gain that is stable without compensation — "
+        "check the sign: adding -qfrc_bias doubles gravity instead of cancelling it")
+    assert with_comp["steady_state_error"] < SSE_TOL / 10.0, (
+        f"compensated steady-state error is {with_comp['steady_state_error']:.6f} rad, "
+        f"which is not small; a sign error gives roughly twice the uncompensated droop "
+        f"({without['steady_state_error']:.6f} rad), so compare the two numbers")
+    assert with_comp["steady_state_error"] < without["steady_state_error"] / 50.0, (
+        f"compensation only moved the error from {without['steady_state_error']:.6f} to "
+        f"{with_comp['steady_state_error']:.6f} rad; are you adding the bias every step, or "
+        "once before the loop?")
+    print(f"exercise 2 looks right: steady-state error "
+          f"{without['steady_state_error']:.6f} -> {with_comp['steady_state_error']:.3e} rad "
+          f"({without['steady_state_error'] / with_comp['steady_state_error']:.0f}x better)")
+    return with_comp, without
+
+
+# %%
+if __name__ == "__main__":
+    compensated, uncompensated = _check_gravity_comp()
+
+# %% [markdown]
+# ## 6. Exercise 3 — sweep the gain until the loop bites back
+#
+# Gravity compensation removed the steady-state error at one gain. It says nothing about how
+# high `kp` may go. Your control law is evaluated once per timestep and held constant across
+# it, so a stiff enough spring overshoots further on every step. Find that ceiling by
+# measurement: run one episode per gain in `KP_GRID` at fixed `KD_FIXED`, and return the
+# records ascending in `kp`.
+#
+# You are not being graded on where the ceiling lands. It is a property of this model, this
+# timestep and this machine, and `stability_limit` below reads it back out of measured error
+# without ever looking at the gain itself.
+
+# %%
+def sweep_kp(kp_values, kd=KD_FIXED, gravity_comp=True):
+    """Run one episode per gain and return the records, ascending in kp.
+
+    Pass `kd` and `gravity_comp` through to `run_episode` unchanged — the grader calls this
+    with values other than the defaults and checks that they arrived.
+
+    Args:
+        kp_values: iterable of proportional gains.
+        kd: derivative gain, held fixed across the sweep.
+        gravity_comp: passed through to run_episode.
+
+    Returns:
+        list of run_episode dicts, sorted by kp ascending.
+
+    Example:
+        >>> [r["kp"] for r in sweep_kp([60.0, 20.0])]
+        [20.0, 60.0]
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def stability_limit(records, tol=SSE_TOL):
+    """Highest swept gain that still held the pose: not diverged, error within tol.
+
+    Provided for you. Note what it does *not* look at: the gain's numerical value. A gain
+    counts as usable only if the measured error says so.
+    """
+    usable = [r["kp"] for r in records
+              if not r["diverged"] and r["steady_state_error"] <= tol]
+    return max(usable) if usable else float("nan")
+
+
+def print_error_curve(records, tol=SSE_TOL):
+    """ASCII tracking-error curve: every number here is measured, none is typed."""
+    print(f"{'kp':>9}  {'sse (rad)':>11}  {'rms (rad)':>10}  {'peak':>7}  verdict")
+    for r in records:
+        if r["diverged"]:
+            bar, verdict = "!" * 24, "diverged"
+        else:
+            decades = np.log10(max(r["steady_state_error"], 1e-9))
+            bar = "#" * int(np.clip(24 + 3 * decades, 1, 24))
+            verdict = "holds" if r["steady_state_error"] <= tol else "not holding"
+        print(f"{r['kp']:>9.0f}  {r['steady_state_error']:>11.3e}  {r['rms_error']:>10.4f}  "
+              f"{r['peak_error']:>7.3f}  {verdict:<12} {bar}")
+
+
+def save_error_curve(records, name="tracking_error_curve.png"):
+    """Best-effort PNG of the curve next to this file. Never fails the lesson."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except Exception as exc:                                  # pragma: no cover
+        print(f"  (no plot: {exc})")
+        return None
+    try:
+        base = Path(__file__).resolve().parent
+    except NameError:                                         # a notebook has no __file__
+        base = Path.cwd()
+    stable = [r for r in records if not r["diverged"]]
+    fig, ax = plt.subplots(figsize=(6.0, 4.0))
+    ax.loglog([r["kp"] for r in stable],
+              [max(r["steady_state_error"], 1e-9) for r in stable], marker="o")
+    limit = stability_limit(records)
+    if np.isfinite(limit):
+        ax.axvline(limit, linestyle="--", color="crimson")
+        ax.annotate("empirical stability limit", xy=(limit, ax.get_ylim()[1]),
+                    xytext=(-6, -12), textcoords="offset points",
+                    ha="right", va="top", color="crimson", fontsize=8)
+    ax.set_xlabel("kp (N m / rad)")
+    ax.set_ylabel("steady-state error (rad)")
+    ax.set_title(f"tracking error vs kp at kd = {records[0]['kd']:g}")
+    ax.grid(True, which="both", alpha=0.3)
+    out = base / name
+    fig.tight_layout()
+    fig.savefig(out, dpi=110)
+    plt.close(fig)
+    return out
+
+
+def _check_sweep():
+    records = sweep_kp(KP_GRID, KD_FIXED, gravity_comp=True)
+    assert len(records) == len(KP_GRID), (
+        f"sweep_kp returned {len(records)} records for {len(KP_GRID)} gains — one episode "
+        "per gain, no deduplication")
+    kps = [r["kp"] for r in records]
+    assert kps == sorted(kps), f"records must be ascending in kp; got {kps}"
+    assert all("steady_state_error" in r and "diverged" in r for r in records), (
+        "each record must be the dict run_episode returns — return the records themselves, "
+        "not just the errors")
+    assert any(r["diverged"] or r["steady_state_error"] > SSE_TOL for r in records), (
+        "no gain in the grid failed, so there is no limit to find; did every episode run "
+        "the full duration with your controller in the loop?")
+    limit = stability_limit(records)
+    assert np.isfinite(limit), (
+        "no gain held the pose — check exercise 2 before tuning anything")
+    assert limit < max(KP_GRID), (
+        f"the top of the grid ({max(KP_GRID):.0f}) reported as usable, which means the "
+        "episode never actually got there; check your loop")
+    print(f"exercise 3 looks right: {len(records)} episodes, "
+          f"empirical stability limit = {limit:.0f} N m / rad")
+    return records
+
+
+# %%
+if __name__ == "__main__":
+    curve = _check_sweep()
+    print_error_curve(curve)
+    print(f"stability limit (measured, tol {SSE_TOL} rad): {stability_limit(curve):.0f}")
+    png = save_error_curve(curve)
+    if png is not None:
+        print(f"curve written to {png}")
+
+# %% [markdown]
+# ## 7. What `kd` is actually for
+#
+# `kp` sets how hard the joint is pulled; `kd` sets how much of that pull is spent fighting
+# its own momentum. Too little and the arm rings. Too much and the damping term — also
+# evaluated once per step, also held constant across it — starts injecting the energy it was
+# meant to remove. This sweep is provided; read the measured columns and see both walls.
+
+# %%
+KD_GRID = [0.25, 1.0, 5.0, 20.0, 80.0]
+
+
+def demo_kd_sweep(kp=KP_DEMO, kd_values=KD_GRID):
+    print(f"kp held at {kp}, gravity compensation on")
+    print(f"{'kd':>7}  {'sse (rad)':>11}  {'rms (rad)':>10}  {'peak (rad)':>10}  verdict")
+    for kd in kd_values:
+        r = run_episode(kp, kd, gravity_comp=True)
+        if r["diverged"]:
+            verdict = "diverged"
+        elif r["steady_state_error"] > SSE_TOL:
+            verdict = "not settled in the episode"
+        elif r["peak_error"] > 1.15 * float(np.max(np.abs(Q_TARGET - Q_START))):
+            verdict = "settles, overshoots"
+        else:
+            verdict = "settles, no overshoot"
+        print(f"{kd:>7.2f}  {r['steady_state_error']:>11.3e}  {r['rms_error']:>10.4f}  "
+              f"{r['peak_error']:>10.4f}  {verdict}")
+
+
+# %%
+if __name__ == "__main__":
+    demo_kd_sweep()
+
+# %% [markdown]
+# ## 8. Common mistakes
+#
+# - **Sign on the error.** `kp * (q - q_target)` pushes away from the target. The arm leaves
+#   the screen and you blame the gains.
+# - **Sign on the bias.** `tau = pd - qfrc_bias` doubles gravity instead of cancelling it.
+#   The tell is a steady-state error roughly twice the uncompensated droop, not an explosion.
+# - **A stale bias.** `qfrc_bias` is only valid for the state of the last forward pass. Cache
+#   it outside the loop and you are compensating for a pose the arm has already left.
+# - **Mutating MuJoCo's arrays.** `data.qpos` is a live view. `q -= q_target` inside your
+#   controller silently teleports the robot.
+# - **Reading the droop as a tuning problem.** It is `qfrc_bias / kp` and no amount of `kp`
+#   sends it to zero; only a feed-forward term does.
+# - **Chasing the stability limit with `kd`.** More damping buys headroom up to a point, then
+#   becomes the instability itself.
+#
+# The second of those is worth a measurement rather than a warning. Flip the sign on the
+# bias and watch what it does: it does not explode, it just pays gravity twice.
+
+# %%
+def demo_sign_error(kp=KP_DEMO, kd=KD_FIXED):
+    """Run one episode with `tau = PD - qfrc_bias` and compare it against PD alone."""
+    model, data = build()
+    data.qpos[:] = Q_START
+    data.qvel[:] = 0.0
+    n = int(round(T_SIM / model.opt.timestep))
+    err = np.zeros((n, model.nv))
+    for i in range(n):
+        mujoco.mj_forward(model, data)
+        data.ctrl[:] = pd_torque(data.qpos, data.qvel, Q_TARGET, kp, kd) - data.qfrc_bias
+        mujoco.mj_step(model, data)
+        err[i] = Q_TARGET - data.qpos
+    wrong = steady_state_error(err)
+    plain = run_episode(kp, kd, gravity_comp=False)["steady_state_error"]
+    print(f"PD alone (no bias term)   : {plain:.6f} rad")
+    print(f"PD minus the bias (wrong) : {wrong:.6f} rad")
+    print(f"ratio                     : {wrong / plain:.2f}x the uncompensated droop")
+    print("No explosion, no error message: just gravity paid twice. The ratio is the tell.")
+
+
+# %%
+if __name__ == "__main__":
+    demo_sign_error()
+
+# %% [markdown]
+# ## 9. Self-check
+#
+# 1. You hold a fixed target with pure PD and no gravity term. Doubling `kp` does what to the
+#    steady-state joint error?
+#    - (a) leaves it unchanged, because gravity is unchanged
+#    - (b) halves it, because at equilibrium `kp x error` must still supply the same bias
+#      torque
+#    - (c) removes it, because a stiffer joint has no error
+# 2. `data.qfrc_bias` holds
+#    - (a) the gravitational torque only
+#    - (b) `C(q, qd)`: gravity, Coriolis and centrifugal terms plus passive forces, evaluated
+#      with `qacc = 0`
+#    - (c) the actuator torque MuJoCo applied on the last step
+# 3. Given `M(q) qacc + C(q, qd) = tau`, holding a pose (`qacc = 0`, `qd = 0`) means your
+#    controller must
+#    - (a) add `qfrc_bias` to the PD torque
+#    - (b) subtract `qfrc_bias` from the PD torque
+#    - (c) do nothing, because MuJoCo applies the bias force itself
+# 4. With compensation exact, raising `kp` still eventually blows the simulation up because
+#    - (a) the compensation term saturates the motor
+#    - (b) the control law is evaluated once per timestep and held constant across it, so a
+#      spring that is stiff relative to the joint inertia overshoots more on every step
+#    - (c) MuJoCo clamps `qacc` and loses the excess
+# 5. Raising `kd` far past the value that killed the oscillation made the measured error grow
+#    again. The reason is
+#    - (a) the damping torque is discretised too: once it is large relative to the joint
+#      inertia, the once-per-step damping overshoots and injects energy
+#    - (b) `kd` cannot affect steady-state error, so the measurement must be wrong
+#    - (c) damping is only defined for continuous time
+#
+# Answers are published in the course solution bundle.
+#
+# ## What you built, and where it goes next
+#
+# A joint-space PD controller with feed-forward gravity compensation, plus a measured gain
+# curve and the stability ceiling of your own loop. This is the bottom layer of the humanoid
+# lab: every later policy in the flagship emits joint targets, and this controller is what
+# turns them into torques. The next lesson stacks a trajectory on top of it, where the same
+# `qfrc_bias` call carries the Coriolis terms you measured at the bent pose in section 2 —
+# terms a hand-written gravity formula would have missed entirely.
+
+# %%
+if __name__ == "__main__":
+    limit = stability_limit(curve)
+    print("\n=== F15-L03 summary (all figures measured by this run) ===")
+    print(f"uncompensated steady-state error at kp={KP_DEMO:.0f}: "
+          f"{uncompensated['steady_state_error']:.6f} rad")
+    print(f"compensated   steady-state error at kp={KP_DEMO:.0f}: "
+          f"{compensated['steady_state_error']:.3e} rad")
+    print(f"improvement factor: "
+          f"{uncompensated['steady_state_error'] / compensated['steady_state_error']:.0f}x")
+    print(f"empirical stability limit at kd={KD_FIXED:.0f}: {limit:.0f} N m / rad")
+    print(f"episodes simulated: {2 + len(KP_GRID) + len(KD_GRID) + 3}")

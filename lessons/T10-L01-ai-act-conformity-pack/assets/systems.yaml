@@ -1,0 +1,428 @@
+# A fictional organisation's AI system registry — the input side of a conformity pack.
+#
+# Every system, every document reference and every person implied here is invented for this
+# lesson. Nothing in this file describes a real product, a real company or a real audit.
+# The SHAPE is what matters: this is the level of detail a conformity pack actually needs
+# before anyone can say whether a system is ready.
+#
+# Field reference (see lesson.py section 2):
+#   id                             short stable key
+#   name                           what the system does, in one line
+#   role                           this organisation's role for this system: provider | deployer
+#   prohibited_practice            a tag naming an Article 5 practice, or null
+#   annex_iii_area                 an Annex III use-case area, or null
+#   embedded_in_regulated_product  true when the AI is a safety component of a product already
+#                                  covered by EU product-safety law (the Annex I route)
+#   product_legislation            which product legislation, when embedded; else null
+#   is_gpai_model                  true for a general-purpose AI model placed on the market
+#   interacts_with_humans          true when a person converses with it directly
+#   generates_synthetic_content    true when it emits synthetic audio, image, video or text
+#   placed_on_market               ISO date the system was first placed on the market or put
+#                                  into service (drives the Article 50(2) transitional rule)
+#   evidence                       item id -> {status, document, date, review_due}
+#                                    status     present | planned | missing
+#                                    document   the reference a reviewer would ask for
+#                                    date       ISO date the document was issued
+#                                    review_due ISO date it must next be reviewed (optional)
+
+systems:
+  - id: cv-screener
+    name: CV screening and ranking for graduate hiring
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: employment
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: false
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2026-03-01"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "HR-TRN-2026-014 attendance sheet"
+        date: "2026-04-12"
+      risk_management_system:
+        status: present
+        document: "RMS-CVS-v3"
+        date: "2026-02-10"
+        review_due: "2026-08-10"          # lapsed before the as-of date: stale, not evidence
+      data_governance_record:
+        status: present
+        document: "DG-CVS-v2 training-set provenance and bias testing"
+        date: "2026-02-18"
+      technical_documentation:
+        status: present
+        document: "TD-CVS-v4 (Annex IV structure)"
+        date: "2026-05-02"
+      automatic_logging_design:
+        status: present
+        document: "LOG-CVS-v1 retention and traceability design"
+        date: "2026-01-30"
+      instructions_for_use:
+        status: present
+        document: "IFU-CVS-v3 for recruiting teams"
+        date: "2026-05-02"
+      human_oversight_plan:
+        status: planned
+        document: "HOV-CVS draft, owner unassigned"
+        date: "2026-11-30"
+      accuracy_robustness_cybersecurity_report:
+        status: present
+        document: "ARC-CVS-2026-Q1 test report"
+        date: "2026-03-20"
+      quality_management_system:
+        status: present
+        document: "QMS-2026 rev B"
+        date: "2026-01-15"
+      conformity_assessment_record:
+        status: planned
+        document: "internal control procedure, not yet run"
+        date: "2027-06-01"
+      eu_declaration_of_conformity:
+        status: missing
+        document: ""
+        date: null
+      ce_marking_record:
+        status: missing
+        document: ""
+        date: null
+      eu_database_registration:
+        status: missing
+        document: ""
+        date: null
+      post_market_monitoring_plan:
+        status: present
+        document: "PMM-CVS-v1"
+        date: "2026-05-14"
+      serious_incident_procedure:
+        status: present
+        document: "SIR-GLOBAL-v2 reporting runbook"
+        date: "2026-01-15"
+
+  - id: support-copilot
+    name: Customer-support assistant that drafts and sends replies in the user's name
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: null
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: false
+    interacts_with_humans: true
+    generates_synthetic_content: true
+    placed_on_market: "2025-05-20"        # on the market before 2026-08-02: legacy marking rule
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "SUP-TRN-2026-003"
+        date: "2026-02-02"
+      user_facing_ai_disclosure:
+        status: present
+        document: "UX-COPY-2026-07 first-turn disclosure banner"
+        date: "2026-07-01"
+      machine_readable_marking_spec:
+        status: planned
+        document: "provenance metadata spec, in review"
+        date: "2026-11-15"
+      content_provenance_test_report:
+        status: missing
+        document: ""
+        date: null
+
+  - id: citizen-score
+    name: General-purpose social scoring of residents from unrelated administrative records
+    role: deployer
+    prohibited_practice: social_scoring
+    annex_iii_area: null
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: false
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2024-11-04"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "OPS-TRN-2025-021"
+        date: "2025-01-20"
+      withdrawal_decision_record:
+        status: planned
+        document: "decommissioning paper going to the board"
+        date: "2026-12-01"
+
+  - id: xray-triage
+    name: Chest X-ray triage model shipped inside a CE-marked diagnostic workstation
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: null
+    embedded_in_regulated_product: true
+    product_legislation: "Regulation (EU) 2017/745 on medical devices"
+    is_gpai_model: false
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2026-06-15"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "CLIN-TRN-2026-008"
+        date: "2026-03-03"
+      risk_management_system:
+        status: present
+        document: "RMS-XRT-v5 merged with the device risk file"
+        date: "2026-04-01"
+      data_governance_record:
+        status: present
+        document: "DG-XRT-v3 cohort provenance"
+        date: "2026-03-28"
+      technical_documentation:
+        status: present
+        document: "TD-XRT-v6"
+        date: "2026-06-01"
+      automatic_logging_design:
+        status: present
+        document: "LOG-XRT-v2"
+        date: "2026-04-11"
+      instructions_for_use:
+        status: present
+        document: "IFU-XRT-v6 radiologist-facing"
+        date: "2026-06-01"
+      human_oversight_plan:
+        status: present
+        document: "HOV-XRT-v2 reader-in-the-loop protocol"
+        date: "2026-04-22"
+      accuracy_robustness_cybersecurity_report:
+        status: present
+        document: "ARC-XRT-2026-Q2"
+        date: "2026-05-30"
+      quality_management_system:
+        status: present
+        document: "QMS-2026 rev B (ISO 13485 aligned)"
+        date: "2026-01-15"
+      conformity_assessment_record:
+        status: present
+        document: "NB-2026-4471 notified body assessment"
+        date: "2026-06-10"
+      eu_declaration_of_conformity:
+        status: present
+        document: "DoC-XRT-2026-06"
+        date: "2026-06-12"
+      ce_marking_record:
+        status: present
+        document: "CE-XRT-2026-06 marking file"
+        date: "2026-06-12"
+      integrated_product_conformity_assessment:
+        status: planned
+        document: "AI requirements not yet folded into the MDR technical file"
+        date: "2027-09-30"
+      post_market_monitoring_plan:
+        status: present
+        document: "PMM-XRT-v2 aligned with PMS under the MDR"
+        date: "2026-06-12"
+      serious_incident_procedure:
+        status: present
+        document: "SIR-GLOBAL-v2 reporting runbook"
+        date: "2026-01-15"
+
+  - id: atlas-7b
+    name: In-house 7B general-purpose language model offered to other companies
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: null
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: true
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2025-09-01"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "ML-TRN-2025-047"
+        date: "2025-10-06"
+      model_technical_documentation:
+        status: present
+        document: "MTD-ATLAS7B-v2"
+        date: "2025-08-25"
+      copyright_policy:
+        status: present
+        document: "CR-POL-2025-v1 text-and-data-mining policy"
+        date: "2025-08-18"
+      training_data_summary:
+        status: planned
+        document: "public summary drafted, legal review open"
+        date: "2026-10-31"
+
+  - id: weld-inspector
+    name: Vision model that flags bad welds for a human inspector, no safety function
+    role: deployer
+    prohibited_practice: null
+    annex_iii_area: null
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: false
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2026-02-09"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "PLANT-TRN-2026-011"
+        date: "2026-03-17"
+
+  - id: loan-copilot
+    name: Conversational assistant that scores consumer creditworthiness and explains the score
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: credit_scoring
+    embedded_in_regulated_product: false
+    product_legislation: null
+    is_gpai_model: false
+    interacts_with_humans: true
+    generates_synthetic_content: true
+    placed_on_market: "2026-08-30"        # after 2026-08-02: no transitional marking relief
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "FIN-TRN-2026-019"
+        date: "2026-05-11"
+      user_facing_ai_disclosure:
+        status: present
+        document: "UX-COPY-2026-09 chat entry disclosure"
+        date: "2026-08-20"
+      machine_readable_marking_spec:
+        status: missing
+        document: ""
+        date: null
+      content_provenance_test_report:
+        status: missing
+        document: ""
+        date: null
+      risk_management_system:
+        status: present
+        document: "RMS-LNC-v1"
+        date: "2026-07-24"
+      data_governance_record:
+        status: present
+        document: "DG-LNC-v1 bureau-data provenance"
+        date: "2026-07-24"
+      technical_documentation:
+        status: present
+        document: "TD-LNC-v2"
+        date: "2026-08-25"
+      automatic_logging_design:
+        status: present
+        document: "LOG-LNC-v1"
+        date: "2026-07-30"
+      instructions_for_use:
+        status: present
+        document: "IFU-LNC-v2 for branch staff"
+        date: "2026-08-25"
+      human_oversight_plan:
+        status: present
+        document: "HOV-LNC-v1 adverse-decision review"
+        date: "2026-08-01"
+      accuracy_robustness_cybersecurity_report:
+        status: planned
+        document: "ARC-LNC scheduled after the next model refresh"
+        date: "2027-03-31"
+      quality_management_system:
+        status: present
+        document: "QMS-2026 rev B"
+        date: "2026-01-15"
+      conformity_assessment_record:
+        status: planned
+        document: "internal control procedure booked for 2027"
+        date: "2027-05-04"
+      eu_declaration_of_conformity:
+        status: missing
+        document: ""
+        date: null
+      ce_marking_record:
+        status: missing
+        document: ""
+        date: null
+      eu_database_registration:
+        status: planned
+        document: "registration blocked until the DoC exists"
+        date: "2027-07-01"
+      post_market_monitoring_plan:
+        status: present
+        document: "PMM-LNC-v1"
+        date: "2026-08-25"
+      serious_incident_procedure:
+        status: present
+        document: "SIR-GLOBAL-v2 reporting runbook"
+        date: "2026-01-15"
+
+  - id: cobot-guard
+    name: Collaborative-robot speed and separation monitor, a safety component of the machine
+    role: provider
+    prohibited_practice: null
+    annex_iii_area: critical_infrastructure   # tempting, but the embedding decides the route
+    embedded_in_regulated_product: true
+    product_legislation: "Regulation (EU) 2023/1230 on machinery"
+    is_gpai_model: false
+    interacts_with_humans: false
+    generates_synthetic_content: false
+    placed_on_market: "2026-05-05"
+    evidence:
+      ai_literacy_training_record:
+        status: present
+        document: "ENG-TRN-2026-006"
+        date: "2026-02-24"
+      risk_management_system:
+        status: present
+        document: "RMS-CBG-v2"
+        date: "2026-03-09"
+      data_governance_record:
+        status: present
+        document: "DG-CBG-v1 sensor-data provenance"
+        date: "2026-03-09"
+      technical_documentation:
+        status: present
+        document: "TD-CBG-v3"
+        date: "2026-04-27"
+      automatic_logging_design:
+        status: present
+        document: "LOG-CBG-v1"
+        date: "2026-03-18"
+      instructions_for_use:
+        status: present
+        document: "IFU-CBG-v3 integrator manual"
+        date: "2026-04-27"
+      human_oversight_plan:
+        status: present
+        document: "HOV-CBG-v1 stop-and-recover procedure"
+        date: "2026-04-02"
+      accuracy_robustness_cybersecurity_report:
+        status: present
+        document: "ARC-CBG-2026-Q2"
+        date: "2026-04-30"
+      quality_management_system:
+        status: present
+        document: "QMS-2026 rev B"
+        date: "2026-01-15"
+      conformity_assessment_record:
+        status: planned
+        document: "notified body slot requested"
+        date: "2027-02-15"
+      eu_declaration_of_conformity:
+        status: missing
+        document: ""
+        date: null
+      ce_marking_record:
+        status: present
+        document: "CE-CBG-2026-05 machinery marking file"
+        date: "2026-05-04"
+      integrated_product_conformity_assessment:
+        status: missing
+        document: ""
+        date: null
+      post_market_monitoring_plan:
+        status: present
+        document: "PMM-CBG-v1"
+        date: "2026-05-04"
+      serious_incident_procedure:
+        status: present
+        document: "SIR-GLOBAL-v2 reporting runbook"
+        date: "2026-01-15"

@@ -1,0 +1,288 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements.
+#
+# Numbers a student SEES IN OUTPUT — survival rates, RMS lean, saturation fractions, the
+# latency at which the controller topples — are computed by the code they run. They are
+# measurements, not claims, and they are deliberately absent from this file.
+#
+# What IS here: NVIDIA's published hardware requirements, the free notebook tiers' published
+# behaviour, the two papers the domain-randomisation section rests on, MuJoCo's documented
+# semantics for the two knobs the lesson turns, and every price in the hardware ladder.
+claims:
+
+  # --- what Isaac Sim actually requires -----------------------------------------------
+
+  - id: isaac-sim-minimum-gpu
+    claim: >-
+      NVIDIA's Isaac Sim requirements page states the minimum GPU as a GeForce RTX 4080 with
+      16 GB of VRAM, a "Good" configuration as a GeForce RTX 5080 with 16 GB, and an "Ideal"
+      configuration as an RTX PRO 6000 Blackwell with 48 GB.
+    where: "lesson.py section 9 (ISAAC_MIN) and the can_run_isaac_sim exercise; README.md hardware truth"
+    source_url: https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html
+    source_kind: primary (NVIDIA's own product documentation, version-pinned URL)
+    quote: "Minimum: GeForce RTX 4080, 16GB VRAM"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The requirements table rows read Minimum "GeForce RTX 4080" / "16GB",
+      Good "GeForce RTX 5080" / "16GB", Ideal "RTX PRO 6000 Blackwell" / "48GB". The
+      unversioned /latest/ URL carried the same figures on the same date.
+
+  - id: isaac-sim-requires-rt-cores
+    claim: >-
+      NVIDIA's Isaac Sim requirements page states that GPUs without RT Cores are not
+      supported, naming the A100 and H100 as the examples.
+    where: "lesson.py section 9 (the rt_cores field of every GPU record) and self-check question 3"
+    source_url: https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html
+    source_kind: primary (NVIDIA's own product documentation)
+    quote: "GPUs without RT Cores (A100, H100) are not supported."
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; the sentence appears verbatim on the requirements page."
+
+  - id: isaac-sim-supported-os
+    claim: >-
+      Isaac Sim's requirements page lists the supported operating systems as Ubuntu 22.04 /
+      24.04 and Windows 10 / 11 on x86_64.
+    where: "README.md ('Isaac Sim and Isaac Lab are out of reach here'). lesson.py makes no operating-system claim; this entry exists so the README's does not stand unsourced."
+    source_url: https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html
+    source_kind: primary (NVIDIA's own product documentation)
+    quote: "Ubuntu 22.04/24.04"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; the OS row reads Ubuntu 22.04/24.04 or Windows 10/11."
+
+  - id: isaac-lab-requires-isaac-sim
+    claim: >-
+      Isaac Lab is built on top of Isaac Sim and its documentation states that Isaac Sim must
+      be installed before Isaac Lab; it lists 16 GB or more of GPU VRAM and Ubuntu 22.04 or
+      Windows 11 as requirements. Isaac Lab therefore inherits Isaac Sim's GPU constraint.
+    where: "lesson.py section 9 and README.md — why 'just use Isaac Lab instead' is not an escape"
+    source_url: https://isaac-sim.github.io/IsaacLab/main/source/setup/installation/index.html
+    source_kind: primary (the project's own documentation)
+    quote: "GPU VRAM: 16 GB or more (additional VRAM may be required for rendering workflows)"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The page states it is required to install Isaac Sim before
+      installing Isaac Lab, and lists OS as Ubuntu 22.04 (Linux x64) or Windows 11 (x64).
+
+  # --- the correction: the usual explanation of WHY free tiers fail is wrong -----------
+
+  - id: t4-has-rt-cores
+    claim: >-
+      The NVIDIA T4 is a Turing-architecture card with 16 GB of GDDR6 and it DOES have RT
+      Cores. The widely-repeated claim that free notebook tiers cannot run Isaac Sim because
+      the T4 "has no ray-tracing cores" is therefore false; the T4 also meets the 16 GB VRAM
+      floor exactly. The real obstacles are that the T4 is not among the GPUs NVIDIA names in
+      its requirements table, and that the free tiers do not guarantee any particular GPU.
+    where: "lesson.py section 9 GPU_LEDGER and section 11 common mistakes; this is the lesson's central correction"
+    source_url: https://www.nvidia.com/en-us/data-center/tesla-t4/
+    source_kind: primary (NVIDIA's own product page)
+    quote: "features multi-precision Turing Tensor Cores and new RT Cores"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. NVIDIA's T4 page describes the card as built on the Turing
+      architecture and states it features new RT Cores; the listed memory is 16 GB GDDR6 and
+      the listed CUDA core count is 2,560. NVIDIA's page does not publish an RT core count for
+      the T4, so this lesson claims only their presence, never a number.
+
+  - id: l4-has-rt-cores
+    claim: >-
+      The NVIDIA L4 is an Ada Lovelace card with 24 GB of memory and third-generation RT
+      Cores, so it too clears both the "has RT Cores" and the 16 GB VRAM bars while still not
+      being a GPU NVIDIA names in the Isaac Sim requirements table.
+    where: "lesson.py section 9 GPU_LEDGER and the section 9 prose that names the L4's 24 GB"
+    source_url: https://www.nvidia.com/en-us/data-center/l4/
+    source_kind: primary (NVIDIA's own product page)
+    quote: "third-generation RT Cores"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The page attributes the L4 to the NVIDIA Ada Lovelace architecture,
+      lists 24GB of memory, and describes third-generation RT Cores.
+
+  - id: colab-gpu-not-guaranteed
+    claim: >-
+      Google's own Colab FAQ states that the types of GPU available in Colab vary over time
+      and that Colab resources are neither guaranteed nor unlimited. A lesson therefore cannot
+      depend on being given any particular accelerator on the free tier.
+    where: "lesson.py section 9 (the found_on column of GPU_LEDGER) and README.md"
+    source_url: https://research.google.com/colaboratory/faq.html
+    source_kind: primary (Google's own FAQ for the product)
+    quote: "The types of GPUs and TPUs that are available in Colab vary over time."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The FAQ also states "Colab resources are not guaranteed and not
+      unlimited, and the usage limits sometimes fluctuate."
+
+  # --- MuJoCo semantics for the two knobs this lesson turns ----------------------------
+
+  - id: mujoco-ctrlrange-clamps
+    claim: >-
+      MuJoCo clamps the control input to ctrlrange when the actuator's control range is set,
+      and for simple motors clamping the control input is equivalent to clamping the force
+      output. The controller is not informed that clamping occurred; it must measure it.
+    where: "lesson.py section 3 (actuator saturation) and the saturated_fraction return value of rollout"
+    source_url: https://mujoco.readthedocs.io/en/stable/modeling.html
+    source_kind: primary (MuJoCo documentation, Modeling chapter)
+    quote: "If this actuator attribute is set, the input control value will be clamped."
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The Modeling chapter adds "For simple motors, clamping the control
+      input is equivalent to clamping the force output." The lesson does not rest on this
+      citation alone: section 3 measures the clamp directly by writing an absurd control and
+      reading data.actuator_force back.
+
+  - id: mujoco-frictionloss-is-dry-friction
+    claim: >-
+      MuJoCo's frictionloss models dry (static, load-independent) friction, implemented as a
+      constraint that places an upper limit on the magnitude of the force friction can
+      generate. It is the model parameter this lesson randomises as "friction".
+    where: "lesson.py section 4 (the apply_parameters exercise and its docstring) and the friction sweep in section 6"
+    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+    source_kind: primary (MuJoCo documentation, Computation chapter)
+    quote: "dry friction, or static friction, or load-independent friction"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. The Computation chapter describes friction loss as modelled as a
+      constraint, "namely an upper limit on the absolute value of the force that friction can
+      generate", and treats it as a constraint rather than a passive force.
+
+  - id: mujoco-licence
+    claim: >-
+      MuJoCo is distributed under the Apache License, Version 2.0, so it is free to use,
+      including commercially, with no registration and no licence key.
+    where: "meta.yaml datasets; the lesson's claim that its whole toolchain is ungated"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_kind: primary (the project's own LICENSE file)
+    quote: "Apache License, Version 2.0, January 2004"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; the file is the Apache License, Version 2.0, January 2004."
+
+  # --- the two papers the domain-randomisation section rests on ------------------------
+
+  - id: tobin-domain-randomisation
+    claim: >-
+      Domain randomisation as a named technique for transferring models trained in simulation
+      to the real world was introduced by Tobin, Fong, Ray, Schneider, Zaremba and Abbeel in
+      "Domain Randomization for Transferring Deep Neural Networks from Simulation to the Real
+      World", submitted to arXiv on 20 March 2017.
+    where: "lesson.py section 7 (where this idea comes from)"
+    source_url: https://arxiv.org/abs/1703.06907
+    source_kind: primary (the paper itself)
+    quote: "With enough variability in the simulator, the real world may appear to the model as just another variation."
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; title, author list and 20 March 2017 submission date confirmed on the arXiv abstract page."
+
+  - id: peng-dynamics-randomisation
+    claim: >-
+      Randomising the simulator's DYNAMICS specifically — as opposed to its appearance — was
+      shown to transfer robotic control policies to hardware by Peng, Andrychowicz, Zaremba
+      and Abbeel in "Sim-to-Real Transfer of Robotic Control with Dynamics Randomization",
+      submitted to arXiv on 18 October 2017. This lesson randomises dynamics (mass, dry
+      friction), not pixels, which is the Peng et al. variant.
+    where: "lesson.py section 7 and self-check question 2"
+    source_url: https://arxiv.org/abs/1710.06537
+    source_kind: primary (the paper itself)
+    quote: "This adaptivity enables the policies to generalize to the dynamics of the real world without any training on the physical system."
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; title, author list and 18 October 2017 submission date confirmed on the arXiv abstract page."
+
+  # --- the hardware ladder: every price, from the seller ------------------------------
+
+  - id: price-so-arm101
+    claim: >-
+      Seeed Studio lists the SO-ARM101 Pro Servo Motor Kit — the servo bill of materials for
+      the Hugging Face LeRobot SO-101 arm — at USD 249.90, with a bulk price of USD 244.90 at
+      ten units or more.
+    where: "lesson.py section 10 HARDWARE_LADDER (rung 1)"
+    source_url: https://www.seeedstudio.com/SO-ARM101-Low-Cost-AI-Arm-Kit-p-6426.html
+    source_kind: primary (the seller's own product page)
+    quote: "$249.90"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16. Price is for the servo motor kit variant; assembled variants were listed without a price on that date."
+
+  - id: price-reachy-mini
+    claim: >-
+      Hugging Face's own announcement prices Reachy Mini Lite at USD 399 and Reachy Mini
+      Wireless at USD 499, both before taxes and shipping, and describes the hardware,
+      software and simulation environments as fully open source.
+    where: "lesson.py section 10 HARDWARE_LADDER (rung 2)"
+    source_url: https://huggingface.co/blog/reachy-mini
+    source_kind: primary (the vendor's own announcement)
+    quote: "$399 (+ taxes + shipping)"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16; Lite "$399 (+ taxes + shipping)" and Wireless "$499 (+ taxes +
+      shipping)". The vendor's store page returned HTTP 401 to an unauthenticated fetch on the
+      same date, so only the announcement is cited.
+
+  - id: price-unitree-go2
+    claim: >-
+      Unitree's own store lists the Go2 quadruped at USD 2,800.00, backordered as at the
+      access date, with shipping quoted separately at USD 399 to USD 1,000.
+    where: "lesson.py section 10 HARDWARE_LADDER (rung 3)"
+    source_url: https://shop.unitree.com/products/unitree-go2
+    source_kind: primary (the manufacturer's own store)
+    quote: "$2,800.00 USD"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16; all listed Go2 variants showed the same $2,800.00 USD base price and a backordered status."
+
+  - id: price-berkeley-humanoid-lite
+    claim: >-
+      Berkeley Humanoid Lite is an open-source 3D-printed humanoid its authors state can be
+      built for under USD 5,000 at US market prices, from components sourced on widely
+      available e-commerce platforms and fabricated on standard desktop 3D printers.
+    where: "lesson.py section 10 HARDWARE_LADDER (rung 4)"
+    source_url: https://arxiv.org/abs/2504.17249
+    source_kind: primary (the authors' own paper)
+    quote: "$5,000 (based on U.S. market prices)"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. "Demonstrating Berkeley Humanoid Lite: An Open-source, Accessible,
+      and Customizable 3D-printed Humanoid Robot", Chi, Liao, Long, Huang, Shao, Nikolic, Li
+      and Sreenath, submitted 24 April 2025. This is a build cost, not a purchase price.
+
+  - id: price-unitree-g1
+    claim: >-
+      Unitree's own store lists the G1 humanoid at USD 13,500.00, backordered as at the access
+      date, and directs buyers of the programmable EDU edition to contact sales rather than
+      publishing a price for it.
+    where: "lesson.py section 10 HARDWARE_LADDER (rung 5)"
+    source_url: https://shop.unitree.com/products/unitree-g1
+    source_kind: primary (the manufacturer's own store)
+    quote: "$13,500.00 USD"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. Both G1 and G1 Pro variants showed the same $13,500.00 USD base
+      price; the page states G1 "is backordered and will ship as soon as it is back in stock"
+      and gives a sales contact for G1 EDU. Widely-quoted higher figures are dealer prices or
+      the 2024 launch price and are not cited here.
+
+  - id: price-cloud-rtx-hourly
+    claim: >-
+      RunPod's published pricing lists an RTX 4090 (24 GB) at USD 0.34/hour on Community Cloud
+      and USD 0.74/hour on Secure Cloud, and an RTX 5090 (32 GB) at USD 0.69/hour and USD
+      0.99/hour respectively, billed per second.
+    where: "lesson.py section 10 HARDWARE_LADDER (the rent-instead-of-buy rungs, and the GPU-hours arithmetic ladder_table computes from them)"
+    source_url: https://www.runpod.io/pricing
+    source_kind: primary (the vendor's own pricing page)
+    quote: "$0.74/hr"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16. Also listed on the same date: RTX A6000 (48 GB) $0.53/hr and RTX
+      6000 Ada (48 GB) $0.84/hr on Secure Cloud. Cited as one vendor's list price on one date,
+      not as a market rate.
+
+  - id: no-verified-retail-gpu-price
+    claim: >-
+      This lesson deliberately publishes NO retail purchase price for an RTX 4080-class or
+      RTX 5080-class desktop GPU. NVIDIA's own GeForce RTX 5080 product page rendered its
+      price as a placeholder rather than a figure, and Newegg and B&H returned HTTP 403 and
+      Best Buy timed out to an unauthenticated fetch, so no purchase price could be verified
+      against a primary source on the access date.
+    where: "lesson.py section 10 HARDWARE_LADDER (the 'buy the GPU' rung carries a requirement, not a price) and README.md"
+    source_url: https://www.nvidia.com/en-us/geforce/graphics-cards/50-series/rtx-5080/
+    source_kind: primary (NVIDIA's own product page — cited for what it does NOT state)
+    quote: "Starting at $XXX.00"
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16; the page listed 16 GB GDDR7 but rendered the starting price as the
+      literal placeholder "Starting at $XXX.00". Recording the failure rather than substituting
+      a secondary figure is the point: gate 12 forbids a number without a primary source, and
+      that constraint binds the course author exactly as it binds the student.

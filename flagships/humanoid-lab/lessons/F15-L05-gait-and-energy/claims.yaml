@@ -1,0 +1,222 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements.
+#
+# Numbers a student SEES IN OUTPUT — distance walked, energy burned, cost of transport, the
+# margin the search opens over the baseline — are computed by the code they run. They are
+# measurements, not claims, and they are deliberately absent from this file.
+#
+# What IS here: the definition and published values of the cost of transport, MuJoCo's
+# documented semantics for the three fields this lesson reads, the bibliographic record of the
+# central-pattern-generator review the gait section points at, and the two licences.
+#
+# One entry (cot-this-lesson-is-not-cmt) records a limitation of this lesson's own metric
+# rather than a fact about the world. It is here because the lesson prints a comparison table
+# against published figures, and a comparison is only honest if the mismatch is stated.
+claims:
+
+  # --- what a cost of transport is, and what the literature reports ---------------------
+
+  - id: cot-definition
+    claim: >-
+      The dimensionless specific cost of transport is defined as the energy used divided by
+      the product of weight and distance travelled. Because it divides energy by a weight and
+      a length, it is dimensionless, which is what makes it comparable across machines and
+      animals of different sizes.
+    where: "lesson.py section 4 (the cost_of_transport exercise and its docstring); self-check question 1"
+    source_url: http://ruina.tam.cornell.edu/research/topics/locomotion_and_robotics/efficient_bipedal_robots/efficient_bipedal_robots.pdf
+    source_kind: primary (the paper itself, hosted by co-author Andy Ruina at Cornell)
+    source_title: >-
+      S. Collins, A. Ruina, R. Tedrake, M. Wisse, "Efficient Bipedal Robots Based on
+      Passive-Dynamic Walkers", Science 307(5712), 1082-1085, 18 February 2005.
+    doi: 10.1126/science.1107799
+    quote: >-
+      To compare efficiency between humans and robots of different sizes, it is convenient to
+      use the dimensionless specific cost of transport, c_t = (energy used)/(weight x distance
+      traveled).
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16 (HTTP 200, 1,530,350 bytes, 12 pages) and the text extracted from the
+      PDF's compressed streams. The bibliographic record — title, the four authors in the order
+      Collins, Ruina, Tedrake, Wisse, Science volume 307 issue 5712, pages 1082-1085, issued
+      2005-02-18 — was independently confirmed against the Crossref DOI registry record for
+      10.1126/science.1107799 on the same date. The quote is reproduced with the subscript and
+      multiplication symbols written out, because PDF text extraction does not preserve them.
+
+  - id: cot-energetic-versus-mechanical
+    claim: >-
+      The same paper distinguishes the specific ENERGETIC cost of transport (c_et), which uses
+      the total energy consumed by the system, from the specific MECHANICAL cost of transport
+      (c_mt), which counts only the positive mechanical work of the actuators. The two differ
+      by drive-train and electronics efficiency and are not interchangeable.
+    where: "lesson.py section 4 (why the lesson names its own metric precisely) and section 7 (the comparison table's caveat column)"
+    source_url: http://ruina.tam.cornell.edu/research/topics/locomotion_and_robotics/efficient_bipedal_robots/efficient_bipedal_robots.pdf
+    source_kind: primary (the paper itself)
+    doi: 10.1126/science.1107799
+    quote: >-
+      In order to isolate the effectiveness of the mechanical design and controller from the
+      actuator efficiency, we distinguish between the specific energetic cost of transport,
+      c_et, and the specific mechanical cost of transport, c_mt. Whereas c_et uses the total
+      energy consumed by the system (11 W for the Cornell biped), c_mt only considers the
+      positive mechanical work of the actuators (3 W for the Cornell biped).
+    accessed: 2026-09-16
+    verified: "Fetched and text-extracted 2026-09-16; the passage appears in the paper's discussion of efficiency."
+
+  - id: cot-published-values
+    claim: >-
+      The paper reports these specific costs of transport: the 13-kg Cornell biped walking at
+      0.4 m/s, c_et 0.2 and c_mt 0.055; humans, c_et 0.2 and c_mt 0.05; the Delft biped,
+      c_mt 0.08; the MIT biped, c_mt 0.02; and the Honda humanoid ASIMO, c_et 3.2 and
+      c_mt 1.6. The ASIMO figures are the authors' own estimate from published weight, speed
+      and battery figures, not a measurement, and the paper says so.
+    where: "lesson.py section 7 (PUBLISHED_COT, the table the student's measured figure is printed beside)"
+    source_url: http://ruina.tam.cornell.edu/research/topics/locomotion_and_robotics/efficient_bipedal_robots/efficient_bipedal_robots.pdf
+    source_kind: primary (the paper itself)
+    doi: 10.1126/science.1107799
+    quote: >-
+      The 13-kg Cornell biped walking at 0.4 m/s has c_et 0.2 and c_mt 0.055. Humans are
+      similarly energy effective, walking with c_et 0.2, as estimated by the volume of oxygen
+      they consume (VO2), and c_mt 0.05. Measurement of actuator work on the Delft biped
+      yields c_mt 0.08. Based on the small slopes that it descends when passive, we estimate
+      the MIT biped to have c_mt 0.02. ... we estimate the state-of-the-art Honda humanoid
+      Asimo to have c_et 3.2 and c_mt 1.6.
+    accessed: 2026-09-16
+    verified: >-
+      Fetched and text-extracted 2026-09-16. Caveat recorded deliberately: the paper writes
+      these as approximate relations, and the "approximately equal" glyph does not survive
+      extraction from the PDF's compressed streams — it renders as whitespace. The values are
+      therefore cited as the figures the paper reports, and the lesson labels the column
+      "reported" rather than asserting exact equality. The ASIMO row is sourced in the paper's
+      own note 15, which states it was estimated from a 510 N weight, a top speed of
+      1.6 km/hour and a 38.4 V, 10 A-hour battery drained in about 30 minutes, assuming 50%
+      drive-train efficiency.
+
+  - id: cot-this-lesson-is-not-cmt
+    claim: >-
+      This lesson integrates the ABSOLUTE mechanical power of the actuators,
+      sum |actuator_force * actuator_velocity| dt, which charges the gait for negative work
+      (braking) as well as positive work. Collins et al.'s c_mt counts only positive actuator
+      work. The figure a student measures here is therefore a mechanical cost of transport of
+      the same shape but a stricter accounting, and it is not directly comparable to a
+      published c_mt. The lesson states this where it prints the comparison rather than
+      quietly implying the numbers are like for like.
+    where: "lesson.py section 4 (the cost_of_transport docstring), section 7 (the table's footnote) and self-check question 4"
+    source_url: http://ruina.tam.cornell.edu/research/topics/locomotion_and_robotics/efficient_bipedal_robots/efficient_bipedal_robots.pdf
+    source_kind: primary (the paper this lesson's metric is being distinguished FROM)
+    doi: 10.1126/science.1107799
+    accessed: 2026-09-16
+    verified: >-
+      This entry is a statement about this lesson's own code, checked by reading it: the energy
+      accumulator in the course solution bundle applies np.abs to the power before summing.
+      It is recorded here because gate 12 binds the comparison the lesson prints, and a
+      comparison against a published number is a claim about that number's meaning.
+
+  # --- central pattern generators: what the gait in section 2 is a stand-in for ---------
+
+  - id: cpg-review-record
+    claim: >-
+      The standard review of central pattern generators for locomotion control in animals and
+      robots is Auke Jan Ijspeert, "Central pattern generators for locomotion control in
+      animals and robots: A review", Neural Networks, volume 21, issue 4, pages 642-653,
+      May 2008. The lesson points a student there for real CPG models and does not paraphrase
+      the paper's content.
+    where: "lesson.py section 2 — the sinusoid is named as a deliberately minimal stand-in for a CPG, with this review given as where to read about the real thing"
+    source_url: https://doi.org/10.1016/j.neunet.2008.03.014
+    source_kind: primary (the DOI registry record for the paper)
+    doi: 10.1016/j.neunet.2008.03.014
+    accessed: 2026-09-16
+    verified: >-
+      Queried the Crossref DOI registry on 2026-09-16, which returned the title verbatim as
+      above, a sole author "Auke Jan Ijspeert", container title "Neural Networks", volume 21,
+      issue 4, pages 642-653, issued 2008-05. Deliberately NOT claimed: any quotation from the
+      abstract or body. The publisher page and two abstract mirrors refused an unauthenticated
+      fetch on the access date (HTTP 405 and a cookie wall), so this lesson cites the record
+      it could verify and makes no claim about the paper's wording or findings.
+
+  # --- MuJoCo semantics for the three fields this lesson reads --------------------------
+
+  - id: mujoco-position-actuator-is-a-servo
+    claim: >-
+      A MuJoCo <position> actuator creates a position servo: it expands to gaintype "fixed"
+      with gainprm "kp 0 0" and biastype "affine" with biasprm "0 -kp -kv", where kp is the
+      position feedback gain and kv is the damping applied by the actuator. The control input
+      to such an actuator is therefore a TARGET POSITION, not a torque — which is what makes
+      the open-loop gait in this lesson possible, since the tracking law lives in the engine.
+    where: "lesson.py section 1 (reading the model) and section 2 (why data.ctrl holds angles); assets/SOURCE.md"
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (MuJoCo's own XML reference)
+    quote: "This element creates a position servo with an optional first-order filter."
+    accessed: 2026-09-16
+    verified: >-
+      Verified 2026-09-16 against the documentation's own source, doc/XMLreference.rst in the
+      google-deepmind/mujoco repository, at the actuator/position section. The attribute table
+      there reads gaintype "fixed" / gainprm "kp 0 0" and biastype "affine" / biasprm
+      "0 -kp -kv"; kp is documented as "Position feedback gain" and kv as "Damping applied by
+      the actuator". The lesson does not rest on the citation alone: section 1 writes a target
+      angle and reads the resulting actuator_force back out of mjData.
+
+  - id: mujoco-ctrl-clamped-to-ctrlrange
+    claim: >-
+      When ctrllimited is true, MuJoCo automatically clamps the control input to that
+      actuator's ctrlrange at runtime. The walker's joint targets are therefore silently
+      confined to the actuator ranges declared in the model, so a search that proposes an
+      out-of-range amplitude is not rewarded for the part it cannot use.
+    where: "lesson.py section 6 (why the search grid stays inside the declared ranges)"
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (MuJoCo's own XML reference, actuator/general attributes)
+    quote: >-
+      If true, the control input to this actuator is automatically clamped to ctrlrange at
+      runtime.
+    accessed: 2026-09-16
+    verified: >-
+      Verified 2026-09-16 against doc/XMLreference.rst in the google-deepmind/mujoco
+      repository, at the actuator-general-ctrllimited entry. The walker model sets
+      autolimits="true" and declares an explicit ctrlrange on all four actuators.
+
+  - id: mujoco-actuator-force-and-velocity
+    claim: >-
+      MuJoCo's mjData exposes actuator_force as the "actuator force in actuation space" and
+      actuator_velocity as the "actuator velocities, one per force output", both arrays of
+      length nout (one entry per actuator force output). Their elementwise product is
+      therefore a mechanical power per actuator, which is the quantity this lesson integrates
+      over time to get energy. The separate field qfrc_actuator holds the same actuator force
+      mapped into joint space (nv x 1).
+    where: "lesson.py section 3 (the power identity) and the rollout exercise; the section 3 cell cross-checks the two spaces against each other"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/3.13.0/include/mujoco/mjdata.h
+    source_kind: primary (the engine's own header, pinned at the installed version's tag)
+    quote: >-
+      mjtNum* actuator_velocity; // actuator velocities, one per force output (nout x 1)
+      mjtNum* actuator_force;    // actuator force in actuation space         (nout x 1)
+      mjtNum* qfrc_actuator;     // actuator force in joint space              (nv x 1)
+    accessed: 2026-09-16
+    verified: >-
+      Fetched 2026-09-16 from the 3.13.0 tag, which is the MuJoCo version installed in this
+      repository's environment (confirmed by mujoco.__version__). The three declarations appear
+      at lines 284, 318 and 319 of include/mujoco/mjdata.h. The lesson does not rest on the
+      citation alone: section 3 computes the energy integral in actuation space and again in
+      joint space from qfrc_actuator and qvel, and prints the relative difference between them.
+
+  # --- licences ------------------------------------------------------------------------
+
+  - id: mujoco-licence
+    claim: >-
+      MuJoCo is distributed under the Apache License, Version 2.0 (January 2004), so it is
+      free to use, including commercially, with no registration and no licence key.
+    where: "meta.yaml datasets; the lesson's claim that its whole toolchain is ungated"
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/3.13.0/LICENSE
+    source_kind: primary (the project's own LICENSE file, at the installed version's tag)
+    quote: "Apache License, Version 2.0, January 2004"
+    accessed: 2026-09-16
+    verified: "Fetched 2026-09-16 at tag 3.13.0; the first lines read 'Apache License' / 'Version 2.0, January 2004' / 'http://www.apache.org/licenses/'."
+
+  - id: walker-model-licence
+    claim: >-
+      assets/planar_walker.xml was authored for this lesson by the AI Atlas project and is
+      dedicated to the public domain under CC0-1.0. It is not a download: there is nothing to
+      register for and no network access is required on any path through the lesson.
+    where: "meta.yaml datasets; assets/SOURCE.md; lesson.py walker_xml_path(), which has no download branch"
+    source_url: https://creativecommons.org/publicdomain/zero/1.0/
+    source_kind: primary (the licence deed itself)
+    licence_url: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+    accessed: 2026-09-16
+    verified: >-
+      Both the CC0 deed and its legal code returned HTTP 200 on 2026-09-16. The dedication is
+      recorded in the XML file's own header comment and in assets/SOURCE.md.

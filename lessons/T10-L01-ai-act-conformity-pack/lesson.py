@@ -1,0 +1,607 @@
+# %% [markdown]
+# # T10-L01 · The conformity evidence pack
+#
+# **You will build:** the artefact a compliance engineer actually ships — a machine-checkable
+# evidence table over a registry of AI systems, that says for each one what applies, when it
+# starts to bind, which evidence is missing, and which systems are blocking.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, no download, no network
+# · **Prerequisites:** none beyond Python dicts, lists and `datetime.date`
+#
+# By the end you will be able to:
+# 1. Implement `classify()` so a described system maps to a risk tier, a *cumulative*
+#    obligation set, and the date each obligation starts to bind.
+# 2. Implement `missing_evidence()` so an item counts only when it is present, actually
+#    referenced, in date, and not overdue for review.
+# 3. Generate a conformity report over a whole registry and read its blocking list off it.
+# 4. Explain why deferring the Annex III duties to 2 December 2027 defers neither Article 5,
+#    nor Article 4, nor Article 50.
+#
+# > **This is not legal advice.** It is an engineering exercise about the *structure* of a
+# > regulation: precedence, cumulation, dates and evidence. The dates encoded below are
+# > sourced in `claims.yaml` with their EUR-Lex and European Commission URLs. The mapping
+# > from an obligation to a list of evidence items is this lesson's modelling choice, not a
+# > statement about what any authority would accept. For a real system, read the Official
+# > Journal text and take professional advice.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import hashlib
+import json
+from datetime import date
+from pathlib import Path
+
+import yaml
+
+print("python", __import__("sys").version.split()[0], "· pyyaml", yaml.__version__)
+
+# The date this pack is assembled. Fixed, so every number below is reproducible — a report
+# that changes silently with the calendar is not an artefact you can review.
+AS_OF = date(2026, 9, 16)
+print("as of", AS_OF.isoformat())
+
+# %% [markdown]
+# ## 1. The date ladder
+#
+# The AI Act did not switch on all at once, and in July 2026 the ladder was rewritten. Every
+# date below is sourced in `claims.yaml`. Read the table the code prints, not this sentence.
+#
+# The one thing to carry out of it: **"high-risk was delayed" is not "the AI Act was
+# delayed"**. Three of these rungs are already behind us.
+
+# %%
+# date -> what starts to bind on it. Sourced in claims.yaml; nothing here is typed from memory.
+MILESTONES = {
+    "2025-02-02": "Article 5 prohibited practices, and Article 4 AI literacy",
+    "2025-08-02": "General-purpose AI model obligations, and the governance rules",
+    "2026-08-02": "General application of the AI Act, including Article 50 transparency",
+    "2026-12-02": "Article 50(2) marking, for systems on the market before 2026-08-02",
+    "2027-12-02": "Chapter III duties for Annex III stand-alone high-risk systems",
+    "2028-08-02": "Chapter III duties for Annex I product-embedded high-risk systems",
+}
+
+print(f"{'date':12s} {'':4s} what starts to bind")
+for _iso, _what in sorted(MILESTONES.items()):
+    _state = "PAST" if date.fromisoformat(_iso) <= AS_OF else "->"
+    print(f"{_iso:12s} {_state:4s} {_what}")
+print(f"\n{sum(date.fromisoformat(d) <= AS_OF for d in MILESTONES)} of "
+      f"{len(MILESTONES)} rungs already bind as of {AS_OF.isoformat()}")
+
+# %% [markdown]
+# ## 2. The registry
+#
+# A conformity pack starts from a description of each system, in enough detail to decide what
+# applies. `assets/systems.yaml` holds eight fictional systems in that shape. Load it and
+# look at one.
+
+# %%
+def registry_path() -> Path:
+    """Locate the shipped registry, searching this file's directory and its parent."""
+    try:
+        here = Path(__file__).resolve().parent
+    except NameError:  # a notebook has no __file__
+        here = Path.cwd()
+    for candidate in (here / "assets" / "systems.yaml",
+                      here.parent / "assets" / "systems.yaml",
+                      Path.cwd() / "assets" / "systems.yaml",
+                      Path.cwd().parent / "assets" / "systems.yaml"):
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError("assets/systems.yaml not found next to this lesson")
+
+
+def load_registry(path: Path | None = None) -> list:
+    """Read the registry and hand back a list of system dictionaries."""
+    return yaml.safe_load((path or registry_path()).read_text())["systems"]
+
+
+def parse_date(value) -> date:
+    """Accept an ISO string or a date and return a date. Raise on anything else."""
+    if isinstance(value, date):
+        return value
+    if isinstance(value, str):
+        return date.fromisoformat(value)
+    raise ValueError(f"not a date: {value!r}")
+
+
+REGISTRY = load_registry()
+print(f"{len(REGISTRY)} systems, "
+      f"{sum(len(s['evidence']) for s in REGISTRY)} evidence rows between them\n")
+for _s in REGISTRY:
+    print(f"  {_s['id']:16s} {_s['role']:8s} {_s['name'][:58]}")
+
+# %%
+# One system in full: this is the shape every exercise consumes.
+print(json.dumps(REGISTRY[1], indent=2)[:900])
+
+# %% [markdown]
+# ## 3. The rulebook
+#
+# Two tables. `OBLIGATIONS` says what can apply and from when. `EVIDENCE_REQUIRED` says what
+# a reviewer would ask to see for each one.
+#
+# The obligation dates are sourced. The evidence lists are **this lesson's modelling choice**
+# — a defensible reading of Chapter III, named after the articles that require each thing,
+# but not a statement about what an authority would accept.
+
+# %%
+OBLIGATIONS = {
+    "art4_ai_literacy": {
+        "label": "AI literacy for the people who build and operate the system",
+        "article": "Article 4", "applies_from": "2025-02-02"},
+    "art5_prohibited_practice": {
+        "label": "Prohibited practice: it must not be placed on the market or used",
+        "article": "Article 5", "applies_from": "2025-02-02"},
+    "art50_inform_interaction": {
+        "label": "Tell people when they are interacting with an AI system",
+        "article": "Article 50(1)", "applies_from": "2026-08-02"},
+    "art50_mark_synthetic": {
+        "label": "Mark synthetic content in a machine-readable format",
+        "article": "Article 50(2)", "applies_from": "2026-08-02"},
+    "art53_gpai_model": {
+        "label": "GPAI model documentation, copyright policy, training-data summary",
+        "article": "Article 53", "applies_from": "2025-08-02"},
+    "ch3_high_risk_annex_iii": {
+        "label": "Chapter III duties, stand-alone high-risk (Annex III)",
+        "article": "Article 6(2)", "applies_from": "2027-12-02"},
+    "ch3_high_risk_annex_i": {
+        "label": "Chapter III duties, product-embedded high-risk (Annex I)",
+        "article": "Article 6(1)", "applies_from": "2028-08-02"},
+}
+
+# The Article 50(2) transitional rule: systems already on the market before general
+# application get until 2026-12-02 for the marking obligation, and nothing else.
+GENERAL_APPLICATION = "2026-08-02"
+ART50_MARK_STANDARD = "2026-08-02"
+ART50_MARK_LEGACY = "2026-12-02"
+
+# Evidence a reviewer asks for. Item ids are named after the article that requires the thing.
+HIGH_RISK_CORE_EVIDENCE = (
+    "risk_management_system",                    # Article 9
+    "data_governance_record",                    # Article 10
+    "technical_documentation",                   # Article 11
+    "automatic_logging_design",                  # Article 12
+    "instructions_for_use",                      # Article 13
+    "human_oversight_plan",                      # Article 14
+    "accuracy_robustness_cybersecurity_report",  # Article 15
+    "quality_management_system",                 # Article 17
+    "conformity_assessment_record",              # Article 43
+    "eu_declaration_of_conformity",              # Article 47
+    "ce_marking_record",                         # Article 48
+    "post_market_monitoring_plan",               # Article 72
+    "serious_incident_procedure",                # Article 73
+)
+
+EVIDENCE_REQUIRED = {
+    "art4_ai_literacy": ("ai_literacy_training_record",),
+    "art5_prohibited_practice": ("withdrawal_decision_record",),
+    "art50_inform_interaction": ("user_facing_ai_disclosure",),
+    "art50_mark_synthetic": ("machine_readable_marking_spec", "content_provenance_test_report"),
+    "art53_gpai_model": ("model_technical_documentation", "copyright_policy",
+                         "training_data_summary"),
+    # Annex III systems register in the EU database; embedded ones fold into the product's
+    # own conformity assessment instead.
+    "ch3_high_risk_annex_iii": HIGH_RISK_CORE_EVIDENCE + ("eu_database_registration",),
+    "ch3_high_risk_annex_i": HIGH_RISK_CORE_EVIDENCE + ("integrated_product_conformity_assessment",),
+}
+
+print(f"{len(OBLIGATIONS)} obligations, "
+      f"{len(set().union(*EVIDENCE_REQUIRED.values()))} distinct evidence items")
+print(f"the heaviest obligation asks for "
+      f"{max(len(v) for v in EVIDENCE_REQUIRED.values())} of them")
+
+# %% [markdown]
+# ## 4. Exercise 1 — `classify(system)`
+#
+# Three things people get wrong, and the grader checks all three:
+#
+# - **Precedence.** A prohibited practice outranks everything. An Annex I embedding outranks
+#   an Annex III use case — and it is the *later* date, so guessing costs you two years.
+# - **Cumulation.** Obligations are a set, not a choice. A high-risk chatbot owes Chapter III
+#   *and* Article 50, on different dates.
+# - **Dates are per system.** The Article 50(2) marking date depends on `placed_on_market`.
+
+# %%
+def classify(system: dict) -> dict:
+    """Map a described system to its risk tier, obligation set and dates.
+
+    Precedence for the tier, in order:
+      1. a truthy "prohibited_practice"          -> "prohibited"
+      2. a truthy "embedded_in_regulated_product"-> "high_risk_annex_i"
+      3. a truthy "annex_iii_area"               -> "high_risk_annex_iii"
+      4. a truthy "is_gpai_model"                -> "gpai_model"
+      5. "interacts_with_humans" or "generates_synthetic_content" -> "transparency_only"
+      6. otherwise                               -> "minimal"
+
+    Obligations, which cumulate and are NOT decided by the tier alone:
+      - "art4_ai_literacy" always applies, to every system in the registry.
+      - If prohibited: add "art5_prohibited_practice" and stop. A system that must not be on
+        the market does not also owe Chapter III duties (this lesson's modelling choice).
+      - Otherwise add, independently:
+          "ch3_high_risk_annex_i"   when embedded in a regulated product
+          "ch3_high_risk_annex_iii" when not embedded and an Annex III area is named
+          "art53_gpai_model"        when it is a GPAI model
+          "art50_inform_interaction"when it interacts with humans
+          "art50_mark_synthetic"    when it generates synthetic content
+
+    Dates come from OBLIGATIONS[...]["applies_from"], with one exception you must implement:
+    "art50_mark_synthetic" is ART50_MARK_LEGACY when the system was placed on the market
+    strictly before GENERAL_APPLICATION, and ART50_MARK_STANDARD otherwise.
+
+    Example:
+        >>> classify({"id": "x", "annex_iii_area": "employment",
+        ...           "placed_on_market": "2026-03-01"})["risk_tier"]
+        'high_risk_annex_iii'
+
+    Returns:
+        dict with exactly these four keys:
+          "risk_tier"   str, one of the six names above
+          "obligations" list[str], sorted, the obligation ids that apply
+          "deadlines"   dict[str, str], every obligation id -> its ISO date for THIS system
+          "applies_from"str, the earliest date in "deadlines" — when this system first binds
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+# Public checks — run these as often as you like.
+def _check_classify() -> None:
+    plain = {"id": "p", "placed_on_market": "2026-01-01"}
+    got = classify(plain)
+    assert set(got) == {"risk_tier", "obligations", "deadlines", "applies_from"}, (
+        f"keys were {sorted(got)} — return exactly the four documented names.")
+    assert got["risk_tier"] == "minimal", (
+        f"a system with no flags is 'minimal', you returned {got['risk_tier']!r}.")
+    assert got["obligations"] == ["art4_ai_literacy"], (
+        f"minimal risk is one duty, not none: expected ['art4_ai_literacy'], got "
+        f"{got['obligations']} — Article 4 applies to every system here.")
+
+    chatty = {"id": "c", "annex_iii_area": "credit_scoring", "interacts_with_humans": True,
+              "generates_synthetic_content": True, "placed_on_market": "2026-08-30"}
+    got = classify(chatty)
+    assert got["risk_tier"] == "high_risk_annex_iii", (
+        f"got {got['risk_tier']!r} — a named Annex III area makes it high risk even though "
+        "it is also a chatbot.")
+    assert set(got["obligations"]) == {"art4_ai_literacy", "ch3_high_risk_annex_iii",
+                                       "art50_inform_interaction", "art50_mark_synthetic"}, (
+        f"got {got['obligations']} — obligations cumulate; being high risk does not replace "
+        "the Article 50 duties, it adds to them.")
+    assert got["obligations"] == sorted(got["obligations"]), "return the ids sorted."
+    assert got["deadlines"]["art50_mark_synthetic"] == ART50_MARK_STANDARD, (
+        f"placed on 2026-08-30, after general application, so marking is due "
+        f"{ART50_MARK_STANDARD}, not {got['deadlines']['art50_mark_synthetic']}.")
+    assert got["applies_from"] == "2025-02-02", (
+        f"applies_from is the EARLIEST date in deadlines, {got['applies_from']!r} is not it "
+        "— Article 4 has been binding since 2025-02-02.")
+
+    legacy = dict(chatty, id="l", annex_iii_area=None, placed_on_market="2025-05-20")
+    assert classify(legacy)["deadlines"]["art50_mark_synthetic"] == ART50_MARK_LEGACY, (
+        "a system placed on the market before general application gets the transitional "
+        f"marking date {ART50_MARK_LEGACY}.")
+
+    both = {"id": "b", "annex_iii_area": "critical_infrastructure",
+            "embedded_in_regulated_product": True, "placed_on_market": "2026-05-05"}
+    assert classify(both)["risk_tier"] == "high_risk_annex_i", (
+        "when a system is both an Annex III use case and embedded in a regulated product, "
+        "the embedding decides the route — and it is the 2028 date, not the 2027 one.")
+
+    banned = dict(both, id="z", prohibited_practice="social_scoring")
+    got = classify(banned)
+    assert got["risk_tier"] == "prohibited", "a prohibited practice outranks every other flag."
+    assert got["obligations"] == ["art4_ai_literacy", "art5_prohibited_practice"], (
+        f"got {got['obligations']} — once prohibited, stop: do not also add the Chapter III "
+        "duties of a system that must not exist.")
+    print("exercise 1 looks right")
+
+
+# %% [markdown]
+# ## 5. Exercise 2 — `missing_evidence(system, as_of)`
+#
+# This is where compliance theatre dies. A row in a spreadsheet is not evidence. An item
+# counts **only** when all four hold:
+#
+# 1. `status == "present"` — "planned" is a promise, not a document;
+# 2. `document` is a non-empty reference after stripping whitespace;
+# 3. `date` exists and is not in the future relative to `as_of`;
+# 4. if `review_due` is given, it has not already passed — evidence has a shelf life.
+
+# %%
+def missing_evidence(system: dict, as_of: date) -> list:
+    """Return the sorted ids of required evidence items that do not actually count.
+
+    Required items are the union of EVIDENCE_REQUIRED[o] over the obligations that
+    classify(system) returns — so what a system owes follows from what applies to it.
+
+    An item is missing when it is absent from system["evidence"], or present but failing any
+    of the four tests in the section above.
+
+    Example:
+        >>> s = {"id": "x", "placed_on_market": "2026-01-01", "evidence": {
+        ...     "ai_literacy_training_record": {"status": "planned", "document": "q4",
+        ...                                     "date": "2026-01-01"}}}
+        >>> missing_evidence(s, date(2026, 9, 16))
+        ['ai_literacy_training_record']
+
+    Returns:
+        list[str], sorted. An empty list means every required item counts.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_missing_evidence() -> None:
+    base = {"id": "e", "is_gpai_model": True, "placed_on_market": "2025-09-01", "evidence": {}}
+    got = missing_evidence(base, AS_OF)
+    assert got == sorted(["ai_literacy_training_record", "model_technical_documentation",
+                          "copyright_policy", "training_data_summary"]), (
+        f"an empty evidence map means everything required is missing; got {got}.")
+
+    ok = {"status": "present", "document": "DOC-1", "date": "2025-01-01"}
+    cases = {
+        "planned is not evidence": {"status": "planned", "document": "DOC-1",
+                                    "date": "2025-01-01"},
+        "empty document reference": {"status": "present", "document": "   ",
+                                     "date": "2025-01-01"},
+        "no date at all": {"status": "present", "document": "DOC-1", "date": None},
+        "dated in the future": {"status": "present", "document": "DOC-1",
+                                "date": "2027-01-01"},
+        "review already lapsed": {"status": "present", "document": "DOC-1",
+                                  "date": "2025-01-01", "review_due": "2026-01-01"},
+    }
+    for why, record in cases.items():
+        s = {"id": "e", "placed_on_market": "2026-01-01",
+             "evidence": {"ai_literacy_training_record": record}}
+        assert missing_evidence(s, AS_OF) == ["ai_literacy_training_record"], (
+            f"{why}: this record must not count, but your function accepted it.")
+    s = {"id": "e", "placed_on_market": "2026-01-01",
+         "evidence": {"ai_literacy_training_record": ok}}
+    assert missing_evidence(s, AS_OF) == [], (
+        "a present, referenced, in-date record with no review_due must count — check you are "
+        "not rejecting records that simply have no review_due key.")
+
+    future_review = dict(ok, review_due="2027-01-01")
+    s = {"id": "e", "placed_on_market": "2026-01-01",
+         "evidence": {"ai_literacy_training_record": future_review}}
+    assert missing_evidence(s, AS_OF) == [], (
+        "a review due in the future has not lapsed; only a review_due BEFORE as_of kills it.")
+    print("exercise 2 looks right")
+
+
+# %% [markdown]
+# ## 6. Exercise 3 — `conformity_report(systems, as_of)` and `render_report(report)`
+#
+# Now the artefact: two functions, the table and its rendering. One row per system, plus the
+# summary a reviewer reads first.
+#
+# The subtle field is `overdue`. A system is not overdue because it has gaps; it is overdue
+# when a *missing item belongs to an obligation whose date has already passed*. A pile of
+# Chapter III gaps in 2026 is a plan. One missing Article 50 disclosure is a breach.
+#
+# Two more traps the grader sets, both about not crying wolf:
+#
+# - `next_deadline` is the next date someone still has to *act* on, so it looks only at rows
+#   that still have gaps. A date a fully evidenced system already meets is not anyone's
+#   next deadline.
+# - `blocking` is prohibited **or** overdue. A prohibited system blocks even when its
+#   paperwork is perfect — you cannot evidence your way out of Article 5.
+
+# %%
+def conformity_report(systems: list, as_of: date) -> dict:
+    """Build the evidence table and its summary.
+
+    Each row, in the input order, is a dict with exactly:
+      "id", "name"      copied from the system
+      "risk_tier"       from classify
+      "deadlines"       from classify
+      "applies_from"    from classify
+      "days_to_deadline"int, (applies_from - as_of).days — negative once it binds
+      "missing"         list[str] from missing_evidence
+      "complete"        bool, nothing missing
+      "overdue"         bool, some missing item belongs to an obligation whose deadline
+                        is on or before as_of
+
+    "summary" is a dict with:
+      "total", "complete", "incomplete", "overdue"  ints
+      "by_tier"        dict[str, int], counts per risk tier, tiers with no systems omitted
+      "next_deadline"  the earliest date strictly after as_of among the deadlines of
+                       incomplete rows, as an ISO string, or None
+
+    "blocking" is the sorted list of ids that are prohibited, or overdue.
+
+    Example:
+        >>> r = conformity_report([{"id": "x", "name": "n", "placed_on_market": "2026-01-01",
+        ...                         "evidence": {}}], date(2026, 9, 16))
+        >>> r["rows"][0]["overdue"], r["blocking"]
+        (True, ['x'])
+
+    Returns:
+        dict with exactly the keys "as_of", "rows", "summary", "blocking".
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def render_report(report: dict) -> str:
+    """Render the report as a plain-text table, and return it.
+
+    The layout is yours. Four things are graded, because they are what makes the artefact
+    reviewable once it leaves your laptop:
+      1. every row's id appears in the text, including the rows with nothing outstanding;
+      2. the report's "as_of" date appears — an undated compliance artefact cannot be audited;
+      3. a line containing the words "not legal advice";
+      4. it RETURNS the string rather than printing it, so a caller can write it to a file.
+
+    Example:
+        >>> r = conformity_report([{"id": "x", "name": "n", "placed_on_market": "2026-01-01",
+        ...                         "evidence": {}}], date(2026, 9, 16))
+        >>> text = render_report(r)
+        >>> "x" in text, "2026-09-16" in text, "not legal advice" in text.lower()
+        (True, True, True)
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_conformity_report() -> None:
+    report = conformity_report(REGISTRY, AS_OF)
+    assert set(report) == {"as_of", "rows", "summary", "blocking"}, (
+        f"keys were {sorted(report)} — return exactly those four.")
+    assert [r["id"] for r in report["rows"]] == [s["id"] for s in REGISTRY], (
+        "rows must stay in the input order; a report that reorders itself is not diffable.")
+    summary = report["summary"]
+    assert summary["total"] == len(REGISTRY), (
+        f"summary['total'] was {summary['total']}, expected {len(REGISTRY)} — total counts "
+        "systems in the registry, not rows you decided were interesting.")
+    assert summary["complete"] + summary["incomplete"] == summary["total"], (
+        f"{summary['complete']} + {summary['incomplete']} != {summary['total']}.")
+    assert sum(summary["by_tier"].values()) == summary["total"], (
+        f"by_tier sums to {sum(summary['by_tier'].values())}, not {summary['total']}.")
+    weld = next(r for r in report["rows"] if r["id"] == "weld-inspector")
+    assert weld["complete"] and not weld["overdue"], (
+        "weld-inspector owes one training record and has it; it should be complete.")
+    xray = next(r for r in report["rows"] if r["id"] == "xray-triage")
+    assert xray["missing"] and not xray["overdue"], (
+        "xray-triage has a gap, but only on a 2028 obligation — gaps are not yet breaches, "
+        "so overdue must be False here.")
+    text = render_report(report)
+    assert isinstance(text, str) and "not legal advice" in text.lower(), (
+        "render_report returns the table as a string, ending with its caveat.")
+    print("exercise 3 looks right")
+
+
+# %% [markdown]
+# ## 7. The payoff
+#
+# Run it over the whole registry. Every number, every date and every name below is computed
+# from the rulebook and the registry by the three functions you just wrote.
+#
+# Watch which systems end up blocking. It is not the ones with the longest list of gaps.
+
+# %%
+def summarise(as_of: date = AS_OF) -> dict:
+    """Print the evidence table and return the report."""
+    report = conformity_report(REGISTRY, as_of)
+    print(render_report(report))
+    return report
+
+
+# %% [markdown]
+# ## 8. Common mistakes
+#
+# - **Treating the tier as the obligation set.** It is a label for the heaviest route, not a
+#   substitute for the set. High risk *plus* Article 50 is the normal case, not an edge case.
+# - **Reading "the high-risk rules were delayed" as "the AI Act was delayed".** Article 5 has
+#   bound since 2025-02-02, Article 4 likewise, Article 50 since 2026-08-02. The deferral
+#   moved two rungs of the ladder and left the rest standing.
+# - **Letting the Annex III route win over Annex I.** The embedding decides it, and it is the
+#   later date. Guess wrong and you either panic two years early or miss by two years.
+# - **Hard-coding the Article 50(2) date.** It depends on `placed_on_market`. A constant here
+#   is wrong for half the registry.
+# - **Counting a "planned" row as evidence.** It is the single most common way a pack looks
+#   green and is not. Same for a present row with an empty document reference.
+# - **Ignoring `review_due`.** Evidence expires. A risk management file reviewed last February
+#   with a review due in August is not current evidence in September.
+# - **Calling every gap overdue.** Then the report cries wolf and nobody reads it. Overdue is
+#   a gap against a date that has already passed.
+#
+# %%
+# Run everything: the three public checks, then the pack itself. In a notebook this cell runs
+# as-is; as a file, `python lesson.py` does the same.
+if __name__ == "__main__":
+    _check_classify()
+    _check_missing_evidence()
+    _check_conformity_report()
+    summarise()
+
+# %% [markdown]
+# ## 9. Self-check
+#
+# 1. A CV-screening tool is an Annex III employment system *and* a chatbot. Which is true of
+#    its obligation set?
+#    - (a) Chapter III only: high risk is the heaviest route, and it absorbs the lighter ones
+#    - (b) Article 50 only, until 2027-12-02, when Chapter III replaces it
+#    - (c) both, on different dates — plus Article 4, which is why `applies_from` is 2025-02-02
+#    - (d) neither, until 2027-12-02
+#
+# 2. After the Digital Omnibus, a colleague says "nothing applies until December 2027". What
+#    is wrong with that?
+#    - (a) nothing, the deferral was total
+#    - (b) only the date is wrong; it is August 2028 for everything
+#    - (c) the deferral moved the Chapter III high-risk duties only; Articles 4, 5 and 50 were
+#          untouched and already bind
+#    - (d) it is right for providers but not for deployers
+#
+# 3. A pack shows `risk_management_system: {status: present, document: "RMS-v3",
+#    date: 2026-02-10, review_due: 2026-08-10}` and the pack is assembled on 2026-09-16.
+#    Does the item count?
+#    - (a) yes, it is present and has a real document reference
+#    - (b) yes, because the date is in the past
+#    - (c) no, the review lapsed five weeks before the pack was assembled
+#    - (d) no, because a risk management system can never be evidenced by one document
+#
+# 4. An AI model is a safety component of a CE-marked medical device *and* would sit in an
+#    Annex III area on its own. Which date binds its Chapter III duties?
+#    - (a) 2027-12-02, the earlier of the two
+#    - (b) 2028-08-02, because the embedding in a product already covered by product-safety
+#          law decides the route
+#    - (c) 2026-08-02, general application
+#    - (d) both, whichever the auditor prefers
+#
+# Mark them in the next cell. The key is not written in this file — only a hash of it — so you
+# find out which ones are wrong without being able to read the answers off the page. The full
+# reasoning for each is published in the course solution bundle.
+
+# %%
+# Salted hashes of the answers, not the answers. Nothing here tells you which letter is right.
+_SELF_CHECK_KEY = {
+    1: "089c9bf3af253313",
+    2: "4ce9b56e7eefe4fa",
+    3: "5dfce51b8232f041",
+    4: "4e4144ddc6c88fcc",
+}
+
+_SELF_CHECK_HINT = {
+    1: "re-read section 4 on cumulation — does being high risk switch the Article 50 duties "
+       "off, or add to them?",
+    2: "look at which rungs of the ladder printed PAST in section 1, and count them.",
+    3: "apply the fourth test in section 5: compare review_due against AS_OF.",
+    4: "look at the order classify() is told to test the flags in, and at which of the two "
+       "Chapter III dates that route carries.",
+}
+
+
+def check_self_check(answers: dict) -> None:
+    """Mark your self-check answers. Pass a dict of question number -> letter.
+
+    Example:
+        >>> check_self_check({1: "a"})          # doctest: +SKIP
+          q1  not 'a' — re-read section 4 on cumulation ...
+          q2  no answer given
+        ...
+    """
+    right = 0
+    for question in sorted(_SELF_CHECK_KEY):
+        given = str(answers.get(question, "")).strip().lower()
+        digest = hashlib.sha256(f"T10-L01:q{question}:{given}".encode()).hexdigest()[:16]
+        if digest == _SELF_CHECK_KEY[question]:
+            right += 1
+            print(f"  q{question}  correct")
+        elif not given:
+            print(f"  q{question}  no answer given")
+        else:
+            print(f"  q{question}  not {given!r} — {_SELF_CHECK_HINT[question]}")
+    print(f"\n{len(_SELF_CHECK_KEY)} questions, {right} right")
+
+
+# Put your own letters in, then run this cell:
+# check_self_check({1: "a", 2: "a", 3: "a", 4: "a"})
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A rulebook, a checker that refuses to be fooled by a promise, and a report that names the
+# systems actually blocking a launch. The rest of the flagship keeps this table as its spine:
+# the next lessons attach the model cards, the logging design and the post-market monitoring
+# feed to the same evidence ids, so the pack stays machine-checkable as it grows.
+#
+# **Again, and finally: this is not legal advice.**

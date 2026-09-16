@@ -1,0 +1,116 @@
+# Gate 12. Every claim this lesson makes about the world outside its own measurements, with a
+# primary source and the date that source was read.
+#
+# Numbers the student sees in output — rollouts per second, the C++/Python ratio, costs,
+# upright fractions — are computed by the code they run and are therefore NOT claims. None of
+# them appear here, and none of them are typed into the lesson's prose.
+claims:
+  - id: mujoco-apache-2
+    claim: >-
+      MuJoCo is distributed under the Apache License, Version 2.0 (January 2004), so the
+      engine this lesson links against is free to use, including commercially, with no
+      registration and no licence key.
+    where: "meta.yaml datasets (engine_licence field); assets/SOURCE.md provenance table."
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+    source_kind: primary (the project's own LICENSE file)
+    quote: "Apache License / Version 2.0, January 2004 / http://www.apache.org/licenses/"
+    accessed: 2026-09-16
+    verified: "fetched; the first four lines read 'Apache License', 'Version 2.0, January 2004', the licences URL, then 'TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION'."
+
+  - id: mjcf-timestep-default
+    claim: >-
+      MuJoCo's XML reference documents the default of the <option> element's "timestep"
+      attribute as 0.002 seconds. This lesson's cart-pole overrides it to 0.01, which is why
+      every horizon in the lesson is converted to seconds through model->opt.timestep rather
+      than by assuming a value.
+    where: "assets/cartpole.xml header comment; lesson.cpp cmd_mpc (the horizon_seconds metric, derived from m->opt.timestep); lesson.py section 2 and the common-mistakes list."
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (MuJoCo XML reference, option element)
+    quote: "Simulation time step in seconds. This is the single most important parameter affecting the speed-accuracy trade-off which is inherent in every physics simulation."
+    accessed: 2026-09-16
+    verified: "fetched; option/timestep is documented with default \"0.002\" and the quoted description."
+
+  - id: mjcf-integrator-implicitfast
+    claim: >-
+      MuJoCo's documented default integrator is Euler, and "implicitfast" is one of the
+      permitted values of the <option> element's "integrator" attribute. The lesson's model
+      selects implicitfast explicitly rather than relying on the default.
+    where: "assets/cartpole.xml <option> element; lesson.py section 2 (what one rollout costs)."
+    source_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    source_kind: primary (MuJoCo XML reference, option element)
+    # Not a running sentence in the source: the reference documents these as two separate
+    # fields of the "integrator" attribute, reproduced here exactly as they are labelled.
+    fields:
+      permitted_values: "[Euler, RK4, implicit, implicitfast, discrete]"
+      default: "Euler"
+    accessed: 2026-09-16
+    verified: "fetched; the integrator attribute's permitted keyword values are listed as [Euler, RK4, implicit, implicitfast, discrete] and its default is given as \"Euler\"."
+
+  - id: mppi-importance-weighting
+    claim: >-
+      Model Predictive Path Integral control (MPPI), which is the refit rule this lesson
+      implements, was introduced by Grady Williams, Andrew Aldrich and Evangelos Theodorou in
+      "Model Predictive Path Integral Control using Covariance Variable Importance Sampling",
+      submitted to arXiv on 3 September 2015. The method optimises by sampling control
+      sequences in parallel and combining them under an importance-sampling scheme.
+    where: "lesson.py section 6 (the refit) and lesson.cpp refit_mean() docstring; self-check question 2."
+    source_url: https://arxiv.org/abs/1509.01149
+    source_kind: primary (the paper's own arXiv record)
+    quote: "a Model Predictive Path Integral (MPPI) control algorithm based on a generalized importance sampling scheme and perform parallel optimization via sampling using a Graphics Processing Unit (GPU)"
+    accessed: 2026-09-16
+    verified: "fetched; title, the three authors and the 3 September 2015 submission date all read off the arXiv abstract page."
+
+  - id: mjpc-real-time-sampling
+    claim: >-
+      Sampling-based predictive control is what a shipped MuJoCo robotics stack actually
+      does: MuJoCo MPC is described by its authors as a framework for real-time predictive
+      control built on MuJoCo, whose derivative-free planner "Predictive Sampling" is
+      competitive with the derivative-based alternatives it ships alongside.
+    where: "lesson.py section 1 (why a robot stack samples) and the closing 'what you built, and where it goes next' section."
+    source_url: https://arxiv.org/abs/2212.00541
+    source_kind: primary (the paper's own arXiv record)
+    quote: "currently supports three shooting-based planners: derivative-based iLQG and Gradient Descent, and a simple derivative-free method we call Predictive Sampling"
+    accessed: 2026-09-16
+    verified: "fetched; 'Predictive Sampling: Real-time Behaviour Synthesis with MuJoCo', Howell, Gileadi, Tunyasuvunakool, Zakka, Erez and Tassa, submitted 1 December 2022. The abstract also calls MJPC 'an open-source, interactive application and software framework for real-time predictive control, based on MuJoCo physics' and says Predictive Sampling 'was designed as an elementary baseline, mostly for its pedagogical value, but turned out to be surprisingly competitive with the more established algorithms.'"
+    corroborating_url_readme: https://raw.githubusercontent.com/google-deepmind/mujoco_mpc/main/README.md
+    corroborating_note: "the repository README reads 'Derivative-based methods include iLQG and Gradient Descent, while derivative-free methods include a simple yet very competitive planner called Predictive Sampling.' and states 'All other content is Copyright 2022 DeepMind Technologies Limited and licensed under the Apache License, Version 2.0.'"
+
+  - id: mjpc-cross-entropy-planner
+    claim: >-
+      The cross-entropy refit named in this lesson as the alternative to MPPI's softmax — keep
+      the best-scoring "elite" fraction of the samples and refit the mean to those — is a real
+      shipped planner, not a textbook variant: MuJoCo MPC carries a CrossEntropyPlanner whose
+      elite count is a configured parameter.
+    where: "lesson.py section 6 (softmax refit versus elite refit); self-check question 3 and its answer key."
+    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco_mpc/main/mjpc/planners/cross_entropy/planner.h
+    source_kind: primary (the planner's own header in the google-deepmind/mujoco_mpc source tree)
+    quote: "class CrossEntropyPlanner : public Planner {"
+    accessed: 2026-09-16
+    verified: "fetched; the header carries 'Copyright 2022 DeepMind Technologies Limited' and 'Licensed under the Apache License, Version 2.0', declares the class above, and holds the member 'int n_elite_;' under the comment 'number of elite samples'."
+
+  # The two facts assets/SOURCE.md uses to justify authoring a model rather than vendoring
+  # one. They are statements about third-party repositories, so gate 12 applies to them just
+  # as it does to the documentation facts above.
+  - id: mujoco-model-tree-has-no-cartpole
+    claim: >-
+      MuJoCo's own `model/` directory ships no cart-pole, so there is no first-party MuJoCo
+      cart-pole to vendor. Its entries are CMakeLists.txt, adhesion, arch, balloons, car,
+      cards, cube, flex, hammock, humanoid, mug, plugin, replicate, sleep, slider_crank,
+      surfacevel, tactile and tendon_arm.
+    where: "assets/SOURCE.md, 'Why an authored model rather than a downloaded one'."
+    source_url: https://api.github.com/repos/google-deepmind/mujoco/contents/model
+    source_kind: primary (a directory listing of the project's own repository)
+    accessed: 2026-09-16
+    verified: "fetched the contents listing; no entry's name contains 'cartpole', 'cart_pole' or 'cart' (the 'car' entry is a wheeled-vehicle model, not a cart-pole)."
+
+  - id: dm-control-cartpole-needs-common-includes
+    claim: >-
+      dm_control's suite cart-pole is not self-contained: cartpole.xml pulls in three shared
+      files from the suite's common/ directory, so vendoring it offline would mean vendoring
+      its dependencies too.
+    where: "assets/SOURCE.md, 'Why an authored model rather than a downloaded one'."
+    source_url: https://raw.githubusercontent.com/google-deepmind/dm_control/main/dm_control/suite/cartpole.xml
+    source_kind: primary (the model file itself, in its own repository)
+    quote: "<include file=\"./common/skybox.xml\"/> / <include file=\"./common/visual.xml\"/> / <include file=\"./common/materials.xml\"/>"
+    accessed: 2026-09-16
+    verified: "fetched; the file carries exactly those three <include> elements, each pointing into ./common/."

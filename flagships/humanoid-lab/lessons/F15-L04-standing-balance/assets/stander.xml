@@ -1,0 +1,123 @@
+<!--
+  stander.xml — a planar ankle-balancer standing on a flat foot, written for AI Atlas
+  lesson F15-L04 (standing balance: the centre of mass and the support polygon).
+
+  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
+  ships inside the lesson directory and the lesson never touches the network.
+
+  WHY THIS MODEL
+
+  The lesson's subject is the support polygon — the region of ground the machine can put
+  pressure on — and what happens when the centre of mass leaves it. That requires a real
+  FOOT with real contacts, which is exactly what F15-L08's pinned-ankle balancer does not
+  have. So this model keeps contacts on and spends its simplicity elsewhere: one leg, one
+  actuated joint, and motion confined to the x-z plane.
+
+  GEOMETRY
+
+  The foot is a box resting on a plane. It is attached to the world by three joints, which
+  together give it the freedom of a planar rigid body - it can slide, lift and rotate, so
+  it can tip about its toe or heel, skid, or leave the ground entirely. Nothing pins it.
+
+      slide_x   foot translates along x        [m]
+      slide_z   foot translates along z        [m]
+      pitch     foot rotates about y           [rad]
+      ankle     torso rotates relative to foot [rad]   <- the only ACTUATED joint
+
+  Positive angles pitch the machine FORWARD (+x). Upright is qpos = [0, 0, 0, 0].
+
+  THE FOOT IS DELIBERATELY NOT CENTRED ON THE ANKLE
+
+  The box is 0.24 m long and its centre sits 0.04 m AHEAD of the ankle, so the footprint
+  runs from -0.08 m (heel) to +0.16 m (toe) in the foot's own frame. A human foot is
+  asymmetric in exactly this way, and here it is load-bearing pedagogy rather than
+  decoration: the toe margin is about twice the heel margin, so the machine should survive
+  a forward shove about twice as large as the backward one. The notebook measures both and
+  compares the ratio against the ratio of the margins. If the support polygon were a
+  metaphor rather than a mechanism, those two numbers would not agree.
+
+  THE TORSO DOES NOT COLLIDE
+
+  torso_geom carries contype="0" conaffinity="0", so the only thing that can touch the
+  floor is the foot. That makes the support polygon exactly the foot's footprint and
+  nothing else, which is what lets the notebook compute it from the foot geom alone. It
+  also means a fallen machine passes through the floor instead of landing on it: a fall
+  here is detected from STATE, never from the torso hitting something. The first draft of
+  this model omitted the flag, and the capsule's lower cap - which reaches 0.01 m below the
+  ankle - rested on the plane and held the whole machine up by its chest. The symptom was
+  a single contact point carrying full body weight while the foot floated. Saying so here
+  is cheaper than letting the next reader rediscover it.
+
+  THE TORQUE LIMIT IS NOT THE REAL LIMIT, AND THAT IS THE LESSON
+
+  ctrlrange is +-60 N*m, which sounds generous, and is. The machine weighs about 19.5 kg,
+  so it presses on the floor with about 191 N. Ankle torque balances against ground
+  pressure, and the pressure can only act inside the footprint, so the centre of pressure
+  can be moved at most 0.083 m heelward or 0.157 m toeward of where the mass sits - worth
+  about 16 N*m and 30 N*m respectively. Ask for more than that and the foot rotates off the
+  ground rather than the body rotating upright: the motor obeys, the floor does not.
+
+  The notebook measures that ceiling rather than asserting it, by sweeping a constant ankle
+  torque and watching where the measured centre of pressure stops moving. The gap between
+  the 60 N*m the motor offers and the roughly 16 N*m the foot will accept is the whole
+  point of the section.
+
+  CALIBRATION
+
+  timestep 0.002 s with implicitfast: a flat box on a plane settles onto four corner
+  contacts and stays there, and a step costs a few microseconds, so a full push ladder is
+  seconds of wall clock rather than minutes. Masses are stated explicitly rather than
+  derived from a density, so every number in the lesson's output traces back to something
+  legible in this file.
+-->
+<mujoco model="atlas_f15l04_stander">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" integrator="implicitfast" gravity="0 0 -9.81"/>
+
+  <default>
+    <geom friction="1.0 0.005 0.0001" solref="0.008 1" solimp="0.95 0.99 0.001"/>
+  </default>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global elevation="-15" azimuth="90"/>
+  </visual>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="5 5 0.1" pos="0 0 0" rgba="0.26 0.28 0.33 1"/>
+
+    <body name="foot" pos="0 0 0.03">
+      <joint name="slide_x" type="slide" axis="1 0 0"/>
+      <joint name="slide_z" type="slide" axis="0 0 1"/>
+      <joint name="pitch"   type="hinge" axis="0 1 0"/>
+      <!-- Box centre 0.04 m ahead of the ankle: footprint -0.08 (heel) .. +0.16 (toe). -->
+      <geom name="foot_geom" type="box" size="0.12 0.05 0.03" pos="0.04 0 0" mass="1.5"
+            rgba="0.55 0.58 0.66 1"/>
+
+      <body name="torso" pos="0 0 0.03">
+        <joint name="ankle" type="hinge" axis="0 1 0" range="-0.8 0.8" damping="1.0"/>
+        <!-- contype/conaffinity 0: the torso cannot touch anything, so the support polygon
+             is exactly the footprint and a fall is read from state, not from a collision. -->
+        <geom name="torso_geom" type="capsule" fromto="0 0 0 0 0 0.95" size="0.07" mass="18"
+              contype="0" conaffinity="0" rgba="0.72 0.74 0.80 1"/>
+        <site name="head" pos="0 0 0.95" size="0.02"/>
+      </body>
+    </body>
+  </worldbody>
+
+  <actuator>
+    <!-- A direct torque motor: data.ctrl[0] is a TORQUE IN NEWTON-METRES, not a target
+         angle. The limit is far above what the foot can accept; see the note above. -->
+    <motor name="ankle_torque" joint="ankle" gear="1" ctrllimited="true" ctrlrange="-60 60"/>
+  </actuator>
+
+  <keyframe>
+    <!-- Upright and at rest. The disturbance in this lesson is not a starting pose, as it
+         was in F15-L08; it is a push applied through xfrc_applied part-way through the
+         episode, so the machine has to be standing calmly before it is hit. -->
+    <key name="stand" qpos="0 0 0 0" qvel="0 0 0 0"/>
+  </keyframe>
+</mujoco>

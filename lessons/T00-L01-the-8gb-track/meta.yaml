@@ -1,0 +1,59 @@
+id: T00-L01-the-8gb-track
+title: Build the profiler and the tier gate that decide whether any lesson in this repository is allowed to ship
+track: T00
+flagship: F13           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites: []       # none: this is the first lesson of the Atlas and assumes only Python
+objectives:
+  - "Implement measure(fn) so it reports wall time, Python-allocator peak and process RSS high-water for any callable"
+  - "Measure the gap between what tracemalloc sees and what the operating system charges, using memory Python never allocated"
+  - "Profile four implementations of one numeric task and rank them on time, memory and correctness from measured numbers"
+  - "Implement tier_check() so it reproduces this repository's own execution gate, including the equality boundary"
+  - "Explain why a lesson that exceeds its declared budget is rewritten rather than given a bigger budget"
+datasets: []            # none: every number this lesson shows is measured on the student's own machine
+points: 47
+# Independent review, 2026-09-16. All four gates re-run from the repo root on the venv
+# interpreter; the measured figures below were written back by tools/execute.py, never typed.
+# The rubric was mutation-tested against 14 plausible wrong implementations.
+#
+# Worst defect found: every public check ran through a _try helper catching only
+# NotImplementedError, so a student with a WRONG answer — rather than a missing one — crashed
+# tools/grade.py at import and scored nothing, with no hints. Gate 6's partial credit was
+# unreachable for exactly the students who needed it. _try now prints the failing check's own
+# message and carries on, and __main__ exits non-zero on any recorded failure, so a quietly
+# wrong reference implementation can never be reported PASS by execute.py either.
+#
+# Also fixed, in the notebook: self-check 3 asserted the whole-array version was "the fastest
+# implementation" while the notebook's own table showed the chunked rewrite beating it, and
+# section 4 called it the fastest before anything had been timed — both now rest on a measured
+# table the student runs. Section 6 judged a budget with a tracemalloc-inflated wall time
+# immediately after teaching that budgets are written against untraced runs; it now times the
+# way execute.py does and keeps a 3.4x margin instead of depending on the tracing tax. The
+# section 1 calibration printed "so the unit is right" whatever it measured, and now prints a
+# verdict computed from the measured error. The setup comment asserted that Darwin returns
+# bytes, which claims.yaml expressly promised the lesson would not assert. The closing prose
+# ran 57 lines before the next runnable cell (gate 3 allows ~40); a runnable current-vs-peak
+# demonstration now splits it, worst block 40 raw / 31 non-blank.
+#
+# And in the rubric: five requirements the docstrings called graded were not graded at all —
+# perf_counter vs time.time, get_traced_memory()[1] vs [0], the rss_delta clamp, profile
+# passing through its own n, and the non-positive-budget rule. Each now has a case that a
+# plausible wrong answer fails. test_measure_rss_high_water no longer trusts a hard-coded
+# 768 MiB to stay the largest allocation in the process; it sizes itself against the live
+# high-water reading. 14 mutants, 14 caught, every one with partial credit intact.
+#
+# Open for the owner: flagship F13 has no flagships/ directory yet. The bare-id form is
+# house-consistent (T10-L01 declares F09, T03-L02 declares F02), so it is left as it is.
+# tools/build_student_bundle.py drops a "reviewed_by:" line but not the indented continuation
+# lines of a folded block, so T10-L01's multi-line reviewed_by would leave a malformed
+# meta.student.yaml in the bundle. That is a tools/ fix, out of scope for this lesson.
+status: reviewed        # draft | executed | reviewed | shipped
+# Kept to one line on purpose: tools/build_student_bundle.py strips a line starting with
+# "reviewed_by:" but not the indented continuation lines of a folded block, which would leave
+# the student bundle's meta.student.yaml malformed. The narrative lives in the comments above,
+# which survive into the bundle as valid YAML comments.
+reviewed_by: "Independent review 2026-09-16 — all 12 gates checked, 14 mutants tested, every finding fixed; notes above"
+measured_seconds: 10.4
+measured_peak_mib: 589

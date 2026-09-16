@@ -1,0 +1,78 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output — corpus size, merge counts, seconds,
+# speedup — are computed by the code they run and are therefore not claims; they are absent
+# from this file on purpose.
+claims:
+  - id: bpe-origin-sennrich-2016
+    claim: >-
+      Byte pair encoding was introduced to neural machine translation as a word-segmentation
+      method by Rico Sennrich, Barry Haddow and Alexandra Birch in "Neural Machine Translation
+      of Rare Words with Subword Units" (arXiv:1508.07909, v1 submitted 31 August 2015, v5
+      dated 10 June 2016), which adapts a compression algorithm to subword segmentation.
+    where: "lesson.py section 1 (what the loop is) and claims noted in the closing section"
+    source_url: https://arxiv.org/abs/1508.07909
+    source_title: "Neural Machine Translation of Rare Words with Subword Units"
+    quote: "a segmentation based on the byte pair encoding compression algorithm"
+    accessed: 2026-09-16
+
+  - id: hf-tokenizers-is-rust
+    claim: >-
+      The HuggingFace `tokenizers` library — the trainer behind most published BPE
+      vocabularies — is implemented in Rust, not C++, and ships bindings for Rust, Python,
+      Node.js and Ruby. Its README attributes its training and tokenisation speed to that Rust
+      implementation.
+    where: "lesson.py section 8 (the honest footnote) and self-check question 4"
+    source_url: https://github.com/huggingface/tokenizers
+    source_title: "huggingface/tokenizers — README"
+    quote: "Extremely fast (both training and tokenization), thanks to the Rust implementation."
+    accessed: 2026-09-16
+
+  - id: hf-tokenizers-bindings
+    claim: >-
+      The same README lists the language bindings the library provides, with Rust named as the
+      original implementation.
+    where: "lesson.py section 8 (the honest footnote)"
+    source_url: https://github.com/huggingface/tokenizers
+    source_title: "huggingface/tokenizers — README"
+    quote: >-
+      We provide bindings to the following languages (more to come!): Rust (Original
+      implementation), Python, Node.js, Ruby
+    accessed: 2026-09-16
+
+  - id: sentencepiece-is-cpp
+    claim: >-
+      Google's SentencePiece, an unsupervised text tokenizer and detokenizer for neural text
+      generation systems, is written in C++ and is licensed under Apache 2.0. It is the
+      counter-example that keeps this lesson honest: a production tokenizer in the language the
+      student is writing here.
+    where: "lesson.py section 8 (the honest footnote)"
+    source_url: https://github.com/google/sentencepiece
+    source_title: "google/sentencepiece — README"
+    quote: "Written in highly optimized C++."
+    accessed: 2026-09-16
+
+  - id: tiktoken-rust-core
+    claim: >-
+      OpenAI's tiktoken, described in its README as a fast BPE tokeniser for OpenAI's models,
+      is likewise not C++: its repository root holds a Cargo.toml declaring a Rust crate named
+      "tiktoken" with a cdylib/rlib crate type and a pyo3 dependency, i.e. a Rust core behind
+      Python bindings.
+    where: "lesson.py section 8 (the honest footnote)"
+    source_url: https://github.com/openai/tiktoken/blob/main/Cargo.toml
+    source_title: "openai/tiktoken — Cargo.toml"
+    quote: 'name = "tiktoken"'
+    accessed: 2026-09-16
+
+  - id: cpython-stdlib-licence
+    claim: >-
+      The CPython standard library source used to build this lesson's corpus is distributed
+      under the licence the Python documentation titles "PYTHON SOFTWARE FOUNDATION LICENSE
+      VERSION 2", which grants a worldwide, royalty-free licence to reproduce, analyse, test,
+      perform and distribute the software, with no registration step and no non-commercial
+      restriction. The individual module files used are served directly from
+      raw.githubusercontent.com (checked: Lib/argparse.py returns the module source).
+    where: "meta.yaml datasets, assets/SOURCE.md"
+    source_url: https://docs.python.org/3/license.html
+    source_title: "History and License — Python documentation (PSF License Agreement for Python)"
+    quote: "PSF is making Python available to Licensee on an \"AS IS\" basis"
+    accessed: 2026-09-16

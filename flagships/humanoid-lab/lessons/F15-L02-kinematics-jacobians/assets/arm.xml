@@ -1,0 +1,156 @@
+<!--
+  arm.xml — a humanoid upper body, welded to the world, written for AI Atlas lesson
+  F15-L02 (kinematics, frames and Jacobians).
+
+  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
+  ships inside the lesson directory and the lesson never touches the network.
+
+  WHY THIS MODEL
+
+  The lesson's subject is the map from joint angles to a point in space, and its derivative.
+  Three properties were chosen deliberately to make that map legible.
+
+  1. EVERY JOINT IS A HINGE, and the pelvis is welded to the world with no free joint. So
+     nq == nv == 10, and qpos index i is dof index i for every i. That 1:1 mapping is what
+     lets a student finite-difference the forward kinematics by writing qpos[i] += eps
+     directly. On a model with a free or ball joint the mapping breaks — qpos carries a
+     4-number quaternion where qvel carries a 3-number angular velocity — and the shortcut
+     silently produces a wrong Jacobian. The lesson says so, and section 8 loads a
+     two-line model with a ball joint to show nq != nv rather than assert it.
+
+  2. THE TWO ARMS ARE DELIBERATELY ASYMMETRIC. The right arm has six joints (three at the
+     shoulder, an elbow, two at the wrist) and, with the two waist joints, eight degrees of
+     freedom move the right palm. The left arm has two joints that move it not at all. Their
+     Jacobian columns are therefore EXACTLY zero, not nearly zero, which is the cleanest
+     possible demonstration that a Jacobian column answers "if this one dof moved, where
+     would this point go?" — and it gives the finite-difference exercise an honest reason to
+     difference a handful of dofs rather than all of them.
+
+  3. THE HOME POSE IS SINGULAR ON PURPOSE. At qpos = 0 the whole right arm hangs straight
+     down, fully extended: shoulder origin at z = 1.38, palm at z = 0.745, so the palm is
+     exactly 0.635 m = 0.28 + 0.25 + 0.105 below the shoulder, the sum of the link lengths.
+     A fully extended arm cannot move its palm along its own axis at any joint velocity, so
+     the translational Jacobian loses rank there — its smallest singular value is exactly
+     zero, and the undamped normal equations are not merely ill-conditioned but singular.
+     The inverse-kinematics section starts every solve from this pose, which is what makes
+     the damping term load-bearing rather than decorative: with lambda = 0 the solve raises
+     LinAlgError on its first iteration. The notebook measures that; it does not claim it.
+
+  Contacts are disabled. Nothing in this lesson touches anything, and a contact-free
+  mj_forward on ten dofs costs a few microseconds, which is what puts a damping sweep, a
+  step-size sweep and a hundred inverse-kinematics iterations inside a laptop CPU budget.
+
+  GEOMETRY (x forward, y left, z up; pelvis welded at z = 0.90)
+
+      pelvis     no joint                       welded to the world
+      torso      waist_yaw, waist_pitch         2 dofs
+      right arm  shoulder pitch/roll/yaw,       6 dofs, ending in the "palm" site
+                 elbow, wrist pitch/roll
+      left arm   shoulder pitch, elbow          2 dofs, and they move the right palm not at all
+
+  Generalised coordinates (model.nq == model.nv == 10), in order:
+      0 waist_yaw        1 waist_pitch
+      2 shoulder_r_pitch 3 shoulder_r_roll  4 shoulder_r_yaw
+      5 elbow_r          6 wrist_r_pitch    7 wrist_r_roll
+      8 shoulder_l_pitch 9 elbow_l
+
+  There are no actuators. This lesson never steps time: it sets qpos, runs forward
+  kinematics, and reads positions and Jacobians. Adding motors would invite a student to
+  step the model and wonder why the arm sags, which is the next lesson's subject.
+
+  THE PALM SITE
+
+  "palm" sits 0.105 m beyond the hand body's frame origin, along the hand's own -z. That
+  offset is the point of the frames section: the hand body origin, the hand body's centre of
+  mass and the palm site are three different points rigidly attached to the same body, so
+  they have three different translational Jacobians even though the body — and therefore
+  every joint axis in the chain — is identical. mj_jacBody, mj_jacBodyCom and mj_jacSite are
+  the same computation at three different points, and the notebook measures the gap between
+  them rather than describing it.
+-->
+<mujoco model="atlas_f15l02_upper_body">
+  <compiler angle="radian" autolimits="true"/>
+
+  <option timestep="0.002" gravity="0 0 -9.81">
+    <!-- Nothing in this task touches anything. -->
+    <flag contact="disable"/>
+  </option>
+
+  <visual>
+    <rgba haze="0.15 0.25 0.35 1"/>
+    <global elevation="-15" azimuth="130"/>
+  </visual>
+
+  <default>
+    <geom type="capsule" contype="0" conaffinity="0" rgba="0.72 0.74 0.80 1"/>
+    <joint type="hinge" armature="0.01" damping="0.5"/>
+  </default>
+
+  <worldbody>
+    <light pos="0 0 3" dir="0 0 -1" diffuse="0.8 0.8 0.8"/>
+    <geom name="floor" type="plane" size="3 3 0.1" pos="0 0 0" rgba="0.26 0.28 0.33 1"
+          contype="0" conaffinity="0"/>
+
+    <!-- No joint on the pelvis: it is welded to the world, so every dof below is a named
+         joint and nq == nv. -->
+    <body name="pelvis" pos="0 0 0.90">
+      <geom name="pelvis_geom" fromto="0 0 0 0 0 0.12" size="0.10" mass="12"/>
+
+      <body name="torso" pos="0 0 0.12">
+        <joint name="waist_yaw"   axis="0 0 1" range="-1.2 1.2"/>
+        <joint name="waist_pitch" axis="0 1 0" range="-0.7 0.7"/>
+        <geom name="torso_geom" fromto="0 0 0 0 0 0.40" size="0.09" mass="18"/>
+
+        <body name="upper_arm_right" pos="0 -0.19 0.36">
+          <joint name="shoulder_r_pitch" axis="0 1 0" range="-2.6 1.6"/>
+          <joint name="shoulder_r_roll"  axis="1 0 0" range="-1.6 0.4"/>
+          <joint name="shoulder_r_yaw"   axis="0 0 1" range="-1.5 1.5"/>
+          <geom name="uar_geom" fromto="0 0 0 0 0 -0.28" size="0.045" mass="2.0"/>
+
+          <body name="lower_arm_right" pos="0 0 -0.28">
+            <joint name="elbow_r" axis="0 1 0" range="-2.4 0.0"/>
+            <geom name="lar_geom" fromto="0 0 0 0 0 -0.25" size="0.038" mass="1.4"/>
+
+            <body name="hand_right" pos="0 0 -0.25">
+              <joint name="wrist_r_pitch" axis="0 1 0" range="-1.2 1.2"/>
+              <joint name="wrist_r_roll"  axis="1 0 0" range="-1.2 1.2"/>
+              <geom name="hand_geom" type="box" size="0.028 0.020 0.050" pos="0 0 -0.05"
+                    mass="0.5" rgba="0.62 0.66 0.74 1"/>
+              <!-- 0.105 m beyond the hand frame origin: the whole frames section rests on
+                   this offset being real and non-zero. -->
+              <site name="palm" pos="0 0 -0.105" size="0.012" rgba="0.90 0.30 0.20 1"/>
+            </body>
+          </body>
+        </body>
+
+        <!-- Two dofs that cannot move the right palm. Their Jacobian columns are exactly
+             zero, which is the point. -->
+        <body name="upper_arm_left" pos="0 0.19 0.36">
+          <joint name="shoulder_l_pitch" axis="0 1 0" range="-2.6 1.6"/>
+          <geom name="ual_geom" fromto="0 0 0 0 0 -0.28" size="0.045" mass="2.0"/>
+
+          <body name="lower_arm_left" pos="0 0 -0.28">
+            <joint name="elbow_l" axis="0 1 0" range="-2.4 0.0"/>
+            <geom name="lal_geom" fromto="0 0 0 0 0 -0.25" size="0.038" mass="1.4"/>
+
+            <body name="hand_left" pos="0 0 -0.25">
+              <geom name="handl_geom" type="box" size="0.028 0.020 0.050" pos="0 0 -0.05"
+                    mass="0.5" rgba="0.62 0.66 0.74 1"/>
+              <site name="palm_left" pos="0 0 -0.105" size="0.012" rgba="0.30 0.50 0.80 1"/>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <keyframe>
+    <!-- "ready": a generic working pose, well away from the singular home pose, used for the
+         Jacobian and finite-difference sections. Nothing about it is special except that the
+         arm is bent — the elbow at -0.85 rad keeps the smallest singular value of the
+         translational Jacobian comfortably away from zero, so the finite-difference
+         comparison measures discretisation error and nothing else. -->
+    <key name="ready" qpos="0.0 0.10 -0.45 -0.25 0.0 -0.85 0.10 0.0 -0.30 -0.60"/>
+  </keyframe>
+</mujoco>

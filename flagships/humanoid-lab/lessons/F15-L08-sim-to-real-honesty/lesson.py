@@ -1,0 +1,862 @@
+# %% [markdown]
+# # F15-L08 · Sim-to-real, and what a free tier cannot teach you
+#
+# **You will build:** a reality-gap bench — one rollout function that can inject control
+# latency and sensor noise, a parameter sweep that finds where each gap topples a working
+# controller, a domain-randomisation wrapper, and a hardware ledger that decides from
+# NVIDIA's published requirements what this course is unable to give you.
+#
+# **Time:** ~60 minutes · **Runs on:** a laptop CPU, no GPU, no download
+# · **Prerequisites:** F15-L01 (mjModel/mjData, stepping), F15-L03 (state feedback and
+# gains), F15-L05 (rollouts as the unit of evaluation)
+#
+# By the end you will be able to:
+# 1. Implement a rollout that injects control latency and sensor noise, and measure how far
+#    each one degrades a balancing controller before it topples it.
+# 2. Measure the fraction of a rollout spent against the torque limit, and show that MuJoCo
+#    clamps a command the controller is never told was clamped.
+# 3. Randomise torso mass and joint dry friction and report survival over a held-out set.
+# 4. Implement a domain-randomisation wrapper and measure whether it narrows the held-out gap.
+# 5. Decide from NVIDIA's own requirements whether a named GPU can run Isaac Sim.
+#
+# Every number in this notebook's output is computed by the code you run. The only figures
+# typed by a human are the hardware prices in section 10, and each one carries the URL it came
+# from and the date it was read.
+
+# %%
+# Setup: everything the lesson needs, in one cell, with versions printed.
+import hashlib
+import math
+import time
+from pathlib import Path
+
+import mujoco
+import numpy as np
+
+print("mujoco", mujoco.__version__, "· numpy", np.__version__)
+
+MODEL_FILENAME = "balancer.xml"
+
+
+def balancer_xml_path() -> Path:
+    """Locate the balancer model that ships next to this notebook.
+
+    There is no download branch. The model was written for this lesson and lives in
+    `assets/`; if it is missing, the checkout is broken and saying so beats a silent fetch.
+    """
+    try:
+        here = Path(__file__).resolve().parent
+    except NameError:  # a notebook has no __file__
+        here = Path.cwd()
+    for candidate in (here / "assets" / MODEL_FILENAME,
+                      here.parent / "assets" / MODEL_FILENAME,
+                      Path.cwd() / "assets" / MODEL_FILENAME,
+                      Path.cwd().parent / "assets" / MODEL_FILENAME):
+        if candidate.exists():
+            return candidate
+    raise FileNotFoundError(
+        f"{MODEL_FILENAME} not found next to this lesson. It ships in assets/ and is never "
+        "downloaded; restore it from the lesson directory."
+    )
+
+
+def load_balancer():
+    """Compile the balancer and hand back a fresh (model, data) pair."""
+    model = mujoco.MjModel.from_xml_path(str(balancer_xml_path()))
+    return model, mujoco.MjData(model)
+
+
+MODEL, DATA = load_balancer()
+TORSO_ID = mujoco.mj_name2id(MODEL, mujoco.mjtObj.mjOBJ_BODY, "torso")
+BASE_TORSO_MASS = float(MODEL.body_mass[TORSO_ID])
+CTRL_RANGE = MODEL.actuator_ctrlrange.copy()
+
+# The task: reject the lean stored in the model's one keyframe, for this long, without
+# exceeding this angle. All of it is read from the model or fixed here, never guessed.
+HORIZON_STEPS = 500
+FALL_ANGLE = 0.6
+NOMINAL = {"mass_scale": 1.0, "frictionloss": 0.0, "delay_steps": 0, "noise_std": 0.0,
+           "seed": 0}
+
+print(f"model: nq={MODEL.nq} nv={MODEL.nv} nu={MODEL.nu} dt={MODEL.opt.timestep} s")
+print(f"torso mass {BASE_TORSO_MASS:.1f} kg, total {MODEL.body_mass.sum():.1f} kg")
+print(f"torque limits (N*m): ankle {CTRL_RANGE[0]}, hip {CTRL_RANGE[1]}")
+print(f"horizon {HORIZON_STEPS} steps = {HORIZON_STEPS * MODEL.opt.timestep:.1f} s "
+      f"of simulated time; a lean past {FALL_ANGLE} rad counts as fallen")
+
+# %% [markdown]
+# ## 1. The gap is not one thing, it is four
+#
+# "It worked in simulation" almost never fails for a single reason. Four separate gaps show
+# up on every real machine, and each has its own signature:
+#
+# | gap | what the simulator assumes | what the robot does |
+# |---|---|---|
+# | **latency** | your torque applies this instant | it applies some milliseconds later |
+# | **saturation** | the motor delivers what you ask | it delivers what it has |
+# | **sensor noise** | you know the state exactly | you know an estimate of it |
+# | **parameters** | mass and friction are these numbers | they are nearly those numbers |
+#
+# The rest of this lesson turns each one into a knob and measures it. Run the next cell to see
+# the controller working with every knob at zero — the sim-to-sim best case.
+
+# %%
+# A state-feedback controller: torque = -K @ [ankle, hip, ankle_rate, hip_rate].
+# These gains came out of the search in section 8; treat them as given for now.
+BASELINE_GAINS = np.array([346.8, 52.6, 27.0, 6.7, -18.9, 54.9, -6.2, 4.1])
+
+
+def reset_to_lean(model, data) -> None:
+    """Put the machine back on the one keyframe the model ships: leaning and falling."""
+    mujoco.mj_resetDataKeyframe(model, data, 0)
+    mujoco.mj_forward(model, data)
+
+
+reset_to_lean(MODEL, DATA)
+print(f"start pose: ankle {DATA.qpos[0]:+.3f} rad, hip {DATA.qpos[1]:+.3f} rad, "
+      f"ankle rate {DATA.qvel[0]:+.3f} rad/s")
+print("it is already falling forwards; the controller has to catch it")
+
+# %% [markdown]
+# ## 2. Exercise 1 — `rollout`, the instrument everything else is built on
+#
+# This is the one function that matters. It runs the controller for the full horizon and
+# reports four things: did it survive, for how many steps, how badly it wobbled, and what
+# fraction of the time it was asking for more torque than the motor has.
+#
+# Two of the four gaps live inside this loop. **Latency** is a pipeline: the torque you apply
+# now was computed several steps ago. **Sensor noise** corrupts what the controller *sees*,
+# never the true state — that distinction is the whole point, so read it twice.
+
+# %%
+def rollout(model, data, gains, delay_steps: int = 0, noise_std: float = 0.0,
+            seed: int = 0) -> dict:
+    """Run the balancing controller for one episode and report how it went.
+
+    The loop, in order, for each of `HORIZON_STEPS` steps:
+
+    1. Read the TRUE state, `np.concatenate([data.qpos, data.qvel])` — four numbers.
+    2. If `noise_std` is positive, form the OBSERVED state by adding
+       `rng.normal(0.0, noise_std, size=4)` to it. The true state is never modified; only
+       the controller's view of it is. Use `rng = np.random.default_rng(seed)`, created once
+       before the loop, so a given `seed` replays exactly.
+    3. Compute the command `u = -K @ observed`, where `K` is `gains` reshaped to (2, 4).
+    4. Push `u` onto the end of a `pipeline` list that STARTED as `delay_steps` zero
+       commands, then apply `pipeline.pop(0)`. With `delay_steps=0` you pop the command you
+       just pushed, so nothing is delayed; with `delay_steps=3` the command you apply was
+       computed three steps ago.
+    5. Before writing it, check whether the applied command lies outside
+       `model.actuator_ctrlrange` on either actuator; if so, count this step as saturated.
+       Write the command UNCLAMPED to `data.ctrl` — MuJoCo does the clamping, and watching
+       it do so is the point of section 3.
+    6. `mujoco.mj_step(model, data)`, then accumulate `data.qpos[0] ** 2` for the RMS, and
+       stop early if `abs(data.qpos[0]) > FALL_ANGLE`.
+
+    Call `reset_to_lean(model, data)` first so every episode starts from the same pose.
+
+    Example (the baseline gains, every gap switched off):
+        >>> model, data = load_balancer()
+        >>> r = rollout(model, data, BASELINE_GAINS)
+        >>> r["survived"], r["steps"]
+        (True, 500)
+
+    Returns:
+        dict with exactly these four keys:
+          "survived"            bool, True only if it lasted the whole horizon
+          "steps"               int, steps actually taken
+          "rms_lean"            float, sqrt(mean(ankle angle squared)) over the steps taken,
+                                or float("inf") if it fell — a fallen robot has no tracking
+                                error, it has no robot
+          "saturated_fraction"  float in [0, 1], saturated steps / steps taken
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_rollout() -> None:
+    model, data = load_balancer()
+    r = rollout(model, data, BASELINE_GAINS)
+    assert set(r) == {"survived", "steps", "rms_lean", "saturated_fraction"}, (
+        f"keys were {sorted(r)} — return a dict with exactly those four names."
+    )
+    assert r["survived"] and r["steps"] == HORIZON_STEPS, (
+        f"the baseline gains survived={r['survived']} for {r['steps']} steps with every gap "
+        "switched off. They are known good, so the loop is wrong: the usual cause is "
+        "forgetting reset_to_lean, or applying +K @ x instead of -K @ x."
+    )
+    assert 0.0 < r["rms_lean"] < 0.2, (
+        f"rms_lean was {r['rms_lean']} — it is the root MEAN square of data.qpos[0] over the "
+        "steps taken, so divide by the step count before taking the square root."
+    )
+    assert 0.0 < r["saturated_fraction"] < 1.0, (
+        f"saturated_fraction was {r['saturated_fraction']} — at these gains the ankle spends "
+        "part, but not all, of the episode against its 40 N*m limit. Exactly 0.0 means you "
+        "compared the CLAMPED command against the range instead of the raw one."
+    )
+    slow = rollout(model, data, BASELINE_GAINS, delay_steps=2)
+    assert slow["rms_lean"] > r["rms_lean"] * 1.3, (
+        f"8 ms of latency changed rms_lean from {r['rms_lean']:.4f} to {slow['rms_lean']:.4f} "
+        "— that is too little. Your pipeline is not actually delaying: it must START with "
+        "delay_steps zeros, so the first commands applied are stale."
+    )
+    quiet = rollout(model, data, BASELINE_GAINS, noise_std=0.05, seed=1)
+    again = rollout(model, data, BASELINE_GAINS, noise_std=0.05, seed=1)
+    assert quiet["rms_lean"] == again["rms_lean"], (
+        "the same seed gave two different answers — build the Generator once, before the "
+        "loop, not inside it."
+    )
+    print(f"exercise 1 looks right: clean rms {r['rms_lean']:.4f}, "
+          f"saturated {r['saturated_fraction']:.0%} of the episode")
+
+
+# %% [markdown]
+# ## 3. Saturation: the lie the controller is never told
+#
+# MuJoCo clamps a command outside `ctrlrange` and says nothing. `data.ctrl` still holds the
+# absurd number you wrote; `data.actuator_force` holds what the motor actually produced. A
+# controller that reads back its own `ctrl` believes it got what it asked for.
+#
+# Run this. Nothing here is typed — the clamp is measured.
+
+# %%
+_m, _d = load_balancer()
+_d.ctrl[:] = [1e6, 1e6]
+mujoco.mj_step(_m, _d)
+print(f"wrote ctrl      = {_d.ctrl}")
+print(f"motor delivered = {_d.actuator_force}   <- clamped to ctrlrange, silently")
+print(f"the ankle's real ceiling is {CTRL_RANGE[0][1]:.0f} N*m, and the controller "
+      "cannot tell from data.ctrl that it ever hit it")
+
+# %% [markdown]
+# ## 4. Exercise 2 — `apply_parameters`, and the hazard of a mutable model
+#
+# The other two gaps are *model* edits, not loop edits. `mjModel` is mutable, which is what
+# makes randomisation cheap — you do not recompile the XML a thousand times, you edit the
+# compiled model in place.
+#
+# That is also the trap. Edit it in place and forget to restore it, and every later condition
+# silently inherits the previous one's mass. Always set from the stored baseline, never
+# multiply what is already there.
+
+# %%
+def apply_parameters(model, data, mass_scale: float = 1.0,
+                     frictionloss: float = 0.0) -> None:
+    """Set the torso mass and the joint dry friction on a compiled model, in place.
+
+    - `model.body_mass[TORSO_ID]` becomes `BASE_TORSO_MASS * mass_scale`. Set it FROM the
+      stored baseline; `model.body_mass[TORSO_ID] *= mass_scale` compounds across calls and
+      is the single most common bug in this lesson.
+    - `model.dof_frictionloss[:]` becomes `frictionloss`. This is MuJoCo's dry friction: an
+      upper limit on the force friction can generate, applied to both joints.
+    - Finally call `mujoco.mj_setConst(model, data)` so the quantities MuJoCo DERIVED from
+      the old mass are rebuilt: `body_subtreemass`, `dof_M0`, `body_invweight0` and friends.
+      Section 11 has a cell that shows one of them going stale. Be precise about what this
+      costs you on this model: MuJoCo rebuilds the mass matrix every step, so a rollout here
+      is unchanged either way — it is the derived bookkeeping that rots, which is why the
+      grader checks `body_subtreemass` rather than a rollout.
+
+    Example:
+        >>> model, data = load_balancer()
+        >>> apply_parameters(model, data, mass_scale=1.5)
+        >>> round(float(model.body_mass[TORSO_ID]), 1)
+        21.0
+        >>> apply_parameters(model, data, mass_scale=1.0)   # restores, does not compound
+        >>> round(float(model.body_mass[TORSO_ID]), 1)
+        14.0
+
+    Returns:
+        None. This function mutates `model`.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_apply_parameters() -> None:
+    model, data = load_balancer()
+    apply_parameters(model, data, mass_scale=1.5)
+    got = float(model.body_mass[TORSO_ID])
+    assert abs(got - BASE_TORSO_MASS * 1.5) < 1e-9, (
+        f"torso mass is {got:.3f}, expected {BASE_TORSO_MASS * 1.5:.3f}."
+    )
+    apply_parameters(model, data, mass_scale=1.5)
+    twice = float(model.body_mass[TORSO_ID])
+    assert abs(twice - got) < 1e-9, (
+        f"calling it twice with the same scale gave {got:.3f} then {twice:.3f} — you are "
+        "multiplying the current mass instead of setting it from BASE_TORSO_MASS."
+    )
+    apply_parameters(model, data, frictionloss=3.0)
+    assert np.allclose(model.dof_frictionloss, 3.0), (
+        f"dof_frictionloss is {model.dof_frictionloss} — set every entry, and note this call "
+        "also restores mass_scale to its default of 1.0."
+    )
+    assert abs(float(model.body_mass[TORSO_ID]) - BASE_TORSO_MASS) < 1e-9, (
+        "that last call left mass_scale at its default of 1.0, so the torso mass should be "
+        "back at the baseline; it is not, so you are not setting from the baseline."
+    )
+    print("exercise 2 looks right: mass and friction set from baseline, no compounding")
+
+
+# %% [markdown]
+# ## 5. Exercise 3 — `evaluate`, one condition end to end
+#
+# A *condition* is one dict describing one imagined robot: `mass_scale`, `frictionloss`,
+# `delay_steps`, `noise_std`, `seed`. Two of those keys are model edits and three are loop
+# arguments. Splitting them correctly is the exercise.
+
+# %%
+def evaluate(model, data, gains, condition: dict) -> dict:
+    """Apply one condition to the model and run one rollout under it.
+
+    `condition` has exactly the five keys of `NOMINAL`. Send `mass_scale` and `frictionloss`
+    to `apply_parameters`; send `delay_steps`, `noise_std` and `seed` to `rollout`. Return
+    the rollout's dict unchanged.
+
+    Example:
+        >>> model, data = load_balancer()
+        >>> evaluate(model, data, BASELINE_GAINS, NOMINAL)["survived"]
+        True
+        >>> heavy = dict(NOMINAL, mass_scale=1.3)
+        >>> evaluate(model, data, BASELINE_GAINS, heavy)["survived"]
+        False
+
+    Returns:
+        The dict from `rollout`, with the same four keys.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def survival_rate(model, data, gains, conditions: list) -> float:
+    """Fraction of `conditions` the controller survives. Provided; uses your `evaluate`."""
+    if not conditions:
+        return 0.0
+    return sum(bool(evaluate(model, data, gains, c)["survived"])
+               for c in conditions) / len(conditions)
+
+
+def _check_evaluate() -> None:
+    model, data = load_balancer()
+    assert evaluate(model, data, BASELINE_GAINS, NOMINAL)["survived"], (
+        "the nominal condition is the one the baseline gains were tuned on; it must survive. "
+        "Check you are passing noise_std and delay_steps through rather than dropping them."
+    )
+    heavy = evaluate(model, data, BASELINE_GAINS, dict(NOMINAL, mass_scale=1.3))
+    assert not heavy["survived"], (
+        "a 30% heavier torso must topple these gains — if it survived, mass_scale is not "
+        "reaching apply_parameters."
+    )
+    back = evaluate(model, data, BASELINE_GAINS, NOMINAL)
+    assert back["survived"], (
+        "the nominal condition failed straight after a heavy one: the model kept the heavy "
+        "mass. apply_parameters must set from the baseline on every call."
+    )
+    print("exercise 3 looks right: conditions apply, and they do not leak into each other")
+
+
+# %% [markdown]
+# ## 6. Where each gap actually bites
+#
+# Now the measurement. Each sweep below turns exactly one knob with the baseline gains, and
+# prints what your own `rollout` reports. Read the saturation column as carefully as the
+# survival column — it is usually the first thing to move.
+
+# %%
+def sweep(name: str, key: str, values, model=None, data=None) -> list:
+    """Turn one knob across `values`, holding the rest at NOMINAL, and print the result."""
+    if model is None:
+        model, data = load_balancer()
+    rows = []
+    print(f"\n{name}")
+    print(f"  {'value':>10s}  {'survived':>8s} {'steps':>6s} {'rms lean':>9s} {'saturated':>9s}")
+    for v in values:
+        r = evaluate(model, data, BASELINE_GAINS, dict(NOMINAL, **{key: v}))
+        rows.append((v, r))
+        rms = "fell" if r["rms_lean"] == float("inf") else f"{r['rms_lean']:.4f}"
+        print(f"  {v:>10} {str(r['survived']):>9s} {r['steps']:>6d} {rms:>9s} "
+              f"{r['saturated_fraction']:>8.0%}")
+    return rows
+
+
+def _check_sweeps() -> None:
+    dt_ms = MODEL.opt.timestep * 1000
+    lat = sweep(f"LATENCY (one step = {dt_ms:.0f} ms)", "delay_steps", [0, 2, 4, 8, 12, 16, 20])
+    mass = sweep("TORSO MASS (multiplier)", "mass_scale", [0.8, 1.0, 1.1, 1.2, 1.3])
+    fric = sweep("DRY FRICTION (N*m)", "frictionloss", [0.0, 5.0, 10.0, 20.0, 30.0])
+    noise = sweep("SENSOR NOISE (rad, std)", "noise_std", [0.0, 0.02, 0.08, 0.12, 0.20])
+
+    def first_fall(rows):
+        for v, r in rows:
+            if not r["survived"]:
+                return v
+        return None
+
+    print(f"\nfirst latency that topples it : {first_fall(lat)} steps "
+          f"({(first_fall(lat) or 0) * dt_ms:.0f} ms)")
+    print(f"first mass multiplier that does: {first_fall(mass)}")
+    print(f"first friction that does       : {first_fall(fric)}  "
+          "<- dry friction degrades tracking without toppling it")
+    print(f"first noise level that does    : {first_fall(noise)}")
+    assert first_fall(lat) is not None, "latency should eventually topple it"
+    assert first_fall(mass) is not None, "a heavy enough torso should topple it"
+    assert first_fall(noise) is not None, "enough sensor noise should topple it"
+    # The sentence printed below is a claim about this machine, so it is asserted rather
+    # than merely typed: if dry friction ever did topple it, the prose would be a lie.
+    assert first_fall(fric) is None, (
+        f"dry friction toppled the machine at {first_fall(fric)} N*m, so the conclusion "
+        "printed below no longer holds — re-read the friction table before trusting it"
+    )
+    assert fric[0][1]["rms_lean"] < fric[-1][1]["rms_lean"], (
+        "friction should make the wobble worse even where it does not cause a fall"
+    )
+    print("\nread that again: friction never topples it, and still burns the torque budget."
+          "\nSurvival is not the only thing worth measuring, and it is often the last to move.")
+
+
+# %% [markdown]
+# ## 7. Exercise 4 — the domain-randomisation wrapper
+#
+# Domain randomisation is one idea: instead of tuning against the simulator you have, tune
+# against a *distribution* of simulators, so the real one is just another draw. It is due to
+# Tobin et al. (2017) for appearance and Peng et al. (2017) for dynamics — this lesson
+# randomises dynamics, so it is the Peng variant. Both are sourced in `claims.yaml`.
+#
+# Your job is the sampler. Draw the numbers in exactly the documented order, so that a given
+# seed reproduces exactly, for you and for the grader.
+
+# %%
+DR_SPEC = {
+    "mass_scale": (0.85, 1.30),
+    "frictionloss": (0.0, 15.0),
+    "delay_steps": (0, 9),        # integers, upper bound exclusive
+    "noise_std": (0.0, 0.03),
+}
+HELD_OUT_SEED, HELD_OUT_N = 4242, 40
+DR_TRAIN_SEED, DR_TRAIN_N = 707, 10
+TUNE_SEED = 1
+
+
+def sample_conditions(n: int, seed: int, spec: dict = DR_SPEC) -> list:
+    """Draw `n` random conditions from `spec`. This is the domain-randomisation wrapper.
+
+    Create ONE generator, `rng = np.random.default_rng(seed)`, then build each condition by
+    drawing in exactly this order — the order is part of the contract, because it is what
+    makes a seed reproducible:
+
+        mass_scale   = float(rng.uniform(*spec["mass_scale"]))
+        frictionloss = float(rng.uniform(*spec["frictionloss"]))
+        delay_steps  = int(rng.integers(*spec["delay_steps"]))
+        noise_std    = float(rng.uniform(*spec["noise_std"]))
+        seed         = int(rng.integers(0, 10000))
+
+    Each condition gets its OWN rollout seed from the same generator, so two conditions with
+    the same noise level still see different noise.
+
+    Example:
+        >>> c = sample_conditions(3, seed=0)
+        >>> len(c), sorted(c[0])
+        (3, ['delay_steps', 'frictionloss', 'mass_scale', 'noise_std', 'seed'])
+        >>> sample_conditions(3, seed=0) == sample_conditions(3, seed=0)
+        True
+
+    Returns:
+        A list of `n` dicts, each with the same five keys as `NOMINAL`.
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def ensemble_cost(model, data, gains, conditions: list) -> float:
+    """Mean cost over conditions: wobble if it survived, a graded penalty if it fell.
+
+    Provided. The penalty stays graded — falling at step 400 scores better than falling at
+    step 10 — so the search always has a gradient to follow, even before anything survives.
+    """
+    total = 0.0
+    for c in conditions:
+        r = evaluate(model, data, gains, c)
+        total += r["rms_lean"] if r["survived"] else 10.0 - 8.0 * (r["steps"] / HORIZON_STEPS)
+    return total / len(conditions)
+
+
+def cem_tune(conditions: list, seed: int = TUNE_SEED, iterations: int = 8,
+             population: int = 40, elite: int = 8) -> np.ndarray:
+    """Cross-entropy search for gains that do well across `conditions`. Provided.
+
+    Nothing clever: sample gains from a Gaussian, keep the best few, refit, repeat. The only
+    thing that changes between a nominally-tuned and a domain-randomised controller is the
+    LIST OF CONDITIONS you hand it. That is the entire technique.
+    """
+    model, data = load_balancer()
+    rng = np.random.default_rng(seed)
+    mu = np.array([150.0, 30.0, 45.0, 8.0, -10.0, 50.0, -4.0, 10.0])
+    sd = np.abs(mu) * 0.7 + 4.0
+    for _ in range(iterations):
+        candidates = rng.normal(mu, sd, size=(population, 8))
+        scores = np.array([ensemble_cost(model, data, g, conditions) for g in candidates])
+        keep = candidates[np.argsort(scores)[:elite]]
+        mu, sd = keep.mean(axis=0), keep.std(axis=0) + 1e-3
+    return mu
+
+
+def _check_sample_conditions() -> None:
+    got = sample_conditions(5, seed=0)
+    assert len(got) == 5, f"asked for 5 conditions, got {len(got)}"
+    assert sorted(got[0]) == sorted(NOMINAL), (
+        f"a condition has keys {sorted(got[0])}, expected {sorted(NOMINAL)}"
+    )
+    assert got == sample_conditions(5, seed=0), (
+        "the same seed produced different conditions — build the Generator once, from the "
+        "seed you were given, and draw in the documented order."
+    )
+    assert got != sample_conditions(5, seed=1), "different seeds must give different draws"
+    for c in got:
+        assert DR_SPEC["mass_scale"][0] <= c["mass_scale"] <= DR_SPEC["mass_scale"][1], (
+            f"mass_scale {c['mass_scale']} is outside {DR_SPEC['mass_scale']}"
+        )
+        assert isinstance(c["delay_steps"], int), (
+            f"delay_steps is {type(c['delay_steps']).__name__}; it indexes a list, so make "
+            "it an int with int(), not a numpy integer from rng.integers"
+        )
+    assert len({c["seed"] for c in got}) > 1, (
+        "every condition got the same rollout seed — draw a fresh one per condition from the "
+        "same generator, do not reuse the argument `seed`"
+    )
+    print("exercise 4 looks right: reproducible, in range, one rollout seed per condition")
+
+
+# %% [markdown]
+# ## 8. Does it actually narrow the gap?
+#
+# The honest test of domain randomisation is a parameter set the controller was never tuned
+# on. Below, two controllers are tuned — one against the nominal model alone, one against a
+# randomised ensemble — and both are scored on the same held-out conditions, drawn from a
+# seed neither search ever saw.
+
+# %%
+def compare_nominal_vs_dr() -> dict:
+    """Tune two controllers, score both on held-out conditions, return the comparison."""
+    model, data = load_balancer()
+    held_out = sample_conditions(HELD_OUT_N, seed=HELD_OUT_SEED)
+    train_dr = sample_conditions(DR_TRAIN_N, seed=DR_TRAIN_SEED)
+
+    t0 = time.perf_counter()
+    gains_nominal = cem_tune([NOMINAL])
+    t1 = time.perf_counter()
+    gains_dr = cem_tune(train_dr)
+    t2 = time.perf_counter()
+
+    out = {
+        "nominal_on_nominal": survival_rate(model, data, gains_nominal, [NOMINAL]),
+        "nominal_on_held_out": survival_rate(model, data, gains_nominal, held_out),
+        "dr_on_held_out": survival_rate(model, data, gains_dr, held_out),
+        "tune_seconds_nominal": t1 - t0,
+        "tune_seconds_dr": t2 - t1,
+    }
+    out["gap_closed"] = out["dr_on_held_out"] - out["nominal_on_held_out"]
+    return out
+
+
+def _check_comparison() -> None:
+    r = compare_nominal_vs_dr()
+    print(f"tuned on the nominal model alone   ({r['tune_seconds_nominal']:.1f}s)")
+    print(f"tuned on {DR_TRAIN_N} randomised models     ({r['tune_seconds_dr']:.1f}s)")
+    print(f"\n  nominal-tuned, scored on the model it was tuned on : "
+          f"{r['nominal_on_nominal']:.0%}")
+    print(f"  nominal-tuned, scored on {HELD_OUT_N} held-out models      : "
+          f"{r['nominal_on_held_out']:.0%}")
+    print(f"  DR-tuned,      scored on the same held-out models  : {r['dr_on_held_out']:.0%}")
+    print(f"\n  gap closed by domain randomisation: {r['gap_closed']:+.1%}")
+    assert r["nominal_on_nominal"] == 1.0, (
+        "the nominally-tuned controller should be perfect on the model it was tuned on — "
+        "that is exactly what makes its held-out score so instructive"
+    )
+    assert r["dr_on_held_out"] > r["nominal_on_held_out"], (
+        f"DR scored {r['dr_on_held_out']:.0%} against nominal's {r['nominal_on_held_out']:.0%} "
+        "on held-out conditions. Expected DR to win — check that cem_tune is receiving the "
+        "randomised list and not [NOMINAL]."
+    )
+    print("\n  100% on the model you tuned on is not a result. It is the definition of the"
+          "\n  model you tuned on. Only the held-out column is evidence of anything.")
+
+
+# %% [markdown]
+# ## 9. Exercise 5 — what this course cannot give you
+#
+# Everything above ran on a CPU because the whole flagship is built to. The moment you want
+# photoreal rendering, RTX sensor simulation or massively parallel GPU training — Isaac Sim
+# and Isaac Lab — the hardware requirement is real and published, and no amount of course
+# design gets around it.
+#
+# Here is the part most write-ups get wrong, so this lesson makes you compute it rather than
+# repeat it. The usual claim is that free notebook GPUs "lack ray-tracing cores". **The T4
+# has RT Cores** (NVIDIA's own product page says so) and its 16 GB meets the 16 GB floor
+# exactly. The L4 clears both bars more comfortably still, with third-generation RT Cores and
+# 24 GB. The real obstacles are different, and your function has to name them precisely.
+
+# %%
+# Every field below is from a primary source, recorded in claims.yaml with its access date.
+ISAAC_MIN = {
+    "min_vram_gib": 16,
+    "requires_rt_cores": True,
+    "reference_gpu": "GeForce RTX 4080",
+    "source": "https://docs.isaacsim.omniverse.nvidia.com/5.1.0/installation/requirements.html",
+}
+
+GPU_LEDGER = [
+    # name, VRAM GiB, has RT cores, named in NVIDIA's requirements table, where you meet it
+    {"name": "GeForce RTX 4080", "vram_gib": 16, "rt_cores": True, "named_by_nvidia": True,
+     "found_on": "a workstation you bought"},
+    {"name": "RTX PRO 6000 Blackwell", "vram_gib": 48, "rt_cores": True,
+     "named_by_nvidia": True, "found_on": "a workstation you really bought"},
+    {"name": "NVIDIA T4", "vram_gib": 16, "rt_cores": True, "named_by_nvidia": False,
+     "found_on": "Colab free tier, when you are given one at all"},
+    {"name": "NVIDIA L4", "vram_gib": 24, "rt_cores": True, "named_by_nvidia": False,
+     "found_on": "cloud notebook tiers"},
+    {"name": "NVIDIA A100", "vram_gib": 40, "rt_cores": False, "named_by_nvidia": False,
+     "found_on": "research clusters; named by NVIDIA as unsupported"},
+    {"name": "this machine's CPU", "vram_gib": 0, "rt_cores": False, "named_by_nvidia": False,
+     "found_on": "where this entire flagship runs"},
+]
+
+
+def can_run_isaac_sim(gpu: dict, requirement: dict = ISAAC_MIN) -> dict:
+    """Decide whether one GPU meets NVIDIA's published Isaac Sim requirements.
+
+    Check all three, appending a reason for each failure IN THIS ORDER:
+
+    1. `requirement["requires_rt_cores"]` is true and `gpu["rt_cores"]` is false ->
+       a reason mentioning RT Cores
+    2. `gpu["vram_gib"] < requirement["min_vram_gib"]` ->
+       a reason quoting both numbers
+    3. `gpu["named_by_nvidia"]` is false ->
+       a reason saying it is not named in NVIDIA's requirements table
+
+    Read `requirement`, never the `ISAAC_MIN` global — the grader relaxes the requirement to
+    check you did.
+
+    Note what this ordering forces you to notice: the T4 passes checks 1 and 2 and fails only
+    check 3. The popular explanation for why free tiers cannot run Isaac Sim is the wrong one.
+
+    Example:
+        >>> can_run_isaac_sim(GPU_LEDGER[0])["ok"]
+        True
+        >>> len(can_run_isaac_sim(GPU_LEDGER[2])["reasons"])   # the T4 fails one check
+        1
+        >>> len(can_run_isaac_sim(GPU_LEDGER[4])["reasons"])   # the A100 fails two
+        2
+
+    Returns:
+        dict with "ok" (bool, true only when there are no reasons) and "reasons" (list of str).
+    """
+    # YOUR CODE HERE
+    raise NotImplementedError
+
+
+def _check_can_run_isaac_sim() -> None:
+    print(f"{'GPU':<26s} {'VRAM':>5s} {'RT':>6s} {'runs Isaac Sim?':>16s}   why not")
+    for gpu in GPU_LEDGER:
+        v = can_run_isaac_sim(gpu)
+        why = "" if v["ok"] else "; ".join(v["reasons"])
+        print(f"{gpu['name']:<26s} {gpu['vram_gib']:>4d}G {str(gpu['rt_cores']):>6s} "
+              f"{str(v['ok']):>16s}   {why}")
+    assert can_run_isaac_sim(GPU_LEDGER[0])["ok"], "the RTX 4080 IS the documented minimum"
+    t4 = can_run_isaac_sim(GPU_LEDGER[2])
+    assert not t4["ok"] and len(t4["reasons"]) == 1, (
+        f"the T4 produced {len(t4['reasons'])} reasons: {t4['reasons']}. It has RT Cores and "
+        "16 GiB, so it must fail exactly one check — the 'not named' one. If you gave it a "
+        "VRAM reason, your comparison is > rather than >=."
+    )
+    a100 = can_run_isaac_sim(GPU_LEDGER[4])
+    assert len(a100["reasons"]) == 2, (
+        f"the A100 produced {len(a100['reasons'])} reasons: {a100['reasons']}. It has 40 GiB "
+        "but no RT Cores and is not named, so it fails exactly two."
+    )
+    print("\nexercise 5 looks right. Note the T4 row: it fails for being unnamed, NOT for"
+          "\nlacking RT Cores. Check the claim, not the folklore.")
+
+
+# %% [markdown]
+# ## 10. The hardware ladder, with prices that carry their receipts
+#
+# If you want to go past what a CPU can teach, these are the real rungs. Every figure was
+# read from the seller's own page on the date shown and is recorded in `claims.yaml`.
+#
+# One rung is deliberately empty. No retail price for an RTX 4080-class desktop GPU appears
+# here, because NVIDIA's own page rendered its price as a placeholder and three retailers
+# refused an unauthenticated request. Gate 12 forbids a number without a primary source, and
+# that rule binds the person who wrote this lesson exactly as it binds you.
+
+# %%
+HARDWARE_LADDER = [
+    {"rung": "a 6-DoF arm, servo kit", "cost_usd": 249.90, "kind": "buy",
+     "what_it_teaches": "real actuators, real backlash, real latency",
+     "source": "https://www.seeedstudio.com/SO-ARM101-Low-Cost-AI-Arm-Kit-p-6426.html"},
+    {"rung": "Reachy Mini Lite", "cost_usd": 399.00, "kind": "buy",
+     "what_it_teaches": "an open-source robot with a real sensing loop",
+     "source": "https://huggingface.co/blog/reachy-mini"},
+    {"rung": "Unitree Go2 quadruped", "cost_usd": 2800.00, "kind": "buy",
+     "what_it_teaches": "contact, slip and balance on hardware",
+     "source": "https://shop.unitree.com/products/unitree-go2"},
+    {"rung": "Berkeley Humanoid Lite (build it)", "cost_usd": 5000.00, "kind": "build",
+     "what_it_teaches": "a whole open humanoid, printed on a desktop printer",
+     "source": "https://arxiv.org/abs/2504.17249"},
+    {"rung": "Unitree G1 humanoid", "cost_usd": 13500.00, "kind": "buy",
+     "what_it_teaches": "the real thing, and the real repair bill",
+     "source": "https://shop.unitree.com/products/unitree-g1"},
+    {"rung": "rent an RTX 4090, per hour", "cost_usd": 0.74, "kind": "rent",
+     "what_it_teaches": "Isaac Sim, without owning the card",
+     "source": "https://www.runpod.io/pricing"},
+    {"rung": "rent an RTX 5090, per hour", "cost_usd": 0.99, "kind": "rent",
+     "what_it_teaches": "the same, faster",
+     "source": "https://www.runpod.io/pricing"},
+]
+
+
+def ladder_table(ladder: list = HARDWARE_LADDER) -> None:
+    """Print the ladder, and compute how much rental time each purchase price would buy."""
+    hourly = min(r["cost_usd"] for r in ladder if r["kind"] == "rent")
+    print(f"\n{'rung':<36s} {'USD':>9s}  {'kind':<6s} what it teaches")
+    for r in sorted(ladder, key=lambda row: row["cost_usd"]):
+        print(f"{r['rung']:<36s} {r['cost_usd']:>9,.2f}  {r['kind']:<6s} "
+              f"{r['what_it_teaches']}")
+    print(f"\nCheapest rented RTX hour on the ladder: ${hourly:.2f}.")
+    for r in sorted(ladder, key=lambda row: row["cost_usd"]):
+        if r["kind"] != "rent":
+            print(f"  the {r['rung']} budget instead buys {r['cost_usd'] / hourly:,.0f} "
+                  f"GPU-hours of Isaac Sim")
+    print("\nEvery source URL is in claims.yaml with the date it was read. Prices move; the"
+          "\nmethod of checking them before you repeat them does not.")
+
+
+# %% [markdown]
+# ## 11. Common mistakes
+#
+# - **Believing the T4 has no RT Cores.** It has them, and 16 GB. The reason a free tier
+#   cannot run Isaac Sim is that the card is not one NVIDIA names, and that the free tiers do
+#   not promise you any particular card. Repeating the folklore is how a wrong fact survives.
+# - **`model.body_mass[i] *= scale`.** It compounds. The second call on the same model gives
+#   you `scale²`, and the study quietly measures a machine that never existed. Set from a
+#   stored baseline.
+# - **Forgetting `mj_setConst` after changing mass.** The quantities MuJoCo derived from the
+#   old mass keep the old value, silently. On this model the rollout is unchanged — say that
+#   precisely rather than claiming a physics error you have not measured — but the derived
+#   bookkeeping is stale, and on a model with tendons or a solver that reads those fields it
+#   stops being cosmetic. The cell below shows it happening.
+# - **Adding sensor noise to the state instead of the observation.** Corrupting `data.qpos`
+#   simulates a robot that is genuinely somewhere else, not one that is *mistaken* about
+#   where it is. Noise belongs in what the controller reads, never in the world.
+# - **A latency pipeline that does not start full.** If the pipeline starts empty, the first
+#   steps are undelayed and you measure a smaller gap than you built.
+# - **Reading back `data.ctrl` to see what the motor did.** It holds what you asked for.
+#   `data.actuator_force` holds what you got.
+# - **Reporting the score on the conditions you tuned on.** It is 100% by construction. Only
+#   the held-out column carries information.
+# - **Treating survival as the only metric.** Dry friction never topples this machine and
+#   still triples the wobble and pins the actuator at its limit. The gap that eventually
+#   kills you usually shows up first as a saturation number nobody was watching.
+
+# %%
+# Watch one of those mistakes happen. Change the mass, skip mj_setConst, and read back the
+# total mass MuJoCo thinks it has. Nothing here is typed; every number is measured.
+_stale_model, _stale_data = load_balancer()
+print(f"total mass on file          : {_stale_model.body_subtreemass[0]:.1f} kg")
+_stale_model.body_mass[TORSO_ID] = BASE_TORSO_MASS * 2.0      # the edit, without mj_setConst
+print(f"after doubling the torso    : {_stale_model.body_subtreemass[0]:.1f} kg   <- stale, "
+      f"though body_mass now reads {_stale_model.body_mass[TORSO_ID]:.1f} kg")
+mujoco.mj_setConst(_stale_model, _stale_data)
+print(f"after mujoco.mj_setConst    : {_stale_model.body_subtreemass[0]:.1f} kg   <- rebuilt")
+
+# %% [markdown]
+# ## 12. Self-check
+#
+# 1. Your controller survives every condition you tuned it on and falls on two thirds of a
+#    held-out set. What have you learned?
+#    - (a) the held-out set is unfairly hard
+#    - (b) the tuning worked, and the gap is a separate problem to solve later
+#    - (c) you measured the training score, which is 100% by construction, and the only
+#          informative number is the held-out one
+#    - (d) the controller needs higher gains
+#
+# 2. This lesson randomises torso mass and joint dry friction rather than textures and
+#    lighting. Which line of work is that, and why does it matter here?
+#    - (a) Tobin et al. (2017); appearance is what transfers
+#    - (b) Peng et al. (2017) dynamics randomisation; this controller reads joint angles, not
+#          pixels, so only the dynamics can possibly matter to it
+#    - (c) neither; domain randomisation only applies to vision
+#    - (d) both are the same technique under different names
+#
+# 3. A colleague says free Colab cannot run Isaac Sim because the T4 has no ray-tracing
+#    cores. What is wrong with that?
+#    - (a) nothing, it is correct
+#    - (b) the T4 does have RT Cores and does meet the 16 GB floor; it fails because it is not
+#          a GPU NVIDIA names in its requirements table, and because the free tier does not
+#          guarantee you any particular GPU
+#    - (c) Colab does not offer GPUs at all
+#    - (d) Isaac Sim does not need a GPU
+#
+# 4. You add 8 ms of control latency. Survival is unchanged, but the saturation fraction goes
+#    from a third of the episode to all of it. What should you conclude?
+#    - (a) nothing; it survived, so the latency is harmless
+#    - (b) the measurement is broken, because latency cannot change saturation
+#    - (c) the controller is now spending the entire episode against its torque limit, so it
+#          has no margin left for any other disturbance — the gap has already done damage that
+#          survival alone cannot see
+#    - (d) the torque limit should be raised until saturation disappears
+#
+# Answers, with reasoning, are published in the course solution bundle.
+
+# %%
+# Put your four letters here and run the cell. It marks them without revealing the answer:
+# a wrong letter sends you back to the section that measured it, which is the point.
+SELF_CHECK = {1: "?", 2: "?", 3: "?", 4: "?"}
+
+_ANSWER_DIGESTS = {1: "6f62e7f0082bcf7c", 2: "c5c3917d88602bae",
+                   3: "03e5e02cc8ff791f", 4: "df9689b878adb253"}
+_ANSWER_SECTIONS = {
+    1: "section 8 — what a held-out score is for, and what a training score is not",
+    2: "section 7 — which of the two randomisation papers this lesson actually follows",
+    3: "section 9 — the T4 row of the ledger you computed, not the folklore about it",
+    4: "section 6 — the saturation column of the latency sweep you ran",
+}
+
+
+def _check_self_check(answers: dict = None) -> None:
+    """Mark the four multiple-choice answers in SELF_CHECK, naming where to look again."""
+    answers = SELF_CHECK if answers is None else answers
+    wrong = []
+    for q, digest in sorted(_ANSWER_DIGESTS.items()):
+        got = str(answers.get(q, "?")).strip().lower()
+        if hashlib.sha256(f"F15-L08-q{q}-{got}".encode()).hexdigest()[:16] != digest:
+            wrong.append(q)
+    for q in sorted(_ANSWER_DIGESTS):
+        note = f"  -> re-read {_ANSWER_SECTIONS[q]}" if q in wrong else ""
+        print(f"  q{q}: {'wrong' if q in wrong else 'right'}{note}")
+    assert not wrong, (
+        f"questions {wrong} are still wrong. Each one names the section that answers it "
+        "above — go back to the measurement you ran there rather than guessing a letter."
+    )
+    print("self-check: all four right")
+
+
+# %% [markdown]
+# ## What you built, and where it goes next
+#
+# A bench that turns each of the four reality gaps into a number, a domain-randomisation
+# wrapper whose benefit you measured on held-out parameters rather than assumed, and a ledger
+# that decides from published requirements what this course cannot give you.
+#
+# The capstone (`CAPSTONE.md` in the flagship root) asks for a walk of a measured distance
+# without falling — and grades it under randomised parameters, not the nominal model, using
+# exactly the `sample_conditions` / `evaluate` contract you implemented here.
+
+# %%
+if __name__ == "__main__":
+    _check_rollout()
+    _check_apply_parameters()
+    _check_evaluate()
+    _check_sweeps()
+    _check_sample_conditions()
+    _check_comparison()
+    _check_can_run_isaac_sim()
+    ladder_table()
+    _check_self_check()
