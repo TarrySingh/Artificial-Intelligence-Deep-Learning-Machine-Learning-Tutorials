@@ -1,7 +1,7 @@
 # The lesson contract
 
 Every lesson in this repository is something a student *does*, not something they read.
-A lesson ships only when all 12 gates below are green. Gates 1-8 are machine-checked by
+A lesson ships only when all 14 gates below are green. Gates 1-8 are machine-checked by
 `tools/execute.py` and `tools/grade.py`; 9-12 are human-reviewed and recorded in `meta.yaml`.
 
 ## Pedagogy gates (the Coursera/Udacity shape)
@@ -35,6 +35,36 @@ A lesson ships only when all 12 gates below are green. Gates 1-8 are machine-che
     gated, non-commercial or registration-walled data on a required path.
 12. **Claims sourced** — every factual claim about the world carries a primary source URL
     and an access date in `claims.yaml`. Numbers in prose are generated, never typed.
+
+## Delivery gates (what a student actually meets)
+
+Gates 1-12 are checked in this repository's environment, from this repository's directory. A
+student meets neither. They click a badge, and a notebook service opens one file in an empty
+directory, in a Python it chose. These two gates are about that moment.
+
+13. **Opens anywhere** — `lesson.ipynb` is committed, generated from `lesson.py`, and never
+    edited by hand (`tools/notebooks.py --check`). Its first two cells are the launcher that
+    `tools/notebooks.py --inject` generates: Open in Colab / Kaggle / Binder / Codespaces
+    badges, and a cell that installs only what the lesson requires and is missing — pinned to
+    `requirements.txt` — and fetches only the sibling files it needs. Never hand-edit it; fix
+    the generator. `tools/verify_portable.py` must pass: the notebook alone, in an empty
+    directory, in a real kernel, in a minimal environment, on Python 3.11 and 3.12; and with
+    `--completed`, the finished lesson must print the same results in both.
+14. **Run all is a good experience** — a student who opens the notebook and presses Run all
+    before writing a line must reach the last cell with no unhandled exception:
+    - every check and every demo that consumes an exercise's result runs through the lesson's
+      `_try` guard, so an unfilled stub reports that it is not implemented yet, a wrong answer
+      prints its check's hint and the notebook carries on, and a demo that needs an unfinished
+      exercise names that exercise and skips;
+    - each exercise offers progressive hints in collapsed `<details>` blocks — first what to
+      think about, then the approach in words. A hint never contains code that solves the
+      exercise, a value the rubric checks, or a path under `solutions/`;
+    - the notebook ends with a progress board: one line per exercise marked ✅ passed,
+      ❌ failed or ⏳ not started, then how many of how many are complete;
+    - `sys.exit` / `raise SystemExit` happen only outside a notebook kernel. In a script or
+      under CI, a failed check still ends the run non-zero; in a kernel it is a printed line,
+      never a traceback at the foot of the page.
+    `tools/verify_portable.py` (without `--completed`) is the check: every cell runs.
 
 ## Language policy
 
