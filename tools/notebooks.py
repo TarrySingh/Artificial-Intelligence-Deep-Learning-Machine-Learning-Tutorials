@@ -16,7 +16,7 @@ The block is a no-op wherever everything is already present, which is why the ex
 does not slow down and why `no network on a required path` still holds: nothing is installed
 and nothing is fetched unless it is genuinely absent.
 """
-import argparse, ast, re, subprocess, sys
+import argparse, ast, hashlib, json, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -212,9 +212,23 @@ def strip(src: str) -> str:
 
 
 def build(d: Path) -> str:
+    nb_path = d / "lesson.ipynb"
     r = subprocess.run([JUPYTEXT, "--to", "ipynb", str(d / "lesson.py"),
-                        "-o", str(d / "lesson.ipynb")], capture_output=True, text=True)
-    return "built" if r.returncode == 0 else f"FAILED {r.stderr.strip()[:120]}"
+                        "-o", str(nb_path)], capture_output=True, text=True)
+    if r.returncode != 0:
+        return f"FAILED {r.stderr.strip()[:120]}"
+    # nbformat gives every cell a RANDOM id on every conversion. That made --check fail on
+    # notebooks whose content was identical, and would have churned all of them in git on every
+    # rebuild. Derive each id from the cell's position and content instead: stable while the
+    # cell is unchanged, unique within the notebook because the index is part of the hash.
+    nb = json.loads(nb_path.read_text())
+    for i, cell in enumerate(nb.get("cells", [])):
+        src = cell.get("source", "")
+        src = "".join(src) if isinstance(src, list) else src
+        cell["id"] = hashlib.sha1(f"{i}\x00{cell.get('cell_type')}\x00{src}".encode()).hexdigest()[:12]
+    # nbformat's own on-disk style, so a file written here is byte-identical to one it writes.
+    nb_path.write_text(json.dumps(nb, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
+    return "built"
 
 
 def check(d: Path) -> str:
