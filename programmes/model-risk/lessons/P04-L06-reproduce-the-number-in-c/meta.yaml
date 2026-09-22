@@ -245,5 +245,5 @@ points: 75         # = sum of RUBRIC points in tests/test_lesson.py
 # contains "solutions/", and both prerequisite ids resolve to real lessons on disk.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "independent reviewer, 2026-09-16: all four gates re-run green; 36 mutants + 3 controls, 32 caught at 69-93% and 4 survivors measured and proven equivalent; fixed a false magnitude claim in 6 files, moved the self-check answer key behind salted digests, and stopped the libm probe writing to a fixed /tmp path"
-measured_seconds: 2.7
-measured_peak_mib: 383
+measured_seconds: 2.5
+measured_peak_mib: 382

@@ -189,5 +189,5 @@ points: 94              # = sum of RUBRIC points in tests/test_lesson.py
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16 — four gates re-run green; 32 mutants + 3 controls graded; 2 rubric defects in merge_continuations found and fixed inside the existing 94 points; 2 survivors proved equivalent over 200,000 random inputs; claims.yaml sources re-fetched and verbatim."
 
-measured_seconds: 7.3
+measured_seconds: 7.2
 measured_peak_mib: 30

@@ -174,4 +174,4 @@ status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 - 4 gates re-run green (execute 0.8s/88MiB, solution 123/123, student 0/123, jupytext converts); 32 fresh mutants graded, 29 breaking all caught at 88%-98% with partial credit and 3 survivors proven equivalent by measurement; 3 rubric defects fixed (np.allclose broadcasts, so one-element expectations accepted empty results in candidate_true_frequencies f_max, integrate_trapezoid short records and hann_window(1)); 2 gate-12 truth defects fixed (a typed 6% analogue-delay figure replaced by a printed measured table, and a wrong SENSOR_F_MAX justification in claims.yaml); all 3 cited sources refetched and verbatim"
 
 measured_seconds: 0.8
-measured_peak_mib: 90
+measured_peak_mib: 91

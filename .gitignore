@@ -1,6 +1,10 @@
 # generated, never hand-committed
 dist/
-*.ipynb
+.ipynb_checkpoints/
+# lesson.ipynb IS committed. It is generated from lesson.py by tools/notebooks.py, but it is
+# also the artefact a student actually opens -- in Colab, Kaggle, Binder or local Jupyter --
+# and a repository of notebooks that ships no notebooks helps nobody. `notebooks.py --check`
+# fails the build if a committed .ipynb has drifted from the lesson.py it came from.
 __pycache__/
 *.pyc
 # build products of the C/C++ lessons

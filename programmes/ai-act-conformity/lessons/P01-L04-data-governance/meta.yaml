@@ -189,5 +189,5 @@ status: reviewed        # draft | executed | reviewed | shipped
 # is an improvement on the spec rather than a deviation from it.
 # ---------------------------------------------------------------------------------------
 reviewed_by: "independent reviewer, 2026-09-16 — re-ran all four gates; 37 mutants, 36 caught, 1 proven equivalent, 2 right-answer controls at 100%; fixed 6 rubric defects and 1 inverted figure in prose"
-measured_seconds: 0.1
+measured_seconds: 0.2
 measured_peak_mib: 37

@@ -139,5 +139,5 @@ points: 47
 # 1.9e-11 relative gap and now says one part in 10^10.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: 20-mutant rubric pass, 2 rubric defects found and fixed (unconditional clamp, qvel indexed by qpos address), plus a make-exit-code misreport, an uncalled self-check, a make clean that could not run and an overstated precision claim; 20/20 caught after, reference still 47/47, all four gates green"
-measured_seconds: 1.3
-measured_peak_mib: 62
+measured_seconds: 3.4
+measured_peak_mib: 51

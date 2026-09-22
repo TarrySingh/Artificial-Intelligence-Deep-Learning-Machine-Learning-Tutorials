@@ -138,5 +138,5 @@ points: 39              # = sum of RUBRIC points in tests/test_lesson.py
 # reading parse_cents, which writes through the pointer only on the success path.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16: four gates re-run; 13 mutants + 3 controls graded; 2 rubric defects found and fixed (CR inside a quoted field untested; constant-memory span too short at 48 MiB); getrusage quote corrected to verbatim; module-1 Python-scanner deviation now stated."
-measured_seconds: 4.3
+measured_seconds: 4.6
 measured_peak_mib: 65

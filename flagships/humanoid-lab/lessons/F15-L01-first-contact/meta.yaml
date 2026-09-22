@@ -120,5 +120,5 @@ status: reviewed        # draft | executed | reviewed | shipped
 # "reviewed_by:" but not the indented continuation lines of a folded block, which would leave
 # the student bundle's meta.student.yaml malformed. The narrative lives in the comments above.
 reviewed_by: "Independent review 2026-09-16 — 21 mutants graded, 18 caught as shipped; 2 rubric defects fixed (unreset mjData and a float steps count both scored 100%), 1 equivalent mutant; a false com_height diagnostic and the last typed magnitude in prose also fixed; 20/21 caught after, reference still 26/26; notes above"
-measured_seconds: 0.3
-measured_peak_mib: 67
+measured_seconds: 0.5
+measured_peak_mib: 69
