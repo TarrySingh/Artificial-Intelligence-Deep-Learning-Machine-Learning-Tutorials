@@ -1,8 +1,25 @@
-mujoco
-numpy
-matplotlib
-jupytext
+# The AI Atlas -- one environment for every lesson.
+#
+# Pinned to the exact versions every gate in this repository was measured against. A lesson
+# that prints a number it measured (a humanoid falling at step 978, a 383 MiB peak) prints it
+# because of these versions. Exact `==` pins are what make "reproducible" mean something.
+# Colab and Kaggle already ship numpy and matplotlib -- each notebook's launcher cell installs
+# only what is missing there, pinned to the same versions below.
+#
+# Local:        python -m venv .venv && .venv/bin/pip install -r requirements.txt
+# Binder:       read automatically via binder/requirements.txt
+# Codespaces:   read automatically via .devcontainer/devcontainer.json
+numpy==2.5.3; python_version >= "3.12"
+# numpy 2.5 ships no wheels for Python 3.11, which Kaggle still runs. 2.4.6 is the newest
+# that does, and tools/verify_portable.py runs every lesson against it on 3.11.
+numpy==2.4.6; python_version < "3.12"
+matplotlib==3.11.2
+mujoco==3.13.0          # humanoid-lab flagship
+tokenizers==0.23.2      # T03 tokenisation lessons
+pyyaml==6.0.3
+# notebook + authoring tools
+jupytext==1.19.5
+ipykernel
 nbclient
 nbformat
-tokenizers
-pytest
+pytest==9.1.1

@@ -1,0 +1,3 @@
+# Binder reads this folder instead of the repository root when it exists. Keep ONE source of
+# truth: everything lives in ../requirements.txt.
+-r ../requirements.txt

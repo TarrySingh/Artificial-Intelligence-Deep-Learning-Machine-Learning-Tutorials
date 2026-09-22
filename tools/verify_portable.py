@@ -24,6 +24,14 @@ Environments live in ~/.cache/atlas-portable, outside the repo and outside iClou
   py311  ~ Kaggle (Python 3.11)        py312  ~ Colab (Python 3.12)
 --reset uninstalls the optional packages first, so the first lesson that needs each one
 exercises the real install path instead of finding it left over from a previous run.
+
+--completed answers a different question. A student notebook full of unfilled stubs cannot
+tell an environment failure from an unfinished exercise -- one stub's missing result cascades
+into later cells. So --completed runs the FINISHED lesson (solutions/lesson_solution.py,
+exactly as tools/execute.py does) in each minimal environment, where any error is real. It
+then diffs what the lesson printed across environments, ignoring timing lines: if a finished
+lesson prints the same numbers on Python 3.11 + numpy 2.4 as on 3.12 + numpy 2.5, it is
+reproducible in the sense a student cares about. If it does not, that is reported, not hidden.
 """
 import argparse, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
@@ -88,6 +96,124 @@ def classify(res) -> str:
     return "STUB" if "NotImplementedError" in names else "EXIT"
 
 
+# A lesson that prints its own environment ("python 3.11.15 · numpy 2.4.6") is SUPPOSED to
+# differ across environments; that line is a banner, not a result.
+BANNER = re.compile(r"\b(python|numpy|matplotlib|mujoco|tokenizers|torch|pyyaml|clang|gcc)"
+                    r"\s+v?\d+\.\d+", re.I)
+TIMING = re.compile(r"(\bwall\b|\bseconds?\b|\d\s*ms\b|\bMiB\b|\bGiB\b|\belapsed\b|"
+                    r"\btime\b|\d+(\.\d+)?\s*s\b|\bs/it\b|it/s\b)", re.I)
+BUILD_JUNK = shutil.ignore_patterns("lesson_bin", "lesson_bin *", "*.o", "*.dSYM", "__pycache__",
+                                    "* [0-9]", "* [0-9].*", "lesson.ipynb", "build", ".ipynb_checkpoints")
+
+
+def pins() -> dict:
+    """name -> version from requirements.txt, so a completed run installs what was measured."""
+    out = {}
+    for line in (ROOT / "requirements.txt").read_text().splitlines():
+        m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(;|#|$)", line)
+        if m and ";" not in line:
+            out[m.group(1).lower()] = m.group(2)
+    return out
+
+
+def required(d: Path) -> list:
+    """The (import, pip) pairs the lesson's own launcher declares."""
+    m = re.search(r"^ATLAS_PIP = \[(.*?)\]", (d / "lesson.py").read_text(), re.M)
+    return re.findall(r'\("([^"]+)", "([^"]+)"\)', m.group(1)) if m else []
+
+
+def completed(d: Path, env: str, timeout: int) -> dict:
+    py = CACHE / env / "bin" / "python"
+    pin = pins()
+    missing = [pip for imp, pip in required(d)
+               if subprocess.run([str(py), "-c", f"import {imp}"], capture_output=True).returncode]
+    if missing:
+        subprocess.run([str(py), "-m", "pip", "install", "-q",
+                        *[f"{m}=={pin[m.lower()]}" if m.lower() in pin else m for m in missing]],
+                       capture_output=True, check=False)
+    idents = env_identity(py)
+    with tempfile.TemporaryDirectory(prefix="atlas-done-") as tmp:
+        work = Path(tmp) / d.name
+        shutil.copytree(d, work, ignore=BUILD_JUNK)
+        environ = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
+        environ["MPLBACKEND"] = "Agg"
+        t0 = time.time()
+        try:
+            r = subprocess.run([str(py), "-c",
+                                "import runpy, sys; runpy.run_path(sys.argv[1], run_name='__main__')",
+                                "lesson_solution.py"], cwd=work / "solutions", env=environ,
+                               capture_output=True, text=True, timeout=timeout)
+            rc, out, err = r.returncode, r.stdout, r.stderr
+        except subprocess.TimeoutExpired:
+            rc, out, err = -1, "", f"timed out after {timeout}s"
+        # Strip what identifies THIS run and THIS environment -- the temp directory, the
+        # interpreter path, the environment's own version strings -- before anything is compared.
+        for real, label in [(str(work.resolve()), "<lesson>"), (str(work), "<lesson>"),
+                            (str(Path(tmp).resolve()), "<tmp>"), (str(Path(tmp)), "<tmp>"),
+                            *idents]:
+            out = out.replace(real, label)
+    last = (err.strip().splitlines() or [""])[-1][:200]
+    return {"rc": rc, "secs": round(time.time() - t0, 1), "err": last,
+            "installed": missing, "out": out.splitlines()}
+
+
+def env_identity(py: Path) -> list:
+    """(string, label) pairs that name an environment rather than describe a result."""
+    probe = ("import sys, importlib.metadata as m\n"
+             "print(sys.executable); print(sys.prefix); print(sys.version.split()[0])\n"
+             "for p in ('numpy', 'matplotlib', 'mujoco', 'tokenizers', 'pyyaml'):\n"
+             "    try: print(m.version(p))\n"
+             "    except m.PackageNotFoundError: print('')")
+    lines = subprocess.run([str(py), "-c", probe], capture_output=True, text=True).stdout.splitlines()
+    pairs = [(lines[0], "<python>"), (str(Path(lines[1]).resolve()), "<env>"), (lines[1], "<env>")]
+    pairs += [(v, "<ver>") for v in lines[2:] if v]
+    # longest first, so /path/env/bin/python is replaced before /path/env
+    return sorted(pairs, key=lambda p: -len(p[0]))
+
+
+def run_completed(targets, envs, timeout) -> int:
+    fails, drift = 0, 0
+    for d in targets:
+        res = {env: completed(d, env, timeout) for env in envs}
+        # A line that differs between two runs in the SAME environment is non-deterministic by
+        # definition -- a timing, a speed, a temp path. No list of regexes is needed to find
+        # them: run the reference environment twice and mask whatever moved. Anything that is
+        # stable within an environment but differs ACROSS environments is real drift.
+        again = completed(d, envs[0], timeout)
+        ok = all(r["rc"] == 0 for r in res.values()) and again["rc"] == 0
+        fails += not ok
+        base = res[envs[0]]["out"]
+        noisy = {i for i, (a, b) in enumerate(zip(base, again["out"])) if a != b}
+        noisy |= {i for i, l in enumerate(base) if BANNER.search(l)}
+        diffs = {env: [(i, a, b) for i, (a, b) in enumerate(zip(base, r["out"]))
+                       if a != b and i not in noisy]
+                 + ([("len", len(base), len(r["out"]))] if len(base) != len(r["out"]) else [])
+                 for env, r in res.items() if env != envs[0]}
+        same = all(not v for v in diffs.values())
+        drift += ok and not same
+        status = "PASS" if ok and same else "DRIFT" if ok else "FAIL"
+        secs = "  ".join(f"{e} {r['secs']}s" for e, r in res.items())
+        inst = sorted({p for r in res.values() for p in r["installed"]})
+        print(f"  [{status:<5}] {d.name:<38} {secs}"
+              f"{'  installed ' + ','.join(inst) if inst else ''}"
+              f"{'  output identical across ' + ' / '.join(envs) + f' ({len(base) - len(noisy)} lines; {len(noisy)} vary run to run)' if ok and same else ''}",
+              flush=True)
+        for env, r in res.items():
+            if r["rc"] != 0:
+                print(f"            {env}: exit {r['rc']}: {r['err']}")
+        for env, v in diffs.items():
+            for item in v[:3]:
+                if item[0] == "len":
+                    print(f"            {env}: {item[1]} vs {item[2]} output lines")
+                else:
+                    print(f"            {env} line {item[0]}:\n              {envs[0]}: {item[1][:110]}"
+                          f"\n              {env}: {item[2][:110]}")
+    n = len(targets)
+    print(f"\n  completed runs: {n - fails}/{n} finish cleanly in every environment; "
+          f"{drift} print different numbers across environments")
+    return 1 if (fails or drift) else 0
+
+
 def lessons(args):
     if args:
         return [Path(a).resolve() for a in args]
@@ -106,6 +232,8 @@ def main() -> int:
     ap.add_argument("--reset", action="store_true")
     ap.add_argument("--live", action="store_true")
     ap.add_argument("--timeout", type=int, default=600)
+    ap.add_argument("--completed", action="store_true",
+                    help="run the finished lesson in each env and diff its output across envs")
     a = ap.parse_args()
     a.env = [e.strip() for e in a.env.split(",") if e.strip()]
     for env in a.env:
@@ -122,6 +250,9 @@ def main() -> int:
         if a.reset:
             subprocess.run([str(py), "-m", "pip", "uninstall", "-y", "-q", *OPTIONAL],
                            capture_output=True)
+
+    if a.completed:
+        return run_completed(lessons(a.lesson), a.env, a.timeout)
 
     fails, counts = 0, {}
     for d in lessons(a.lesson):
