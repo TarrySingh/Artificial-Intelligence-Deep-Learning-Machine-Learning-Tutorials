@@ -124,7 +124,8 @@ layout, and it will.
 
 ## Licence
 
-Content developed by Tarry Singh is licensed under the Apache License 2.0; see
-[`LICENSE`](LICENSE). Assets authored for a lesson state their own terms in that lesson's
-`assets/SOURCE.md`, and third-party material keeps its own licence. The Synapsa name and logo are
-not covered by the licence.
+Synapsa Commons is © 2026 RealAI and licensed under the Apache License 2.0; see
+[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). The tutorials in `archive/` keep the grant they were
+published under, in [`archive/LICENSE-2017`](archive/LICENSE-2017). Assets authored for a lesson
+state their own terms in that lesson's `assets/SOURCE.md`, and third-party material keeps its own
+licence. The Synapsa name and logo belong to RealAI and are not covered by the licence.
