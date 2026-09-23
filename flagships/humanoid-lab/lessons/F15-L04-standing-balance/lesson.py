@@ -101,16 +101,84 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 #
 # Every number in this notebook's output is computed by the code you run. Nothing in the
 # prose below is a figure someone typed in.
+#
+# **Run all works before you write a line.** Each check reports "not implemented yet" for a
+# stub instead of crashing, a demo that needs an unfinished exercise names it and skips, and
+# the last cell prints a progress board. Stuck on an exercise? Open its hints, one at a time.
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib
+import sys
 from pathlib import Path
+from typing import Any, Callable
 
 import mujoco
 import numpy as np
 
 print("mujoco", mujoco.__version__, "· numpy", np.__version__)
+
+# What the progress board in the last cell reads: label -> "passed", "failed", "not started"
+# or "waiting on <exercise>". Every check and every demo that runs on your code writes here.
+_STATUS: dict[str, str] = {}
+
+
+def _try(label: str, check: Callable[[], Any], needs: tuple = ()) -> Any:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every outcome is
+    recorded in _STATUS, and the last cell of this file exits non-zero if any check failed.
+
+    `needs` names the exercises a cell runs on. Until each has passed its own check, the cell
+    says which one it is waiting for and skips, rather than failing on code you have not
+    reached yet. Returns whatever the check returns, or None if it did not pass.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS[label] = "waiting on " + ", ".join(waiting)
+        named = [f"{n} ({_STATUS.get(n, 'not run yet')})" for n in waiting]
+        one = len(named) == 1
+        print(f"{label}: skipped — it runs on "
+              + (named[0] if one else ", ".join(named[:-1]) + " and " + named[-1])
+              + f", which {'has' if one else 'have'} not passed yet. Come back once "
+              + f"{'it has' if one else 'they have'}.")
+        return None
+    try:
+        result = check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: {str(exc) or 'not implemented yet — fill in the stub above'}, "
+              "then re-run this cell.")
+        return None
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+        return None
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        return None
+    _STATUS[label] = "passed"
+    return result
+
+
+def _progress_board(exercises) -> None:
+    """Print one line per (label, what): ✅ passed, ❌ failed or ⏳ not started; then a tally."""
+    print("\nProgress board")
+    for label, what in exercises:
+        state = _STATUS.get(label, "not started")
+        if state == "passed":
+            mark, note = "✅", ""
+        elif state == "failed":
+            mark, note = "❌", " — failed: see its message above"
+        else:
+            mark, note = "⏳", f" — {state}"
+        print(f"  {mark} {label}: {what}{note}")
+    done = sum(_STATUS.get(label) == "passed" for label, _ in exercises)
+    print(f"  {done} of {len(exercises)} complete")
+
 
 MODEL_FILENAME = "stander.xml"
 
@@ -204,6 +272,25 @@ print(f"it stands with its centre of mass at x = {STANCE_COM_X:+.6f} m")
 # sits down at the ankle, nowhere near its mass.
 #
 # Body 0 is the world body. It has no mass and must not be included.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# Two arrays in `data` look like body positions. Which one holds each body's own centre of
+# mass, and which only says where its frame happens to sit? Which body in the list has no
+# mass at all? And how many numbers does a point on the floor need?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Take the masses and the centres of mass of bodies 1 onwards, form their mass-weighted
+# average, and keep only the two horizontal components. Build it yourself: the public check
+# compares you against MuJoCo's precomputed whole-body value, and the grader makes sure you
+# did not simply read that value off.
+#
+# </details>
 
 # %%
 def com_ground_projection(model, data) -> np.ndarray:
@@ -254,6 +341,11 @@ def _check_com_ground_projection() -> None:
           f"agreeing with MuJoCo's subtree_com to {np.abs(got - reference).max():.1e} m")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 1", _check_com_ground_projection)
+
+
 # %% [markdown]
 # ## 3. Exercise 2 — the support polygon, and how much room is left
 #
@@ -265,6 +357,27 @@ def _check_com_ground_projection() -> None:
 # The **signed margin** is the distance from a point to the nearest edge: positive inside,
 # negative outside, zero on the boundary. It is the single number that says how much room the
 # machine has left.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# The centre of a square is further from its corners than from its sides. Which of the two
+# is "room left"? What sign should a point outside the polygon get, and what should a point
+# exactly on an edge get? Would your method still be right for a triangle whose nearest side
+# slopes?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Visit every edge in turn, pairing each vertex with the next and wrapping the last one back
+# round to the first. For each edge, compute the signed distance exactly as the docstring
+# spells it out, cross product over edge length, and keep the smallest. No absolute value, no
+# rounding, and nothing that assumes the edges run along the axes: a bounding box is not a
+# polygon.
+#
+# </details>
 
 # %%
 def support_polygon(model, data) -> np.ndarray:
@@ -341,6 +454,11 @@ def _check_support_margin() -> None:
           "than it is long")
     print(f"  heel margin {heel:.4f} m, toe margin {toe:.4f} m, "
           f"ratio {toe / heel:.3f} — it has more room forwards than backwards")
+
+
+# %%
+if __name__ == "__main__":
+    _try("exercise 2", _check_support_margin, needs=("exercise 1",))
 
 
 # %% [markdown]
@@ -457,6 +575,11 @@ def _check_torque_ceiling() -> None:
           "edge it is about to tip over.")
 
 
+# %%
+if __name__ == "__main__":
+    _try("the flat-foot ceiling", _check_torque_ceiling)
+
+
 # %% [markdown]
 # ## 6. Exercise 3 — what counts as fallen
 #
@@ -466,6 +589,24 @@ def _check_torque_ceiling() -> None:
 # the machine can be comfortably inside the polygon and already doomed, because it is moving.
 #
 # Read the torso's tilt instead.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# A fall is a statement about attitude, not position. Which provided function reads the
+# torso's attitude, and what does it return for a machine that has toppled backwards?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Compare the size of the torso's tilt, with its sign thrown away, against the threshold
+# constant from the setup cell, and return a plain `bool`. Leave the centre of mass and the
+# support polygon out of it entirely: the grader builds a state in which the margin and the
+# tilt disagree, and only the tilt is right.
+#
+# </details>
 
 # %%
 def has_fallen(model, data) -> bool:
@@ -513,6 +654,11 @@ def _check_has_fallen() -> None:
     print("exercise 3 looks right: attitude decides, in both directions")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 3", _check_has_fallen)
+
+
 # %% [markdown]
 # ## 7. Exercise 4 — the push, and the rollout that measures it
 #
@@ -520,6 +666,29 @@ def _check_has_fallen() -> None:
 # It is a user input that MuJoCo never overwrites, which is what makes it a clean shove — and
 # also means **you** must write it back to zero when the push is over, or you are leaning on
 # the machine for the rest of the episode.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# Before you write a line, decide *when* each of the five numbers is read. Before `mj_step`,
+# or after it? For which values of `k` is the push on, given that the window is half-open? If
+# the machine falls on step `k`, how many steps did it take? And what does the next rollout
+# inherit if you leave the force set?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Settle first. Then one loop over the horizon that does the docstring's steps a to f in that
+# order: set this step's push, call the controller and write its answer unclamped, step, and
+# only then update a running maximum of the absolute tilt and a running minimum of the
+# fore/aft margin from the new state. Take `margin_at_push_end` inside the loop, on the last
+# step of the push window, and start it as not-a-number so an early fall leaves it that way.
+# On a fall, count that step and stop. Keep every running value local to the call, add no
+# `try`/`except`, and clear the force before you return.
+#
+# </details>
 
 # %%
 def rollout(model, data, controller, push_force: float,
@@ -614,6 +783,11 @@ def _check_rollout() -> None:
           f"{gentle['min_margin']:.4f} m")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 4", _check_rollout, needs=("exercise 1", "exercise 3"))
+
+
 # %% [markdown]
 # ## 8. Exercise 5 — a controller that watches the mass, not the joint
 #
@@ -626,6 +800,25 @@ def _check_rollout() -> None:
 # Positive ankle torque pushes the centre of pressure **backwards**; to catch a machine
 # falling forwards you want the pressure to move *ahead* of the mass, which takes negative
 # torque. You measured that table in section 5.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# The mass has drifted forwards. Which way must the centre of pressure move to get ahead of
+# it, and what sign of ankle torque does that take? Section 5's table answers it. Then check
+# which gain belongs to which of the four signals.
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Unpack the four gains in the order the docstring lists them, pair each with its signal, add
+# the four products and negate the total. Return a plain `float`, with no clamp, no squaring
+# and no special case, because the grader checks that the law is linear. If the check reports
+# a positive torque for a forward drift, the leading minus has gone missing.
+#
+# </details>
 
 # %%
 def com_velocity(model, data) -> np.ndarray:
@@ -678,7 +871,8 @@ def _check_com_balance_torque() -> None:
     forward = com_balance_torque(0.01, 0.0, 0.0, 0.0, BASELINE_GAINS)
     assert forward < 0, (
         f"the mass has drifted FORWARDS, so the torque must be negative to move the pressure "
-        f"ahead of it; you returned {forward:+.3f}. If you got +1.0, drop the leading minus."
+        f"ahead of it; you returned {forward:+.3f}. If you got +1.0, the leading minus is "
+        "missing: negate the whole sum."
     )
     assert abs(forward + 1.0) < 1e-9, f"expected -1.0 for this case, got {forward}"
     moving = com_balance_torque(0.0, 0.1, 0.0, 0.0, BASELINE_GAINS)
@@ -694,6 +888,11 @@ def _check_com_balance_torque() -> None:
           f"{result['peak_tilt']:.4f} rad")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 5", _check_com_balance_torque, needs=("exercise 4",))
+
+
 # %% [markdown]
 # ## 9. Exercise 6 — the largest push it survives
 #
@@ -704,6 +903,25 @@ def _check_com_balance_torque() -> None:
 #
 # So define it the honest way: the largest rung such that **every** rung up to and including
 # it was survived.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# Is "the biggest push it survived" the same as "the biggest push below which it never
+# failed"? What should come back when the very first rung fails, and when none does?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Walk the pattern and the ladder together from the bottom rung up, remembering the last rung
+# that survived, and stop at the first failure. Start the remembered value at what the
+# docstring asks for when nothing survives. Never look past the first failure, however good
+# the later rungs look: a machine that fails a smaller push cannot be trusted with a bigger
+# one.
+#
+# </details>
 
 # %%
 def survival_pattern(model, data, controller, ladder=PUSH_LADDER) -> list:
@@ -752,6 +970,11 @@ def _check_largest_survivable_push() -> None:
     print("exercise 6 looks right: it reports the prefix, not the maximum")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 6", _check_largest_survivable_push)
+
+
 # %% [markdown]
 # ## 10. The measurement this lesson exists for
 #
@@ -796,6 +1019,12 @@ def _check_comparison() -> None:
               "any.")
     print("\n  That is the lesson: control quality only cashes in where the geometry has "
           "left\n  something to work with.")
+
+
+# %%
+if __name__ == "__main__":
+    _try("three controllers", _check_comparison,
+         needs=("exercise 4", "exercise 5", "exercise 6"))
 
 
 # %% [markdown]
@@ -871,6 +1100,12 @@ def _check_doomed_but_inside() -> None:
     print("  That is exactly why has_fallen reads the torso's attitude and not the margin.")
 
 
+# %%
+if __name__ == "__main__":
+    _try("inside and already lost", _check_doomed_but_inside,
+         needs=("exercise 4", "exercise 5"))
+
+
 # %% [markdown]
 # ## 12. Common mistakes
 #
@@ -909,6 +1144,11 @@ def _check_non_monotonic() -> None:
     )
     print("  A bigger shove survived where a smaller one did not. That is why the prefix, and")
     print("  not the maximum, is the honest summary of a ladder.")
+
+
+# %%
+if __name__ == "__main__":
+    _try("survival is not monotone", _check_non_monotonic, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 13. Self-check
@@ -1002,6 +1242,18 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all five right")
 
 
+def _self_check_if_answered() -> None:
+    """Mark SELF_CHECK, but count it as not started while every answer is still a "?"."""
+    if all(str(a).strip() == "?" for a in SELF_CHECK.values()):
+        raise NotImplementedError("not answered yet — put your five letters in SELF_CHECK "
+                                  "in section 13")
+    _check_self_check()
+
+
+if __name__ == "__main__":
+    _try("self-check", _self_check_if_answered)
+
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -1014,15 +1266,33 @@ def _check_self_check(answers: dict = None) -> None:
 # sensible thing to do once you can measure where the polygon is and how much margin is left.
 
 # %%
+# Your progress. This re-runs each exercise's check, and the self-check, against your code as
+# it stands now, so the board is current even if you changed something after running its cell.
 if __name__ == "__main__":
-    _check_com_ground_projection()
-    _check_support_margin()
-    _check_torque_ceiling()
-    _check_has_fallen()
-    _check_rollout()
-    _check_com_balance_torque()
-    _check_largest_survivable_push()
-    _check_comparison()
-    _check_doomed_but_inside()
-    _check_non_monotonic()
-    _check_self_check()
+    print("Re-checking every exercise against your code as it stands now:")
+    for _label, _check, _needs in (
+            ("exercise 1", _check_com_ground_projection, ()),
+            ("exercise 2", _check_support_margin, ("exercise 1",)),
+            ("exercise 3", _check_has_fallen, ()),
+            ("exercise 4", _check_rollout, ("exercise 1", "exercise 3")),
+            ("exercise 5", _check_com_balance_torque, ("exercise 4",)),
+            ("exercise 6", _check_largest_survivable_push, ()),
+            ("self-check", _self_check_if_answered, ())):
+        _try(_label, _check, needs=_needs)
+    _progress_board((("exercise 1", "com_ground_projection, where the mass is"),
+                     ("exercise 2", "support_margin, how much room is left"),
+                     ("exercise 3", "has_fallen, what counts as fallen"),
+                     ("exercise 4", "rollout, the push and what it measures"),
+                     ("exercise 5", "com_balance_torque, feedback on the mass"),
+                     ("exercise 6", "largest_survivable_push, the prefix of the ladder"),
+                     ("self-check", "the five questions in section 13")))
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, so a green exit code cannot paper
+    # over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _failed = [label for label, state in _STATUS.items() if state == "failed"]
+    if _failed:
+        _message = "checks failed: " + ", ".join(_failed)
+        if "ipykernel" in sys.modules:
+            print(_message)
+        else:
+            raise SystemExit(_message)

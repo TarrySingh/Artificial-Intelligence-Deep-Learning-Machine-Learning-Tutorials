@@ -79,4 +79,4 @@ points: 110        # = sum of RUBRIC points in tests/test_lesson.py
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Built and gated 2026-09-16 — 4/4 gates green; 32 mutants, 32 caught with partial credit intact (84%-98%), 4 controls unharmed at 100%; notes above"
 measured_seconds: 0.1
-measured_peak_mib: 35
+measured_peak_mib: 36

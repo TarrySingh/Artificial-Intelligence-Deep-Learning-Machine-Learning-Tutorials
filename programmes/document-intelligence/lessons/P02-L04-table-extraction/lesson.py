@@ -102,10 +102,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import random
 import sys
 import time
-from typing import Iterable, NamedTuple, Sequence
+import traceback
+from typing import Callable, Iterable, NamedTuple, Sequence
 
 import numpy as np
 
@@ -205,24 +208,69 @@ def similarity(a: str, b: str) -> float:
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("ink_runs",),
+    "exercise 2": ("row_bands",),
+    "exercise 3": ("cells_in_band",),
+    "exercise 4": ("merge_continuations",),
+    "exercise 5": ("content_f1",),
+    "exercise 6": ("row_distance",),
+    "exercise 7": ("teds_like",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 1"] -> "exercise 1 (ink_runs)"; several -> "exercises 2, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
-    message — which names the likely mistake — and the notebook carries on to the next cell,
-    so one broken exercise never hides the feedback on the other six.
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -353,6 +401,24 @@ print("supplier is ONE gold cell, even though the page prints it on two lines.")
 # The trap is the running maximum. A tall box, or a wide one, can cover the interval that
 # comes after it in sorted order, and comparing against the *previous* interval instead of the
 # widest seen so far invents a gap that is not there.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Projection profiling is a sweep, and the marks are in what you compare the next interval
+# against. A wide or nested interval can reach far past the one after it in sorted order, so
+# "the previous interval's high edge" invents a gap that is not there. Read the docstring's
+# boundary word carefully too: a gap must be STRICTLY wider than `min_gap` to cut.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# No intervals, no runs. Sort by low edge, open the first run, and walk the rest holding the
+# run's running maximum high edge. When the next low edge lies more than `min_gap` beyond that
+# maximum, close the run and open a new one; otherwise raise the maximum to the larger of
+# itself and this interval's high edge. Close the last run, and return the runs as pairs of
+# floats, left to right.
+#
+# </details>
 
 # %%
 def ink_runs(intervals: Iterable[tuple[float, float]], min_gap: float) -> list[tuple[float, float]]:
@@ -426,7 +492,7 @@ def _show_spanning_header_trap() -> None:
     print("gaps underneath. Infer columns from the body; use the header to name them afterwards.")
 
 
-_try("spanning header trap", _show_spanning_header_trap)
+_try("spanning header trap", _show_spanning_header_trap, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 3. Exercise 2 — `row_bands`
@@ -435,6 +501,24 @@ _try("spanning header trap", _show_spanning_header_trap)
 # intervals: you need the boxes back, not the runs. Cells within a row are jittered off the
 # baseline the way a scan jitters them, so the grouping has to tolerate a few points of slop
 # and still cut cleanly between rows.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The same sweep as `ink_runs`, on the y axis, except that you hand back the BOXES rather than
+# the intervals. The same two traps apply: a tall box can reach past the next box's top edge,
+# so it is the running maximum BOTTOM edge you compare against, and only a gap strictly wider
+# than `min_gap` starts a new band. Then make the order inside a band independent of the order
+# you were given.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Sort the boxes by top edge. Walk them with a current band and the running maximum bottom
+# edge: a box whose top edge is more than `min_gap` below that maximum closes the band and
+# opens a new one, and every box raises the maximum to the larger of the two. Sort each band's
+# boxes by (x, text), and return the bands top to bottom.
+#
+# </details>
 
 # %%
 def row_bands(boxes: Iterable[Box], min_gap: float = ROW_GAP) -> list[list[Box]]:
@@ -493,6 +577,25 @@ _try("exercise 2", _check_row_bands)
 # Doing it the other way round, box by box, shreds the spanning header: its first word sits
 # over one column and its third over another, so no two words agree on a colspan and one cell
 # becomes four. Cluster first, assign second.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The order of operations IS the exercise. Ask each box which column it sits over and the
+# words of a spanning header land in different columns, so one cell becomes several. Cluster
+# the band's own ink into cells first, and only then ask which columns each cell covers. And a
+# cell that merely touches a column's edge does not overlap it.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Run `ink_runs` over the band's (x, right) intervals at `min_gap`: each run is one cell, and
+# its text is the boxes inside that run, in ascending x, joined by single spaces. For each
+# cell, find the column runs it overlaps by a strictly positive width — the leftmost gives
+# `col`, the count gives `colspan`. A cell that overlaps none falls back to the column whose
+# midpoint is nearest its own, as the docstring describes. Return the cells sorted by (col,
+# colspan).
+#
+# </details>
 
 # %%
 def cells_in_band(band: Sequence[Box], columns: Sequence[tuple[float, float]],
@@ -589,6 +692,25 @@ def build_table(boxes: Sequence[Box], row_gap: float = ROW_GAP, col_gap: float =
 #
 # Header rows are exempt. The sub-header row here has nothing in column 0 either, and it is
 # not a continuation of the spanning header above it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A continuation band is recognised by what is MISSING: nothing in the key column. Three
+# things decide the marks. Header rows are exempt, although the sub-header has nothing in the
+# key column either. A cell matches on the PAIR (col, colspan), not on col alone. And the rows
+# you were handed must come back untouched, because every variant in section 10 reuses them.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Copy the header rows through as new lists. For each later row: if it has a non-blank cell at
+# `key_col`, or no body row has been kept yet, keep a copy of it as a row of its own.
+# Otherwise, for each of its cells, look in the last kept row for a cell with the same (col,
+# colspan): if there is one, replace it with a NEW Cell whose text is the two texts joined by
+# a space; if not, add the cell. Re-sort that row by (col, colspan). Never write into a list
+# you were given.
+#
+# </details>
 
 # %%
 def merge_continuations(rows: Sequence[Sequence[Cell]], n_header_rows: int = N_HEADER_ROWS,
@@ -670,7 +792,7 @@ def _show_rebuild() -> None:
           f"(gold {CORPUS[0]['gold'][0][-1].colspan})")
 
 
-_try("rebuild", _show_rebuild)
+_try("rebuild", _show_rebuild, needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
 
 # %% [markdown]
 # ## 6. The two thresholds, swept
@@ -721,7 +843,8 @@ def _sweep_thresholds() -> None:
     print("is not a setting; it is a coin toss per row.")
 
 
-_try("threshold sweep", _sweep_thresholds)
+_try("threshold sweep", _sweep_thresholds,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
 
 # %% [markdown]
 # ## 7. Exercise 5 — `content_f1`
@@ -732,6 +855,24 @@ _try("threshold sweep", _sweep_thresholds)
 #
 # A multiset, not a set: a table with two cells reading `30.00` and a prediction with one of
 # them is missing half the evidence, and a set would call it perfect.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A bag, not a set and not a grid: position is deliberately ignored, but COUNT is not — two
+# identical cells in gold need two in the prediction. Two quieter traps: a cell that
+# normalises to nothing is not evidence of anything, and F1 is the harmonic mean, not the
+# average of precision and recall.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Flatten each table, map every cell's text through `norm_cell`, and drop the empty results.
+# Count occurrences on each side — a `collections.Counter` does this — and sum, over each
+# distinct text, the smaller of its two counts: those are the true positives. Precision
+# divides by the prediction's total, recall by gold's, each guarded against an empty side, and
+# F1 is their harmonic mean, guarded the same way.
+#
+# </details>
 
 # %%
 def content_f1(pred: Sequence[Sequence[Cell]], gold: Sequence[Sequence[Cell]]) -> tuple[float, float, float]:
@@ -796,6 +937,24 @@ _try("exercise 5", _check_content_f1)
 #
 # `cell_sub_cost` below is that rule. Your job is the alignment: the cheapest sequence of
 # inserts, deletes and substitutions turning one row's cells into the other's.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is Levenshtein distance with cells in place of characters, and `cell_sub_cost` already
+# knows the substitution rule. The mistake to avoid is pairing cells off in order: the dynamic
+# program must be free to delete or insert a cell whenever that is cheaper than a bad
+# substitution. And `structure_only` only works if it reaches `cell_sub_cost`.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Build a table one row longer than `a` and one column wider than `b`. Fill its first row and
+# first column with the cost of inserting or deleting that many cells. Every inner entry is
+# the cheapest of three: the entry above plus a deletion, the entry to the left plus an
+# insertion, and the diagonal entry plus `cell_sub_cost` of the two cells, with
+# `structure_only` passed through. The bottom-right entry is the distance.
+#
+# </details>
 
 # %%
 def cell_sub_cost(a: Cell, b: Cell, structure_only: bool = False) -> float:
@@ -871,6 +1030,25 @@ _try("exercise 6", _check_row_distance)
 # bounded by `max(|Ta|, |Tb|)` the way a full tree edit distance is — a one-row table against a
 # ten-row one costs more than either tree has nodes — so the score is clamped at 0. It is a
 # teaching implementation of the idea, not a reimplementation of the paper.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# One level up, the same alignment: rows are the items now, and `row_distance` is their
+# substitution cost. The two traps are the ROW node — deleting or inserting a row costs the
+# row itself as well as its cells — and failing to thread `structure_only` all the way down.
+# Then remember why the score is clamped: this restricted distance can exceed the size of the
+# larger tree.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Two empty tables are identical. Otherwise run the same dynamic program over the two lists
+# of rows: deleting a row of `pred` or inserting a row of `gold` costs that row's node plus
+# one per cell, and substituting costs `row_distance` of the pair, with `structure_only`
+# passed on. Divide the final distance by the larger `table_size`, subtract that from one, and
+# clamp at zero.
+#
+# </details>
 
 # %%
 def table_size(table: Sequence[Sequence[Cell]]) -> int:
@@ -1004,7 +1182,9 @@ def _show_variants() -> None:
         print(f"  {name:28s} {c:10.3f} {td:8.3f} {ts:12.3f}")
 
 
-_try("variant scores", _show_variants)
+_try("variant scores", _show_variants,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # Two rows of that table are the lesson. Print them on their own and read what each score
@@ -1012,8 +1192,9 @@ _try("variant scores", _show_variants)
 
 # %%
 def _show_the_two_cases() -> None:
-    if not SCORES:                       # the cell above has not run yet: nothing to read
-        raise NotImplementedError
+    if not SCORES:   # your exercises pass, but the variant-scores cell above has not run
+        print("the two cases: skipped — run the variant-scores cell in section 10 first.")
+        return
     c, td, ts = SCORES["row bands shattered"]
     print("CONTENT PERFECT, STRUCTURE WRONG — every row cut in two, no text changed:")
     print(f"  content F1 {c:.3f}   TEDS {td:.3f}   TEDS-Struct {ts:.3f}")
@@ -1032,7 +1213,9 @@ def _show_the_two_cases() -> None:
     print("  and only the order-sensitive, content-aware score notices.")
 
 
-_try("the two cases", _show_the_two_cases)
+_try("the two cases", _show_the_two_cases,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## 11. Which score does your consumer actually need?
@@ -1056,8 +1239,9 @@ CONSUMERS = {
 
 
 def _show_consumer_rule() -> None:
-    if not SCORES:                       # the section 10 cell has not run yet
-        raise NotImplementedError
+    if not SCORES:   # your exercises pass, but the section 10 cell has not run
+        print("consumer rule: skipped — run the variant-scores cell in section 10 first.")
+        return
     names = ("content F1", "TEDS", "TEDS-Struct")
     print(f"  {'defect':28s} " + " ".join(f"{n:>12s}" for n in names) + "   verdict from the pair")
     caught: dict[str, set[str]] = {n: set() for n in names}
@@ -1103,7 +1287,9 @@ def _show_consumer_rule() -> None:
     print("TEDS-Struct alongside whatever you gate on, because that pair is the work order.")
 
 
-_try("consumer rule", _show_consumer_rule)
+_try("consumer rule", _show_consumer_rule,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # One limitation of this family of scores, stated plainly because the table above hides it.
@@ -1125,7 +1311,8 @@ def _show_column_index_blindness() -> None:
     print("looks at `col`. Know what your metric cannot see before you quote it to anyone.")
 
 
-_try("column index blindness", _show_column_index_blindness)
+_try("column index blindness", _show_column_index_blindness,
+     needs=("exercise 5", "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## 12. Common mistakes
@@ -1166,7 +1353,9 @@ def _show_colspan_blindness() -> None:
     print("database loader reads it for.")
 
 
-_try("colspan blindness", _show_colspan_blindness)
+_try("colspan blindness", _show_colspan_blindness,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## 13. Self-check
@@ -1215,8 +1404,9 @@ _try("colspan blindness", _show_colspan_blindness)
 
 # %%
 def _show_scorecard() -> None:
-    if not SCORES:
-        raise NotImplementedError
+    if not SCORES:   # your exercises pass, but the section 10 cell has not run
+        print("scorecard: skipped — run the variant-scores cell in section 10 first.")
+        return
     built = rebuild_all()
     exact = sum(1 for tab, t in zip(built, CORPUS) if tab == t["gold"])
     cells = sum(len(r) for tab in built for r in tab)
@@ -1239,7 +1429,9 @@ def _show_scorecard() -> None:
               + (f": {', '.join(missed)}" if missed else ""))
 
 
-_try("scorecard", _show_scorecard)
+_try("scorecard", _show_scorecard,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1251,10 +1443,46 @@ _try("scorecard", _show_scorecard)
 # this programme keeps building instruments before it builds models.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
-    # A stub you have not reached yet is not a failure — it printed "not implemented yet" and
-    # the notebook carried on. A check that RAN and came back wrong is a failure, and it ends
-    # this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_ink_runs),
+                             ("exercise 2", _check_row_bands),
+                             ("exercise 3", _check_cells),
+                             ("exercise 4", _check_merge),
+                             ("exercise 5", _check_content_f1),
+                             ("exercise 6", _check_row_distance),
+                             ("exercise 7", _check_teds)):
+            _try(_name, _check)
+    _progress_board()
+    _wall = time.perf_counter() - _LESSON_T0
+    # Whole seconds: two machines disagree at the first decimal, and that is noise, not a result.
+    print("\nlesson wall time so far: " + ("under a second" if _wall < 1 else f"{_wall:.0f}s"))
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

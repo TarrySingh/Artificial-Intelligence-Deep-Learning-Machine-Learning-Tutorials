@@ -105,16 +105,83 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # **About the `if __name__ == "__main__":` guards.** They let the autograder import this
 # file without running any simulation. A Jupyter kernel sets `__name__` to `"__main__"`, so
 # every guarded cell still runs when you execute the notebook top to bottom.
+#
+# **Run all works before you write a line.** Each check reports "not implemented yet" for a
+# stub instead of crashing, a demo that needs an unfinished exercise names it and skips, and
+# the last cell prints a progress board. Stuck on an exercise? Open its hints, one at a time.
 
 # %%
 # Setup. Everything the lesson needs, in one cell, with versions printed by the code.
+import sys
 from pathlib import Path
+from typing import Any, Callable
 
 import mujoco
 import numpy as np
 
 print("mujoco  ", mujoco.__version__)
 print("numpy   ", np.__version__)
+
+# What the progress board in the last cell reads: label -> "passed", "failed", "not started"
+# or "waiting on <exercise>". Every check and every demo that runs on your code writes here.
+_STATUS: dict[str, str] = {}
+
+
+def _try(label: str, check: Callable[[], Any], needs: tuple = ()) -> Any:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every outcome is
+    recorded in _STATUS, and the last cell of this file exits non-zero if any check failed.
+
+    `needs` names the exercises a cell runs on. Until each has passed its own check, the cell
+    says which one it is waiting for and skips, rather than failing on code you have not
+    reached yet. Returns whatever the check returns, or None if it did not pass.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS[label] = "waiting on " + ", ".join(waiting)
+        named = [f"{n} ({_STATUS.get(n, 'not run yet')})" for n in waiting]
+        one = len(named) == 1
+        print(f"{label}: skipped — it runs on "
+              + (named[0] if one else ", ".join(named[:-1]) + " and " + named[-1])
+              + f", which {'has' if one else 'have'} not passed yet. Come back once "
+              + f"{'it has' if one else 'they have'}.")
+        return None
+    try:
+        result = check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: {str(exc) or 'not implemented yet — fill in the stub above'}, "
+              "then re-run this cell.")
+        return None
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+        return None
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        return None
+    _STATUS[label] = "passed"
+    return result
+
+
+def _progress_board(exercises) -> None:
+    """Print one line per (label, what): ✅ passed, ❌ failed or ⏳ not started; then a tally."""
+    print("\nProgress board")
+    for label, what in exercises:
+        state = _STATUS.get(label, "not started")
+        if state == "passed":
+            mark, note = "✅", ""
+        elif state == "failed":
+            mark, note = "❌", " — failed: see its message above"
+        else:
+            mark, note = "⏳", f" — {state}"
+        print(f"  {mark} {label}: {what}{note}")
+    done = sum(_STATUS.get(label) == "passed" for label, _ in exercises)
+    print(f"  {done} of {len(exercises)} complete")
 
 # %% [markdown]
 # ## 1. A position target is not a plan
@@ -246,6 +313,28 @@ if __name__ == "__main__":
 # at the target at all. A third trap is not in the algebra at all: `data.qpos` and
 # `data.qvel` are live views into MuJoCo's own memory, so anything you do to them in place
 # happens to the robot.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# The joint sits below its target: which way should the torque push? Now put it exactly on
+# the target but still moving: the P term vanishes, so what is left, and does that term care
+# where the target is? Last, what happens to the arm if your function changes the array it
+# was handed?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Work on float copies of the three inputs and never modify what you were passed in place,
+# so no `-=`, because `data.qpos` *is* the robot. The position error is target minus
+# measured, scaled by `kp`. The damping term is built from the velocity alone, scaled by
+# `kd`, and subtracted. Return the array as it stands: no clamp, no deadband, no normalising
+# the error. The grader checks that the torque is linear in both gains, and tests a target
+# that is not zero.
+#
+# </details>
 
 # %%
 def pd_torque(q, qd, q_target, kp, kd):
@@ -303,7 +392,7 @@ def _check_pd_torque():
 
 # %%
 if __name__ == "__main__":
-    _check_pd_torque()
+    _try("exercise 1", _check_pd_torque)
 
 # %% [markdown]
 # ## 4. The episode harness, and the droop you are about to explain
@@ -387,7 +476,7 @@ def demo_droop():
 
 # %%
 if __name__ == "__main__":
-    uncompensated = demo_droop()
+    uncompensated = _try("the droop", demo_droop, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 5. Exercise 2 — pay the bias force yourself
@@ -399,6 +488,26 @@ if __name__ == "__main__":
 #
 # So stop asking the spring to do it. Add the bias force the model already computed, and let
 # PD handle only the part gravity does not explain.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# Write the equation of motion with the arm held still. What must `tau` equal, and with which
+# sign? Then ask which pose that bias force belongs to: the one the arm is in right now, or
+# the one it is heading for?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Reuse your exercise 1 function for the PD part and add the bias force MuJoCo has already
+# computed. `run_episode` refreshes it in `data` for the current state just before it calls
+# you, so read it inside the function, every call. Never compute gravity yourself and never
+# keep a copy from an earlier step. If the compensated error comes out *bigger* than the
+# uncompensated droop, the bias went in with the wrong sign; section 8 measures exactly that.
+#
+# </details>
 
 # %%
 def gravity_comp_torque(model, data, q_target, kp, kd):
@@ -470,7 +579,9 @@ def _check_gravity_comp():
 
 # %%
 if __name__ == "__main__":
-    compensated, uncompensated = _check_gravity_comp()
+    _result = _try("exercise 2", _check_gravity_comp, needs=("exercise 1",))
+    if _result is not None:
+        compensated, uncompensated = _result
 
 # %% [markdown]
 # ## 6. Exercise 3 — sweep the gain until the loop bites back
@@ -484,6 +595,27 @@ if __name__ == "__main__":
 # You are not being graded on where the ceiling lands. It is a property of this model, this
 # timestep and this machine, and `stability_limit` below reads it back out of measured error
 # without ever looking at the gain itself.
+#
+# <details>
+# <summary>💡 Hint 1 · what to think about</summary>
+#
+# The grader calls this with gains out of order and with `kd` and `gravity_comp` set to
+# values other than the defaults. What must each record carry for `stability_limit` to read
+# the ceiling out of it, and why does it need the gains that failed as well as the ones that
+# held?
+#
+# </details>
+#
+# <details>
+# <summary>💡 Hint 2 · the approach in words</summary>
+#
+# Sort the gains ascending, then run the provided harness once per gain, forwarding `kd` and
+# `gravity_comp` exactly as you received them, and return the list of dicts it hands back,
+# untouched. Keep diverged runs, keep duplicates, drop nothing. Leave `SSE_TOL` alone as
+# well: widening it changes the number you print, not the loop's real ceiling, and the
+# grader holds its own tolerance.
+#
+# </details>
 
 # %%
 def sweep_kp(kp_values, kd=KD_FIXED, gravity_comp=True):
@@ -593,12 +725,16 @@ def _check_sweep():
 
 # %%
 if __name__ == "__main__":
-    curve = _check_sweep()
-    print_error_curve(curve)
-    print(f"stability limit (measured, tol {SSE_TOL} rad): {stability_limit(curve):.0f}")
-    png = save_error_curve(curve)
-    if png is not None:
-        print(f"curve written to {png}")
+    curve = _try("exercise 3", _check_sweep, needs=("exercise 2",))
+
+    def _show_error_curve():
+        print_error_curve(curve)
+        print(f"stability limit (measured, tol {SSE_TOL} rad): {stability_limit(curve):.0f}")
+        png = save_error_curve(curve)
+        if png is not None:
+            print(f"curve written to {png}")
+
+    _try("the error curve", _show_error_curve, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 7. What `kd` is actually for
@@ -631,7 +767,7 @@ def demo_kd_sweep(kp=KP_DEMO, kd_values=KD_GRID):
 
 # %%
 if __name__ == "__main__":
-    demo_kd_sweep()
+    _try("the kd sweep", demo_kd_sweep, needs=("exercise 2",))
 
 # %% [markdown]
 # ## 8. Common mistakes
@@ -675,7 +811,7 @@ def demo_sign_error(kp=KP_DEMO, kd=KD_FIXED):
 
 # %%
 if __name__ == "__main__":
-    demo_sign_error()
+    _try("the sign error", demo_sign_error, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 9. Self-check
@@ -712,7 +848,7 @@ if __name__ == "__main__":
 # summary cell below: questions 1, 3 and 5 are each settled by one of the numbers it prints.
 
 # %%
-if __name__ == "__main__":
+def _summary():
     limit = stability_limit(curve)
     print("\n=== F15-L03 summary (all figures measured by this run) ===")
     print(f"uncompensated steady-state error at kp={KP_DEMO:.0f}: "
@@ -724,6 +860,10 @@ if __name__ == "__main__":
     print(f"empirical stability limit at kd={KD_FIXED:.0f}: {limit:.0f} N m / rad")
     print(f"episodes simulated: {2 + len(KP_GRID) + len(KD_GRID) + 3}")
 
+
+if __name__ == "__main__":
+    _try("summary", _summary, needs=("exercise 2", "exercise 3"))
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -733,3 +873,26 @@ if __name__ == "__main__":
 # turns them into torques. The next lesson stacks a trajectory on top of it, where the same
 # `qfrc_bias` call carries the Coriolis terms you measured at the bent pose in section 2 —
 # terms a hand-written gravity formula would have missed entirely.
+
+# %%
+# Your progress. This re-runs each exercise's check against your code as it stands now, so the
+# board is current even if you changed an exercise after running the cell beneath it.
+if __name__ == "__main__":
+    print("Re-checking every exercise against your code as it stands now:")
+    for _label, _check, _needs in (("exercise 1", _check_pd_torque, ()),
+                                   ("exercise 2", _check_gravity_comp, ("exercise 1",)),
+                                   ("exercise 3", _check_sweep, ("exercise 2",))):
+        _try(_label, _check, needs=_needs)
+    _progress_board((("exercise 1", "pd_torque, the PD law"),
+                     ("exercise 2", "gravity_comp_torque, paying the bias force"),
+                     ("exercise 3", "sweep_kp, the gain sweep")))
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, so a green exit code cannot paper
+    # over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _failed = [label for label, state in _STATUS.items() if state == "failed"]
+    if _failed:
+        _message = "checks failed: " + ", ".join(_failed)
+        if "ipykernel" in sys.modules:
+            print(_message)
+        else:
+            raise SystemExit(_message)

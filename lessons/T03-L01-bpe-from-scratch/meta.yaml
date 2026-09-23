@@ -17,5 +17,5 @@ datasets: []            # none: the training corpus and every sample sentence ar
 points: 37
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "independent-review 2026-09-16: mutation-tested the rubric with 22 mutants (5 scored 100% and were fixed: in-place merge, stop rule at <=MIN_COUNT, strict decode, decode swallowing UnicodeDecodeError, token_tax iterating sorted(samples)); 22/22 caught after tightening; all 8 claims.yaml sources re-fetched and verified; claims.yaml where: fields and two lesson.py forward references realigned to the real section numbering; four gates re-run green"
-measured_seconds: 2.5
+measured_seconds: 2.2
 measured_peak_mib: 24

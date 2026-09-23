@@ -113,8 +113,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Any, Callable
 
 import numpy as np
@@ -182,25 +185,72 @@ def _show(fig: "matplotlib.figure.Figure") -> None:
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("rms",),
+    "exercise 2": ("crest_factor",),
+    "exercise 3": ("kurtosis",),
+    "exercise 4": ("amplitude_spectrum",),
+    "exercise 5": ("band_energy",),
+    "exercise 6": ("band_energy_fraction",),
+    "exercise 7": ("separation_auc",),
+    "exercise 8": ("cheapest_alarm",),
+    "exercise 9": ("fit_load_model",),
+    "exercise 10": ("expected_temperature",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (health_index)"; several -> "exercises 3, 6 and 8"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -338,6 +388,17 @@ _show_four_captures()
 # The trap is `np.std`, which subtracts the mean first. On a burst with any DC component — an
 # amplifier bias, a slow thermal ramp on the charge amplifier — the two answers differ, and the
 # instrument is calibrated against the RMS.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which of RMS and standard deviation keeps an accelerometer's DC bias in the answer, and
+# which throws it away? And for a (units, samples) array, which axis holds one capture?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Square every sample, average along the last axis only, and take the square root. Never
+# centre the capture first: that one step is the whole difference between RMS and `np.std`.
+# </details>
 
 # %%
 def rms(x: np.ndarray) -> np.ndarray:
@@ -388,6 +449,18 @@ _try("exercise 1", _check_rms)
 # A sine has a crest factor of exactly sqrt(2). Gaussian noise of this length sits near 4. A
 # signal with sharp impacts in it goes higher, because the peak grows faster than the energy.
 # An all-zero capture has no crest factor at all; return `0.0` rather than a NaN.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A bearing impact can ring NEGATIVE first. What happens to your peak if you take the largest
+# value rather than the largest magnitude? And what must an all-zero capture return?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Take the peak of the absolute value along the last axis and divide it by your own `rms`,
+# through the `safe_ratio` helper from the setup cell, so that a zero RMS gives the
+# docstring's answer instead of a NaN.
+# </details>
 
 # %%
 def crest_factor(x: np.ndarray) -> np.ndarray:
@@ -454,6 +527,20 @@ _try("exercise 2", _check_crest_factor)
 #   Condition monitoring quotes the un-shifted figure, where 3 is the noise floor.
 # - **Divide by the population variance**, the one with `N` in its denominator. Using `N - 1`
 #   for the variance and `N` for the fourth moment mixes two conventions and biases the result.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two conventions are waiting for you: many libraries subtract three, and many estimate the
+# variance with `N - 1`. Which does THIS lesson use for each? And which capture has zero
+# variance, and what must it return?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Subtract each capture's own mean along the last axis, keeping that axis so it broadcasts.
+# Divide the mean of the fourth powers of those deviations by the square of the mean of their
+# squares — both plain means over `N` — through `safe_ratio` for the zero-variance case. Leave
+# the result un-shifted.
+# </details>
 
 # %%
 def kurtosis(x: np.ndarray) -> np.ndarray:
@@ -529,7 +616,8 @@ def _show_kurtosis_of_shapes() -> None:
     print("shape statistic buys you over an energy statistic.")
 
 
-_try("kurtosis of shapes", _show_kurtosis_of_shapes)
+_try("kurtosis of shapes", _show_kurtosis_of_shapes,
+     needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 5. Exercise 4 — `amplitude_spectrum()`
@@ -547,6 +635,19 @@ _try("kurtosis of shapes", _show_kurtosis_of_shapes)
 # - **Do not double bin 0 (DC), and do not double the Nyquist bin** when `n` is even. Those two
 #   have no negative-frequency twin to fold in. Doubling them is the most common FFT bug there
 #   is, and it is silent: the spectrum looks right everywhere you are likely to look.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# `rfft` does not scale its output at all, so by what factor is a sine's peak off, and why?
+# Which two bins have no negative-frequency twin? And on a (units, samples) array, which axis
+# do you transform?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Transform along the last axis, take magnitudes, and scale by two over `n`. Then undo the
+# doubling for bin 0, and for the last bin only when `n` is even. The frequencies come from
+# `rfftfreq` given the spacing between samples, not the sample rate.
+# </details>
 
 # %%
 def amplitude_spectrum(x: np.ndarray, fs: float) -> tuple[np.ndarray, np.ndarray]:
@@ -633,7 +734,7 @@ def _show_mean_spectra() -> None:
     print("measuring energy in a band rather than across the whole signal.")
 
 
-_try("mean spectra", _show_mean_spectra)
+_try("mean spectra", _show_mean_spectra, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 6. Exercise 5 — `band_energy()`
@@ -646,6 +747,19 @@ _try("mean spectra", _show_mean_spectra)
 # `A**2`. Get that right and you gain a free correctness test: **summed over every bin, this
 # must equal `rms(x)**2` exactly**, to floating-point error. That is Parseval's identity, and
 # the public check below runs it on the bench's own data.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Going from amplitude back to mean-square power runs the doubling rule backwards: which bins
+# are halved and which are not — and is there a Nyquist bin at all when `n` is odd? Is the
+# band's upper edge inside the band or outside it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Take the amplitude spectrum from exercise 4 and square it, halving every bin except DC and,
+# for even `n` only, the last one. Mask the frequencies with the lower edge included and the
+# upper edge excluded, and sum the masked bins along the last axis: one number per capture.
+# </details>
 
 # %%
 def band_energy(x: np.ndarray, fs: float, lo: float, hi: float) -> np.ndarray:
@@ -712,6 +826,19 @@ _try("exercise 5", _check_band_energy)
 # gain. Dividing it by the total power removes that — and produces the feature that does best
 # on this bench. It answers "what fraction of this machine's vibration is in the bearing
 # resonance band", which is a question about the machine's *state*, not its *duty point*.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Multiply a whole capture by a load gain: what happens to its band energy, and to its total
+# power? What is left of the gain once you divide one by the other? And what should a silent
+# capture give?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Divide the band energy from exercise 5 by the capture's total power — your `rms` squared, or
+# equally the band energy over every frequency — through `safe_ratio`, so that zero total
+# power gives the docstring's answer instead of a NaN.
+# </details>
 
 # %%
 def band_energy_fraction(x: np.ndarray, fs: float, lo: float, hi: float) -> np.ndarray:
@@ -774,6 +901,18 @@ _try("exercise 6", _check_band_energy_fraction)
 # That is the area under the ROC curve, computed without sweeping a single threshold. 1.0 means
 # perfectly separated, 0.5 means indistinguishable, and 0.0 means perfectly separated *the
 # wrong way round* — which, as section 10 shows, is a thing that happens.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Only the ORDER of the values may matter. How does a tie count? And which argument is which:
+# should degrading units scoring higher push the answer towards one or towards zero?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject an empty sample first. Compare every degrading value with every healthy value —
+# broadcasting one sample against the other builds the whole table of pairs at once. Count the
+# wins, add the ties at half weight, divide by the number of pairs, and return a plain float.
+# </details>
 
 # %%
 def separation_auc(healthy: np.ndarray, degrading: np.ndarray) -> float:
@@ -857,6 +996,10 @@ FEATURES: dict[str, Callable[[np.ndarray], np.ndarray]] = {
     "band_fraction(shaft)": lambda v: band_energy_fraction(v, FS, *SHAFT_BAND),
 }
 _VALUES: dict[str, np.ndarray] = {}
+# The scorecard below fills `_VALUES` from every feature in FEATURES and ranks them with
+# exercise 7, so it — and every table after it that reads `_VALUES` — waits on those six.
+_FOR_VALUES = ("exercise 1", "exercise 2", "exercise 3", "exercise 5", "exercise 6",
+               "exercise 7")
 
 
 def _have_values() -> bool:
@@ -889,7 +1032,7 @@ def _scorecard() -> None:
     print("find a healthy machine, twice, and then stop answering the phone.")
 
 
-_try("scorecard", _scorecard)
+_try("scorecard", _scorecard, needs=_FOR_VALUES)
 
 # %% [markdown]
 # ## 10. What a confounder actually costs
@@ -919,7 +1062,7 @@ def _show_confounded() -> None:
     print("clean split would never have shown it.")
 
 
-_try("confounded", _show_confounded)
+_try("confounded", _show_confounded, needs=_FOR_VALUES)
 
 # %% [markdown]
 # ## 11. Exercise 8 — `cheapest_alarm()`
@@ -931,6 +1074,20 @@ _try("confounded", _show_confounded)
 # One thing has to be fixed first. This bench is 50% faulty and no fleet is. Prevalence is an
 # input to the cost, so the counts must be rebuilt from *rates* measured on the bench and the
 # prevalence of the fleet you are pricing — `PREVALENCE` and `FLEET_SIZE` above.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The bench is half faulty and the fleet is not: where exactly does prevalence enter the cost?
+# Which candidate threshold is not a value in either sample at all, and when does it win? On a
+# tie, which threshold should you keep?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject a prevalence outside [0, 1]. Take the distinct values of both samples in ascending
+# order and add the never-alarm option at the end. At each candidate, the two rates are the
+# fractions of each sample at or above it; price the fleet with the docstring's formula. Keep
+# the FIRST minimum, and return that threshold with its cost.
+# </details>
 
 # %%
 def cheapest_alarm(healthy: np.ndarray, degrading: np.ndarray,
@@ -1023,7 +1180,7 @@ def _show_money_ranking() -> None:
     print("blanket overhaul policy is worth, and not a penny more.")
 
 
-_try("money ranking", _show_money_ranking)
+_try("money ranking", _show_money_ranking, needs=_FOR_VALUES + ("exercise 8",))
 
 # %% [markdown]
 # ## 12. The temperature half
@@ -1034,6 +1191,29 @@ _try("money ranking", _show_money_ranking)
 #
 # The fix is a model of the *expected* temperature, fitted on units you know were healthy —
 # the commissioning set — and then subtracted. Two exercises: fit it, then apply it.
+#
+# <details><summary>💡 Exercise 9 · Hint 1 — what to think about</summary>
+#
+# Which rows may the fit learn from, and why does fitting on every unit let the fault you are
+# hunting cancel itself out? Where does the intercept come from in a least-squares solve?
+# </details>
+# <details><summary>💡 Exercise 9 · Hint 2 — the approach, in words</summary>
+#
+# Reject fewer than three selected rows. Index load, ambient AND temperature by `fit_rows`,
+# stack a column of ones with the two selected inputs in the docstring's order, solve with
+# `lstsq`, and return its three coefficients.
+# </details>
+
+# <details><summary>💡 Exercise 10 · Hint 1 — what to think about</summary>
+#
+# Which rows does this run on — only the known-good ones the model was fitted on, or every
+# unit? And which coefficient belongs to which input?
+# </details>
+# <details><summary>💡 Exercise 10 · Hint 2 — the approach, in words</summary>
+#
+# Unpack the three coefficients and return the intercept, plus the load coefficient times the
+# load, plus the ambient coefficient times the ambient — for every row you are given.
+# </details>
 
 # %%
 def fit_load_model(load: np.ndarray, ambient: np.ndarray, temperature: np.ndarray,
@@ -1078,7 +1258,7 @@ def expected_temperature(load: np.ndarray, ambient: np.ndarray,
     raise NotImplementedError
 
 
-def _check_temperature_model() -> None:
+def _check_fit_load_model() -> None:
     load = np.array([0.0, 1.0, 0.0, 1.0])
     amb = np.array([10.0, 10.0, 20.0, 20.0])
     temp = 5.0 + 2.0 * load + 0.5 * amb
@@ -1103,26 +1283,33 @@ def _check_temperature_model() -> None:
         f"{np.asarray(masked).round(3).tolist()} — index load, ambient AND temperature by "
         "fit_rows before you build the design matrix"
     )
-    assert np.allclose(expected_temperature(np.array([0.5]), np.array([20.0]),
-                                            np.array([5.0, 2.0, 0.5])), [16.0]), (
-        "expected_temperature must be b0 + b1*load + b2*ambient = 5 + 1 + 10 = 16.0"
-    )
-    every = expected_temperature(poisoned_load, poisoned_amb, np.array([5.0, 2.0, 0.5]))
-    assert np.asarray(every).shape == (6,), (
-        f"expected_temperature runs on EVERY row, not just the fitted ones; got shape "
-        f"{np.asarray(every).shape} from 6 rows"
-    )
     try:
         fit_load_model(load, amb, temp, np.array([True, True, False, False]))
     except ValueError:
         pass
     else:
         raise AssertionError("fewer than 3 selected rows must raise ValueError")
-    print("exercise 9 and 10 look right — a load model fitted on the known-good units")
+    print("exercise 9 looks right — a load model fitted on the known-good units")
+
+
+def _check_expected_temperature() -> None:
+    assert np.allclose(expected_temperature(np.array([0.5]), np.array([20.0]),
+                                            np.array([5.0, 2.0, 0.5])), [16.0]), (
+        "expected_temperature must be b0 + b1*load + b2*ambient = 5 + 1 + 10 = 16.0"
+    )
+    every_load = np.array([0.0, 1.0, 0.0, 1.0, 0.5, 0.5])
+    every_amb = np.array([10.0, 10.0, 20.0, 20.0, 15.0, 15.0])
+    every = expected_temperature(every_load, every_amb, np.array([5.0, 2.0, 0.5]))
+    assert np.asarray(every).shape == (6,), (
+        f"expected_temperature runs on EVERY row, not just the fitted ones; got shape "
+        f"{np.asarray(every).shape} from 6 rows"
+    )
+    print("exercise 10 looks right — the model applied to every unit, fitted or not")
 
 
 # %%
-_try("exercises 9 and 10", _check_temperature_model)
+_try("exercise 9", _check_fit_load_model)
+_try("exercise 10", _check_expected_temperature)
 
 # %% [markdown]
 # Now measure what the correction bought. The residual is a temperature in degrees, so it is
@@ -1158,7 +1345,8 @@ def _show_temperature() -> None:
     print("of each other along a load trend; the right panel is a detector.")
 
 
-_try("temperature", _show_temperature)
+_try("temperature", _show_temperature,
+     needs=("exercise 7", "exercise 9", "exercise 10"))
 
 # %% [markdown]
 # ## 13. The handover
@@ -1194,7 +1382,8 @@ def _handover() -> None:
     print("  its second column on a plant whose throughput is not constant.")
 
 
-_try("handover", _handover)
+_try("handover", _handover,
+     needs=_FOR_VALUES + ("exercise 8", "exercise 9", "exercise 10"))
 
 # %% [markdown]
 # ## 14. Common mistakes
@@ -1238,7 +1427,7 @@ def _show_two_orderings() -> None:
     print(f"(do-nothing cost, for reference: {do_nothing:,.0f})")
 
 
-_try("two orderings", _show_two_orderings)
+_try("two orderings", _show_two_orderings, needs=_FOR_VALUES + ("exercise 8",))
 
 # %% [markdown]
 # ## 15. Self-check
@@ -1297,7 +1486,7 @@ def _budget() -> None:
           f"{BURST_LEN / FS:.0f}-second window per machine per hour is not compute-bound.")
 
 
-_try("budget", _budget)
+_try("budget", _budget, needs=("exercise 5",))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1314,19 +1503,47 @@ _try("budget", _budget)
 # AUC across those four loads before you believe any fault AUC you get.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_rms),
-                          ("exercise 2", _check_crest_factor),
-                          ("exercise 3", _check_kurtosis),
-                          ("exercise 4", _check_amplitude_spectrum),
-                          ("exercise 5", _check_band_energy),
-                          ("exercise 6", _check_band_energy_fraction),
-                          ("exercise 7", _check_separation_auc),
-                          ("exercise 8", _check_cheapest_alarm),
-                          ("exercises 9 and 10", _check_temperature_model)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_rms),
+                              ("exercise 2", _check_crest_factor),
+                              ("exercise 3", _check_kurtosis),
+                              ("exercise 4", _check_amplitude_spectrum),
+                              ("exercise 5", _check_band_energy),
+                              ("exercise 6", _check_band_energy_fraction),
+                              ("exercise 7", _check_separation_auc),
+                              ("exercise 8", _check_cheapest_alarm),
+                              ("exercise 9", _check_fit_load_model),
+                              ("exercise 10", _check_expected_temperature)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

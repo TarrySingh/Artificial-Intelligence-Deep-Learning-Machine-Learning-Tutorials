@@ -111,6 +111,7 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+from typing import Callable
 
 import mujoco
 import numpy as np
@@ -141,19 +142,27 @@ MODEL_PATH = LESSON_DIR / MODEL_REL
 # thing or no comparison between them means anything.
 W_ANGLE, W_CART, W_THETADOT, W_XDOT, W_CTRL = 10.0, 1.0, 0.05, 0.05, 0.01
 
-_BUILD = None
+_BUILD = None   # (the source's modification time it was built from, ok, compiler output)
 
 
 def build(verbose: bool = True):
-    """Compile the C++ source with make. Cached: the compiler runs once per session."""
+    """Compile the C++ source with make. Cached, but keyed on the source's modification time:
+    save an edit to lesson.cpp and the next check cell you run rebuilds before it runs, so
+    "fill it in, then re-run this cell" is literally all it takes."""
     global _BUILD
-    if _BUILD is None:
+    try:
+        stamp = (LESSON_DIR / CPP_SRC).stat().st_mtime_ns
+    except OSError:  # a missing source: let make report it, once
+        stamp = None
+    if _BUILD is None or _BUILD[0] != stamp:
+        # After an edit, -B forces the compile: make compares whole seconds on some systems,
+        # and a save in the same second as the last build would otherwise look up to date.
         proc = subprocess.run(
-            ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
-             f"SRC={CPP_SRC}", f"BIN={BIN}"],
+            ["make", "-C", str(LESSON_DIR), *(["-B"] if _BUILD is not None else []),
+             f"PYTHON={sys.executable}", f"SRC={CPP_SRC}", f"BIN={BIN}"],
             capture_output=True, text=True, timeout=600)
-        _BUILD = (proc.returncode == 0, (proc.stdout + proc.stderr).strip())
-    ok, out = _BUILD
+        _BUILD = (stamp, proc.returncode == 0, (proc.stdout + proc.stderr).strip())
+    _, ok, out = _BUILD
     if verbose:
         print("build OK" if ok else "BUILD FAILED\n" + out)
     return ok, out
@@ -213,6 +222,62 @@ def stage_cost(scratch, u: float) -> float:
     xd, thd = float(scratch.qvel[0]), float(scratch.qvel[1])
     return (W_ANGLE * (1.0 - math.cos(th)) + W_CART * x * x
             + W_THETADOT * thd * thd + W_XDOT * xd * xd + W_CTRL * u * u)
+
+
+# The five exercises, in the order the progress board in the last cell lists them.
+_EXERCISES = {
+    "exercise 1": "sample_controls, in lesson.cpp",
+    "exercise 2": "rollout_cost, in lesson.cpp",
+    "exercise 3": "refit_mean, in lesson.cpp",
+    "exercise 4": "python_rollout_cost, in this notebook",
+    "exercise 5": "rollout_budget, in this notebook",
+}
+# label -> "passed" | "failed" | "not started": the latest verdict of every check that has
+# run. The progress board in the last cell reads it.
+_STATUS: dict = {}
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every verdict is
+    recorded in `_STATUS`, and the last cell exits non-zero if any check came back wrong when
+    this file runs as a script.
+
+    `needs` names the exercises a demo consumes. Until each of them has passed its own check,
+    the demo says which one it is waiting for and skips, instead of failing on its behalf.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS.pop(label, None)
+        one = len(waiting) == 1
+        names = [f"{n} ({_EXERCISES[n]})" for n in waiting] if len(waiting) <= 2 else waiting
+        names = names[0] if one else ", ".join(names[:-1]) + " and " + names[-1]
+        print(f"{label}: skipped — it needs {names} to pass first. Finish "
+              f"{'that' if one else 'those'}, re-run "
+              + ("its check cell" if one else "their check cells") + ", then re-run this one.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        # A C++ stub names itself on the way out; a Python stub raises with no message.
+        stub = str(exc).split(" — ")[0].replace("NOT IMPLEMENTED: ", "").strip()
+        if stub:
+            print(f"{label}: not implemented yet — lesson.cpp reports that {stub}. Fill it "
+                  "in, then re-run this cell.")
+        else:
+            print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 build()
@@ -313,6 +378,25 @@ print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a r
 # time. The full brief, including the worked example, is in the comment above the function.
 #
 # The check below pulls the buffer back out of the binary and tests its statistics from here.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Picture `out` as a table: one row per candidate plan, one column per time step, stored row
+# after row. Three decisions make or break it — where entry (i, t) lives, where each random
+# number comes from, and whether the clamp sees the whole value or only the noise. The check
+# catches a transposed buffer, a reused draw, and a clamp applied too early.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Size the buffer first. Loop over samples on the outside and time steps inside, and in the
+# inner loop draw one new standard normal from the generator you were handed — never a fresh
+# generator, or the same seed stops replaying. Scale it by sigma, add the current plan's value
+# at that step, and only then clamp the sum. If you build the distribution with sigma as its
+# spread, do not multiply by sigma a second time.
+#
+# </details>
 
 # %%
 def _check_sampling() -> None:
@@ -342,7 +426,7 @@ def _check_sampling() -> None:
 
 
 if _IS_MAIN:
-    _check_sampling()
+    _try("exercise 1", _check_sampling)
 
 
 # %% [markdown]
@@ -354,6 +438,23 @@ if _IS_MAIN:
 # `start` is `const`. Step it instead of the copy and the planner's hypothetical futures
 # become real motion — the robot is then driven by its own imagination, and no two samples
 # start from the same state, so their costs cannot be compared.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two copies of the world are in play: `start`, the robot as it really is, and `scratch`, a
+# whiteboard you may scribble on. For every line you write, ask which one it touches. The
+# check scores one plan twice and compares, then reads the live hinge angle and clock.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Branch `scratch` off `start` at the top of EVERY call, before the loop — not once per
+# program, or the second call begins where the first one ended. Then, per step and in this
+# order: write the control, advance the copy by one step, and score the state the copy has
+# just arrived at with that same control. Return the running total, not the last stage.
+#
+# </details>
 
 # %%
 def _check_rollout() -> None:
@@ -392,7 +493,7 @@ def _check_rollout() -> None:
 
 
 if _IS_MAIN:
-    _check_rollout()
+    _try("exercise 2", _check_rollout)
 
 
 # %% [markdown]
@@ -411,6 +512,25 @@ if _IS_MAIN:
 # The alternative refit is the cross-entropy one: keep the best-scoring *elite* fraction and
 # average only those. MuJoCo MPC ships that planner too (`claims.yaml`,
 # `mjpc-cross-entropy-planner`). Softmax is a soft version of the same instinct.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The check tries three limits of one formula: equal costs must give the plain average, one
+# outrageously cheap plan must give that plan, and adding one huge constant to every cost must
+# change nothing at all. Work out what the weights are in each case before you write the loop
+# — the third is where the textbook formula turns into NaN.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Two passes. The first finds the cheapest cost and weighs each sample by how far its cost
+# sits ABOVE the cheapest, divided by lambda, negated inside the exponential — so the best
+# plan always weighs exactly one and the total can never be zero. The second clears the plan
+# and adds each sample's control scaled by its weight over the total weight. Keep lambda in
+# the exponent: it sets how sharply the refit favours the winners.
+#
+# </details>
 
 # %%
 def _check_refit() -> None:
@@ -441,7 +561,7 @@ def _check_refit() -> None:
 
 
 if _IS_MAIN:
-    _check_refit()
+    _try("exercise 3", _check_refit)
 
 
 # %% [markdown]
@@ -450,6 +570,23 @@ if _IS_MAIN:
 # Now write `rollout_cost` again, here, in Python. Same objective, same model, same start —
 # the only thing that changes is the language. This is what makes the comparison later an
 # apples-to-apples one rather than a slogan.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is exercise 2 again, so the C++ you wrote is the specification, and the check holds
+# you to it to rounding error: any difference in the ORDER of control, step and score shows.
+# It also checks the type you return, and that `data` never moved.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Copy `data` into `scratch` first — that is what starts the rollout from the hanging
+# keyframe rather than the model's default pose. Then for each control: set it, step the
+# copy, add the stage cost of where the copy now is. Start the total at a plain Python zero
+# point zero and you never hand back a numpy scalar.
+#
+# </details>
 
 # %%
 def python_rollout_cost(model, data, scratch, controls) -> float:
@@ -502,8 +639,9 @@ def _check_python_rollout() -> None:
           f"relative gap {rel:.1e}")
 
 
+# It compares your Python with your C++ rollout_cost, so it waits for exercise 2.
 if _IS_MAIN:
-    _check_python_rollout()
+    _try("exercise 4", _check_python_rollout, needs=("exercise 2",))
 
 
 # %% [markdown]
@@ -512,6 +650,25 @@ if _IS_MAIN:
 # A planner is real-time only if one planning tick fits inside one control period. At 100 Hz
 # that is 10 ms to spend on `samples * horizon` calls to `mj_step`. Write the arithmetic that
 # turns a measured throughput into a verdict.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every key is a unit conversion. Write the unit beside each — steps, steps per second,
+# seconds — and the divisions choose their own direction. Then look at the two keys that
+# count whole things: the check asks for their TYPE as well as their value, and it tries a
+# throughput whose affordable sample count is not a whole number.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Work per tick is samples times horizon; the time that work takes is work over throughput;
+# the tick is one over the control rate. Real-time means the first is no longer than the
+# second, and a plan that exactly fills the tick counts. The affordable sample count is the
+# throughput over what one sample costs per second — rate times horizon — rounded DOWN, as an
+# int. Let a zero throughput raise; do not catch it.
+#
+# </details>
 
 # %%
 def rollout_budget(samples: int, horizon: int, control_hz: float,
@@ -606,7 +763,7 @@ def _check_budget() -> None:
 
 
 if _IS_MAIN:
-    _check_budget()
+    _try("exercise 5", _check_budget)
 
 
 # %% [markdown]
@@ -657,7 +814,10 @@ def report() -> None:
           f"  {cpp['rollouts_per_second']:9,.0f} rollouts/s")
     print(f"  Python {py['wall_seconds'] * 1e3:8.1f} ms  {py['steps_per_second']:12,.0f} steps/s"
           f"  {py['rollouts_per_second']:9,.0f} rollouts/s")
-    print(f"  C++ is {ratio:.1f}x faster on the same mj_step calls")
+    # The ratio is a timing, so it is printed beside the two timings it divides: this run's
+    # figure, not a constant — and a line that visibly moves from run to run.
+    print(f"  C++ is {ratio:.1f}x faster on the same mj_step calls "
+          f"({py['wall_seconds'] * 1e3:.1f} ms / {cpp['wall_seconds'] * 1e3:.1f} ms, this run)")
 
     hz = swing["control_hz"]
     n, h = int(swing["samples"]), int(swing["horizon"])
@@ -778,8 +938,9 @@ if _IS_MAIN:
 
 # %%
 # The payoff, end to end. Every number this prints is produced by the code you wrote.
+# It consumes all five exercises; until each has passed, it names the ones it is waiting for.
 if _IS_MAIN:
-    report()
+    _try("the payoff", report, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -793,3 +954,28 @@ if _IS_MAIN:
 # language; the control rate is not. The next lesson in the Humanoid Lab takes the same loop
 # to a model with contact, where each `mj_step` costs far more and the sample budget gets
 # decided for you.
+
+# %%
+# Your progress board. It reads the verdict each check cell recorded the last time it ran, so
+# after you fix an exercise, re-run that exercise's check cell and then this one.
+def _progress_board() -> list:
+    """Print one line per exercise, then the tally. Returns the labels that came back wrong."""
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("\nprogress board")
+    for label, what in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {marks[state]} {label}  {what:<38s} {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
+if _IS_MAIN:
+    _failed = _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, so a green exit code cannot paper
+    # over it. Inside a notebook kernel the same verdict is a printed line, not a traceback.
+    if _failed and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(_failed))
+    if _failed:
+        print("checks failed: " + ", ".join(_failed) + " — each printed its reason above")

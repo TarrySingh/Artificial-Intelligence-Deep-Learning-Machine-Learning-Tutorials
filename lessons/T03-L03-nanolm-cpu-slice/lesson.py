@@ -110,8 +110,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup. Everything the lesson needs, in one cell, with versions printed by the code itself.
+import contextlib
+import io
 import sys
 import time
+from typing import Callable
 
 import numpy as np
 
@@ -125,6 +128,80 @@ try:  # noqa: SIM105 - the failure is the point, so it is reported rather than s
 except ImportError:
     _TORCH = "not installed — which is exactly why you are about to differentiate by hand"
 print("torch ", _TORCH)
+
+# Every check and every demo below runs through `_try`, so pressing Run all before you have
+# written a line reaches the progress board at the foot of the notebook instead of stopping at
+# the first stub.
+# The six exercises, in the order the notebook meets them: (label, function, where).
+_EXERCISES = [("exercise 1", "softmax", "section 3"), ("exercise 2", "cross_entropy", "section 4"),
+              ("exercise 3", "attention_forward", "section 6"),
+              ("exercise 4", "cross_entropy_backward", "section 8"),
+              ("exercise 5", "attention_backward", "section 9"),
+              ("exercise 6", "make_batch", "section 12")]
+_FUNCTION = {label: function for label, function, _ in _EXERCISES}
+_FOR_GRADIENTS = ("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5")
+_STATUS: dict = {}       # label -> "passed" | "failed" | "not started", for the progress board
+_WAITING_ON: dict = {}   # label -> the stub whose NotImplementedError stopped it
+
+
+def _unfinished(exc: BaseException) -> str:
+    """The function that raised NotImplementedError: the innermost frame of the traceback.
+
+    Exercise 3 calls your exercise 1, so an unfilled `softmax` stops exercise 3's check too —
+    and naming the stub that actually raised says which one to go back to.
+    """
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    return tb.tb_frame.f_code.co_name if tb is not None else ""
+
+
+def _named(labels: list) -> str:
+    """["exercise 3"] -> "exercise 3 (`attention_forward`)"; several -> "exercises 1, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} (`{_FUNCTION[labels[0]]}`)"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so, by name. A wrong answer prints the
+    check's own message — which names the likely mistake — and the notebook carries on, so one
+    broken exercise never hides the feedback on the others. A demo names the exercises it
+    `needs`: until each has passed its check, the demo says which one it is waiting for and
+    skips, so it never runs on an answer a check has just rejected. Nothing is swallowed:
+    every outcome is recorded for the progress board, and a script run exits non-zero there if
+    any check came back wrong.
+    """
+    waiting = [name for name, _, _ in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        stub = _unfinished(exc)
+        _STATUS[label], _WAITING_ON[label] = "not started", stub
+        owner = [name for name, function in _FUNCTION.items() if function == stub]
+        if owner and owner[0] != label:
+            print(f"{label}: skipped — needs {_named(owner)} first; it still raises "
+                  "NotImplementedError.")
+        else:
+            todo = f"`{stub}`" if stub else "a stub"
+            print(f"{label}: not implemented yet — {todo} still raises NotImplementedError. "
+                  "Fill it in, then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 # Everything runs in float64. Finite-difference checking in float32 is a waste of time: the
 # round-off floor swamps the signal you are trying to measure.
@@ -374,6 +451,23 @@ print(f"context is worth at most{UNIFORM_BASELINE - UNIGRAM_BASELINE:8.4f} nats 
 # `exp(x) / sum(exp(x))` exactly — the `exp(m)` factors cancel — this changes nothing about
 # the answer and everything about whether you can compute it. After subtracting, the largest
 # exponent is `exp(0) == 1`, so nothing can overflow.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two different things can go wrong. The arithmetic: what does `np.exp` return for a large
+# score, and what is `inf / inf`? And the axes: which axis do the maximum and the sum run
+# along, and does each still broadcast against the input? A `-inf` entry is not a problem to
+# fix — leave it alone and see what `exp` makes of it.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Take the maximum along the last axis, keeping that axis, and subtract it from every entry.
+# Exponentiate, then divide by the sum along the same last axis, again keeping it. The largest
+# exponent is now exp(0), nothing can overflow, a `-inf` still becomes exactly zero, and the
+# shape never changes.
+#
+# </details>
 
 # %%
 def softmax(x: np.ndarray) -> np.ndarray:
@@ -443,7 +537,7 @@ def _check_softmax() -> None:
 # Instant feedback. Run this the moment you have filled in `softmax`, and re-run it as often
 # as you like — it names what is wrong, not merely that something is.
 if __name__ == "__main__":
-    _check_softmax()
+    _try("exercise 1", _check_softmax)
 
 
 # %% [markdown]
@@ -463,6 +557,23 @@ if __name__ == "__main__":
 # which is algebraically identical to `-log(softmax(logits_i)[target_i])` but never forms the
 # tiny probability in the first place. Subtract the row max inside the `logsumexp` for the
 # same reason as in exercise 1, and add it back outside the log.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each position's loss needs two things: the score of the character that actually came next,
+# and the log of the summed exponentials of all the scores. Ask two questions of your code:
+# does it ever form a probability and then take its log (that is the underflow), and does it
+# average over every one of the B×T positions — not B alone, not T alone, not a sum?
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Per position: the row maximum, plus the log of the summed exponentials of the row with that
+# maximum subtracted — that is the log-sum-exp. Subtract the score at the target index, picked
+# out with `np.take_along_axis` as the docstring shows. Take one mean over batch and time
+# together, and hand it back as a plain Python `float`.
+#
+# </details>
 
 # %%
 def cross_entropy(logits: np.ndarray, targets: np.ndarray) -> float:
@@ -541,7 +652,7 @@ def _check_cross_entropy() -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_cross_entropy()
+    _try("exercise 2", _check_cross_entropy)
 
 
 # %% [markdown]
@@ -629,6 +740,24 @@ print(f"\nin float64 np.exp underflows to exactly 0 below about "
 #
 # Your function must also return a **cache**: the intermediate arrays the backward pass in
 # exercise 5 will need. The key names are a contract, and the autograder checks them.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The order is the exercise: scale, then mask, then softmax — zeroing weights after the
+# softmax leaves rows that no longer sum to one. Then check the orientation: which triangle of
+# the (T, T) scores is the past, and does your transpose of K leave the batch axis alone? The
+# cache is a contract too: exercise 5 reads it by name.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Project x three times. Score Q against K with a batched transpose that swaps only the last
+# two axes, and multiply by one over the square root of the width read from x. Where the
+# causal mask is False write minus infinity — not a big negative number — then call your own
+# softmax and weight V with the result. Return the context and a dict under the ten documented
+# names.
+#
+# </details>
 
 # %%
 def attention_forward(x: np.ndarray, wq: np.ndarray, wk: np.ndarray, wv: np.ndarray):
@@ -721,7 +850,7 @@ def _check_attention_forward() -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_attention_forward()
+    _try("exercise 3", _check_attention_forward)
 
 
 # %% [markdown]
@@ -795,7 +924,8 @@ def _check_model_forward() -> None:
 # Your exercises 1 and 3 are now wired into a whole model. This is the parameter count the
 # closing section refers to, and it is counted here rather than quoted.
 if __name__ == "__main__":
-    _check_model_forward()
+    _try("the assembled model", _check_model_forward,
+         needs=("exercise 1", "exercise 2", "exercise 3"))
 
 
 # %% [markdown]
@@ -815,6 +945,23 @@ if __name__ == "__main__":
 # always paired. Divide by `B*T` because `cross_entropy` averaged over `B*T` positions — if
 # you forget, every gradient below is too large by that factor and finite differences will
 # tell you so immediately.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The gradient is a difference of two distributions: the one the model predicted, and a one-
+# hot of the truth. Check which is subtracted from which, and remember what `cross_entropy`
+# averaged over — the gradient must be divided by the same count, or finite differences will
+# disagree with you by exactly that factor.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Softmax the logits with your exercise 1. Build a zero array of the same shape and write 1.0
+# at each target position with `np.put_along_axis`, as the docstring shows. Subtract the one-
+# hot from the softmax and divide by the number of positions, B times T. Every row of the
+# result then sums to zero — a quick sanity check before you run the cell.
+#
+# </details>
 
 # %%
 def cross_entropy_backward(logits: np.ndarray, targets: np.ndarray) -> np.ndarray:
@@ -879,7 +1026,7 @@ def _check_cross_entropy_backward() -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_cross_entropy_backward()
+    _try("exercise 4", _check_cross_entropy_backward)
 
 
 # %% [markdown]
@@ -909,6 +1056,20 @@ if __name__ == "__main__":
 #
 # Flatten `(B, T, D)` to `(B*T, D)` with `.reshape(-1, D)` before forming the weight
 # gradients, because a weight is shared across every position of every sequence.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Read the failure pattern. dWq and dWk wrong with dWv right points at the softmax, whose rows
+# are coupled; dX alone wrong means a path was assigned, not added. `.T` on (B, T, D) moves B.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Work down the table: context gives dA and dV; dA goes through the row-coupled softmax
+# form; zero the masked entries, apply the scale, split into dQ and dK. Each weight gradient
+# pairs the flattened input with its flattened projection gradient; dX adds all three paths.
+#
+# </details>
 
 # %%
 def attention_backward(d_context: np.ndarray, cache: dict):
@@ -988,7 +1149,7 @@ def _check_attention_backward() -> None:
 # The hardest check in the lesson. If it fails, read which of dX/dWq/dWk/dWv disagreed — the
 # message maps each pattern of failure onto the derivation mistake that causes it.
 if __name__ == "__main__":
-    _check_attention_backward()
+    _try("exercise 5", _check_attention_backward)
 
 
 # %% [markdown]
@@ -1096,7 +1257,7 @@ def _check_gradients() -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_gradients()
+    _try("the full gradient check", _check_gradients, needs=_FOR_GRADIENTS)
 
 
 # %% [markdown]
@@ -1133,6 +1294,17 @@ def probe_scale_comparison(scales=(INIT_SCALE, GRADCHECK_SCALE)) -> None:
           "check by accident.")
 
 
+def _show_probe_tables() -> None:
+    """Both tables, printed once they are complete, so an unfinished exercise skips cleanly
+    instead of leaving a table header with nothing under it."""
+    buffer = io.StringIO()
+    with contextlib.redirect_stdout(buffer):
+        probe_scale_comparison()
+        print()
+        step_size_sweep()
+    print(buffer.getvalue(), end="")
+
+
 def step_size_sweep() -> None:
     """Show the U-curve: truncation error at large h, round-off error at small h."""
     params = init_params(seed=900, scale=GRADCHECK_SCALE)
@@ -1154,9 +1326,7 @@ def step_size_sweep() -> None:
 # %%
 # Read the two tables together: the first says WHERE to probe, the second says with what h.
 if __name__ == "__main__":
-    probe_scale_comparison()
-    print()
-    step_size_sweep()
+    _try("the probe-point tables", _show_probe_tables, needs=_FOR_GRADIENTS)
 
 
 # %% [markdown]
@@ -1170,6 +1340,23 @@ if __name__ == "__main__":
 # The off-by-one is the whole exercise. If targets are the same window as inputs rather than
 # the window one step later, the model is asked to predict the character it was just given,
 # training loss collapses towards zero, and the samples are pure nonsense.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two off-by-ones live here. The target window starts one character later than the input
+# window, not at the same place. And the largest start you draw must still leave room for that
+# extra character, or the last target runs off the end of the data. One start per row — not
+# one for the whole batch.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Draw batch_size start positions from the generator you were handed, with the exclusive upper
+# bound the docstring gives. For each start, slice context_len characters for the input, and
+# the same length beginning one position later for the target. Stack the rows and keep them
+# int64: they index the embedding table.
+#
+# </details>
 
 # %%
 def make_batch(data: np.ndarray, batch_size: int, context_len: int, rng):
@@ -1229,7 +1416,7 @@ def _check_make_batch() -> None:
 
 # %%
 if __name__ == "__main__":
-    _check_make_batch()
+    _try("exercise 6", _check_make_batch)
 
 
 # %% [markdown]
@@ -1296,6 +1483,12 @@ def train(steps=TRAIN_STEPS, seed=0, report_every=500):
     return params, history
 
 
+def _run_training() -> None:
+    """Train, and keep the model for the sample and the recap — only if training succeeded."""
+    global trained
+    trained = _check_training()
+
+
 def _check_training():
     print("training (no GPU, no autodiff, one attention head):")
     params, history = train()
@@ -1327,7 +1520,8 @@ def _check_training():
 # This is the long cell: a few thousand steps on a CPU. The loss printed every 500 steps must
 # fall, and the held-out margin over the unigram entropy is the gate the lesson is graded on.
 if __name__ == "__main__":
-    trained = _check_training()
+    trained = None
+    _try("training", _run_training, needs=tuple(_FUNCTION))
 
 
 # %% [markdown]
@@ -1360,7 +1554,11 @@ def sample(params, n_chars=400, seed=3, temperature=1.0, prompt=None) -> str:
 # %%
 # Nothing here is cherry-picked: this is the first sample at the default seed.
 if __name__ == "__main__":
-    print(sample(trained))
+    if trained is None:
+        print("the sample: skipped — it needs the model section 13 trains, and that needs all "
+              "six exercises.")
+    else:
+        _try("the sample", lambda: print(sample(trained)))
 
 
 # %% [markdown]
@@ -1433,7 +1631,8 @@ def _demo_wrong_jacobian() -> None:
 
 
 if __name__ == "__main__":
-    _demo_wrong_jacobian()
+    _try("the `A * dA` demonstration", _demo_wrong_jacobian,
+         needs=("exercise 1", "exercise 3", "exercise 5"))
 
 
 # %% [markdown]
@@ -1516,10 +1715,58 @@ if __name__ == "__main__":
 
 # %%
 # The closing recap. Every figure is recomputed here rather than quoted from the prose above.
+def _show_heldout() -> None:
+    print(f"  held-out after training  {evaluate(trained, VAL_DATA, seed=7):.4f} nats/char")
+
+
 if __name__ == "__main__":
     print("--- what you built, measured ---")
     print(f"  parameters               {sum(v.size for v in init_params().values())}")
     print(f"  uniform baseline         {UNIFORM_BASELINE:.4f} nats/char")
     print(f"  unigram entropy (train)  {UNIGRAM_BASELINE:.4f} nats/char")
-    print(f"  held-out after training  {evaluate(trained, VAL_DATA, seed=7):.4f} nats/char")
+    if trained is None:
+        print("  held-out after training  not measured yet — section 13 needs all six exercises")
+    else:
+        _try("the recap", _show_heldout)
     print("  every number above was computed by the code you just ran")
+
+# %%
+# Your progress board: one line per exercise, from the checks you have run, then the count.
+# The six exercises it lists are the ones `_EXERCISES` names in the setup cell.
+_MARKS = {"passed": "✅ passed     ", "failed": "❌ failed     ", "not started": "⏳ not started"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from what the checks recorded — then how many are complete."""
+    print("\nyour progress")
+    done, next_up = 0, None
+    for label, function, where in _EXERCISES:
+        status = _STATUS.get(label, "not started")
+        done += status == "passed"
+        waiting = _WAITING_ON.get(label)
+        note = (f"   (waiting on `{waiting}`)"
+                if status == "not started" and waiting not in (None, "", function) else "")
+        print(f"  {_MARKS[status]}  {label} · {function}{note}")
+        if status != "passed" and next_up is None:
+            next_up = (label, function, where)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    if next_up:
+        print(f"next: {next_up[0]} — `{next_up[1]}`, {next_up[2]}. Its cell has hints if you "
+              "are stuck.")
+
+
+def _finish() -> None:
+    """The board, then the verdict. A stub you have not reached yet is not a failure; a check
+    that ran and came back wrong is. In a script or under CI that ends the run non-zero, so a
+    green exit code can never paper over it. In a notebook kernel it is a printed line."""
+    _progress_board()
+    failed = [label for label, status in _STATUS.items() if status == "failed"]
+    if failed and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(failed))
+    if failed:
+        print("checks failed: " + ", ".join(failed) + " — each one printed its likely mistake "
+              "where it ran.")
+
+
+if __name__ == "__main__":
+    _finish()

@@ -101,6 +101,7 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib
 import math
+import sys
 import time
 from pathlib import Path
 
@@ -160,6 +161,69 @@ print(f"total mass {TOTAL_MASS:.2f} kg, gravity {GRAVITY:.2f} m/s^2, "
       f"weight {TOTAL_MASS * GRAVITY:.1f} N")
 print(f"horizon {HORIZON_STEPS} steps = {HORIZON_STEPS * DT:.1f} s of simulated time")
 
+
+# The notebook's guard. Every check, and every table that runs your code, goes through _try:
+# an unfilled stub says so, a wrong answer prints its check's hint and the notebook carries
+# on, and a table that needs an exercise you have not finished names it and skips. The
+# progress board in the last cell reads the verdicts it records.
+_BOARD = {                      # label -> what it grades, in the order the board lists them
+    "exercise 1": "gait_targets",
+    "exercise 2": "rollout",
+    "exercise 3": "cost_of_transport",
+    "exercise 4": "coordinate_search",
+    "self-check": "the four questions in section 9",
+}
+_STATUS: dict = {}              # label -> "passed" | "failed" | "not started"
+
+
+def _unfinished(exc: BaseException) -> str:
+    """Say which stub stopped a check: the message it carries, or the function that raised."""
+    if str(exc):
+        return str(exc)
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    name = tb.tb_frame.f_code.co_name if tb is not None else "a function above"
+    return f"{name}() is still a stub; fill it in above, then re-run this cell."
+
+
+def _try(label: str, check, needs: tuple = ()):
+    """Run a check, or a table that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. A table given `needs` waits until those
+    exercises have passed, and names the one it is waiting for. Nothing is swallowed: every
+    verdict is recorded in _STATUS, and the last cell turns any failure into a non-zero exit
+    whenever this file runs as a script. Returns what the check returned, or None.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS.pop(label, None)
+        names = [f"{n} ({_BOARD[n]})" for n in waiting]
+        one = len(names) == 1
+        names = names[0] if one else ", ".join(names[:-1]) + " and " + names[-1]
+        print(f"{label}: skipped — it runs your code from {names}, which "
+              f"{'has' if one else 'have'} not passed yet. Finish {'it' if one else 'them'}, "
+              f"re-run {'its check cell' if one else 'their check cells'}, then this one.")
+        return None
+    try:
+        result = check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: not started yet — {_unfinished(exc)}")
+        return None
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+        return None
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        return None
+    _STATUS[label] = "passed"
+    return result
+
 # %% [markdown]
 # ## 1. The control input is an angle, not a torque
 #
@@ -199,6 +263,25 @@ print("\nthe servo is a P-D law inside the engine; you never wrote a torque, and
 # This is the crudest possible **central pattern generator** — a rhythm source that runs
 # open-loop, with no feedback from the body at all. Real CPGs are coupled oscillators; see
 # Ijspeert's 2008 review in `claims.yaml` for those. A sinusoid is the version you can read.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# `freq` is in cycles per second, but `sin` and `cos` take radians: what turns one into the
+# other? Then place the three offsets one at a time. The leg offset shifts the whole LEFT leg,
+# hip and knee alike; the knee lag shifts each knee against its own hip; the bias leans the two
+# hips and touches nothing else. Use the `leg_phase` you are handed — section 5 passes others.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Work out one phase angle from `t` and the frequency. Each hip is its amplitude times the sine
+# of its phase, plus the bias. Each knee is a flexion envelope — one minus a cosine, halved so
+# it spans exactly one knee amplitude, and negated because these knees bend one way only. The
+# left leg repeats both with the leg offset added to its phase. Return all four, right leg
+# first, as a numpy array.
+#
+# </details>
 
 # %%
 PARAM_KEYS = ("freq", "hip_amp", "knee_amp", "knee_lag", "hip_bias")
@@ -271,7 +354,7 @@ def _check_gait_targets() -> None:
 # import this file without every check firing: it imports under the name "lesson", while
 # a notebook cell and `python lesson.py` both run as "__main__".
 if __name__ == "__main__":
-    _check_gait_targets()
+    _try("exercise 1", _check_gait_targets)
 
 # %% [markdown]
 # ## 3. Energy is the integral of torque times velocity
@@ -317,6 +400,25 @@ print("\nsame physics, two coordinate systems. If your energy is 300x this, you 
 #
 # `qpos[0]` is the hip's fore-aft position **in metres** and `qpos[1]` is hip height, because
 # the torso's root joints are slides at the origin. Distance is read, not reconstructed.
+#
+# <details><summary>💡 Hint 1 — what to think about (exercise 2)</summary>
+#
+# The servo reads its targets from one array, and it is not `qpos`. Every call must start from
+# the same pose, or a search compares candidates that began in different places — so where does
+# the reset go? Energy is power times time: what multiplies each step's power? And use the
+# `horizon` and `leg_phase` you are handed, not the module's constants.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words (exercise 2)</summary>
+#
+# Reset to the keyframe, run the forward pass once, and note where the hips start along x. Then
+# for each step of the horizon: write the gait's targets for this step's time into the controls,
+# step once, add this step's absolute power — summed over the actuators, times the timestep —
+# count the step, and stop, marked fallen, if the hips drop too low or the torso pitches too
+# far. Distance is where the hips finished minus where they started, sign kept.
+#
+# </details>
 
 # %%
 BASELINE_GAIT = {"freq": 0.90, "hip_amp": 0.25, "knee_amp": 0.60, "knee_lag": 4.00,
@@ -358,6 +460,52 @@ def rollout(model, data, params: dict, horizon: int = HORIZON_STEPS,
     raise NotImplementedError
 
 
+def _check_rollout() -> None:
+    model, data = load_walker()
+    r = rollout(model, data, BASELINE_GAIT)
+    assert set(r) == {"distance", "energy", "steps", "fell"}, (
+        f"keys were {sorted(r)} — return a dict with exactly those four names."
+    )
+    assert not r["fell"] and r["steps"] == HORIZON_STEPS, (
+        f"the baseline gait fell={r['fell']} after {r['steps']} steps. It is known to survive "
+        "the full horizon, so the loop is wrong: the usual causes are writing targets into "
+        "data.qpos instead of data.ctrl, or forgetting mj_step."
+    )
+    again = rollout(model, data, BASELINE_GAIT)
+    assert abs(again["distance"] - r["distance"]) < 1e-9, (
+        f"the same gait walked {r['distance']:.3f} m then {again['distance']:.3f} m on the same "
+        "data — reset to the keyframe at the TOP of every rollout."
+    )
+    print(f"exercise 2 looks right: the baseline walks {r['distance']:.3f} m on "
+          f"{r['energy']:.1f} J and survives all {r['steps']} steps")
+
+
+if __name__ == "__main__":
+    _try("exercise 2", _check_rollout)
+
+# %% [markdown]
+# **Exercise 3 — the cost of transport.** Distance alone rewards a machine that sprints and
+# burns everything; energy alone rewards one that stands still. The metric below divides one
+# by the other, and it is the number section 6 searches on.
+#
+# <details><summary>💡 Hint 1 — what to think about (exercise 3)</summary>
+#
+# The denominator is a weight times a distance, not a mass times a distance — what turns
+# kilograms into newtons? Then decide what a walker that went nowhere, or backwards, should
+# score in a search that keeps the LOWEST number. Zero would make it the winner, and so would
+# anything negative.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words (exercise 3)</summary>
+#
+# Guard first, before any division: a distance that is not strictly positive gets the score
+# the docstring names for it, and never reaches the divide. Otherwise divide the energy by the
+# product of mass, gravity and distance. Every unit cancels, which is the point of the metric.
+#
+# </details>
+
+# %%
 def cost_of_transport(energy_j: float, distance_m: float, mass_kg: float = TOTAL_MASS,
                       gravity: float = GRAVITY) -> float:
     """The dimensionless specific cost of transport: energy per unit weight per unit distance.
@@ -398,7 +546,7 @@ def gait_score(result: dict) -> float:
     return cost_of_transport(result["energy"], result["distance"])
 
 
-def _check_rollout_and_cot() -> None:
+def _check_cost_of_transport() -> None:
     assert abs(cost_of_transport(100.0, 2.0, mass_kg=10.0, gravity=9.81) - 0.5096840) < 1e-6, (
         "cost_of_transport(100, 2, mass=10, g=9.81) should be 100/(10*9.81*2) = 0.509684; "
         "omitting gravity gives 5.0."
@@ -410,28 +558,12 @@ def _check_rollout_and_cot() -> None:
         "a negative distance must also give float('inf'); walking backwards is not efficient "
         "transport, and a negative cost of transport would win every search you ever run."
     )
-    model, data = load_walker()
-    r = rollout(model, data, BASELINE_GAIT)
-    assert set(r) == {"distance", "energy", "steps", "fell"}, (
-        f"keys were {sorted(r)} — return a dict with exactly those four names."
-    )
-    assert not r["fell"] and r["steps"] == HORIZON_STEPS, (
-        f"the baseline gait fell={r['fell']} after {r['steps']} steps. It is known to survive "
-        "the full horizon, so the loop is wrong: the usual causes are writing targets into "
-        "data.qpos instead of data.ctrl, or forgetting mj_step."
-    )
-    again = rollout(model, data, BASELINE_GAIT)
-    assert abs(again["distance"] - r["distance"]) < 1e-9, (
-        f"the same gait walked {r['distance']:.3f} m then {again['distance']:.3f} m on the same "
-        "data — reset to the keyframe at the TOP of every rollout."
-    )
-    print(f"exercises 2 and 3 look right: the baseline walks {r['distance']:.3f} m on "
-          f"{r['energy']:.1f} J, cost of transport "
-          f"{cost_of_transport(r['energy'], r['distance']):.4f}")
+    print("exercise 3 looks right: energy over weight times distance, dimensionless, and a "
+          "walker that covers no ground can never win a search")
 
 
 if __name__ == "__main__":
-    _check_rollout_and_cot()
+    _try("exercise 3", _check_cost_of_transport)
 
 # %% [markdown]
 # ## 5. Phase is not a detail
@@ -461,7 +593,7 @@ def _check_phase_matters() -> None:
 
 
 if __name__ == "__main__":
-    _check_phase_matters()
+    _try("phase table", _check_phase_matters, needs=("exercise 1", "exercise 2"))
 
 # %% [markdown]
 # ## 6. Exercise 4 — a search you can afford
@@ -472,6 +604,25 @@ if __name__ == "__main__":
 # The rule that matters is the **budget**. A rollout costs real milliseconds, and a search
 # that ignores its cap is how a lesson stops fitting on a laptop. Yours takes `max_rollouts`
 # and stops when it is spent — checked before every rollout, not after.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two decisions carry the marks. What is each candidate built from — the `start` you were
+# given, or the best gait found so far? And when do you look at the budget: before a rollout,
+# or after you have already spent it? The first evaluation of `start` counts too, and the count
+# you return must be what you really spent.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Load the walker once. Score `start`: that is rollout one, and your incumbent. Then for each
+# pass, each key in `PARAM_KEYS` order, and each grid value the incumbent does not already
+# hold: if the budget is spent, return at once; otherwise copy the incumbent, change that one
+# key, score it, count it, and if it is strictly better make it the incumbent there and then.
+# Call `rollout` and `gait_score` by name inside the loop.
+#
+# </details>
 
 # %%
 SEARCH_GRID = {
@@ -546,7 +697,7 @@ def _check_search() -> float:
         "BEFORE each rollout, not after."
     )
     found = rollout(model, data, best)
-    print(f"  {used} rollouts in {elapsed:.2f} s ({elapsed / used * 1000:.0f} ms each)\n")
+    print(f"  {used} rollouts in {elapsed * 1000:.1f} ms ({elapsed / used * 1000:.2f} ms each)\n")
     print(f"  {'':10s} {'distance':>9s} {'energy':>9s} {'cost of transport':>18s}")
     print(f"  {'baseline':10s} {base['distance']:9.3f} {base['energy']:9.1f} {base_score:18.4f}")
     print(f"  {'found':10s} {found['distance']:9.3f} {found['energy']:9.1f} {score:18.4f}")
@@ -560,7 +711,7 @@ def _check_search() -> float:
 
 
 if __name__ == "__main__":
-    SEARCH_SCORE = _check_search()
+    SEARCH_SCORE = _try("exercise 4", _check_search)
 
 # %% [markdown]
 # ## 7. Against the literature, honestly
@@ -603,7 +754,8 @@ def compare_against_published(measured_cot: float) -> None:
 
 
 if __name__ == "__main__":
-    compare_against_published(SEARCH_SCORE)
+    _try("comparison table", lambda: compare_against_published(SEARCH_SCORE),
+         needs=("exercise 4",))
 
 # %% [markdown]
 # ## 8. Common mistakes
@@ -670,7 +822,8 @@ def _check_objective_matters() -> None:
 
 
 if __name__ == "__main__":
-    _check_objective_matters()
+    _try("objective table", _check_objective_matters,
+         needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 9. Self-check
@@ -742,8 +895,16 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
-if __name__ == "__main__":
+def _self_check_marked() -> None:
+    """Mark SELF_CHECK, but treat a sheet with no letters on it yet as not started."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("put your four letters into SELF_CHECK above, then re-run "
+                                  "this cell.")
     _check_self_check()
+
+
+if __name__ == "__main__":
+    _try("self-check", _self_check_marked)
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -757,8 +918,32 @@ if __name__ == "__main__":
 # latency and friction? The capstone asks for a walk of a measured distance under randomised
 # parameters, using exactly this gait-and-rollout contract.
 
+# %% [markdown]
+# ## Your progress
+#
+# One line per exercise, read from the verdicts the check cells above recorded. Change an
+# exercise, re-run its check cell, then re-run this one.
+
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> list:
+    """Print one line per exercise and the tally; return the labels whose check failed."""
+    for label, what in _BOARD.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<11s} {what:<34s} {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _BOARD)
+    print(f"\n  {done} of {len(_BOARD)} complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
 if __name__ == "__main__":
-    print("F15-L05 complete: every check above ran where its exercise is, not in one cell at")
-    print("the end. If you got here with no traceback, the gait, the energy account, the cost")
-    print("of transport and the budgeted search are all your own and all measured.")
+    _failed = _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: as a script or under CI it ends the run non-zero, so a green exit code never papers
+    # over it. In a notebook kernel it is a line on the board, not a traceback.
+    if _failed and "ipykernel" in sys.modules:
+        print(f"  still failing: {', '.join(_failed)} — each one's cell above says what to fix")
+    elif _failed:
+        raise SystemExit("checks failed: " + ", ".join(_failed))

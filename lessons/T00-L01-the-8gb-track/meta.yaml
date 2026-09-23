@@ -95,5 +95,5 @@ status: reviewed        # draft | executed | reviewed | shipped
 # the student bundle's meta.student.yaml malformed. The narrative lives in the comments above,
 # which survive into the bundle as valid YAML comments.
 reviewed_by: "Second independent review 2026-09-16 — 20 mutants (19 breaking + 1 control), 2 rubric defects found and fixed, rubric now 49 points, all 4 gates re-run; notes above"
-measured_seconds: 16.6
-measured_peak_mib: 589
+measured_seconds: 10.5
+measured_peak_mib: 588

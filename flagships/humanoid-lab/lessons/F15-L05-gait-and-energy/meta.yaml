@@ -84,5 +84,5 @@ points: 44
 # student who writes an unbounded search fails a test rather than a deadline.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16: 24-mutant rubric mutation test (22 caught, 2 equivalent), 4 rubric defects found and closed (leg_phase ungraded, horizon ungraded, incumbent-not-carried, self-reported rollout count), claims.yaml sources re-fetched and quotes verified against Collins et al. 2005 and mjdata.h at tag 3.13.0, prerequisites F15-L01/F15-L03 confirmed to resolve, per-section instant feedback restored; all four gates green at 44/44."
-measured_seconds: 1.1
+measured_seconds: 1.0
 measured_peak_mib: 51

@@ -112,8 +112,10 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -140,26 +142,77 @@ def entry_date(entry: dict) -> date:
     return parse_ts(entry["event"]["ts"]).date()
 
 
-_FAILED_CHECKS: list[str] = []
+# Every check and every demo below reports how it went here, and the progress board at the
+# foot of the notebook reads it: label -> "passed", "failed" or "not started". Each run of a
+# cell overwrites its own entry, so the board shows where your code stands now.
+_STATUS: dict[str, str] = {}
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _and(items: list) -> str:
+    """'a', 'a and b', 'a, b and c' — for naming exercises in a sentence."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (),
+         builds_on: tuple = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other four.
+    exercise never hides the feedback on the other four. Every outcome is recorded for the
+    progress board, and outside a notebook the `__main__` block at the foot of this file exits
+    non-zero if any check is still failing.
+
+    `needs` names the exercises a demo consumes. Until each has passed its check, the demo says
+    which it is waiting for and skips, rather than running on a stub or on a wrong answer.
+    `builds_on` names the earlier exercises a check also calls. The check always runs, but
+    when one of those has not passed yet it says so, so you fix the right function first.
     """
+    waiting = [need for need in needs if _STATUS.get(need) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_and(waiting)} to pass "
+              f"{'its check' if len(waiting) == 1 else 'their checks'} first, then re-run "
+              "this cell.")
+        return
+    behind = [need for need in builds_on if _STATUS.get(need) != "passed"]
+    note = (f" (It also runs your {_and(behind)}, which "
+            f"{'has' if len(behind) == 1 else 'have'} not passed yet: start there.)"
+            if behind else "")
     try:
         check()
     except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        _STATUS[label] = "not started"
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this "
+              f"cell.{note}")
     except AssertionError as exc:
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: FAILED — {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}{note}")
     except Exception as exc:  # a half-finished implementation raising something else
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}{note}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board(exercises: tuple) -> list:
+    """Re-check every exercise against your code as it stands now, and print the board.
+
+    The checks run quietly here — each already printed its message in its own cell — so the
+    board also picks up anything you fixed after running those cells. Returns the labels of
+    every check or demo that is still failing.
+    """
+    for label, _title, check in exercises:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _try(label, check)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("progress board")
+    for label, title, _check in exercises:
+        state = _STATUS[label]
+        print(f"  {marks[state]} {state:11s}  {label} · {title}")
+    done = sum(_STATUS[label] == "passed" for label, _title, _check in exercises)
+    print(f"\n{done} of {len(exercises)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
 
 
 # %% [markdown]
@@ -318,6 +371,26 @@ print(json.dumps(EVENT_STREAM[1], indent=2))
 # The trap in the second: an entry's hash must cover its **sequence number, its predecessor's
 # hash and its event**. Hash the event alone and the log is a bag of receipts — every entry
 # still verifies after you reorder or delete some of them.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two machines must turn the same event into the same bytes, at every level of nesting, or the
+# chain breaks on a whim — so which parts of a default `json.dumps` call depend on insertion
+# order or on layout? Then, for `append_event`: if the digest covered only the event, what
+# could someone do to the log without moving a single hash?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# `canonical_bytes` is one `json.dumps` call that sorts keys at every level and uses compact
+# separators, encoded to bytes. It has to stay JSON so it round-trips, which rules out `str()`
+# and `repr()`. `append_event` takes its `seq` from how many entries the log already holds and
+# its `prev_hash` from the last entry (genesis when there is none), hashes the canonical bytes
+# of seq, prev_hash and event together, then appends the four-key entry in place and returns
+# that same object.
+#
+# </details>
 
 # %%
 def canonical_bytes(obj: Any) -> bytes:
@@ -442,6 +515,25 @@ _try("exercise 1", _check_chain)
 #
 # A head mismatch on an otherwise consistent chain tells you the log was rewritten but not
 # *where*, so that verdict reports no sequence number at all.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The order of your three per-entry tests decides what a deletion gets reported as. Removing
+# an entry breaks the numbering and the link at the same index — which should the verifier
+# notice first? Then ask what a forger who re-hashes every later entry can never reproduce.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the entries with their index. Test the sequence number against the index first, then
+# the stored link against genesis or the previous entry's stored hash, then recompute this
+# entry's digest from its own three fields exactly as `append_event` does. Return at the first
+# failure, with that test's reason word and no other. Only after a clean walk, and only when
+# an expected head was passed, compare it with the last entry's hash (genesis for an empty
+# log); a mismatch there cannot say where the rewrite began.
+#
+# </details>
 
 # %%
 class ChainVerdict(NamedTuple):
@@ -549,7 +641,7 @@ def _check_verify_chain() -> None:
 
 
 # %%
-_try("exercise 2", _check_verify_chain)
+_try("exercise 2", _check_verify_chain, builds_on=("exercise 1",))
 
 # %% [markdown]
 # ### See the anchor earn its keep
@@ -575,7 +667,7 @@ def _show_anchor() -> None:
     print("which is why a head hash belongs in a place the system's operators do not own.")
 
 
-_try("anchor demo", _show_anchor)
+_try("anchor demo", _show_anchor, needs=("exercise 1", "exercise 2"))
 
 # %% [markdown]
 # ## 5. Exercises 3 and 4 — retention, and reconstructing one decision
@@ -588,6 +680,23 @@ _try("anchor demo", _show_anchor)
 # breach. So the report says what *may* go, what *must* stay, and which sequence numbers have
 # already gone. Two traps: the boundary is inclusive — an entry exactly at the floor is still
 # retained — and the entries are not in timestamp order, so you cannot find a cut-off index.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The paragraph above names two traps, and the check adds a third. Taking entries out of a
+# log makes the list shorter — so what should bound the range of sequence numbers you expect
+# to find? And with no index that splits the log, what has to decide each entry's fate?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Decide per entry: age from `entry_date`, expired only when strictly older than the floor.
+# Take the oldest and newest timestamps as the min and max over the whole log, after dealing
+# with an empty one. For `missing_seq`, compare the seqs present with the full range up to the
+# largest seq present — not up to `len(log)`, which shrinks when entries go missing.
+#
+# </details>
 
 # %%
 def plain_log(events: list) -> list:
@@ -701,6 +810,24 @@ def _check_retention() -> None:
 # second half you can say what the system decided and not what decided it.
 #
 # Order by `seq`, never by `ts`. One of the fixtures proves why.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A trace holding only the decision's own events says what was decided, not what decided it.
+# And one decision's closing event carries an earlier timestamp than its opening one: which
+# ordering does the log itself guarantee?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Two passes. First keep every entry whose event carries this `decision_id` — read it with
+# `.get`, because system-level events have no such key. Collect the model versions those
+# entries name in their payloads, then add the `model_deployed` entries for those versions.
+# Merge without duplicates, sort by `seq` and never by `ts`, and hand back the log entries
+# themselves rather than the bare events.
+#
+# </details>
 
 # %%
 def reconstruct_decision(log: list, decision_id: str) -> list:
@@ -796,6 +923,25 @@ for _field, _why in FIELD_SOURCES.items():
 # inspection it should have failed.
 #
 # Look in the envelope as well as the payload. `system_id` is never in a payload.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Where does each field live? One of them only ever sits in the event envelope; the rest sit
+# in payloads. And what is a value: which empty shapes does a half-built pipeline write, and
+# which falsy values are real answers?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Write a small has-a-value test first: reject `None`, strings that are blank once stripped
+# and empty containers, and accept everything else, zero and `False` included — plain
+# truthiness gets this wrong. A required field is then present when any entry carries it, in
+# the event or in its payload, with a value. Take `decision_id` from the first entry that has
+# one (the deployment entry does not), and guard the coverage division for an empty
+# requirement list.
+#
+# </details>
 
 # %%
 def completeness_report(trace: list, required: tuple = REQUIRED_FIELDS) -> dict:
@@ -881,7 +1027,7 @@ def _check_completeness() -> None:
 
 
 # %%
-_try("exercise 5", _check_completeness)
+_try("exercise 5", _check_completeness, builds_on=("exercise 4",))
 
 # %% [markdown]
 # ## 7. The inspection
@@ -931,7 +1077,8 @@ def inspect(as_of: date = AS_OF) -> dict:
     return {"verdict": verdict, "retention": retention, "reports": reports}
 
 
-_try("the inspection", inspect)
+_try("the inspection", inspect,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 8. Common mistakes
@@ -974,7 +1121,7 @@ def _show_clock_skew() -> None:
     print("verified it. Nothing in the log is wrong; the clock was. Order by seq.")
 
 
-_try("clock-skew demo", _show_clock_skew)
+_try("clock-skew demo", _show_clock_skew, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 9. Self-check
@@ -1081,15 +1228,28 @@ def check_self_check(answers: dict) -> None:
 #
 # **Again, and finally: this is engineering, not legal advice.**
 
+# %% [markdown]
+# ## Your progress
+#
+# The cell below re-runs every exercise's check against your code as it stands now, and
+# prints one line per exercise: ✅ passed, ❌ failed or ⏳ not started. Run it whenever you like.
+
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_chain),
-                          ("exercise 2", _check_verify_chain),
-                          ("exercise 3", _check_retention),
-                          ("exercise 4", _check_reconstruct),
-                          ("exercise 5", _check_completeness)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
-        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
+    _failing = _progress_board((
+        ("exercise 1", "canonical_bytes() and append_event()", _check_chain),
+        ("exercise 2", "verify_chain()", _check_verify_chain),
+        ("exercise 3", "retention_status()", _check_retention),
+        ("exercise 4", "reconstruct_decision()", _check_reconstruct),
+        ("exercise 5", "completeness_report()", _check_completeness),
+    ))
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends the run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel that would be a traceback at the foot of the
+    # page, so there it is one printed line instead.
+    if _failing:
+        if "ipykernel" in sys.modules:
+            print("\nstill failing: " + ", ".join(_failing)
+                  + ". Each one's own cell above says what went wrong.")
+        else:
+            raise SystemExit("checks failed: " + ", ".join(_failing))

@@ -204,6 +204,81 @@ def make_test():
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
+# The notebook's guard. Every check, and every table that runs your code, goes through _try:
+# an unfilled stub says so, a wrong answer prints its check's hint and the notebook carries
+# on, and a table that needs an exercise you have not finished names it and skips. The
+# progress board in the last cell reads the verdicts it records.
+_BOARD = {                      # label -> what it grades, in the order the board lists them
+    "exercise 1": "actuator_addresses in lesson.c",
+    "exercise 2": "pd_ctrl in lesson.c",
+    "exercise 3": "run_loop in lesson.c",
+    "exercise 4": "python_pd_loop",
+    "exercise 5": "loop_overhead",
+    "self-check": "the five questions in section 11",
+}
+_STATUS: dict = {}              # label -> "passed" | "failed" | "not started"
+
+
+def _unfinished(exc: BaseException) -> str:
+    """Say which stub stopped a check. The binary names its own C stub; Python's say nothing,
+    so the function that raised is named instead."""
+    msg = str(exc).strip()
+    if msg.startswith("NOT IMPLEMENTED: ") and " is still a stub" in msg:
+        name = msg[len("NOT IMPLEMENTED: "):].split(" is still a stub")[0]
+        return (f"{name} in lesson.c is still a stub; fill it in, save the file, then re-run "
+                "this cell (it rebuilds). `make test` in section 2 says what each one expects.")
+    if msg:
+        return msg
+    tb = exc.__traceback__
+    while tb is not None and tb.tb_next is not None:
+        tb = tb.tb_next
+    name = tb.tb_frame.f_code.co_name if tb is not None else "a function above"
+    return f"{name}() is still a stub; fill it in above, then re-run this cell."
+
+
+def _try(label: str, check, needs: tuple = ()):
+    """Run a check, or a table that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. A table given `needs` waits until those
+    exercises have passed, and names the one it is waiting for. Nothing is swallowed: every
+    verdict is recorded in _STATUS, and the last cell turns any failure into a non-zero exit
+    whenever this file runs as a script. Returns what the check returned, or None.
+
+    Each call rebuilds the binary first (make does nothing if lesson.c has not changed), so
+    after you save lesson.c, re-running a check cell tests what the file holds now.
+    """
+    global _BUILD
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS.pop(label, None)
+        names = [f"{n} ({_BOARD[n]})" for n in waiting]
+        one = len(names) == 1
+        names = names[0] if one else ", ".join(names[:-1]) + " and " + names[-1]
+        print(f"{label}: skipped — it runs your code from {names}, which "
+              f"{'has' if one else 'have'} not passed yet. Finish {'it' if one else 'them'}, "
+              f"re-run {'its check cell' if one else 'their check cells'}, then this one.")
+        return None
+    _BUILD = None
+    try:
+        result = check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: not started yet — {_unfinished(exc)}")
+        return None
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+        return None
+    except Exception as exc:  # a half-finished implementation, or a build that failed
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        return None
+    _STATUS[label] = "passed"
+    return result
+
+
 if _IS_MAIN:
     build()
 
@@ -263,8 +338,10 @@ if _IS_MAIN:
 # `mj_deleteData`/`mj_deleteModel`. That is the whole API surface this lesson needs.
 
 # %%
-# Your feedback loop is `make test`. Run it now — it should report three TODOs.
+# Your feedback loop is `make test`. Run it now — it should report three TODOs. Re-run this
+# cell after each save of lesson.c: it rebuilds from whatever the file holds now.
 if _IS_MAIN:
+    _BUILD = None
     _code, _out = make_test()
     print(_out)
     print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a real failure)")
@@ -290,6 +367,24 @@ if _IS_MAIN:
 #
 # The check below runs your lookup against **both** models, which is the only way to tell a
 # real lookup from a lucky one.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Indexing `qpos` and `qvel` by the actuator number passes on the pinned arm — which is exactly
+# why the check loads the floating one too. Ask two questions separately: which joint does this
+# actuator drive, and where does THAT joint sit in each array? Behind a free joint, the answer
+# to the second is two different numbers.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Three lookups, each in its own `mjModel` table. The actuator's transmission table gives the
+# joint id; the joint's position-address table gives its `qpos` slot; the joint's DOF-address
+# table gives its `qvel` row. Write the two addresses out through the two pointers and return
+# the joint id. Never reuse the position address for velocity.
+#
+# </details>
 
 # %%
 def _check_addresses() -> None:
@@ -321,7 +416,7 @@ def _check_addresses() -> None:
 
 
 if _IS_MAIN:
-    _check_addresses()
+    _try("exercise 1", _check_addresses)
 
 
 # %% [markdown]
@@ -340,6 +435,24 @@ if _IS_MAIN:
 #
 # These limits are deliberately tight — 8 N m at the shoulder against a PD law that asks for
 # 32 on the first tick. If the clamp is wrong, the run below will tell you.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three index spaces meet in one line: the target is indexed by actuator, while position and
+# velocity are indexed by the two addresses exercise 1 hands back. Then the signs — with the
+# arm exactly on target and at rest, what must every command be? And each actuator has its OWN
+# limits, not necessarily symmetric, which apply only if that actuator is control-limited.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Loop over the actuators. For each, fetch its addresses; the command is the position gain
+# times the error (target minus where the joint is now), minus the velocity gain times how fast
+# it is moving. If the actuator is control-limited, clamp the command between its own low and
+# high bounds with the `clamp` helper; if not, leave it alone. Store it at the actuator's index.
+#
+# </details>
 
 # %%
 def _check_pd_ctrl() -> None:
@@ -382,7 +495,7 @@ def _check_pd_ctrl() -> None:
 
 
 if _IS_MAIN:
-    _check_pd_ctrl()
+    _try("exercise 2", _check_pd_ctrl)
 
 
 # %% [markdown]
@@ -398,6 +511,24 @@ if _IS_MAIN:
 # Step first and every command lands one tick late. Step twice and simulated time runs at
 # double the rate your controller believes. Skip step 2 and the arm never moves at all:
 # computing a command and applying one are different acts.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Four calls a tick, and their order is the exercise. Should a command be computed from the
+# state before the step or after it? Which array does `mj_step` read — and is your command in
+# it yet when you step? How many times should the clock advance per tick? And loop for the
+# ticks you were passed, not a constant.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each tick: compute the commands from the current state into the scratch buffer, copy
+# every actuator's command into the engine's control array, step the physics once, then record
+# the tick with the given bookkeeping function — passing the command you actually applied and
+# the tick index.
+#
+# </details>
 
 # %%
 def _check_run_loop() -> None:
@@ -429,7 +560,7 @@ def _check_run_loop() -> None:
 
 
 if _IS_MAIN:
-    _check_run_loop()
+    _try("exercise 3", _check_run_loop)
 
 
 # %% [markdown]
@@ -457,13 +588,18 @@ def droop_report() -> list:
     return out
 
 
-if _IS_MAIN:
+def _show_droop() -> None:
+    table = droop_report()
     print(f"  {'act':>3} {'final error':>13} {'qfrc_bias':>11} {'bias/kp':>13} {'ratio':>8}")
-    for _r in droop_report():
-        print(f"  {_r['actuator']:>3} {_r['final_error']:>13.9f} {_r['qfrc_bias']:>11.4f} "
-              f"{_r['bias_over_kp']:>13.9f} {_r['ratio']:>8.4f}")
+    for r in table:
+        print(f"  {r['actuator']:>3} {r['final_error']:>13.9f} {r['qfrc_bias']:>11.4f} "
+              f"{r['bias_over_kp']:>13.9f} {r['ratio']:>8.4f}")
     print("\n  the last column is the measurement: steady-state error IS the gravitational "
           "load divided by kp.")
+
+
+if _IS_MAIN:
+    _try("the droop table", _show_droop, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 7. Exercise 4 — the same loop, in Python
@@ -474,6 +610,25 @@ if _IS_MAIN:
 #
 # The three helpers below mirror the ones given to you in `lesson.c`. Use them, so the two
 # loops differ only in the language they are written in.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This check does not accept "close". Both loops call the same compiled `mj_step`, so they
+# must agree to the last bit, and any difference in order — computing, writing `data.ctrl`,
+# stepping, recording — shows up. Saturation is judged on the command you applied, after
+# clamping. A trace row is taken after the step, and only on sampled ticks.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Mirror `run_loop` line for line. Each tick: build the command vector from the current state
+# with `py_addresses` and each actuator's own clamp; write it into `data.ctrl`; step once; count
+# the tick as saturated if `py_at_limit` says so; and when tracing is on and the tick index is a
+# multiple of the interval, append the row the docstring describes. Finish with the five keys,
+# the final error coming from `py_max_abs_error`.
+#
+# </details>
 
 # %%
 def py_addresses(model, i: int):
@@ -585,7 +740,7 @@ def _check_python_loop() -> None:
 
 
 if _IS_MAIN:
-    _check_python_loop()
+    _try("exercise 4", _check_python_loop)
 
 
 # %% [markdown]
@@ -600,6 +755,23 @@ if _IS_MAIN:
 # That distinction has a testable consequence: the gap should look like a roughly constant
 # number of microseconds **per tick**, not a constant multiplier on the physics. Write the
 # arithmetic that turns two throughputs into that number.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Throughput is ticks per second; you want its reciprocal, in microseconds. Which way round is
+# the overhead — and if C were somehow the slower, should your answer hide that? The two
+# ceilings are whole-Hz rates you can actually close, so a rate you would only just miss does
+# not count: which way do you round, and what type comes back?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Convert each throughput to microseconds per tick. The overhead is Python's per-tick cost
+# minus C's, sign kept. The ratio is C's throughput over Python's. Each ceiling is its own
+# throughput rounded down to a whole number, returned as an int.
+#
+# </details>
 
 # %%
 def loop_overhead(c_ticks_per_second: float, py_ticks_per_second: float) -> dict:
@@ -654,7 +826,7 @@ def _check_overhead() -> None:
 
 
 if _IS_MAIN:
-    _check_overhead()
+    _try("exercise 5", _check_overhead)
 
 
 # %% [markdown]
@@ -845,10 +1017,18 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all five right")
 
 
+def _self_check_marked() -> None:
+    """Mark SELF_CHECK, but treat a sheet with no letters on it yet as not started."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("put your five letters into SELF_CHECK above, then re-run "
+                                  "this cell.")
+    _check_self_check()
+
+
 # %%
 # Mark them. Edit SELF_CHECK above and re-run this cell until all five come back right.
 if _IS_MAIN:
-    _check_self_check()
+    _try("self-check", _self_check_marked)
 
 
 # %% [markdown]
@@ -864,5 +1044,38 @@ if _IS_MAIN:
 # what decides whether the planner can run at all.
 
 # %%
-if __name__ == "__main__":
-    report()
+# Section 9's payoff: both loops, measured on this machine. It runs all five of your
+# exercises, so it waits until every one of them has passed its check.
+if _IS_MAIN:
+    _try("the payoff", report, needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4",
+                                     "exercise 5"))
+
+# %% [markdown]
+# ## Your progress
+#
+# One line per exercise, read from the verdicts the check cells above recorded. Change an
+# exercise, re-run its check cell, then re-run this one.
+
+# %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> list:
+    """Print one line per exercise and the tally; return the labels whose check failed."""
+    for label, what in _BOARD.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<11s} {what:<34s} {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _BOARD)
+    print(f"\n  {done} of {len(_BOARD)} complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
+if _IS_MAIN:
+    _failed = _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: as a script or under CI it ends the run non-zero, so a green exit code never papers
+    # over it. In a notebook kernel it is a line on the board, not a traceback.
+    if _failed and "ipykernel" in sys.modules:
+        print(f"  still failing: {', '.join(_failed)} — each one's cell above says what to fix")
+    elif _failed:
+        raise SystemExit("checks failed: " + ", ".join(_failed))

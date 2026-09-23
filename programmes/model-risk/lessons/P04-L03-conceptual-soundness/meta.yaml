@@ -155,5 +155,5 @@ points: 122        # = sum of RUBRIC points in tests/test_lesson.py
 # count; claims.yaml's matching "four planted defects" corrected to "several".
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 — 4/4 gates re-run green (execute PASS 0.1s/40MiB, solution 122/122, student 0/122 all-TODO, jupytext converts); 25 fresh mutants all caught at 90.2%-98.4% with partial credit intact and 5 controls unharmed at 100%; 2 survivors found and fixed in test_mono_skips_raising_points (a skipped grid point left in the comparison as 0.0 or as nan, both previously 122/122, now 118/122); one typed discrepancy count removed from the header prose; all 3 claims.yaml sources fetched and quotes confirmed verbatim"
-measured_seconds: 0.2
+measured_seconds: 0.1
 measured_peak_mib: 40

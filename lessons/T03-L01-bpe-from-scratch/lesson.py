@@ -102,8 +102,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Callable, NamedTuple
 
 _LESSON_T0 = time.perf_counter()
@@ -119,25 +122,73 @@ VOCAB_SIZE = 768        # the budget every table in this lesson is measured at
 _WHITESPACE = frozenset(b" \t\n\r\f\v")
 
 _FAILED_CHECKS: list[str] = []
+_STATUS: dict[str, str] = {}  # label -> "passed" | "failed" | "not started"
+
+# The exercises, in the order you meet them. The progress board at the foot of the
+# notebook is built from this, and a demo that is waiting on one names it from here.
+_EXERCISES = {
+    "exercise 1": "get_stats()",
+    "exercise 2": "merge()",
+    "exercise 3": "best_pair()",
+    "exercise 4": "train_bpe()",
+    "exercise 5": "encode() and decode()",
+    "exercise 6": "token_tax()",
+}
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
     exercise never hides the feedback on the other five.
+
+    A demo names the exercises it `needs`. Until each of them has passed its check, the demo
+    says which one it is waiting for and skips, rather than failing half-way through its
+    output. Every outcome is recorded in `_STATUS`, which the progress board at the foot reads.
     """
+    waiting = [name for name in needs if _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        todo = ", ".join(f"{name} ({_EXERCISES[name]})" for name in waiting)
+        print(f"{label}: skipped — this needs {todo} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name
+        print(f"{label}: not implemented yet — fill in {stub}() above, then re-run this cell.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, marked passed, failed or not started, then the tally."""
+    width = max(len(what) for what in _EXERCISES.values())
+    print("progress board")
+    for label, what in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<11} {what:<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went wrong "
+              "in its own cell above, and every exercise heading has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise heading has hints you can open.")
 
 
 # %% [markdown]
@@ -333,6 +384,20 @@ if __name__ == "__main__":
 # `BOUNDARY` on either side is not counted at all, and counting **is** allowed to overlap —
 # three identical symbols in a row hold two pairs. (Only *merging* is non-overlapping, which
 # is exercise 2.)
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Counting is not merging. When the pair at position i is counted, does that stop you
+# looking at the pair that starts at i + 1? And a pair that touches `BOUNDARY`: should it
+# appear in the dict with a count of zero, or not appear at all?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Visit every index from the first symbol to the one before the last, take the pair that
+# starts there, skip it if either side is `BOUNDARY`, and otherwise add one to its count.
+# Move one position at a time, always. A range that stops one short of the end also looks
+# after empty and one-symbol sequences, with no special case.
+# </details>
 
 # %%
 def get_stats(seq: list[int]) -> dict[tuple[int, int], int]:
@@ -386,6 +451,19 @@ if __name__ == "__main__":
 # Replace every **non-overlapping, left-to-right** occurrence of one pair with a new id. After
 # a match the cursor advances by two: the second symbol has been consumed and may not be read
 # again. `[7, 7, 7]` merging `(7,7)` therefore becomes `[300, 7]`, not `[300, 300]`.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Where does the scan resume after a match? The second symbol of the pair has been used
+# up, and reading it again is the commonest wrong answer in this lesson. Then look at the
+# other end: can the very last two symbols still match?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Keep an explicit read cursor and an output list, and loop while the cursor is inside the
+# sequence. If there is a next symbol and the two equal the pair, emit the new id and move
+# the cursor on by two; otherwise copy the current symbol across and move on by one.
+# </details>
 
 # %%
 def merge(seq: list[int], pair: tuple[int, int], new_id: int) -> list[int]:
@@ -439,6 +517,21 @@ if __name__ == "__main__":
 # is not a detail. Whichever pair you return becomes token 257, which renames every merge
 # after it. A tie broken by dictionary order is a tokenizer that produces a different
 # vocabulary on a different machine, and the vocabulary is the artefact you ship.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Your answer must not depend on the order the dict hands you its items: the same counts
+# inserted in a different order have to produce the same winner. What decides between two
+# pairs with equal counts, and what should a caller get back when there is nothing to
+# choose from?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Return `None` at once for an empty dict. Otherwise keep a running best, and replace it
+# only when a candidate's count is strictly higher, or the counts are equal and the
+# candidate pair compares smaller. Return the winner's two symbols and its count as one
+# flat tuple.
+# </details>
 
 # %%
 def best_pair(stats: dict[tuple[int, int], int]) -> tuple[int, int, int] | None:
@@ -504,6 +597,22 @@ if __name__ == "__main__":
 # - The k-th merge is given id `FIRST_MERGE_ID + k`.
 # - Stop early when the best pair occurs fewer than `MIN_COUNT` times — tested *before* the
 #   merge is recorded, because a pair seen once buys no compression.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three things decide how many rows `order` ends up with: the budget left after the byte
+# values and `BOUNDARY`, the stop rule, and whether each merge changes what the next count
+# sees. Which of them does a `vocab_size` of exactly `FIRST_MERGE_ID` exercise, and is
+# that an error?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse a `vocab_size` below `FIRST_MERGE_ID` first. Pretokenise the UTF-8 bytes once,
+# then loop once per merge you can afford: count with your `get_stats`, choose with your
+# `best_pair`, and stop if there is no winner or its count is under `MIN_COUNT`. Only then
+# give it the next id, record it in `merges` and `order`, and replace the working sequence
+# with your `merge` of it. `build_vocab` turns the finished merges into `vocab`.
+# </details>
 
 # %%
 class BPEModel(NamedTuple):
@@ -594,7 +703,7 @@ def _check_train_bpe() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("exercise 4", _check_train_bpe)
+    _try("exercise 4", _check_train_bpe, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 9. Exercise 5 — `encode`, `decode`, and the round-trip property
@@ -606,6 +715,21 @@ if __name__ == "__main__":
 # Decoding expands each id through `vocab` and joins the bytes. The property that matters is
 # `decode(encode(s)) == s`, **for every string**, including scripts the corpus never contained.
 # That is what byte-level buys you, and you are about to test it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Pre-tokenisation threw the whitespace away; encoding must not, or `decode` has nothing
+# to put back. So as you walk the bytes you need to know, at every step, whether you are
+# inside a word. And at encode time, what is `BOUNDARY` for — anything at all?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the UTF-8 bytes, gathering non-whitespace bytes into the current word. At a
+# whitespace byte, finish the word — every merge, in `model.merges` order, through your
+# `merge`, reassigning each time — emit its ids, then emit the whitespace byte itself.
+# Finish the last word after the loop. `decode` joins the `bytes` each id stands for in
+# `model.vocab` and decodes the whole once, replacing a broken character.
+# </details>
 
 # %%
 def encode(text: str, model: BPEModel) -> list[int]:
@@ -681,7 +805,7 @@ def _check_encode_decode() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("exercise 5", _check_encode_decode)
+    _try("exercise 5", _check_encode_decode, needs=("exercise 2", "exercise 4"))
 
 # %% [markdown]
 # ## 10. Exercise 6 — measure the tax
@@ -689,6 +813,20 @@ if __name__ == "__main__":
 # Now the measurement this lesson exists for. For each sample: characters, UTF-8 bytes, tokens,
 # and tokens per character. Raw token counts do not travel between languages — a translation is
 # never the same length as its original — so the per-character column is the one that compares.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three counts per sample and two ratios. Only one denominator lets a Hindi row be read
+# against an English one: which, and why does the other one flatten the whole table
+# towards the same figure?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Loop over the samples in the order given and build one dict per sample with exactly the
+# seven documented keys: the name, the text, its length, the length of its UTF-8 encoding,
+# the length of your `encode` of it, and the tokens and the bytes each divided by the
+# character count.
+# </details>
 
 # %%
 def token_tax(model: BPEModel, samples: dict[str, str]) -> list[dict]:
@@ -738,7 +876,7 @@ def _check_token_tax() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("exercise 6", _check_token_tax)
+    _try("exercise 6", _check_token_tax, needs=("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # Now the table. Stare at the `tokens==bytes` column: where it says `yes`, the tokenizer
@@ -774,7 +912,7 @@ def _show_tax() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("the tax table", _show_tax)
+    _try("the tax table", _show_tax, needs=("exercise 4", "exercise 6"))
 
 # %% [markdown]
 # ## 11. Check your trainer against a real one
@@ -817,7 +955,8 @@ def _show_reference_comparison() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("reference comparison", _show_reference_comparison)
+    _try("reference comparison", _show_reference_comparison,
+         needs=("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 12. The tax is the corpus, not the algorithm
@@ -871,7 +1010,7 @@ def _show_the_fix() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("the fix", _show_the_fix)
+    _try("the fix", _show_the_fix, needs=("exercise 4", "exercise 6"))
 
 # %% [markdown]
 # ## 13. Common mistakes
@@ -927,7 +1066,7 @@ def _show_the_bug() -> None:
 
 # %%
 if __name__ == "__main__":
-    _try("the advance-by-one bug", _show_the_bug)
+    _try("the advance-by-one bug", _show_the_bug, needs=("exercise 2",))
 
 # %% [markdown]
 # ## 14. Self-check
@@ -977,16 +1116,26 @@ if __name__ == "__main__":
 # specified here rather than left to taste.
 
 # %%
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_get_stats),
-                          ("exercise 2", _check_merge),
-                          ("exercise 3", _check_best_pair),
-                          ("exercise 4", _check_train_bpe),
-                          ("exercise 5", _check_encode_decode),
-                          ("exercise 6", _check_token_tax)):
-        _try(_name, _check)
-    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
-    # A stub not reached yet is not a failure. A check that ran and came back wrong is, and it
-    # ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    _ALL_CHECKS = (  # (exercise, its check, the exercises that check relies on)
+        ("exercise 1", _check_get_stats, ()),
+        ("exercise 2", _check_merge, ()),
+        ("exercise 3", _check_best_pair, ()),
+        ("exercise 4", _check_train_bpe, ("exercise 1", "exercise 2", "exercise 3")),
+        ("exercise 5", _check_encode_decode, ("exercise 2", "exercise 4")),
+        ("exercise 6", _check_token_tax, ("exercise 4", "exercise 5")),
+    )
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check, _needs in _ALL_CHECKS:
+            _try(_name, _check, needs=_needs)
+    print(f"lesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s\n")
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

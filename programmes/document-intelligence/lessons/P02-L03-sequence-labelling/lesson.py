@@ -123,11 +123,14 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import random
 import re
 import sys
 import time
-from typing import NamedTuple, Sequence
+import traceback
+from typing import Callable, NamedTuple, Sequence
 
 import numpy as np
 
@@ -167,24 +170,69 @@ COMPANY_SUFFIXES = frozenset({
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("word_shape",),
+    "exercise 2": ("token_features",),
+    "exercise 3": ("decode_spans",),
+    "exercise 4": ("sequence_scores",),
+    "exercise 5": ("viterbi_decode",),
+    "exercise 6": ("perceptron_update",),
+    "exercise 7": ("improvement_table", "fields_improved"),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 1"] -> "exercise 1 (word_shape)"; several -> "exercises 2, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other six.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
-    except Exception as exc:
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -552,6 +600,22 @@ print(f"  macro F1 = {macro_f1(BASELINE_RECORDS, 'normalised'):.4f}   <- the bar
 # *shape*. `word_shape` is the classic answer: map every character to its class, then collapse
 # runs, so `1,234.50` and `987,654.32` become the same feature and the model can learn about
 # both from either.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two steps in a fixed order: classify every character, then collapse. The traps are doing
+# them the other way round, and collapsing only letters and digits — a run of the same
+# punctuation mark collapses too, and a character that is none of upper case, lower case or
+# digit simply stands for itself.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Map each character to X when it is upper case, x when lower case, d when a digit, and to
+# itself otherwise. Then walk the mapped characters and keep each one only when it differs
+# from the last one you kept. An empty token has an empty shape.
+#
+# </details>
 
 # %%
 def word_shape(token: str) -> str:
@@ -605,6 +669,25 @@ _try("exercise 1", _check_word_shape)
 #
 # The `page` field on each token is unused here because these documents are one page each. On a
 # multi-page export you would add it, and a `page==1` conjunction with the line head besides.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# All twelve strings are spelled out in the docstring, so the marks are at the edges and in
+# which position means what. The first and last tokens have a literal `<BOS>` or `<EOS>`
+# neighbour, not an empty string. And `pos` is the token's position within its LINE, capped as
+# the docstring says — not its index in the token list.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Keep the text two ways: lower-cased for the word, prefix and suffix features, and as printed
+# for `word_shape` — a shape taken after lower-casing has lost the capitals it exists to see.
+# Build the neighbour features from the previous and next tokens when they exist, and from
+# `<BOS>` or `<EOS>` when they do not — the same guard for the word and for its shape. Read the
+# line head and the capped position from the token's own fields, finish with the head|shape
+# conjunction, and return the twelve in the docstring's order.
+#
+# </details>
 
 # %%
 def token_features(tokens: Sequence[Token], i: int) -> list[str]:
@@ -662,6 +745,24 @@ _try("exercise 2", _check_token_features)
 # of its own. In particular, nothing in a Viterbi decoder forbids the sequence `O I-x`: the
 # decoder maximises a score, it does not enforce your tag grammar. A span reader that drops
 # stray `I-` tags on the floor throws away real spans and blames the model for it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The span reader is a small state machine: at each token, is a span open, and for which
+# field? The trap is the stray `I-` tag. Viterbi can emit `O` then `I-x`, and a reader that
+# ignores an `I-` with no open span of that field throws a real span away. Decide too what a
+# second span of an already-filled field should do.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Start every field in SCHEMA at the empty string, and keep the open span's field and its
+# token texts. `B-f` closes whatever is open and opens f. `I-f` extends the open span when it
+# is f, and otherwise closes it and opens f. `O` closes. Closing writes the texts, joined by
+# single spaces, into the field only if that field is still empty — and remember to close once
+# more after the last token.
+#
+# </details>
 
 # %%
 def decode_spans(tokens: Sequence[Token], tags: Sequence[str]) -> dict[str, str]:
@@ -722,7 +823,7 @@ def _show_gold_roundtrip() -> None:
           f"before you go hunting for the missing points.")
 
 
-_try("gold round-trip", _show_gold_roundtrip)
+_try("gold round-trip", _show_gold_roundtrip, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 7. The model, and the feature index
@@ -803,7 +904,7 @@ def _build_index() -> None:
           f"gap is where a held-out\nsupplier name goes.")
 
 
-_try("feature index", _build_index)
+_try("feature index", _build_index, needs=("exercise 1", "exercise 2"))
 
 # %% [markdown]
 # ## 8. Exercise 4 — `sequence_scores`
@@ -811,6 +912,22 @@ _try("feature index", _build_index)
 # One matrix multiply's worth of work, written as a lookup because the features are sparse:
 # each token has twelve active columns out of a few thousand, so summing twelve columns of `w`
 # beats multiplying by a mostly-zero vector.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# An emission score is the sum of the weights of the features that are ON for a token, once
+# per tag. The traps are orientation — rows are tokens, columns are tags — and a token with no
+# known features: an empty id array that must give a row of zeros, not an error.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Allocate a float array of zeros shaped (number of tokens, number of tags). For each token,
+# index the COLUMNS of `model.w` with that token's feature ids and sum across them, which
+# leaves one number per tag, and store that as the token's row. Sum along the right axis and
+# an empty id array needs no special case.
+#
+# </details>
 
 # %%
 def sequence_scores(model: Tagger, feat_ids_seq: Sequence[np.ndarray]) -> np.ndarray:
@@ -860,6 +977,24 @@ _try("exercise 4", _check_sequence_scores)
 # before you move on: that disagreement is the entire reason the transition array exists.
 # Whether it is a disagreement in your *favour* on a given corpus is a separate question, and
 # section 14 measures it rather than assuming the answer.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Greedy asks which tag is best HERE. Viterbi asks which tag is best here given the best way
+# of arriving at each possible previous tag. What trips people up: the START row — the last
+# row of `transitions` — scores the first position; a backpointer has to be kept at every
+# position; and the answer is read backwards from the best final tag.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# An empty sequence decodes to an empty list. Seed the first row of scores from the start row
+# plus the first token's emissions. For each later position and each tag, take the best
+# previous score plus the transition into that tag, remember WHICH previous tag gave it, and
+# add the emission. Finally pick the best final tag, follow the remembered predecessors back
+# to the start, and reverse.
+#
+# </details>
 
 # %%
 def viterbi_decode(emissions: np.ndarray, transitions: np.ndarray) -> list[int]:
@@ -918,6 +1053,26 @@ _try("exercise 5", _check_viterbi)
 # entering it and the one leaving it — so the transition pass runs over every position, not
 # only the mismatched ones. Skip it and the model has no reason to prefer a legal tag order,
 # and you will spend an afternoon wondering why `B-counterparty I-invoice_id` keeps appearing.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two separate passes. The emission pass touches only the positions where the tags differ. The
+# transition pass is about BIGRAMS, and one wrong tag breaks two of them — the one entering it
+# and the one leaving it — so it has to walk every position, including positions whose own tag
+# was right. The first position's predecessor is the START row, found from the model's own
+# shape rather than from this lesson's tag count.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# If the two sequences are equal, return without touching anything. Otherwise, at each
+# mismatched position, raise the gold tag's row of `model.w` and lower the predicted tag's
+# row, by the step the docstring gives, at that token's feature ids. Then walk every position,
+# taking the START row as the predecessor at the first position and the previous tag after
+# that; wherever the gold bigram and the predicted bigram differ, raise the gold cell of
+# `model.t` and lower the predicted one. Return how many positions differed.
+#
+# </details>
 
 # %%
 def perceptron_update(model: Tagger, feat_ids_seq: Sequence[np.ndarray],
@@ -1026,6 +1181,10 @@ TAGGER_RECORDS: list[dict] | None = None
 
 def _train() -> None:
     global TAGGER, TAGGER_RECORDS
+    if not FEATURE_INDEX:   # exercise 2 passed after the feature-index cell in section 7 ran
+        print("training: skipped — the feature index is empty. Re-run the feature-index cell "
+              "in section 7, then this one.")
+        return
     t0 = time.perf_counter()
     print(f"training the structured perceptron ({len(TRAIN_DOCS)} documents per pass):")
     raw_model = train_tagger()
@@ -1033,13 +1192,17 @@ def _train() -> None:
     TAGGER_RECORDS = records_from(TAGGER, TEST_DOCS, FEATURE_INDEX)
     raw_f1 = macro_f1(records_from(raw_model, TEST_DOCS, FEATURE_INDEX), "normalised")
     avg_f1 = macro_f1(TAGGER_RECORDS, "normalised")
-    print(f"trained in {time.perf_counter() - t0:.1f}s")
+    seconds = time.perf_counter() - t0
+    # Whole-run timings differ between machines at the first decimal; the claim this line
+    # supports is the one the introduction makes, so print it in those terms.
+    print("trained in " + ("under a second" if seconds < 1 else f"{seconds:.1f}s"))
     print(f"final weights   held-out macro F1 {raw_f1:.4f}")
     print(f"averaged        held-out macro F1 {avg_f1:.4f}   ({avg_f1 - raw_f1:+.4f})")
     print("Everything below uses the averaged weights.")
 
 
-_try("training", _train)
+_try("training", _train,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 12. Same scorer, different extractor
@@ -1051,8 +1214,10 @@ _try("training", _train)
 
 # %%
 def _show_side_by_side() -> None:
-    if TAGGER_RECORDS is None:
-        raise NotImplementedError
+    if TAGGER_RECORDS is None:   # your exercises pass, but the training cell has not
+        print("side by side: skipped — no trained tagger yet. Run the training cell in "
+              "section 11 first.")
+        return
     print(f"{'field':22s}{'baseline F1':>13s}{'tagger F1':>12s}   {'delta':>7s}")
     for f in FIELDS:
         b = score_field(BASELINE_RECORDS, f, "normalised").f1
@@ -1062,7 +1227,8 @@ def _show_side_by_side() -> None:
     print(f"{'macro F1':22s}{base:13.3f}{tag:12.3f}   {tag - base:+7.3f}")
 
 
-_try("side by side", _show_side_by_side)
+_try("side by side", _show_side_by_side,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # Three documents where the two disagree, printed side by side. A number is an argument; a
@@ -1070,8 +1236,10 @@ _try("side by side", _show_side_by_side)
 
 # %%
 def _show_disagreements(limit: int = 3) -> None:
-    if TAGGER_RECORDS is None:
-        raise NotImplementedError
+    if TAGGER_RECORDS is None:   # your exercises pass, but the training cell has not
+        print("disagreements: skipped — no trained tagger yet. Run the training cell in "
+              "section 11 first.")
+        return
     shown = 0
     for base, tagged in zip(BASELINE_RECORDS, TAGGER_RECORDS):
         diffs = [f for f in FIELDS
@@ -1088,7 +1256,8 @@ def _show_disagreements(limit: int = 3) -> None:
             break
 
 
-_try("disagreements", _show_disagreements)
+_try("disagreements", _show_disagreements,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 13. Exercise 7 — `improvement_table`
@@ -1102,6 +1271,24 @@ _try("disagreements", _show_disagreements)
 # 78-97% cost reduction against frontier models, with fewer unsupported extractions
 # (arXiv 2605.05532). A small task-specific model is a live option, not a history lesson —
 # but only if you can say per field where it wins and where it does not.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two lists of records, one scorer, and every field — including fields both extractors score
+# nothing on. The traps: scoring both sides against the same list, dropping the caller's
+# `mode` on the floor, and getting the sign of the delta backwards. In `fields_improved`, a
+# move smaller than `min_delta` is noise, and the weakest baseline is named first.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# For each field in SCHEMA, in order, call `score_field` on the baseline records and on the
+# tagger records with the mode you were given, and build an `Improvement` carrying the field,
+# its type from SCHEMA, both F1s, and tagger minus baseline. `fields_improved` keeps the
+# entries whose delta is at least `min_delta`, sorts them on baseline F1 and then field name,
+# both ascending, and returns the names.
+#
+# </details>
 
 # %%
 class Improvement(NamedTuple):
@@ -1196,8 +1383,10 @@ def _diagnose(records: Sequence[dict], field: str) -> dict[str, int]:
 
 def _show_improvement() -> None:
     global IMPROVEMENT
-    if TAGGER_RECORDS is None:
-        raise NotImplementedError
+    if TAGGER_RECORDS is None:   # your exercises pass, but the training cell has not
+        print("improvement table: skipped — no trained tagger yet. Run the training cell in "
+              "section 11 first.")
+        return
     IMPROVEMENT = improvement_table(BASELINE_RECORDS, TAGGER_RECORDS)
     won = fields_improved(IMPROVEMENT)
     lost = sorted(i.field for i in IMPROVEMENT.values() if i.delta <= -0.01)
@@ -1217,7 +1406,9 @@ def _show_improvement() -> None:
             print(f"  {f:20s} " + "  ".join(f"{k}={v}" for k, v in kinds.items() if v))
 
 
-_try("improvement table", _show_improvement)
+_try("improvement table", _show_improvement,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6",
+            "exercise 7"))
 
 # %% [markdown]
 # Read those two tables against each other before you read on. The rule list and the tagger do
@@ -1271,8 +1462,10 @@ def _mean_span_len(records: Sequence[dict], field: str, key: str = "pred") -> fl
 
 
 def _show_greedy_vs_viterbi() -> None:
-    if TAGGER is None or TAGGER_RECORDS is None:
-        raise NotImplementedError
+    if TAGGER is None or TAGGER_RECORDS is None:   # the training cell has not run
+        print("greedy vs viterbi: skipped — no trained tagger yet. Run the training cell in "
+              "section 11 first.")
+        return
     greedy_records = []
     for doc in TEST_DOCS:
         emissions = sequence_scores(TAGGER, encode_tokens(doc["tokens"], FEATURE_INDEX))
@@ -1299,7 +1492,8 @@ def _show_greedy_vs_viterbi() -> None:
     print(f"  viterbi           {_mean_span_len(TAGGER_RECORDS, split):.2f}")
 
 
-_try("greedy vs viterbi", _show_greedy_vs_viterbi)
+_try("greedy vs viterbi", _show_greedy_vs_viterbi,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # Read the sign of that macro delta before you decide what it means, because it is not
@@ -1374,8 +1568,10 @@ _try("greedy vs viterbi", _show_greedy_vs_viterbi)
 
 # %%
 def _show_scorecard() -> None:
-    if TAGGER_RECORDS is None or IMPROVEMENT is None:
-        raise NotImplementedError
+    if TAGGER_RECORDS is None or IMPROVEMENT is None:   # a cell it reads has not run
+        print("scorecard: skipped — run the training cell in section 11 and the "
+              "improvement-table cell in section 13 first.")
+        return
     base_macro = macro_f1(BASELINE_RECORDS, "normalised")
     tag_macro = macro_f1(TAGGER_RECORDS, "normalised")
     worst = min(IMPROVEMENT.values(), key=lambda i: i.delta)
@@ -1393,7 +1589,9 @@ def _show_scorecard() -> None:
           f"                        keep the rule on {worst.field}, where it is still ahead")
 
 
-_try("scorecard", _show_scorecard)
+_try("scorecard", _show_scorecard,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5", "exercise 6",
+            "exercise 7"))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1414,18 +1612,46 @@ _try("scorecard", _show_scorecard)
 # all. The scorer does not move.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_word_shape),
-                          ("exercise 2", _check_token_features),
-                          ("exercise 3", _check_decode_spans),
-                          ("exercise 4", _check_sequence_scores),
-                          ("exercise 5", _check_viterbi),
-                          ("exercise 6", _check_perceptron_update),
-                          ("exercise 7", _check_improvement)):
-        _try(_name, _check)
-    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
-    # A stub you have not reached yet is not a failure — it prints "not implemented yet" and
-    # the notebook carries on. A check that RAN and came back wrong is a failure, and it ends
-    # this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_word_shape),
+                             ("exercise 2", _check_token_features),
+                             ("exercise 3", _check_decode_spans),
+                             ("exercise 4", _check_sequence_scores),
+                             ("exercise 5", _check_viterbi),
+                             ("exercise 6", _check_perceptron_update),
+                             ("exercise 7", _check_improvement)):
+            _try(_name, _check)
+    _progress_board()
+    _wall = time.perf_counter() - _LESSON_T0
+    # Whole seconds: two machines disagree at the first decimal, and that is noise, not a result.
+    print("\nlesson wall time so far: " + ("under a second" if _wall < 1 else f"{_wall:.0f}s"))
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

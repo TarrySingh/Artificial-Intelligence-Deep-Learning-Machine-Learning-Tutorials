@@ -114,7 +114,9 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import json
 import sys
 from collections import Counter
@@ -143,26 +145,77 @@ def parse_date(value: Any) -> date | None:
     return date.fromisoformat(value)
 
 
-_FAILED_CHECKS: list[str] = []
+# Every check and every demo below reports how it went here, and the progress board at the
+# foot of the notebook reads it: label -> "passed", "failed" or "not started". Each run of a
+# cell overwrites its own entry, so the board shows where your code stands now.
+_STATUS: dict[str, str] = {}
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _and(items: list) -> str:
+    """'a', 'a and b', 'a, b and c' — for naming exercises in a sentence."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (),
+         builds_on: tuple = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other five.
+    exercise never hides the feedback on the other five. Every outcome is recorded for the
+    progress board, and outside a notebook the `__main__` block at the foot of this file exits
+    non-zero if any check is still failing.
+
+    `needs` names the exercises a demo consumes. Until each has passed its check, the demo says
+    which it is waiting for and skips, rather than running on a stub or on a wrong answer.
+    `builds_on` names the earlier exercises a check also calls. The check always runs, but
+    when one of those has not passed yet it says so, so you fix the right function first.
     """
+    waiting = [need for need in needs if _STATUS.get(need) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_and(waiting)} to pass "
+              f"{'its check' if len(waiting) == 1 else 'their checks'} first, then re-run "
+              "this cell.")
+        return
+    behind = [need for need in builds_on if _STATUS.get(need) != "passed"]
+    note = (f" (It also runs your {_and(behind)}, which "
+            f"{'has' if len(behind) == 1 else 'have'} not passed yet: start there.)"
+            if behind else "")
     try:
         check()
     except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        _STATUS[label] = "not started"
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this "
+              f"cell.{note}")
     except AssertionError as exc:
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: FAILED — {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}{note}")
     except Exception as exc:  # a half-finished implementation raising something else
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}{note}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board(exercises: tuple) -> list:
+    """Re-check every exercise against your code as it stands now, and print the board.
+
+    The checks run quietly here — each already printed its message in its own cell — so the
+    board also picks up anything you fixed after running those cells. Returns the labels of
+    every check or demo that is still failing.
+    """
+    for label, _title, check in exercises:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _try(label, check)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("progress board")
+    for label, title, _check in exercises:
+        state = _STATUS[label]
+        print(f"  {marks[state]} {state:11s}  {label} · {title}")
+    done = sum(_STATUS[label] == "passed" for label, _title, _check in exercises)
+    print(f"\n{done} of {len(exercises)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
 
 
 # %% [markdown]
@@ -304,6 +357,24 @@ print(json.dumps(SYSTEMS["cv-ranker"], indent=2))
 #
 # So there are three ways to fail a derogation you were entitled to on the merits: profile,
 # fail to document, or fail to register.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The order of the six rules is the exercise. Which single fact refuses the derogation however
+# good the paperwork, and which provider owes no paperwork at all because it never claimed
+# anything? And is documenting on the day of placing on the market documenting "before" it?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Work out whether it was claimed, and the first truthy condition in `DEROGATION_CONDITIONS`
+# order, up front — both are reported whatever the outcome. An unclaimed derogation returns at
+# once with no gaps. Otherwise compute the four documentation gaps (strip the justification;
+# `parse_date` both dates, treat a missing one as a gap and compare strictly), then apply the
+# refusals in the docstring's order and grant only when none fires. Sort the gaps.
+#
+# </details>
 
 # %%
 # The four conditions of Article 6(3), in the order the article lists them. The order is
@@ -429,6 +500,9 @@ def _check_derogation() -> None:
     print("exercise 1 looks right")
 
 
+# %%
+_try("exercise 1", _check_derogation)
+
 # %% [markdown]
 # ## 5. Exercise 2 — `ask_tier(system)`: the interview
 #
@@ -440,6 +514,24 @@ def _check_derogation() -> None:
 # and asking the other five is a defect, not thoroughness. **Exactly one decisive answer,**
 # and it is the last one in the trail. Question 3 is never decisive by itself — naming an
 # Annex III area opens the derogation question, it does not settle the tier.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# An interview explains its answer only if it stops at the question that decided. Which
+# question can never decide on its own, and where does the interview go next depending on what
+# it hears? What must the last entry of every trail be?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Append one `Answer` per question and return from inside each branch the moment a question
+# decides — never answer all six and pick a winner. q3 records the area (or `None`), is never
+# decisive, and routes you to q4 or q5. q4 records the reason id from your exercise 1 function
+# and always decides. q6 always decides too, so the least severe tier is an answered question
+# rather than a fall-through.
+#
+# </details>
 
 # %%
 QUESTIONS = (
@@ -550,6 +642,9 @@ def _check_ask_tier() -> None:
     print("exercise 2 looks right")
 
 
+# %%
+_try("exercise 2", _check_ask_tier, builds_on=("exercise 1",))
+
 # %% [markdown]
 # ## 6. Exercise 3 — `obligations_for(tier, system, as_of)`
 #
@@ -566,6 +661,26 @@ def _check_ask_tier() -> None:
 # Chapter III dates come from the Commission's own page; the date on which the *derogation*
 # duties start to bind is this lesson's reading — Article 6 sits in the chapter the Omnibus
 # deferred, so the lesson puts them on the Annex III date and labels the inference as one.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three things people get wrong: the Article 50 duties belong to the system, not to the tier;
+# a derogated system is not a minimal one; and a prohibited one stops early. The legacy
+# marking date turns on a strict comparison — and what should happen when the system has no
+# placing date at all?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Start from AI literacy; on the prohibited tier add the Article 5 duty and return. Otherwise
+# map the tier to its duties, then add each Article 50 duty from the system's own flags,
+# independently of the tier. Take every date from `OBLIGATIONS`, overriding the marking date
+# only when a placing date exists and is strictly earlier than general application.
+# `binding_now` is on or before `as_of`; `next_deadline` is the earliest date strictly after
+# it, if there is one. Sort both lists.
+#
+# </details>
 
 # %%
 GENERAL_APPLICATION = "2026-08-02"
@@ -694,6 +809,9 @@ def _check_obligations() -> None:
     print("exercise 3 looks right")
 
 
+# %%
+_try("exercise 3", _check_obligations)
+
 # %% [markdown]
 # ## 7. Exercise 4 — `classification_record(system, as_of)`
 #
@@ -704,6 +822,23 @@ def _check_obligations() -> None:
 # The point of sealing the *trail* along with the tier is that the two can disagree. A record
 # whose tier says `minimal` and whose trail says the derogation was refused is a record
 # somebody edited, and the digest is what catches it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Anyone holding the record has to be able to recompute its digest — so what must not be
+# inside the thing you hash? And the record goes into a log as JSON: which of your values
+# would not survive that trip?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Interview the system once and look its obligations up once. Turn each `Answer` into a plain
+# dict of its three fields, store `as_of` as its ISO string, and store the whole derogation
+# dict only when q4 is in the trail. Hash `canonical_bytes` of the record without its digest
+# field, then add `record_hash` last.
+#
+# </details>
 
 # %%
 def classification_record(system: dict, as_of: date = AS_OF) -> dict:
@@ -777,6 +912,9 @@ def _check_record() -> None:
     print("exercise 4 looks right")
 
 
+# %%
+_try("exercise 4", _check_record, builds_on=("exercise 1", "exercise 2", "exercise 3"))
+
 # %% [markdown]
 # ## 8. Exercise 5 — `diff_records(before, after)`
 #
@@ -786,6 +924,25 @@ def _check_record() -> None:
 #
 # What you want out of it is not "the tier changed". It is: which obligations **appeared**,
 # which **vanished**, from what date, and which question changed its answer to cause it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A tier-only diff misses an obligation that vanishes while the tier holds. And a question
+# asked in only one of the two trails is not a changed answer: something earlier moved and
+# sent the interview down another path.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Check the system ids before anything else. `added` is the obligations in the after record
+# and not the before one, each with its after date; `removed` is the mirror image, with before
+# dates. For `changed_answers`, index each trail by question, keep the questions both trails
+# asked, and compare what they recorded — never reverse-engineer it from the obligation diff.
+# Reassessment follows a tier change or any obligation appearing or vanishing, not a date that
+# merely moved.
+#
+# </details>
 
 # %%
 def diff_records(before: dict, after: dict) -> dict:
@@ -882,6 +1039,9 @@ def _check_diff() -> None:
     print("exercise 5 looks right")
 
 
+# %%
+_try("exercise 5", _check_diff, builds_on=("exercise 4",))
+
 # %% [markdown]
 # ## 9. Exercise 6 — `disagreement_report(panel)`
 #
@@ -893,6 +1053,24 @@ def _check_diff() -> None:
 # Find the **pivot**: the first question, in `QUESTIONS` order, on which the analysts who
 # were asked it did not all give the same answer. Everything after the pivot is downstream of
 # an unresolved disagreement.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The pivot is the earliest question the analysts split on, counting only the analysts who
+# were actually asked it. And when the vote ties, what should decide the majority: who filled
+# the form in first, or severity?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Check that every description carries the same id, then interview each analyst once. Group
+# analysts by the tier they reached, ids sorted. Walk `QUESTION_IDS` in order; for each,
+# collect the answers of the analysts whose trail contains it, and stop at the first question
+# with more than one distinct answer. Break a majority tie by position in `TIER_SEVERITY`,
+# never by `Counter.most_common()`.
+#
+# </details>
 
 # %%
 # One system, four intake forms. Same id, because it is one system.
@@ -988,6 +1166,9 @@ def _check_disagreement() -> None:
     print("exercise 6 looks right")
 
 
+# %%
+_try("exercise 6", _check_disagreement, builds_on=("exercise 2",))
+
 # %% [markdown]
 # ## 10. The artefact
 #
@@ -1006,7 +1187,8 @@ def classification_table(as_of: date = AS_OF) -> None:
               f"{len(duties['binding_now']):<4d} {duties['next_deadline'] or '-'}")
 
 
-_try("the table", classification_table)
+_try("the table", classification_table,
+     needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %%
 def _show_record() -> None:
@@ -1017,7 +1199,8 @@ def _show_record() -> None:
           f"{len(record['question_trail'])} questions")
 
 
-_try("the record", _show_record)
+_try("the record", _show_record,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
 
 # %%
 def _show_panel() -> None:
@@ -1034,7 +1217,7 @@ def _show_panel() -> None:
     print("\nEverything after the pivot is downstream of an unresolved disagreement.")
 
 
-_try("the panel", _show_panel)
+_try("the panel", _show_panel, needs=("exercise 1", "exercise 2", "exercise 6"))
 
 # %%
 def _show_diff() -> None:
@@ -1048,7 +1231,8 @@ def _show_diff() -> None:
     print(f"  requires reassessment: {diff['requires_reassessment']}")
 
 
-_try("the diff", _show_diff)
+_try("the diff", _show_diff,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 11. Common mistakes
@@ -1115,7 +1299,9 @@ def _self_check_aids() -> None:
           f"requires_reassessment={diff['requires_reassessment']}")
 
 
-_try("self-check aids", _self_check_aids)
+_try("self-check aids", _self_check_aids,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6"))
 
 # %% [markdown]
 # 4. Four analysts describe one system and reach three different tiers. The most useful thing
@@ -1198,16 +1384,29 @@ def check_self_check(answers: dict) -> None:
 #
 # **Again, and finally: this is engineering, not legal advice.**
 
+# %% [markdown]
+# ## Your progress
+#
+# The cell below re-runs every exercise's check against your code as it stands now, and
+# prints one line per exercise: ✅ passed, ❌ failed or ⏳ not started. Run it whenever you like.
+
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_derogation),
-                          ("exercise 2", _check_ask_tier),
-                          ("exercise 3", _check_obligations),
-                          ("exercise 4", _check_record),
-                          ("exercise 5", _check_diff),
-                          ("exercise 6", _check_disagreement)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
-        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
+    _failing = _progress_board((
+        ("exercise 1", "derogation_assessment()", _check_derogation),
+        ("exercise 2", "ask_tier()", _check_ask_tier),
+        ("exercise 3", "obligations_for()", _check_obligations),
+        ("exercise 4", "classification_record()", _check_record),
+        ("exercise 5", "diff_records()", _check_diff),
+        ("exercise 6", "disagreement_report()", _check_disagreement),
+    ))
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends the run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel that would be a traceback at the foot of the
+    # page, so there it is one printed line instead.
+    if _failing:
+        if "ipykernel" in sys.modules:
+            print("\nstill failing: " + ", ".join(_failing)
+                  + ". Each one's own cell above says what went wrong.")
+        else:
+            raise SystemExit("checks failed: " + ", ".join(_failing))

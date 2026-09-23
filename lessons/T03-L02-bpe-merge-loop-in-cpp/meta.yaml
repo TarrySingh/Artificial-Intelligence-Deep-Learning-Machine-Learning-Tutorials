@@ -36,5 +36,5 @@ datasets:
 points: 28
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "independent review 2026-09-16: 18 rubric mutants run, 15 caught, 2 defects fixed (apply_merge's returned length was never asserted; no case pinned the count == kMinCount boundary of the stop rule), 1 equivalent mutant documented; 5 claims re-verified against primary sources; corpus sha256 re-checked; make clean / dyld warning added to common mistakes"
-measured_seconds: 14.1
-measured_peak_mib: 120
+measured_seconds: 10.0
+measured_peak_mib: 119

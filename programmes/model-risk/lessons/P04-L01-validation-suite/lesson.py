@@ -104,8 +104,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Any, Callable, Mapping, NamedTuple
 
 import numpy as np
@@ -131,24 +134,79 @@ DATA_NOTE = (
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in order, and the function each one asks you to write. `_try` records the
+# latest outcome of every check in `_STATUS`; the progress board at the foot reads it.
+_EXERCISES: dict[str, str] = {
+    "exercise 1": "reliability_table",
+    "exercise 2": "expected_calibration_error",
+    "exercise 3": "population_stability_index",
+    "exercise 4": "subgroup_table",
+    "exercise 5": "challenger_decision",
+    "exercise 6": "render_validation_report",
+}
+_STATUS: dict[str, str] = {}     # label -> "passed" | "failed" | "not started"
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (), quiet: bool = False) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
-    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    A stub you have not filled in yet simply says so, and a demo that `needs` an exercise you
+    have not passed yet names that exercise and skips. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other five.
+    exercise never hides the feedback on the other five. Every outcome lands in `_STATUS`
+    for the progress board; `quiet` silences a pass or a stub, never a failure.
     """
+    waiting = [ex for ex in needs if _STATUS.get(ex) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        if len(waiting) == 1:
+            named = f"{waiting[0]} (`{_EXERCISES[waiting[0]]}`)"
+        else:
+            nums = [ex.split()[-1] for ex in waiting]
+            named = "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+        print(f"{label}: skipped — needs {named} first. Re-run this cell once "
+              f"{'that check passes' if len(waiting) == 1 else 'those checks pass'}.")
+        return
     try:
-        check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        with contextlib.redirect_stdout(io.StringIO()) if quiet else contextlib.nullcontext():
+            check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        # The frame that raised names the stub. If it belongs to an EARLIER exercise that this
+        # one builds on, say that, rather than telling you to fill in a function you have.
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name
+        owner = [ex for ex, funcs in _EXERCISES.items()
+                 if stub in funcs.split(", ") and ex != label]
+        if quiet:
+            pass
+        elif owner:
+            print(f"{label}: skipped — needs {owner[0]} (`{_EXERCISES[owner[0]]}`) first: "
+                  f"{stub}() is still a stub. Re-run this cell once that check passes.")
+        else:
+            print(f"{label}: not implemented yet — fill in the stub above, then re-run "
+                  "this cell.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    marks = {"passed": "✅ passed", "failed": "❌ failed", "not started": "⏳ not started"}
+    width = max(len(label) for label in _EXERCISES)
+    print("\nYOUR PROGRESS")
+    for label, function in _EXERCISES.items():
+        mark = marks[_STATUS.get(label, "not started")]
+        print(f"  {mark:<15} {label:<{width}}  {function}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"  {done} of {len(_EXERCISES)} exercises complete")
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -265,6 +323,27 @@ print("\nRanking and calibration are different properties. The suite has to meas
 # Two traps are deliberately in your way. An empty bin has no rate — reporting `0.0` for it
 # invents a finding. And an empty bin must still appear in the table, because "we had no
 # observations up there" is itself something an auditor needs to see.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three decisions carry the marks: which bin a probability lands in when it sits exactly on an
+# edge, what a bin with no records reports, and what counts as a malformed extract. The bins
+# are open at the bottom and closed at the top, so a value on an interior edge belongs to the
+# bin below it — and 0.0, which is no bin's closed end, still has to land in the first one. An
+# empty bin keeps its row: a count of zero and NaN for both rates, never a zero rate you did
+# not observe.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate before you compute: at least one bin, equal lengths, every probability between 0 and
+# 1, every label 0 or 1 — each failure a ValueError. Cut the edges once. Find each
+# probability's bin with a sorted search that sends a value sitting on an edge to the left,
+# step back one to turn an edge position into a bin number, and clip into range so 0.0 lands in
+# the first bin. Count the records and sum the predictions and the labels per bin, then divide
+# sums by counts only where the count is positive, leaving NaN everywhere else.
+#
+# </details>
 
 # %%
 class ReliabilityTable(NamedTuple):
@@ -343,6 +422,9 @@ def _check_reliability() -> None:
     print("exercise 1 looks right")
 
 
+# %%
+_try("exercise 1", _check_reliability)
+
 # %% [markdown]
 # ## 3. Exercise 2 — `expected_calibration_error()`
 #
@@ -350,6 +432,25 @@ def _check_reliability() -> None:
 # page. It is the average gap between predicted and observed, **weighted by how many records
 # sit in each bin** — a bin holding four records must not carry the same weight as one
 # holding four thousand.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What gives a bin its say in the average? Its share of the records, not one vote in ten — a
+# bin of four must not outvote a bin of four thousand. The gap inside each bin is absolute, so
+# over-prediction in one place cannot cancel under-prediction in another. And the table from
+# exercise 1 hands you NaN for every empty bin: think about what NaN does to a sum, even when
+# it is multiplied by a weight of zero.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Build the reliability table, then keep only the bins that hold records. In each, take the
+# absolute difference between the mean prediction and the observed rate, weight it by that
+# bin's count over the total number of records, and add the weighted gaps up. Convert the
+# result to a plain Python float on the way out: a numpy scalar looks like a float until
+# json.dumps meets it.
+#
+# </details>
 
 # %%
 def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray,
@@ -396,6 +497,9 @@ def _check_ece() -> None:
     print("exercise 2 looks right")
 
 
+# %%
+_try("exercise 2", _check_ece)
+
 # %% [markdown]
 # ## 4. Exercise 3 — `population_stability_index()`
 #
@@ -404,6 +508,26 @@ def _check_ece() -> None:
 # distribution against a baseline, bin by bin:
 #
 # `PSI = Σ (a_i − e_i) · ln(a_i / e_i)`, over shares of the total, not counts.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# PSI compares shapes, not sizes: each sample becomes shares of its OWN total, or a baseline
+# twice the size of the monitoring sample reads as a shift. Then look hard at the logarithm. A
+# bin can empty out on either side — a score band that vanishes, or one that appears from
+# nothing — and either one sends the ratio to zero or to infinity. Those are the loudest
+# findings PSI has, so neither side may be allowed to erase them.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Reject edges with fewer than two values, or with any step that is not strictly upward. Put
+# each value in its bin on the half-open intervals, the last bin closed on the right and
+# anything beyond the outer edges clipped into the end bins. Count per bin on each side and
+# divide by that side's own length. Raise every share on BOTH sides to at least the floor, then
+# form each bin's term — the difference in shares times the natural log of their ratio — and
+# return the terms, their sum and both share vectors.
+#
+# </details>
 
 # %%
 class StabilityResult(NamedTuple):
@@ -479,6 +603,9 @@ def _check_psi() -> None:
     print("exercise 3 looks right")
 
 
+# %%
+_try("exercise 3", _check_psi)
+
 # %% [markdown]
 # ## 5. Exercise 4 — `subgroup_table()`
 #
@@ -489,6 +616,26 @@ def _check_psi() -> None:
 # records is noise, so you do not report it. But the group does not disappear: it is listed,
 # with its count, and marked as suppressed. Silently dropping small groups is how a model
 # gets signed off as fair on the segments that were big enough to measure.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The support rule has two halves, and the checks test both: a group below the minimum keeps
+# its row and its TRUE count, and loses every metric. A minimum is inclusive, so a group
+# sitting exactly on it is measured. Then settle the sign of the gap before you write a line —
+# a remediation plan needs to know whether the model over- or under-predicted, and a positive
+# gap has to mean over-prediction.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate min_support and the three lengths first. Take the distinct group values in sorted
+# order. For each, mask all three arrays down to that group and record its count and whether it
+# clears the minimum. Only for a group that clears it, compute the event rate, the mean
+# prediction, the gap as prediction minus outcome, and an ECE from your exercise-2 function on
+# that group's slice alone; otherwise leave all four as NaN. Return equal-length arrays under
+# the seven keys.
+#
+# </details>
 
 # %%
 def subgroup_table(y_true: np.ndarray, y_prob: np.ndarray, groups: np.ndarray,
@@ -557,12 +704,35 @@ def _check_subgroups() -> None:
     print("exercise 4 looks right")
 
 
+# %%
+_try("exercise 4", _check_subgroups)
+
 # %% [markdown]
 # ## 6. Exercise 5 — `challenger_decision()`
 #
 # The challenger is better on both metrics. That is not, on its own, a reason to promote it —
 # and "better" is not a decision. A decision rule is written down *before* the numbers are
 # known, applied mechanically, and reported with its reasons attached.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The whole exercise is precedence. The absolute gates decide a reject before the improvement
+# rules are consulted — yet all four rules are still evaluated and reported, because an auditor
+# re-derives the verdict from the reasons. Every limit is inclusive: landing on one passes it.
+# And a challenger that is merely not worse is not one that is better by the margin the policy
+# demands.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Collect every missing key across the three mappings first, and raise one ValueError that
+# names them all. Evaluate the four rules in order, writing for each a reason that starts PASS
+# or FAIL and quotes the observed figure beside its limit. If either gate failed the verdict is
+# reject; otherwise promote only when both of the last two rules passed, and hold when either
+# did not. Take each change as challenger minus champion, and each headroom as how far the
+# challenger sits inside its absolute limit.
+#
+# </details>
 
 # %%
 class Decision(NamedTuple):
@@ -648,12 +818,35 @@ def _check_decision() -> None:
     print("exercise 5 looks right")
 
 
+# %%
+_try("exercise 5", _check_decision)
+
 # %% [markdown]
 # ## 7. Exercise 6 — `render_validation_report()`
 #
 # Everything above produced evidence. This produces the document — from that evidence, and
 # from nothing else. A report written by hand alongside a run is a report that can disagree
 # with the run, and when it does, nobody finds out until an examiner does.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This function reports; it does not measure. Every figure on the page comes out of findings,
+# at the precision the docstring sets, so the document cannot disagree with the run. The traps
+# sit at boundaries: an empty reliability bin prints n/a rather than a rate, a suppressed
+# subgroup prints its row and its count but none of its metrics — not even ones that findings
+# happens to carry — and a PSI exactly on the threshold is within it.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Check every required key first and name all the missing ones in one ValueError. Then build
+# the page as a list of lines: the title with the model id, then each heading of
+# REPORT_SECTIONS in turn followed by that section's lines. Branch on the bin count for each
+# calibration row, on reportable for each subgroup row, and on strictly-greater-than for the
+# PSI verdict. Close with the decision's verdict in upper case and each reason copied verbatim
+# as a bullet, and join the lines with newlines.
+#
+# </details>
 
 # %%
 REPORT_SECTIONS = ("## 1. Data", "## 2. Calibration", "## 3. Population stability",
@@ -751,6 +944,9 @@ def _probe_findings() -> dict:
                                  margins={"auc_gain": 0.202})}
 
 
+# %%
+_try("exercise 6", _check_report)
+
 # %% [markdown]
 # ## 8. Run the suite and generate the report
 #
@@ -796,7 +992,7 @@ def _show_report() -> None:
     assert findings["decision"].verdict in {"promote", "hold", "reject"}
 
 
-_try("the suite", _show_report)
+_try("the suite", _show_report, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 9. Common mistakes
@@ -833,7 +1029,7 @@ def _show_self_referential_edges() -> None:
     print("for as long as the edges are re-cut — and it will never once look broken.")
 
 
-_try("self-referential edges", _show_self_referential_edges)
+_try("self-referential edges", _show_self_referential_edges, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 10. Self-check
@@ -886,15 +1082,24 @@ print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
 
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_reliability),
+    # Re-run every check against your code as it stands NOW, so the board reports your latest
+    # edit rather than whatever each check cell said the last time you ran it. Quietly: a pass
+    # or an untouched stub says nothing here, and a check that fails still says why.
+    for _label, _check in (("exercise 1", _check_reliability),
                           ("exercise 2", _check_ece),
                           ("exercise 3", _check_psi),
                           ("exercise 4", _check_subgroups),
                           ("exercise 5", _check_decision),
                           ("exercise 6", _check_report)):
-        _try(_name, _check)
-    # A stub you have not reached yet is not a failure. A check that ran and came back
-    # wrong is, and it ends this run non-zero rather than letting a green exit code paper
-    # over it.
-    if _FAILED_CHECKS:
+        _try(_label, _check, quiet=True)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _still_failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if "ipykernel" in sys.modules:
+        if _still_failing:
+            print("\nstill failing: " + ", ".join(_still_failing)
+                  + " — each one's message above names the likely mistake.")
+    elif _FAILED_CHECKS:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

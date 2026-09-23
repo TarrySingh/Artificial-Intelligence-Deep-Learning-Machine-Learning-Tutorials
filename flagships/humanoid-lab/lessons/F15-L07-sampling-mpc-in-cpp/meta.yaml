@@ -37,5 +37,5 @@ datasets:
 points: 53
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review, 2026-09-16 — 25 mutants of the reference solution were graded against the rubric; 5 scored 100% and were fixed by tightening hidden cases (gate 6): refit_mean ignoring the lambda temperature, max_samples and steps_per_tick returned as floats that compare equal to ints, python_rollout_cost returning a numpy scalar, and rollout_budget swallowing ZeroDivisionError behind a zeroed default. Also tightened: the sampling test now pins row-major layout exactly (500x9 against 9x500 from one seed) and pins clamping under sigma=3, having previously mis-credited its full 5 points to a transposed buffer and to an unclamped one. Added the compiled-lesson dyld / make clean warning QUALITY.md requires (gate 5). Prerequisites F15-L01, F15-L03 and F15-L06 all resolve to authored lessons, so the previous pass's open gate-2 note is retired. claims.yaml spot-checked live: arXiv 1509.01149, arXiv 2212.00541 and the mujoco_mpc CrossEntropyPlanner header all resolve and quote verbatim. All four gates re-run green after the changes."
-measured_seconds: 5.1
+measured_seconds: 4.7
 measured_peak_mib: 123

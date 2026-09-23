@@ -149,4 +149,4 @@ status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 — 4 gates re-run green (execute PASS 1.0 s/123 MiB, solution 113/113, stubs 0/113, jupytext converts); 23 fresh mutants, 2 survivors fixed (build_runs tie rule graded the export's row order, split_by_unit fold size never met a non-dividing fraction) and 1 proved equivalent by measurement (max 1.665e-16); all 22 breaking mutants now caught at 84-97% with partial credit; handover's historian-fallback count corrected from 73 of 150 orders to 23 of 100 run-ending orders and the matching typed ratio removed from the answer key; both NIST quotes re-fetched verbatim; lab matches MODULES.md module 4"
 
 measured_seconds: 1.0
-measured_peak_mib: 126
+measured_peak_mib: 119

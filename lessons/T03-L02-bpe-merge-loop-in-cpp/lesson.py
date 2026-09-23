@@ -103,11 +103,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # %%
 # Setup: one cell, everything the lesson needs, with versions printed.
 import platform
+import re
 import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 # Work that costs real seconds lives inside `if __name__ == "__main__":` blocks, so the
 # autograder can import this file without re-running the whole lesson. In a notebook
@@ -129,6 +131,69 @@ print("source", CPP_SRC.relative_to(LESSON_ROOT))
 _paths = subprocess.run(["make", "-C", str(LESSON_ROOT), f"PYTHON={sys.executable}", "paths"],
                         capture_output=True, text=True)
 print(_paths.stdout.strip() or _paths.stderr.strip())
+
+# Every check and every demo below runs through `_try`, so pressing Run all before you have
+# written a line of C++ reaches the progress board at the foot of the notebook instead of
+# stopping at the first TODO.
+# The four exercises, in the order the notebook meets them: (label, C++ function, where).
+_EXERCISES = [("exercise 1", "count_pairs", "section 4"), ("exercise 2", "best_pair", "section 5"),
+              ("exercise 3", "apply_merge", "section 6"), ("exercise 4", "train", "section 7")]
+_FUNCTION = {label: function for label, function, _ in _EXERCISES}
+_STATUS: dict = {}       # label -> "passed" | "failed" | "not started", for the progress board
+_WAITING_ON: dict = {}   # label -> the C++ function whose TODO stopped it
+
+
+def _unfinished(exc: BaseException) -> str:
+    """The C++ function whose TODO fired. The binary reports it as `NOT_IMPLEMENTED <name>`."""
+    found = re.search(r"NOT_IMPLEMENTED (\w+)", str(exc))
+    return found.group(1) if found else ""
+
+
+def _named(labels: list) -> str:
+    """["exercise 4"] -> "exercise 4 (`train`)"; several -> "exercises 1 and 4"."""
+    if len(labels) == 1:
+        return f"{labels[0]} (`{_FUNCTION[labels[0]]}`)"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so, by name: the binary reports which
+    function's TODO it hit. A wrong answer prints the check's own message — which names the
+    likely mistake — and the notebook carries on, so one broken exercise never hides the
+    feedback on the others. A demo names the exercises it `needs`: until each has passed its
+    check, the demo says which one it is waiting for and skips, so it never runs on an answer
+    a check has just rejected. Nothing is swallowed: every outcome is recorded for the
+    progress board, and a script run exits non-zero there if any check came back wrong.
+    """
+    waiting = [name for name in needs if _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        stub = _unfinished(exc)
+        _STATUS[label], _WAITING_ON[label] = "not started", stub
+        owner = [name for name, function in _FUNCTION.items() if function == stub]
+        if owner and owner[0] != label:
+            print(f"{label}: skipped — needs {_named(owner)} first; it still has its TODO in "
+                  "lesson.cpp.")
+        else:
+            todo = f"`{stub}` in lesson.cpp" if stub else "an exercise in lesson.cpp"
+            print(f"{label}: not implemented yet — {todo} still has its TODO. Fill it in, then "
+                  "re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 # %% [markdown]
 # ## 1. The algorithm, in one paragraph and one cell
@@ -349,7 +414,9 @@ def cpp_selftest() -> str:
         capture_output=True, text=True,
     )
     if "NOT_IMPLEMENTED" in proc.stderr:
-        raise NotImplementedError(proc.stderr.strip().splitlines()[-1])
+        # The binary's own line names the function; make's "Error 3" line after it does not.
+        raise NotImplementedError(next(line for line in proc.stderr.splitlines()
+                                       if "NOT_IMPLEMENTED" in line))
     if proc.returncode != 0:
         raise AssertionError(f"make test failed:\n{proc.stdout}\n{proc.stderr}")
     return proc.stdout
@@ -389,16 +456,31 @@ def oracle_corpus(nbytes: int = ORACLE_BYTES) -> Path:
 
 
 if __name__ == "__main__":
-    try:
-        print(cpp_selftest())
-    except NotImplementedError as _exc:
-        print("as expected, nothing is implemented yet:", _exc)
+    _try("make test", lambda: print(cpp_selftest()))
 
 # %% [markdown]
 # ## 4. Exercise 1 — `count_pairs`
 #
 # Open `lesson.cpp`, find EXERCISE 1, fill it in. One scan, one local holding the previous
 # symbol, and no pair counted when either side is `kBoundary`. Then run this check.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A pair has two sides, and either one can be the word boundary: check both before you count.
+# Then ask what your loop does with an empty sequence, a one-symbol sequence, and the very
+# last pair. Counting is allowed to overlap here — only merging is not — so do not skip ahead
+# after a hit.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Start at the second element and walk to the end once, keeping the previous symbol in a local
+# `int`. At each position, if neither the previous nor the current symbol is `kBoundary`, add
+# one to the entry for their packed key — increment, never assign. Then the current symbol
+# becomes the previous one. Starting at index 1 means a sequence shorter than two symbols never
+# enters the loop at all. Keep every symbol an `int`: after the first merge, ids pass 255.
+#
+# </details>
 
 # %%
 def _check_count_pairs() -> None:
@@ -429,7 +511,7 @@ def _check_count_pairs() -> None:
 
 
 if __name__ == "__main__":
-    _check_count_pairs()
+    _try("exercise 1", _check_count_pairs)
 
 # %% [markdown]
 # ## 5. Exercise 2 — `best_pair`, and why ties matter
@@ -437,6 +519,24 @@ if __name__ == "__main__":
 # Two pairs tie at the top. Whichever you return becomes token 257, which changes every merge
 # after it. So the tie-break is not a detail: it is the difference between a vocabulary you can
 # ship and one that differs between runs. `std::unordered_map` promises you no order at all.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two questions pick the winner: which count is highest, and, when counts are equal, which
+# pair is smaller. Iteration order must never get a vote — a `best_pair` that keeps "the first
+# maximum I met" passes a small case by luck and fails the moment the same pairs arrive in
+# another order. And decide what an empty map does to the three out-parameters: nothing.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Keep a leader — its packed key and its count — and a flag saying whether you have one yet.
+# For each entry, take it as the new leader if its count is strictly greater, or if the counts
+# are equal and its packed key is smaller. The packed key orders by `a` first, then `b`, which
+# is exactly the tie-break. Only after the loop, and only if you found a leader, unpack it,
+# write through the three pointers and return `true`. An empty map returns `false`.
+#
+# </details>
 
 # %%
 def _check_best_pair() -> None:
@@ -476,13 +576,31 @@ def _check_best_pair() -> None:
 
 
 if __name__ == "__main__":
-    _check_best_pair()
+    _try("exercise 2", _check_best_pair)
 
 # %% [markdown]
 # ## 6. Exercise 3 — `apply_merge`, in place
 #
 # Two cursors over one vector: read and write. The write cursor can never overtake the read
 # cursor, so there is no need for a second array — and no allocation inside the hot loop.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# After a match, both symbols are used up: how far must the read cursor move so neither can
+# take part in another match? Before you look at a symbol's right-hand neighbour, is there one?
+# And the function hands back two answers — the vector's new size and the returned length —
+# which must agree. Both come from the same cursor, and it is not the read cursor.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Start a read cursor and a write cursor at zero. While the read cursor is inside the vector:
+# if it has a right-hand neighbour and the two symbols there are `a` then `b`, store `new_id`
+# at the write cursor and move the read cursor past both; otherwise copy the one symbol across
+# and move the read cursor past it. Either way the write cursor moves by one. When the scan
+# ends, `resize()` to the write cursor and return that same value.
+#
+# </details>
 
 # %%
 def _check_apply_merge() -> None:
@@ -522,7 +640,7 @@ def _check_apply_merge() -> None:
 
 
 if __name__ == "__main__":
-    _check_apply_merge()
+    _try("exercise 3", _check_apply_merge)
 
 # %% [markdown]
 # ## 7. Exercise 4 — `train`, and the proof that it matches Python
@@ -530,6 +648,24 @@ if __name__ == "__main__":
 # Now the loop: count, pick, record, apply, repeat. Stop when the best pair occurs fewer than
 # `kMinCount` times. The test that matters is not "does this look plausible" — it is whether
 # your merge list is **identical** to the Python trainer's on the same bytes.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three decisions make your list match Python's merge for merge: when you stop, what id each
+# merge gets, and whether each merge is applied before the next count. Read the stop rule's
+# boundary twice — a pair seen *exactly* `kMinCount` times is still worth merging. And a merge
+# you record but never apply shows up as the right list with the wrong final length.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Loop `k` from zero while `k` is below `n_merges`. Each pass: recount the whole sequence with
+# exercise 1, ask exercise 2 for the winner, and break — before recording anything — if there
+# is no winner or its count is strictly below `kMinCount`. Otherwise record a `Merge` whose id
+# is `kFirstMergeId + k`, apply it to `seq` with exercise 3, and go round again. Return the
+# merges in the order you made them.
+#
+# </details>
 
 # %%
 def _check_train() -> None:
@@ -569,7 +705,7 @@ def _check_train() -> None:
 
 
 if __name__ == "__main__":
-    _check_train()
+    _try("exercise 4", _check_train)
 
 # %% [markdown]
 # ## 8. The measurement
@@ -615,7 +751,7 @@ def _check_speedup() -> None:
 
 
 if __name__ == "__main__":
-    _check_speedup()
+    _try("the measurement", _check_speedup, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 9. What the speedup is, and what it is not
@@ -638,20 +774,27 @@ def cpp_scaling(fractions=(0.25, 0.5, 1.0), merges: int = 30) -> list:
     return rows
 
 
-if __name__ == "__main__":
-    _py_rows, _cpp_rows = python_scaling(), cpp_scaling()
+def _show_scaling() -> None:
+    """Both scaling tables side by side. C++ runs first, so an unfinished `train` skips at
+    once instead of after Python has spent its seconds."""
+    cpp_rows = cpp_scaling()
+    py_rows = python_scaling()
     print("per symbol, per merge — the only column that can tell a constant from a curve")
     print(f"{'symbols':>9} {'python ns':>11} {'c++ ns':>9} {'ratio':>9}")
-    for _p, _c in zip(_py_rows, _cpp_rows):
-        print(f"{_c['symbols']:9d} {_p['ns_per_symbol_per_merge']:11.1f}"
-              f" {_c['ns_per_symbol_per_merge']:9.1f}"
-              f" {_p['ns_per_symbol_per_merge'] / _c['ns_per_symbol_per_merge']:8.1f}x")
+    for p, c in zip(py_rows, cpp_rows):
+        print(f"{c['symbols']:9d} {p['ns_per_symbol_per_merge']:11.1f}"
+              f" {c['ns_per_symbol_per_merge']:9.1f}"
+              f" {p['ns_per_symbol_per_merge'] / c['ns_per_symbol_per_merge']:8.1f}x")
     print("\nRead the two middle columns DOWN, not across. Each is roughly flat as the corpus")
     print("grows, and that flatness is the straight line — the same line in both languages.")
     print("The ratio column is the whole of what the language bought: a constant. To bend the")
     print("line you would have to stop rescanning — keep the counts between merges and update")
     print("only the positions the merge touched. That is an algorithmic change, and no amount")
     print("of C++ substitutes for it.")
+
+
+if __name__ == "__main__":
+    _try("the scaling table", _show_scaling, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 10. The honest footnote
@@ -806,13 +949,45 @@ if __name__ == "__main__":
 # measurement of what the language was worth on your own machine, and the sharper lesson
 # underneath it: the language bought a constant, and the algorithm is still the naive rescan.
 # F02 picks this up where the vocabulary becomes an encoder and the rescan becomes incremental.
+# The cell below re-runs the four correctness checks and prints your progress board.
 
 # %%
+# Your progress board. The exercises it lists are the ones `_EXERCISES` names in the setup cell.
+_MARKS = {"passed": "✅ passed     ", "failed": "❌ failed     ", "not started": "⏳ not started"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from what the checks recorded — then how many are complete."""
+    print("\nyour progress")
+    done, next_up = 0, None
+    for label, function, where in _EXERCISES:
+        status = _STATUS.get(label, "not started")
+        done += status == "passed"
+        waiting = _WAITING_ON.get(label)
+        note = (f"   (waiting on `{waiting}`)"
+                if status == "not started" and waiting not in (None, "", function) else "")
+        print(f"  {_MARKS[status]}  {label} · {function}{note}")
+        if status != "passed" and next_up is None:
+            next_up = (label, function, where)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    if next_up:
+        print(f"next: {next_up[0]} — `{next_up[1]}` in lesson.cpp, {next_up[2]}. Its cell has "
+              "hints if you are stuck.")
+
+
 if __name__ == "__main__":
     # A final sweep of the correctness checks. The measurement in section 8 is deliberately
     # not repeated here: it is the slowest cell in the lesson and nothing below it changed.
-    _check_count_pairs()
-    _check_best_pair()
-    _check_apply_merge()
-    _check_train()
-    print("\nall correctness checks green")
+    for _label, _check in (("exercise 1", _check_count_pairs), ("exercise 2", _check_best_pair),
+                           ("exercise 3", _check_apply_merge), ("exercise 4", _check_train)):
+        _try(_label, _check)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, so a green exit code can never
+    # paper over it. In a notebook kernel the same news is a printed line, not a traceback.
+    _failed = [_label for _label, _status in _STATUS.items() if _status == "failed"]
+    if _failed and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(_failed))
+    if _failed:
+        print("checks failed: " + ", ".join(_failed) + " — each one printed its likely mistake "
+              "where it ran.")

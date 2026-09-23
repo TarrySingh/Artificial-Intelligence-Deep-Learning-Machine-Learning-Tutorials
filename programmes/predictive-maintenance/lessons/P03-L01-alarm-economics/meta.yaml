@@ -87,4 +87,4 @@ status: executed        # draft | executed | reviewed | shipped
 reviewed_by: "Author self-review 2026-09-16 — 4 gates green, 14 breaking mutants all caught with partial credit plus 1 passing control, gate-3 prose run measured at 32 lines; needs an independent reviewer before status: reviewed"
 
 measured_seconds: 0.6
-measured_peak_mib: 190
+measured_peak_mib: 189

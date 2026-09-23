@@ -109,8 +109,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Callable
 
 import numpy as np
@@ -175,25 +178,74 @@ def _show(fig: "matplotlib.figure.Figure") -> None:
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("amplitude_spectrum",),
+    "exercise 2": ("peak_in_band",),
+    "exercise 3": ("alias_frequency",),
+    "exercise 4": ("candidate_true_frequencies",),
+    "exercise 5": ("one_pole_lowpass",),
+    "exercise 6": ("lowpass_response",),
+    "exercise 7": ("measure_gain_and_lag",),
+    "exercise 8": ("hann_window",),
+    "exercise 9": ("g_to_counts",),
+    "exercise 10": ("counts_to_g",),
+    "exercise 11": ("one_pole_highpass",),
+    "exercise 12": ("integrate_trapezoid",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (health_index)"; several -> "exercises 3, 6 and 8"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -275,6 +327,20 @@ _show(_fig)
 #   Doubling them overstates them by exactly 2x.
 # - A window changes the total; divide by its mean — its *coherent gain* — to put the
 #   amplitude back.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A cosine of amplitude `A` comes out of `rfft` scaled away from `A` twice over: by what, and
+# why? Which bins have no negative-frequency twin to fold in? And does `rfftfreq` want the
+# sample rate or the sample spacing?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `fs`, the input's dimensions and the window's length first. Multiply the signal by
+# the window (all ones when none is given), transform it, and divide every magnitude by `n`
+# times the window's mean. Double every bin except bin 0 and, only when `n` is even, the last
+# one. Take the frequencies from `rfftfreq` with the spacing between samples.
+# </details>
 
 # %%
 def amplitude_spectrum(x: np.ndarray, fs: float,
@@ -362,6 +428,18 @@ _try("exercise 1", _check_amplitude_spectrum)
 # band, returned as a `(frequency, amplitude)` pair rather than as an index. Returning the
 # index is the mistake — it is an index into a *sliced* array, and converting it back to a
 # frequency later is where the off-by-one lives.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# If you slice the band out and take `argmax`, what is that index an index INTO? And what
+# should the function do when the band contains no bin at all — return zero, or refuse?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject `f_lo > f_hi`. Build a mask with BOTH edges inclusive and raise `ValueError` if it
+# selects nothing. Find the largest amplitude inside the mask and return the frequency and the
+# amplitude found there, as a pair of floats — never the position.
+# </details>
 
 # %%
 def peak_in_band(freqs: np.ndarray, amps: np.ndarray,
@@ -422,6 +500,19 @@ _try("exercise 2", _check_peak_in_band)
 # `f % fs` is not that formula and is not a substitute for it. Above `fs/2` the modulus and
 # the fold disagree — at `fs = 2560`, a 1800 Hz tone has `1800 % 2560 == 1800` and folds to
 # 760 Hz. Only one of those two numbers is what you will see.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Below `fs/2` the modulus and the fold agree, which is why the modulus survives casual tests.
+# Where do they part company, and which one can ever return a value above `fs/2`? What should
+# a negative frequency do?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject `fs <= 0`. Take the absolute value of `f`, find the whole multiple of `fs` nearest to
+# it, and return the distance between the two — the formula in the markdown above. Built from
+# numpy's elementwise functions, the same line serves a scalar and an array.
+# </details>
 
 # %%
 def alias_frequency(f: np.ndarray | float, fs: float) -> np.ndarray | float:
@@ -498,7 +589,7 @@ def _show_three_rates() -> None:
     print("\nthe 25 Hz and 50 Hz lines agree across all three rates. Nothing else does.")
 
 
-_try("three rates", _show_three_rates)
+_try("three rates", _show_three_rates, needs=("exercise 1",))
 
 # %% [markdown]
 # Two things in that table, and the second one is why this lesson exists.
@@ -524,7 +615,7 @@ def _show_the_gear_line() -> None:
     print("line at the right frequency with the wrong number in it.")
 
 
-_try("the gear line", _show_the_gear_line)
+_try("the gear line", _show_the_gear_line, needs=("exercise 1", "exercise 2"))
 
 
 # %% [markdown]
@@ -539,6 +630,20 @@ _try("the gear line", _show_the_gear_line)
 # mathematics. An accelerometer has a published upper frequency limit; nothing above it
 # reaches the ADC at a level worth folding. Cut the list there, do it again at a second
 # sampling rate, and intersect.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each multiple of `fs` contributes two candidates, one either side of it. At which two values
+# of `f_apparent` do those two coincide, and what must happen to the repeat? And what stops the
+# list from running forever?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the three conditions first. Step through the multiples of `fs` from zero upwards,
+# collecting the multiple minus `f_apparent` and the multiple plus it, and stop once even the
+# lower one is past `f_max`. Keep only what lies in `[0, f_max]` — the very first "minus" is
+# negative — then remove duplicates and sort.
+# </details>
 
 # %%
 def candidate_true_frequencies(f_apparent: float, fs: float,
@@ -636,7 +741,8 @@ def _find_the_intruder() -> None:
     print("the alias has nowhere visible to go.")
 
 
-_try("find the intruder", _find_the_intruder)
+_try("find the intruder", _find_the_intruder,
+     needs=("exercise 1", "exercise 3", "exercise 4"))
 
 
 # %% [markdown]
@@ -652,6 +758,19 @@ _try("find the intruder", _find_the_intruder)
 # filter spends its first time constant climbing out of a hole it invented, and that start-up
 # transient is low-frequency energy that section 10 will amplify. And apply the whole pass
 # `stages` times in series, each stage taking the previous stage's output.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Feed the filter a constant. If its state starts at zero, what do the first few outputs look
+# like, and is that the input's fault or the filter's? For two stages, what exactly does the
+# second stage receive?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the arguments and compute `a` once. For each stage, start the state at that stage's
+# first input sample and run the recursion forwards, one sample at a time, into a NEW array;
+# that array becomes the next stage's input. Nothing is ever written into `x`.
+# </details>
 
 # %%
 def one_pole_lowpass(x: np.ndarray, fc: float, fs: float, stages: int = 1) -> np.ndarray:
@@ -734,6 +853,20 @@ _try("exercise 5", _check_one_pole_lowpass)
 # and `stages` sections in series multiply their gains and add their phases. The textbook
 # `1 / sqrt(1 + (f/fc)^2)` is the analogue answer, and the cell after the check below prices
 # the difference on this lesson's own anti-alias chain rather than asserting it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# At its own corner frequency, does the difference equation you wrote have the same gain as the
+# RC circuit it is named after? And when four sections together delay a tone by more than half
+# a cycle, what does wrapping the total phase into `(-pi, pi]` throw away?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the arguments. Turn `f` into the digital frequency `w`, form ONE section's
+# denominator `d` as the docstring does, and take that section's gain and phase. Raise the gain
+# to the power `stages` and multiply the phase by `stages` — take the angle of one section and
+# scale it, never the angle of the product.
+# </details>
 
 # %%
 def lowpass_response(f: np.ndarray | float, fc: float, fs: float,
@@ -828,7 +961,7 @@ def _price_the_analogue_shortcut() -> None:
     print("crest factor, kurtosis — are measurements of exactly that ordering.")
 
 
-_try("the analogue shortcut", _price_the_analogue_shortcut)
+_try("the analogue shortcut", _price_the_analogue_shortcut, needs=("exercise 6",))
 
 
 # %% [markdown]
@@ -842,6 +975,20 @@ _try("the analogue shortcut", _price_the_analogue_shortcut)
 # A delay of `tau` seconds shifts phase by `-2 pi f tau`, so `tau = -phase / (2 pi f)`. The
 # angle you get back is wrapped into `(-pi, pi]`, which means a measured lag is only ever
 # known **modulo one period** of `f`. Section 9 is about the consequences of that.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Why would comparing peak values, or RMS, go wrong the moment a second tone is present? What
+# happens to that tone when you project onto one complex exponential? And which sign does a
+# DELAY give the phase, and which the lag?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the lengths, `f` and `fs`. Build the complex exponential at `f` over the sample
+# times, and sum each signal times it to get `A` and `B`. The gain is the ratio of their
+# magnitudes; the lag comes from ONE `np.angle` of `B / A`, turned into seconds with the sign
+# the markdown above gives.
+# </details>
 
 # %%
 def measure_gain_and_lag(x_in: np.ndarray, x_out: np.ndarray,
@@ -919,6 +1066,9 @@ _try("exercise 7", _check_measure_gain_and_lag)
 
 # %%
 FILTERED_G = None
+# The filtered record is made by the cell below, which needs exercises 5 to 7; every later
+# cell that reads it waits on the same three, plus whatever it calls itself.
+_FOR_FILTERED = ("exercise 5", "exercise 6", "exercise 7")
 
 
 def _measure_the_filter() -> None:
@@ -945,7 +1095,7 @@ def _measure_the_filter() -> None:
     print("needs.")
 
 
-_try("measure the filter", _measure_the_filter)
+_try("measure the filter", _measure_the_filter, needs=_FOR_FILTERED)
 
 # %% [markdown]
 # The gains are the operational problem. A four-stage filter with its corner at 0.4 of the
@@ -981,7 +1131,8 @@ def _price_the_filter() -> None:
     print("not safe through this filter unless it is applied identically every time.")
 
 
-_try("price the filter", _price_the_filter)
+_try("price the filter", _price_the_filter,
+     needs=_FOR_FILTERED + ("exercise 1", "exercise 2"))
 
 # %%
 def _plot_the_two_spectra() -> None:
@@ -1005,7 +1156,7 @@ def _plot_the_two_spectra() -> None:
     _show(fig)
 
 
-_try("plot the two spectra", _plot_the_two_spectra)
+_try("plot the two spectra", _plot_the_two_spectra, needs=_FOR_FILTERED + ("exercise 1",))
 
 
 # %% [markdown]
@@ -1019,6 +1170,17 @@ _try("plot the two spectra", _plot_the_two_spectra)
 # window used for spectral analysis is the **periodic** one, `0.5 (1 - cos(2 pi k / n))`.
 # `np.hanning` is the *symmetric* one, with `n - 1` in the denominator; it is the right
 # window for designing an FIR filter and the wrong one here.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# `np.hanning` already exists, so why is it wrong here? Should the periodic window's last
+# sample come back to zero, like its first one does?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject `n < 1`. Evaluate the docstring's formula over `k = 0 .. n - 1`, with `n` — not
+# `n - 1` — in the denominator. No library window function is needed.
+# </details>
 
 # %%
 def hann_window(n: int) -> np.ndarray:
@@ -1101,7 +1263,8 @@ def _measure_leakage() -> None:
     print("Module 3's band-energy features are not a stylistic preference.")
 
 
-_try("measure leakage", _measure_leakage)
+_try("measure leakage", _measure_leakage,
+     needs=("exercise 1", "exercise 2", "exercise 8"))
 
 
 # %% [markdown]
@@ -1111,6 +1274,30 @@ _try("measure leakage", _measure_leakage)
 # a published **sensitivity** in mV/g; an ADC turns volts into integer **counts** across a
 # bipolar range of `+-full_scale_v` using `2^bits` levels. Both conversions are one line, and
 # both are where a plant's numbers go wrong by a clean multiplicative factor nobody notices.
+#
+# <details><summary>💡 Exercise 9 · Hint 1 — what to think about</summary>
+#
+# A bipolar converter spans minus to plus full scale, not zero to full scale — so how big is
+# one step? Why is the positive rail one code short of the negative one? And what does the
+# converter do with a signal beyond its range?
+# </details>
+# <details><summary>💡 Exercise 9 · Hint 2 — the approach, in words</summary>
+#
+# Validate the three settings. Turn g into volts through the sensitivity (mind mV against V),
+# divide by the step size, round to the nearest code, then clip to the two rails — clip, never
+# wrap — and return integers.
+# </details>
+
+# <details><summary>💡 Exercise 10 · Hint 1 — what to think about</summary>
+#
+# This is the inverse of the SCALING only. Which step of `g_to_counts` can never be undone,
+# and why must that stay true of your inverse?
+# </details>
+# <details><summary>💡 Exercise 10 · Hint 2 — the approach, in words</summary>
+#
+# Validate exactly as `g_to_counts` does. Multiply the counts by the step size in volts, then
+# turn volts back into g through the sensitivity. Return floats; do not round or clip.
+# </details>
 
 # %%
 def g_to_counts(g: np.ndarray, sensitivity_mv_per_g: float,
@@ -1150,7 +1337,7 @@ def counts_to_g(counts: np.ndarray, sensitivity_mv_per_g: float,
     raise NotImplementedError
 
 
-def _check_adc() -> None:
+def _check_g_to_counts() -> None:
     counts = g_to_counts(np.array([0.0, 1.0, 50.0]), 100.0, 1.0, 12)
     assert counts.dtype.kind == "i", f"counts must be integers, got dtype {counts.dtype}"
     assert counts.tolist() == [0, 205, 2047], (
@@ -1167,11 +1354,6 @@ def _check_adc() -> None:
         f"the negative rail of a 12-bit bipolar converter is -2048, got {low.tolist()} — the "
         "range is asymmetric because zero takes one of the codes"
     )
-    back = counts_to_g(np.array([0, 205, 2047]), 100.0, 1.0, 12)
-    assert np.allclose(back, [0.0, 1.0009765625, 9.99511719], atol=1e-6), (
-        f"round trip gave {np.asarray(back).round(6).tolist()}; expected "
-        "[0.0, 1.0009766, 9.9951172]"
-    )
     # Halving the range halves the step, so the same g gives twice the counts.
     wide = g_to_counts(np.array([0.5]), 100.0, 2.0, 12)
     narrow = g_to_counts(np.array([0.5]), 100.0, 1.0, 12)
@@ -1179,20 +1361,34 @@ def _check_adc() -> None:
         f"halving full_scale_v must double the counts for the same input; got {wide[0]} and "
         f"{narrow[0]}"
     )
-    for fn in (g_to_counts, counts_to_g):
-        for bad, why in (((np.zeros(3), 0.0, 1.0, 12), "sensitivity <= 0"),
-                         ((np.zeros(3), 100.0, 0.0, 12), "full_scale_v <= 0"),
-                         ((np.zeros(3), 100.0, 1.0, 1), "n_bits < 2")):
-            try:
-                fn(*bad)
-            except ValueError:
-                continue
-            raise AssertionError(f"{fn.__name__}: {why} must raise ValueError")
-    print("exercises 9 and 10 look right — the chain now has real units")
+    _check_adc_validates(g_to_counts)
+    print("exercise 9 looks right — g to counts, with a range that clips rather than wraps")
+
+
+def _check_counts_to_g() -> None:
+    back = counts_to_g(np.array([0, 205, 2047]), 100.0, 1.0, 12)
+    assert np.allclose(back, [0.0, 1.0009765625, 9.99511719], atol=1e-6), (
+        f"round trip gave {np.asarray(back).round(6).tolist()}; expected "
+        "[0.0, 1.0009766, 9.9951172]"
+    )
+    _check_adc_validates(counts_to_g)
+    print("exercise 10 looks right — counts back to g, and the chain now has real units")
+
+
+def _check_adc_validates(fn: Callable) -> None:
+    for bad, why in (((np.zeros(3), 0.0, 1.0, 12), "sensitivity <= 0"),
+                     ((np.zeros(3), 100.0, 0.0, 12), "full_scale_v <= 0"),
+                     ((np.zeros(3), 100.0, 1.0, 1), "n_bits < 2")):
+        try:
+            fn(*bad)
+        except ValueError:
+            continue
+        raise AssertionError(f"{fn.__name__}: {why} must raise ValueError")
 
 
 # %%
-_try("exercises 9 and 10", _check_adc)
+_try("exercise 9", _check_g_to_counts)
+_try("exercise 10", _check_counts_to_g)
 
 # %% [markdown]
 # Now the choice a technician actually makes on site, with a record that contains one
@@ -1231,7 +1427,7 @@ def _sweep_the_adc_range() -> None:
     print("shape is exactly what clipping destroys.")
 
 
-_try("sweep the ADC range", _sweep_the_adc_range)
+_try("sweep the ADC range", _sweep_the_adc_range, needs=("exercise 9", "exercise 10"))
 
 # %% [markdown]
 # One more unit failure, and it is the quietest one in this notebook. The sensor ages and its
@@ -1265,7 +1461,7 @@ def _calibration_drift() -> None:
     print("certificate written two years ago.")
 
 
-_try("calibration drift", _calibration_drift)
+_try("calibration drift", _calibration_drift, needs=("exercise 9", "exercise 10"))
 
 
 # %% [markdown]
@@ -1277,6 +1473,31 @@ _try("calibration drift", _calibration_drift)
 #
 # It also integrates the accelerometer's DC bias into a straight line that walks off the
 # screen. The cure is a high-pass, and **where** you put it is the exercise.
+#
+# <details><summary>💡 Exercise 11 · Hint 1 — what to think about</summary>
+#
+# A constant input has to come out as exactly zero from the very first sample. Which starting
+# state gives you that, and how is it different from the low-pass in exercise 5?
+# </details>
+# <details><summary>💡 Exercise 11 · Hint 2 — the approach, in words</summary>
+#
+# Validate the arguments. For each stage, start the output at zero and run the docstring's
+# recursion forwards, using the previous INPUT sample in the difference term; each stage's
+# output is the next stage's input.
+# </details>
+
+# <details><summary>💡 Exercise 12 · Hint 1 — what to think about</summary>
+#
+# `np.cumsum(a) / fs` is the rectangular rule. What does the trapezoid do differently with
+# each pair of neighbouring samples? What is the first output value, and how long is the
+# output?
+# </details>
+# <details><summary>💡 Exercise 12 · Hint 2 — the approach, in words</summary>
+#
+# Validate `fs` and the dimensions. Average each consecutive pair of samples and divide by
+# `fs` to get each slice's area, accumulate those areas, and put a zero in front so the output
+# lines up sample for sample with the input.
+# </details>
 
 # %%
 def one_pole_highpass(x: np.ndarray, fc: float, fs: float, stages: int = 1) -> np.ndarray:
@@ -1319,7 +1540,7 @@ def integrate_trapezoid(a: np.ndarray, fs: float) -> np.ndarray:
     raise NotImplementedError
 
 
-def _check_integration() -> None:
+def _check_one_pole_highpass() -> None:
     flat = one_pole_highpass(np.full(5, 7.0), 10.0, 1000.0, 2)
     assert np.allclose(flat, 0.0), (
         f"a constant input must be blocked completely; got {np.asarray(flat).tolist()}"
@@ -1334,6 +1555,17 @@ def _check_integration() -> None:
     assert np.isclose(np.sqrt(np.mean(fast[500:] ** 2)), np.sqrt(0.5), atol=0.01), (
         "a 100 Hz tone must pass a 1 Hz high-pass essentially untouched; yours did not"
     )
+    for fn, args in ((one_pole_highpass, (np.zeros(4), 10.0, 0.0, 1)),
+                     (one_pole_highpass, (np.zeros((2, 4)), 10.0, 1000.0, 1))):
+        try:
+            fn(*args)
+        except ValueError:
+            continue
+        raise AssertionError(f"{fn.__name__} must raise ValueError on {args[1:]}")
+    print("exercise 11 looks right — DC is blocked without knowing what the DC was")
+
+
+def _check_integrate_trapezoid() -> None:
     ramp = integrate_trapezoid(np.array([0.0, 2.0, 2.0, 2.0]), 2.0)
     assert np.allclose(ramp, [0.0, 0.5, 1.5, 2.5]), (
         f"expected [0, 0.5, 1.5, 2.5], got {np.asarray(ramp).tolist()}. [0, 1, 2, 3] is "
@@ -1342,20 +1574,19 @@ def _check_integration() -> None:
     assert np.allclose(integrate_trapezoid(np.array([5.0]), 10.0), [0.0]), (
         "a one-sample input integrates to [0.0]"
     )
-    for fn, args in ((one_pole_highpass, (np.zeros(4), 10.0, 0.0, 1)),
-                     (one_pole_highpass, (np.zeros((2, 4)), 10.0, 1000.0, 1)),
-                     (integrate_trapezoid, (np.zeros(4), 0.0)),
+    for fn, args in ((integrate_trapezoid, (np.zeros(4), 0.0)),
                      (integrate_trapezoid, (np.zeros((2, 4)), 100.0))):
         try:
             fn(*args)
         except ValueError:
             continue
         raise AssertionError(f"{fn.__name__} must raise ValueError on {args[1:]}")
-    print("exercises 11 and 12 look right — you can change units now")
+    print("exercise 12 looks right — the trapezoid, and you can change units now")
 
 
 # %%
-_try("exercises 11 and 12", _check_integration)
+_try("exercise 11", _check_one_pole_highpass)
+_try("exercise 12", _check_integrate_trapezoid)
 
 # %% [markdown]
 # Three orderings of the same two operations, against the velocity the generator implies
@@ -1386,7 +1617,8 @@ def _integrate_three_ways() -> None:
     print("the integration, where the thing you are removing is the drift itself.")
 
 
-_try("integrate three ways", _integrate_three_ways)
+_try("integrate three ways", _integrate_three_ways,
+     needs=("exercise 11", "exercise 12"))
 
 # %%
 def _the_ranking_flip() -> None:
@@ -1461,7 +1693,8 @@ def _conditioning_spec() -> None:
     print("  re-derive this spec whenever the sensor, the rate or the range changes.")
 
 
-_try("conditioning spec", _conditioning_spec)
+_try("conditioning spec", _conditioning_spec,
+     needs=_FOR_FILTERED + ("exercise 1", "exercise 2"))
 
 
 # %% [markdown]
@@ -1519,7 +1752,7 @@ def _the_modulus_trap() -> None:
     print("Nyquist to begin with.")
 
 
-_try("the modulus trap", _the_modulus_trap)
+_try("the modulus trap", _the_modulus_trap, needs=("exercise 3",))
 
 
 # %% [markdown]
@@ -1604,7 +1837,9 @@ def _what_module_three_receives() -> None:
     print("was specified for, and it is now gone rather than hiding inside the gear line.")
 
 
-_try("what module 3 receives", _what_module_three_receives)
+_try("what module 3 receives", _what_module_three_receives,
+     needs=("exercise 1", "exercise 5", "exercise 6", "exercise 8", "exercise 9",
+            "exercise 10"))
 
 
 # %% [markdown]
@@ -1626,20 +1861,49 @@ _try("what module 3 receives", _what_module_three_receives)
 # input range before you ask for the data.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_amplitude_spectrum),
-                          ("exercise 2", _check_peak_in_band),
-                          ("exercise 3", _check_alias_frequency),
-                          ("exercise 4", _check_candidate_true_frequencies),
-                          ("exercise 5", _check_one_pole_lowpass),
-                          ("exercise 6", _check_lowpass_response),
-                          ("exercise 7", _check_measure_gain_and_lag),
-                          ("exercise 8", _check_hann_window),
-                          ("exercises 9 and 10", _check_adc),
-                          ("exercises 11 and 12", _check_integration)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_amplitude_spectrum),
+                              ("exercise 2", _check_peak_in_band),
+                              ("exercise 3", _check_alias_frequency),
+                              ("exercise 4", _check_candidate_true_frequencies),
+                              ("exercise 5", _check_one_pole_lowpass),
+                              ("exercise 6", _check_lowpass_response),
+                              ("exercise 7", _check_measure_gain_and_lag),
+                              ("exercise 8", _check_hann_window),
+                              ("exercise 9", _check_g_to_counts),
+                              ("exercise 10", _check_counts_to_g),
+                              ("exercise 11", _check_one_pole_highpass),
+                              ("exercise 12", _check_integrate_trapezoid)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

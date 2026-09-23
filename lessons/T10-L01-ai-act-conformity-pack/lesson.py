@@ -104,10 +104,15 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import json
+import sys
+import traceback
 from datetime import date
 from pathlib import Path
+from typing import Callable
 
 import yaml
 
@@ -117,6 +122,72 @@ print("python", __import__("sys").version.split()[0], "· pyyaml", yaml.__versio
 # that changes silently with the calendar is not an artefact you can review.
 AS_OF = date(2026, 9, 16)
 print("as of", AS_OF.isoformat())
+
+_FAILED_CHECKS: list[str] = []
+_STATUS: dict[str, str] = {}  # label -> "passed" | "failed" | "not started"
+
+# The exercises, in the order you meet them. The progress board at the foot of the
+# notebook is built from this, and a demo that is waiting on one names it from here.
+_EXERCISES = {
+    "exercise 1": "classify()",
+    "exercise 2": "missing_evidence()",
+    "exercise 3": "conformity_report() and render_report()",
+}
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on to the next cell,
+    so one broken exercise never hides the feedback on the other two.
+
+    A demo names the exercises it `needs`. Until each of them has passed its check, the demo
+    says which one it is waiting for and skips, rather than failing half-way through its
+    output. Every outcome is recorded in `_STATUS`, which the progress board at the foot reads.
+    """
+    waiting = [name for name in needs if _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        todo = ", ".join(f"{name} ({_EXERCISES[name]})" for name in waiting)
+        print(f"{label}: skipped — this needs {todo} to pass first.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name
+        print(f"{label}: not implemented yet — fill in {stub}() above, then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, marked passed, failed or not started, then the tally."""
+    width = max(len(what) for what in _EXERCISES.values())
+    print("progress board")
+    for label, what in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<11} {what:<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went wrong "
+              "in its own cell above, and every exercise heading has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise heading has hints you can open.")
 
 # %% [markdown]
 # ## 1. The date ladder
@@ -279,6 +350,23 @@ print(f"the heaviest obligation asks for "
 # - **Cumulation.** Obligations are a set, not a choice. A high-risk chatbot owes Chapter III
 #   *and* Article 50, on different dates.
 # - **Dates are per system.** The Article 50(2) marking date depends on `placed_on_market`.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Keep two questions apart. The tier is the *first* flag that matches, in the docstring's
+# order; the obligations are *every* rule that fires, added together. Can one system owe
+# both Chapter III routes at once? Then find the one date in the table that depends on the
+# system rather than on the law, and ask what the word "strictly" does to a system placed
+# on the market on the very day.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Choose the tier with one if/elif chain in precedence order. Start the obligations with
+# Article 4; if the system is prohibited add Article 5 and go no further, otherwise test each
+# remaining condition on its own and add whatever fires. Read each obligation's date from
+# `OBLIGATIONS`, overriding only the Article 50(2) entry by comparing `placed_on_market` with
+# `GENERAL_APPLICATION`. `applies_from` is the earliest of those dates; sort the ids.
+# </details>
 
 # %%
 def classify(system: dict) -> dict:
@@ -373,6 +461,11 @@ def _check_classify() -> None:
     print("exercise 1 looks right")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 1", _check_classify)
+
+
 # %% [markdown]
 # ## 5. Exercise 2 — `missing_evidence(system, as_of)`
 #
@@ -383,6 +476,21 @@ def _check_classify() -> None:
 # 2. `document` is a non-empty reference after stripping whitespace;
 # 3. `date` exists and is not in the future relative to `as_of`;
 # 4. if `review_due` is given, it has not already passed — evidence has a shelf life.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What a system owes is not a fixed list: it follows from what `classify` says applies. And
+# each record must survive four separate tests. Which of them can a record fail just by
+# leaving a key out, and which one must a missing key *not* fail?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Take the union of `EVIDENCE_REQUIRED` over the obligations your `classify` returns. For each
+# required id, look its record up in the system's evidence; it may be absent. It counts only
+# if the status is exactly present, the stripped document is non-empty, the date exists and
+# is not after `as_of`, and any `review_due` is not before it — `parse_date` turns either
+# form into a date. Return the ids that did not count, sorted.
+# </details>
 
 # %%
 def missing_evidence(system: dict, as_of: date) -> list:
@@ -446,6 +554,11 @@ def _check_missing_evidence() -> None:
     print("exercise 2 looks right")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 2", _check_missing_evidence, needs=("exercise 1",))
+
+
 # %% [markdown]
 # ## 6. Exercise 3 — `conformity_report(systems, as_of)` and `render_report(report)`
 #
@@ -463,6 +576,23 @@ def _check_missing_evidence() -> None:
 #   next deadline.
 # - `blocking` is prohibited **or** overdue. A prohibited system blocks even when its
 #   paperwork is perfect — you cannot evidence your way out of Article 5.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# `overdue` is a question about each missing item, not about the row: which obligation asked
+# for it, and has that obligation's own date already come? Two summary fields are about not
+# crying wolf — which rows should `next_deadline` even look at, and can a system with
+# perfect paperwork still block?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each system call your `classify` and `missing_evidence`; the row is overdue when some
+# missing id appears in `EVIDENCE_REQUIRED` for an obligation whose deadline is on or before
+# `as_of`. Build the summary from the finished rows, taking `next_deadline` from incomplete
+# rows only, and collect the prohibited-or-overdue ids, sorted, as `blocking`.
+# `render_report` gathers lines in a list and returns them joined: dated, every id, and the
+# caveat.
+# </details>
 
 # %%
 def conformity_report(systems: list, as_of: date) -> dict:
@@ -548,6 +678,11 @@ def _check_conformity_report() -> None:
     print("exercise 3 looks right")
 
 
+# %%
+if __name__ == "__main__":
+    _try("exercise 3", _check_conformity_report, needs=("exercise 1", "exercise 2"))
+
+
 # %% [markdown]
 # ## 7. The payoff
 #
@@ -586,13 +721,10 @@ def summarise(as_of: date = AS_OF) -> dict:
 #   a gap against a date that has already passed.
 #
 # %%
-# Run everything: the three public checks, then the pack itself. In a notebook this cell runs
-# as-is; as a file, `python lesson.py` does the same.
+# Run the pack itself over the whole registry: in a notebook as it stands, or as a file with
+# `python lesson.py`. Until all three exercises pass, it says which one it is waiting on.
 if __name__ == "__main__":
-    _check_classify()
-    _check_missing_evidence()
-    _check_conformity_report()
-    summarise()
+    _try("the evidence pack", summarise, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 9. Self-check
@@ -686,3 +818,24 @@ def check_self_check(answers: dict) -> None:
 # feed to the same evidence ids, so the pack stays machine-checkable as it grows.
 #
 # **Again, and finally: this is not legal advice.**
+
+# %%
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
+if __name__ == "__main__":
+    _ALL_CHECKS = (  # (exercise, its check, the exercises that check relies on)
+        ("exercise 1", _check_classify, ()),
+        ("exercise 2", _check_missing_evidence, ("exercise 1",)),
+        ("exercise 3", _check_conformity_report, ("exercise 1", "exercise 2")),
+    )
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check, _needs in _ALL_CHECKS:
+            _try(_name, _check, needs=_needs)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

@@ -93,11 +93,15 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import math
+import sys
 import time
 import urllib.request
 from pathlib import Path
+from typing import Callable
 
 import mujoco
 import numpy as np
@@ -149,6 +153,47 @@ def load_humanoid():
 
 MODEL, DATA = load_humanoid()
 print("compiled:", humanoid_xml_path().name)
+
+# Run all is safe before you have written a line: every check, and every demo that needs your
+# code, goes through _try, which reports and carries on. The board at the foot of the notebook
+# shows where you stand.
+_EXERCISES = {"exercise 1": "step_for", "exercise 2": "com_height",
+              "exercise 3": "real_time_factor", "self-check": "your four letters"}
+_STATUS: dict = {}      # label -> "passed" | "failed" | "not started", read by the board
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Anything listed in `needs` must have
+    passed first; until it has, this names it and skips rather than failing on its behalf.
+    Nothing is swallowed: every outcome lands in _STATUS, and the `__main__` block at the foot
+    of this file exits non-zero outside a notebook if any check failed.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        named = " and ".join(f"{n} ({_EXERCISES.get(n, n)})" for n in waiting)
+        one = len(waiting) == 1
+        print(f"{label}: skipped until {named} {'passes' if one else 'pass'} — finish "
+              f"{'that' if one else 'those'}, then re-run this cell.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: {exc}" if str(exc) else
+              f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 # %% [markdown]
 # ## 1. Two objects, and the difference is the whole lesson
@@ -231,6 +276,23 @@ print(f"root z {_z_before:.6f} -> {float(_probe.qpos[2]):.6f}  (it has begun to 
 # stepping until at least `seconds` of simulated time has elapsed, then stop. The answer is
 # therefore a *ceiling*, not a truncation, and you must find it by stepping and watching
 # `data.time` — not by assigning to the clock.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two questions decide this: what is your stopping test measured *from*, and can your loop run
+# zero times? The clock need not read zero when you are called — a second call on the same
+# `data` starts where the first one stopped — and a request for no time at all costs nothing.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Note the clock on entry. While the time elapsed since then is still short of the request
+# (less `TIME_EPS`, so float drift cannot buy an extra step), take one real `mujoco.mj_step`
+# and count it. Return the count. Counting steps as you take them rounds up on its own,
+# whatever the timestep, so there is nothing to truncate and nothing to hard-code.
+#
+# </details>
 
 # %%
 def step_for(model, data, seconds: float) -> int:
@@ -291,6 +353,10 @@ def _check_step_for() -> None:
     print(f"exercise 1 looks right: {n} steps buy {data.time:.3f} s of simulated time")
 
 
+# %%
+_try("exercise 1", _check_step_for)
+
+
 # %% [markdown]
 # ## 5. Exercise 2 — `com_height(model, data)`
 #
@@ -301,6 +367,23 @@ def _check_step_for() -> None:
 # Two ingredients: `model.body_mass` (constant, so it lives in the model) and `data.xipos`
 # (each body's centre-of-mass position in world coordinates, so it lives in the data). Note
 # `xipos`, not `xpos`: `xpos` is the body *frame origin*, which is not where its mass sits.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three wrong answers are each one slip away, and the check prints all three for your pose:
+# the root's height, a weighting of the body frame origins, and a plain average that forgets a
+# foot weighs less than a torso. Which array says where each body's mass sits, and which
+# object knows how much each body weighs?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Take the z component of every row of `data.xipos`, weight each by the matching entry of
+# `model.body_mass`, add them up and divide by the total mass. Return a plain Python float,
+# not a one-element array. Do not call `mj_forward` in here; refreshing is the caller's job.
+#
+# </details>
 
 # %%
 def com_height(model, data) -> float:
@@ -357,6 +440,10 @@ def _check_com_height() -> None:
     print(f"exercise 2 looks right: standing COM {got:.3f} m, crouched {crouched:.3f} m")
 
 
+# %%
+_try("exercise 2", _check_com_height)
+
+
 # %% [markdown]
 # ## 6. Exercise 3 — `real_time_factor(model, data, seconds)`
 #
@@ -367,6 +454,24 @@ def _check_com_height() -> None:
 # Reset `data` with `mujoco.mj_resetData` first so every measurement starts from the same
 # pose, time the stepping with `time.perf_counter` (not `time.time`, a wall clock subject to
 # adjustment mid-measurement), and reuse your own `step_for`.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What belongs between your two clock readings? Only the stepping — not a model load, not the
+# reset. Which way up is the ratio: a small model on a laptop outruns reality, and the number
+# should say so. And is `sim_seconds` the time you were asked for, or the time your steps
+# actually bought?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Reset `data` first, so a second measurement does not start from the fallen pose the first
+# one left behind. Read `time.perf_counter()`, call your `step_for`, read it again. Build
+# `sim_seconds` from the step count it returned and the model's timestep, keep `steps` as the
+# integer it came back as, and divide simulated time by wall time.
+#
+# </details>
 
 # %%
 def real_time_factor(model, data, seconds: float) -> dict:
@@ -440,6 +545,10 @@ def _check_real_time_factor() -> None:
           f"{report['wall_seconds']:.4f} s wall, RTF {report['real_time_factor']:.1f}x")
 
 
+# %%
+_try("exercise 3", _check_real_time_factor, needs=("exercise 1",))
+
+
 # %% [markdown]
 # ## 7. The payoff: a fall, measured
 #
@@ -471,6 +580,9 @@ def _check_fall_profile() -> None:
     )
     print(f"\nfell {start - end:.3f} m of centre-of-mass height in {trace[-1][0]:.1f} s of "
           "simulated time, with zero control applied")
+
+
+_try("the fall", _check_fall_profile, needs=("exercise 1", "exercise 2"))
 
 
 # %% [markdown]
@@ -580,6 +692,17 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+def _check_self_check_answered() -> None:
+    """The board's view of the self-check: letters left at "?" are not started, not wrong."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("not answered yet — put your four letters in SELF_CHECK "
+                                  "above, then re-run this cell.")
+    _check_self_check()
+
+
+_try("self-check", _check_self_check_answered)
+
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -590,9 +713,40 @@ def _check_self_check(answers: dict = None) -> None:
 # you just implemented.
 
 # %%
+# Your progress board. Every check runs again here, quietly, so the board describes your code
+# as it stands now: an exercise that was waiting on another you have since finished is marked
+# afresh. In a script or under CI a failed check still ends the run non-zero; in a notebook it
+# is a printed line.
+_BOARD = [("exercise 1", _check_step_for, ()),
+          ("exercise 2", _check_com_height, ()),
+          ("exercise 3", _check_real_time_factor, ("exercise 1",)),
+          ("self-check", _check_self_check_answered, ())]
+
+
+def _progress_board() -> list:
+    """Re-run every check without its output, print one line per exercise, return failures."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        for label, check, needs in _BOARD:
+            _try(label, check, needs)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    width = max(len(name) for name in _EXERCISES.values())
+    print("progress board")
+    for label, _, needs in _BOARD:
+        state = _STATUS.get(label, "not started")
+        waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+        note = ("  (waiting on " + " and ".join(waiting) + ")" if state == "not started"
+                and waiting else "  (re-run its cell for the hint)" if state == "failed" else "")
+        print(f"  {marks[state]} {label:<11s} {_EXERCISES[label]:<{width}s} {state}{note}")
+    done = sum(_STATUS.get(label) == "passed" for label, _, _ in _BOARD)
+    print(f"{done} of {len(_BOARD)} complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
 if __name__ == "__main__":
-    _check_step_for()
-    _check_com_height()
-    _check_real_time_factor()
-    _check_fall_profile()
-    _check_self_check()
+    _failed = _progress_board()
+    if _failed:
+        _message = "checks failed: " + ", ".join(_failed)
+        if "ipykernel" in sys.modules:
+            print(f"\n{_message} — each one printed its hint in its own cell above.")
+        else:
+            raise SystemExit(_message)

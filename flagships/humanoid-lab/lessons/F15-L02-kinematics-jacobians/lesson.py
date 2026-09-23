@@ -104,8 +104,12 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
+import sys
 from pathlib import Path
+from typing import Callable
 
 import mujoco
 import numpy as np
@@ -178,6 +182,48 @@ for _j in range(MODEL.njnt):
           f"{_name:<18s} range [{MODEL.jnt_range[_j][0]:+.2f}, {MODEL.jnt_range[_j][1]:+.2f}]")
 print(f"nq - nv = {MODEL.nq - MODEL.nv}  (every joint is a hinge, so dof i IS qpos slot i)")
 
+# Run all is safe before you have written a line: every check, and every demo that needs your
+# code, goes through _try, which reports and carries on. The board at the foot of the notebook
+# shows where you stand.
+_EXERCISES = {"exercise 1": "body_world_position", "exercise 2": "site_world_position",
+              "exercise 3": "analytic_jacobian", "exercise 4": "finite_difference_jacobian",
+              "exercise 5": "ik_damped_least_squares", "self-check": "your four letters"}
+_STATUS: dict = {}      # label -> "passed" | "failed" | "not started", read by the board
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Anything listed in `needs` must have
+    passed first; until it has, this names it and skips rather than failing on its behalf.
+    Nothing is swallowed: every outcome lands in _STATUS, and the `__main__` block at the foot
+    of this file exits non-zero outside a notebook if any check failed.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        named = " and ".join(f"{n} ({_EXERCISES.get(n, n)})" for n in waiting)
+        one = len(waiting) == 1
+        print(f"{label}: skipped until {named} {'passes' if one else 'pass'} — finish "
+              f"{'that' if one else 'those'}, then re-run this cell.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: {exc}" if str(exc) else
+              f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
 # %% [markdown]
 # ## 1. Forward kinematics is a stage, not a function you call by accident
 #
@@ -215,6 +261,23 @@ print(f"the write moved it by {_moved:.3f} m, none of which you could see until 
 # - **Refresh the position stage** after writing `qpos`, exactly as section 1 showed.
 # - **Copy the answer out.** `data.xpos[i]` is a live view into `mjData`. Return it and the
 #   next call to this function silently rewrites the answer you already have.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each bullet above is a separate way to return a plausible vector that is wrong. Which array
+# is the frame origin rather than the centre of mass? What makes a write to `qpos` show up in
+# anything derived from it? And what becomes of an array you returned once the next call runs
+# the position stage again?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Look the id up by name under the body object type. Only if a `qpos` was passed, write it
+# into `data.qpos`; either way, run `mujoco.mj_forward` next. Then read that body's row of
+# `data.xpos` and hand back a fresh array built from it, never the row itself.
+#
+# </details>
 
 # %%
 def body_world_position(model, data, body_name: str, qpos=None) -> np.ndarray:
@@ -269,6 +332,10 @@ def _check_body_world_position() -> None:
     print(f"exercise 1 looks right: hand frame origin {got} at home, {moved} at ready")
 
 
+# %%
+_try("exercise 1", _check_body_world_position)
+
+
 # %% [markdown]
 # ## 3. Three points on one rigid body, and why it matters
 #
@@ -297,6 +364,23 @@ print("one body, one set of joint axes, three different points — remember that
 # MuJoCo's modeling chapter describes an element defined inside a body as "fixed to the local
 # frame of that body and always moves with it". It takes part in no dynamics — it exists so
 # you can name a point on a robot without inventing a body for it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The palm is not a body, and sites have their own numbering. If your answer at home is the
+# hand body's frame origin, you looked the name up in the wrong id space or read the wrong
+# array. Two welded points also stay the same distance apart in every pose, and the check
+# measures exactly that against your exercise 1 — so finish that one first.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Start from your exercise 1 and change two things only: the object type you look the name up
+# under, and the array you read the row from. The optional `qpos` write, the forward pass and
+# the copy stay exactly as they were.
+#
+# </details>
 
 # %%
 def site_world_position(model, data, site_name: str, qpos=None) -> np.ndarray:
@@ -343,6 +427,10 @@ def _check_site_world_position() -> None:
           "frame origin in every pose")
 
 
+# %%
+_try("exercise 2", _check_site_world_position, needs=("exercise 1",))
+
+
 # %% [markdown]
 # ## 5. What a Jacobian column actually means
 #
@@ -385,6 +473,25 @@ print("the left arm cannot move the right palm, and the derivative knows it")
 #
 # You will call the general form, with the palm's position as the point and the palm's own
 # body as the body. Pass `None` for `jacr`: you want translation only.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# `mj_jac` is a C function with an output argument: it fills an array you allocate and hands
+# back nothing. How many columns does that array need — one per `qpos` slot, or one per degree
+# of freedom? On this arm the two agree only because every joint is a hinge. And which stage
+# must have run for the per-dof motion axes to exist at all?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Follow the docstring's five steps in order. The two that bite: the forward pass happens
+# inside your function every time, even when the caller has just run one; and the body you
+# pass is the one the site is welded to, read from the model, with the site's world position
+# as the point. A site id reused as a body id names a different body. Return the array you
+# filled.
+#
+# </details>
 
 # %%
 def analytic_jacobian(model, data, site_name: str, qpos=None) -> np.ndarray:
@@ -475,6 +582,9 @@ print("verdict:", "one derived quantity was ready and the other was not"
       if np.abs(_J_partial).max() == 0.0 and np.abs(_J_full).max() > 0.0
       else "unexpected — read the two numbers above before trusting the next section")
 
+# %%
+_try("exercise 3", _check_analytic_jacobian)
+
 # %% [markdown]
 # ## 7. Exercise 4 — the one that settles it: finite differences
 #
@@ -489,6 +599,25 @@ print("verdict:", "one derived quantity was ready and the other was not"
 # Difference only the dofs in `dofs`. On this model that is a convenience; the two left-arm
 # columns are zero anyway. On a 27-dof humanoid it is the difference between a check you run
 # after every change and one you run once and stop bothering with.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every evaluation of your forward map writes into `data.qpos`. So where does your base pose
+# live while you work? If it is the live `data.qpos` — or the caller's own array — it walks
+# away from you one dof at a time. And how far apart are your two samples: one step, or two?
+# An error about the size of the step itself is the signature of a one-sided difference.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Take one private copy of the base pose before the loop. For each dof you were given, build
+# an up-copy and a down-copy that differ from it by `eps` in that slot only, evaluate
+# `site_world_position` at both, and divide their difference by the full distance between
+# the two samples. Leave every other column at zero. After the loop, evaluate once more at the
+# base pose so `data` ends where it began.
+#
+# </details>
 
 # %%
 def finite_difference_jacobian(model, data, site_name: str, qpos=None,
@@ -577,6 +706,10 @@ def _check_finite_difference_jacobian() -> None:
           f"{worst:.2e} at eps={FD_EPS:.0e}, well inside the {JAC_TOL:.0e} tolerance")
 
 
+# %%
+_try("exercise 4", _check_finite_difference_jacobian, needs=("exercise 2", "exercise 3"))
+
+
 # %% [markdown]
 # ## 8. How small should the step be? Measure it
 #
@@ -612,6 +745,9 @@ def step_size_sweep(steps=(1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7, 1e-8, 1e-9,
           "(two nearly-equal doubles, subtracted).")
     print("  This is why the tolerance in this lesson is a stated number and not 'about right'.")
     return rows
+
+
+_try("step-size sweep", step_size_sweep, needs=("exercise 3", "exercise 4"))
 
 
 # %% [markdown]
@@ -654,6 +790,25 @@ print("slightly non-unit. mujoco.mj_integratePos is the general tool. Your arm i
 #
 # λ trades accuracy for stability. Section 11 measures what it buys, on a pose where the
 # undamped version does not merely struggle: it fails outright.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Four things decide whether this solver is honest: which way the error points (the palm must
+# move *toward* the target), whether λ enters squared, whether every step is clipped to the
+# joint limits, and what you report when you run out of iterations. Read the `damping` and
+# `tol` you were handed, not the module's constants, and start `history` afresh on each call.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach</summary>
+#
+# Copy `q_start` into a working pose. Each iteration: place the palm at the working pose,
+# record the residual, and return straight away if it is under `tol` — the loop index is then
+# the number of steps taken. Otherwise take the Jacobian's columns for `dofs`, solve the damped
+# 3-by-3 system for the step, add it and clip. If the loop runs out, measure the residual once
+# more at the pose you finished in before reporting it, with `converged` False.
+#
+# </details>
 
 # %%
 IK_DAMPING = 0.05
@@ -757,6 +912,10 @@ def _check_ik() -> None:
           f"{far['residual']:.4f} m — honestly reported, not hidden")
 
 
+# %%
+_try("exercise 5", _check_ik, needs=("exercise 2", "exercise 3"))
+
+
 # %% [markdown]
 # ## 11. What the damping is actually for
 #
@@ -816,6 +975,9 @@ def damping_sweep(values=(0.001, 0.01, 0.05, 0.2, 0.5, 1.0)):
     print("  Small damping is fast when the pose is healthy and fragile when it is not;")
     print("  large damping is slow and unbothered. That is the whole trade.")
     return rows
+
+
+_try("damping sweep", damping_sweep, needs=("exercise 5",))
 
 
 # %% [markdown]
@@ -934,6 +1096,17 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+def _check_self_check_answered() -> None:
+    """The board's view of the self-check: letters left at "?" are not started, not wrong."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("not answered yet — put your four letters in SELF_CHECK "
+                                  "above, then re-run this cell.")
+    _check_self_check()
+
+
+_try("self-check", _check_self_check_answered)
+
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -948,14 +1121,42 @@ def _check_self_check(answers: dict = None) -> None:
 # controller is lying.
 
 # %%
+# Your progress board. Every check runs again here, quietly, so the board describes your code
+# as it stands now: an exercise that was waiting on another you have since finished is marked
+# afresh. In a script or under CI a failed check still ends the run non-zero; in a notebook it
+# is a printed line.
+_BOARD = [("exercise 1", _check_body_world_position, ()),
+          ("exercise 2", _check_site_world_position, ("exercise 1",)),
+          ("exercise 3", _check_analytic_jacobian, ()),
+          ("exercise 4", _check_finite_difference_jacobian, ("exercise 2", "exercise 3")),
+          ("exercise 5", _check_ik, ("exercise 2", "exercise 3")),
+          ("self-check", _check_self_check_answered, ())]
+
+
+def _progress_board() -> list:
+    """Re-run every check without its output, print one line per exercise, return failures."""
+    with contextlib.redirect_stdout(io.StringIO()):
+        for label, check, needs in _BOARD:
+            _try(label, check, needs)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    width = max(len(name) for name in _EXERCISES.values())
+    print("progress board")
+    for label, _, needs in _BOARD:
+        state = _STATUS.get(label, "not started")
+        waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+        note = ("  (waiting on " + " and ".join(waiting) + ")" if state == "not started"
+                and waiting else "  (re-run its cell for the hint)" if state == "failed" else "")
+        print(f"  {marks[state]} {label:<11s} {_EXERCISES[label]:<{width}s} {state}{note}")
+    done = sum(_STATUS.get(label) == "passed" for label, _, _ in _BOARD)
+    print(f"{done} of {len(_BOARD)} complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
 if __name__ == "__main__":
-    _check_body_world_position()
-    _check_site_world_position()
-    _check_analytic_jacobian()
-    _check_finite_difference_jacobian()
-    print("\nstep-size sweep:")
-    step_size_sweep()
-    _check_ik()
-    print("\ndamping sweep:")
-    damping_sweep()
-    _check_self_check()
+    _failed = _progress_board()
+    if _failed:
+        _message = "checks failed: " + ", ".join(_failed)
+        if "ipykernel" in sys.modules:
+            print(f"\n{_message} — each one printed its hint in its own cell above.")
+        else:
+            raise SystemExit(_message)

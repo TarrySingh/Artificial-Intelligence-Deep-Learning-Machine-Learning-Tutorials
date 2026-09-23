@@ -110,6 +110,8 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import math
 import sys
 import time
@@ -142,24 +144,71 @@ DATA_NOTE = (
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in order, and the function each one asks you to write. `_try` records the
+# latest outcome of every check in `_STATUS`; the progress board at the foot reads it.
+_EXERCISES: dict[str, str] = {
+    "exercise 1": "observe_feature_use",
+    "exercise 2": "reconcile_variables",
+    "exercise 3": "probe_monotonicity",
+    "exercise 4": "probe_domain",
+    "exercise 5": "scan_leakage",
+    "exercise 6": "duplicate_contamination",
+    "exercise 7": "baseline_margin_check",
+    "exercise 8": "soundness_findings",
+}
+_STATUS: dict[str, str] = {}     # label -> "passed" | "failed" | "not started"
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (), quiet: bool = False) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
-    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    A stub you have not filled in yet simply says so, and a demo that `needs` an exercise you
+    have not passed yet names that exercise and skips. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other seven.
+    exercise never hides the feedback on the other seven. Every outcome lands in `_STATUS`
+    for the progress board; `quiet` silences a pass or a stub, never a failure.
     """
+    waiting = [ex for ex in needs if _STATUS.get(ex) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        if len(waiting) == 1:
+            named = f"{waiting[0]} (`{_EXERCISES[waiting[0]]}`)"
+        else:
+            nums = [ex.split()[-1] for ex in waiting]
+            named = "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+        print(f"{label}: skipped — needs {named} first. Re-run this cell once "
+              f"{'that check passes' if len(waiting) == 1 else 'those checks pass'}.")
+        return
     try:
-        check()
+        with contextlib.redirect_stdout(io.StringIO()) if quiet else contextlib.nullcontext():
+            check()
     except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        _STATUS[label] = "not started"
+        if not quiet:
+            print(f"{label}: not implemented yet — fill in the stub above, then re-run "
+                  "this cell.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    marks = {"passed": "✅ passed", "failed": "❌ failed", "not started": "⏳ not started"}
+    width = max(len(label) for label in _EXERCISES)
+    print("\nYOUR PROGRESS")
+    for label, function in _EXERCISES.items():
+        mark = marks[_STATUS.get(label, "not started")]
+        print(f"  {mark:<15} {label:<{width}}  {function}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"  {done} of {len(_EXERCISES)} exercises complete")
 
 
 # --- the documented specification ----------------------------------------------------------
@@ -373,6 +422,24 @@ print("minute, and a reviewer who RUNS that comparison finds it every month, for
 #
 # Record it instead. Hand the implementation a mapping that remembers which keys were asked
 # for, and run it on several rows so that several branches get exercised.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The probe has to see every way an implementation can read a feature — indexing and .get()
+# alike — or it will certify a live feature as dead. It also has to survive the implementation:
+# a row on which the function raises is skipped, but whatever it read before raising was still
+# read. And an empty set of rows is not an empty answer. It is no observation at all.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Materialise the rows first, so that a generator can be checked, and refuse an empty one with
+# a ValueError. Keep one set of names for the whole run. For each row, wrap it in a small dict
+# subclass whose item access AND .get both add the key to that set before handing back the
+# value, then call the function inside a try that swallows any exception and moves on to the
+# next row. Return the set sorted, as a tuple.
+#
+# </details>
 
 # %%
 def observe_feature_use(fn: Callable[[Mapping[str, float]], Any],
@@ -454,6 +521,25 @@ _try("exercise 1", _check_observe)
 # * read and staged after the decision — the field will not exist at inference time;
 # * read and not in the catalogue at all — nobody knows when it is populated, which is not
 #   the same as knowing it is late, and must not be filed as though it were.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Availability is a question about the names the implementation USES, not about the catalogue:
+# a documented variable nobody reads cannot put a post-decision field into a decision. And "not
+# in the catalogue" is a different finding from "staged after the decision" — one is a
+# governance gap, the other a design defect — so a used name the catalogue has never heard of
+# goes to its own field and nowhere else.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate first: a non-empty variable list, no name documented twice, and every catalogue
+# stage one of AVAILABILITY_STAGES. Turn the documented names and the used names into two sets;
+# the first three fields are their intersection and the two one-sided differences. Then sort
+# the USED names three ways by their catalogue entry — absent, post-decision, or at application
+# — and keep the first two as the availability fields. Sort every field into a tuple.
+#
+# </details>
 
 # %%
 class Reconciliation(NamedTuple):
@@ -548,6 +634,26 @@ _try("exercise 2", _check_reconcile)
 # this probe skips it and compares the surviving points in order. And the probe must not
 # mutate the caller's base row: a prober with a side effect is a prober whose second run
 # disagrees with its first.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three separations keep this a review rather than a demo. A point where the function raises or
+# returns something non-finite is skipped and counted, and the comparison then runs ACROSS the
+# gap, between the neighbours that survived — not against a substitute score. The sign of a
+# violation depends on the documented direction, and flat is never a violation. And the
+# caller's base row must come back exactly as it went in.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the grid size and, for every variable with a documented direction, that it is in the
+# base row and that its domain runs upward. For each such variable, sweep the grid building a
+# fresh copy of the base row per point, call the function inside a try, and keep only the
+# points that returned a finite number, counting the rest. Walk adjacent pairs of the
+# survivors, measure the wrong-way move for that direction, and keep the largest positive one,
+# the earliest on a tie — its pair is the counterexample.
+#
+# </details>
 
 # %%
 class MonotonicityProbe(NamedTuple):
@@ -683,6 +789,26 @@ _try("exercise 3", _check_monotonicity)
 #
 # This probe sweeps *every* documented variable, including the ones with no documented
 # direction. A domain is documented whether or not a shape is.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A domain is a promise that the function returns a probability, and it breaks in two ways that
+# different people fix: it raises, or it returns something that is not a finite number between
+# 0 and 1 — including something that will not turn into a number at all. The two bounds are
+# themselves probabilities. And unlike the monotonicity probe, this one sweeps every variable
+# whatever its direction, and counts every call it makes, failed or not.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the grid size, each variable's presence in the base row and each domain's order. For
+# each variable in the order given and each grid value ascending, copy the base row, set the
+# value and call the function. An exception becomes a raised failure carrying the exception's
+# class name and NaN. Otherwise try converting the result to a float; if that fails, or the
+# number is not finite, or it falls outside the closed unit interval, record an impossible
+# failure with the value — NaN when it would not convert. Count every call as tested.
+#
+# </details>
 
 # %%
 class DomainFailure(NamedTuple):
@@ -793,6 +919,25 @@ _try("exercise 4", _check_domain)
 #
 # A feature can separate the target upward or downward, so the alarm is on
 # `max(auc, 1 - auc)` — the distance from 0.5, not the direction of it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A leak can point either way. A feature with an AUC near zero separates the target as
+# perfectly as one near one — it is simply upside down — so the flag is on distance from 0.5,
+# while the AUC you report keeps its own direction so that a reader can see which way it
+# points. The threshold is a minimum, and the ordering has to be total: strength first, then
+# name.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate everything the docstring lists, including a single-class target and a threshold
+# outside its allowed interval. Score every column with the given auc_by_ranks and store it as
+# a plain float. Work out each feature's strength as the larger of its AUC and one minus it,
+# flag the ones at or above the threshold, and order the flagged names by strength, strongest
+# first, with ties alphabetical.
+#
+# </details>
 
 # %%
 class LeakageScan(NamedTuple):
@@ -879,6 +1024,24 @@ _try("exercise 5", _check_leakage)
 # This one is arithmetic, not statistics. Count the test rows whose exact values appear in
 # the training extract, and report which ones, so the finding can be handed back with
 # evidence rather than with a percentage.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is identity, not similarity: a match is exact equality across every column, with no
+# tolerance. Two counts are easy to confuse. A test row is contaminated when it appears
+# anywhere in the training extract; it is a repeat within test only when an EARLIER test row
+# matches it — so three identical test rows are two repeats, not three.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate that both arrays are two-dimensional with the same number of columns, and that test
+# has rows. Put every training row, as a tuple, into a set. Walk the test rows in order
+# alongside a second set that grows as you go: a row found in the training set records its
+# index, a row already in the growing set adds one repeat, and then the row joins the growing
+# set. The share is contaminated rows over test rows, as a plain float.
+#
+# </details>
 
 # %%
 class Contamination(NamedTuple):
@@ -962,6 +1125,25 @@ _try("exercise 6", _check_contamination)
 #
 # A single-class sample has a baseline Brier of zero and no skill score at all. That is a
 # `ValueError`, not a division producing `inf` that a report then prints as a triumph.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The baseline is the best constant there is — the base rate, for everyone — and skill is the
+# share of its error the model removes. A model worse than the constant scores negative, and
+# that negative number is the finding, so nothing may clamp it. The margin is a minimum, so
+# landing on it passes. And a single-class sample leaves the baseline with no error to remove,
+# which is a ValueError rather than an infinite skill for a report to celebrate.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the lengths, the labels, the single-class case, the probability range and a negative
+# margin. The model's Brier score is the mean squared gap between prediction and outcome; the
+# baseline's is the same, with the sample's mean outcome as the prediction for every record.
+# Skill is one minus the ratio of the two, and passed is whether skill reaches the margin.
+# Convert every number to a plain float on the way out.
+#
+# </details>
 
 # %%
 class BaselineCheck(NamedTuple):
@@ -1048,6 +1230,27 @@ _try("exercise 7", _check_baseline)
 # treats an undocumented variable as high and a post-decision feature as critical has written
 # that down somewhere, and a register that hard-codes its own view of severity is one more
 # opinion in a document that is supposed to contain none.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The register invents nothing: every finding comes from a probe result, and every severity
+# from the policy — a rule that fires with no severity on file is an error, never a default.
+# Two traps. The domain probe returns one failure per failing POINT, but the register raises
+# one finding per variable and kind, quoting the FIRST such point. And the sort must be total,
+# so that two runs of the review produce the same document.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Name every missing evidence key in one ValueError. Walk the six results in turn, appending a
+# Finding for each failure they report, with its rule, its subject and a detail string carrying
+# the figures in exactly the formats the table sets. For the domain probe keep only the first
+# failure of each kind for each variable. Contamination fires only strictly above the policy's
+# tolerance, and the baseline only when it did not pass. Look each severity up in the policy,
+# sort by the severity's position in SEVERITY_ORDER, then rule, then subject, and return a
+# tuple.
+#
+# </details>
 
 # %%
 class Finding(NamedTuple):
@@ -1251,7 +1454,7 @@ def _run_review() -> None:
         print(f"  [{f.severity:8s}] {f.rule:<18s} {subject:<24s} {f.detail}")
 
 
-_try("the review", _run_review)
+_try("the review", _run_review, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 11. Common mistakes
@@ -1290,7 +1493,7 @@ def _show_single_row_probe() -> None:
     print("would have certified a variable list the implementation does not use.")
 
 
-_try("one-row probe", _show_single_row_probe)
+_try("one-row probe", _show_single_row_probe, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 12. Self-check
@@ -1359,7 +1562,7 @@ def _show_review_reproduces() -> None:
     print("a record of what one reviewer thought on one afternoon.")
 
 
-_try("the review reproduces", _show_review_reproduces)
+_try("the review reproduces", _show_review_reproduces, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1380,7 +1583,10 @@ print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
 
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_observe),
+    # Re-run every check against your code as it stands NOW, so the board reports your latest
+    # edit rather than whatever each check cell said the last time you ran it. Quietly: a pass
+    # or an untouched stub says nothing here, and a check that fails still says why.
+    for _label, _check in (("exercise 1", _check_observe),
                           ("exercise 2", _check_reconcile),
                           ("exercise 3", _check_monotonicity),
                           ("exercise 4", _check_domain),
@@ -1388,8 +1594,15 @@ if __name__ == "__main__":
                           ("exercise 6", _check_contamination),
                           ("exercise 7", _check_baseline),
                           ("exercise 8", _check_findings)):
-        _try(_name, _check)
+        _try(_label, _check, quiet=True)
+    _progress_board()
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _still_failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if "ipykernel" in sys.modules:
+        if _still_failing:
+            print("\nstill failing: " + ", ".join(_still_failing)
+                  + " — each one's message above names the likely mistake.")
+    elif _FAILED_CHECKS:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

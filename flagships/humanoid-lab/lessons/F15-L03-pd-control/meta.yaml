@@ -128,5 +128,5 @@ points: 32
 # droop ratio 0.9998, sign-error ratio 2.00x, improvement 6950x, ceiling 4860 N m / rad.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: 20-mutant rubric pass, 4 defects found and fixed, all four gates re-run green"
-measured_seconds: 1.1
-measured_peak_mib: 91
+measured_seconds: 1.2
+measured_peak_mib: 90

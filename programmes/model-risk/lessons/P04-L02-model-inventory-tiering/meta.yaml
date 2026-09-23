@@ -148,4 +148,4 @@ status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 — 4/4 gates re-run green; 30 mutants graded, 25 already caught (73%-98%), 5 survivors were rubric defects and are now caught (96%-98%), 1 survivor proved equivalent over 8,375 differential cases; reference 121/121, 5 controls at 100%"
 
 measured_seconds: 0.1
-measured_peak_mib: 33
+measured_peak_mib: 34

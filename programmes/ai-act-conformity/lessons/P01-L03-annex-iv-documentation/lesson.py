@@ -118,7 +118,9 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # %%
 # Setup: everything the lesson needs, in one cell. Standard library only — a documentation
 # generator you cannot run without a vendor's SDK is a generator an auditor cannot re-run.
+import contextlib
 import hashlib
+import io
 import json
 import sys
 from datetime import date, datetime, timedelta, timezone
@@ -161,26 +163,77 @@ def content_hash(payload: Any) -> str:
     return hashlib.sha256(canonical_bytes(payload)).hexdigest()
 
 
-_FAILED_CHECKS: list[str] = []
+# Every check and every demo below reports how it went here, and the progress board at the
+# foot of the notebook reads it: label -> "passed", "failed" or "not started". Each run of a
+# cell overwrites its own entry, so the board shows where your code stands now.
+_STATUS: dict[str, str] = {}
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _and(items: list) -> str:
+    """'a', 'a and b', 'a, b and c' — for naming exercises in a sentence."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (),
+         builds_on: tuple = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other five.
+    exercise never hides the feedback on the other five. Every outcome is recorded for the
+    progress board, and outside a notebook the `__main__` block at the foot of this file exits
+    non-zero if any check is still failing.
+
+    `needs` names the exercises a demo consumes. Until each has passed its check, the demo says
+    which it is waiting for and skips, rather than running on a stub or on a wrong answer.
+    `builds_on` names the earlier exercises a check also calls. The check always runs, but
+    when one of those has not passed yet it says so, so you fix the right function first.
     """
+    waiting = [need for need in needs if _STATUS.get(need) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_and(waiting)} to pass "
+              f"{'its check' if len(waiting) == 1 else 'their checks'} first, then re-run "
+              "this cell.")
+        return
+    behind = [need for need in builds_on if _STATUS.get(need) != "passed"]
+    note = (f" (It also runs your {_and(behind)}, which "
+            f"{'has' if len(behind) == 1 else 'have'} not passed yet: start there.)"
+            if behind else "")
     try:
         check()
     except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        _STATUS[label] = "not started"
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this "
+              f"cell.{note}")
     except AssertionError as exc:
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: FAILED — {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}{note}")
     except Exception as exc:  # a half-finished implementation raising something else
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}{note}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board(exercises: tuple) -> list:
+    """Re-check every exercise against your code as it stands now, and print the board.
+
+    The checks run quietly here — each already printed its message in its own cell — so the
+    board also picks up anything you fixed after running those cells. Returns the labels of
+    every check or demo that is still failing.
+    """
+    for label, _title, check in exercises:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _try(label, check)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("progress board")
+    for label, title, _check in exercises:
+        state = _STATUS[label]
+        print(f"  {marks[state]} {state:11s}  {label} · {title}")
+    done = sum(_STATUS[label] == "passed" for label, _title, _check in exercises)
+    print(f"\n{done} of {len(exercises)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
 
 
 # %% [markdown]
@@ -463,6 +516,24 @@ print(f"of those, {len([n for n in _named if n not in SOURCES])} are not in SOUR
 # and asks it for a key. Raising there means one malformed schema entry takes down the whole
 # document build; returning `MISSING` means the completeness report names the path and the
 # other eight sections still get generated.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Absent and empty are different findings. What should come back for a field that exists but
+# holds a blank string, a zero or an empty list — and what for a path that does not exist at
+# all? And what should happen when the walk reaches a string while the path still has keys to
+# go?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# A path with no dot is not a field. Otherwise split off the artefact name, look it up in
+# `sources`, and walk its `payload` one key at a time: before each step, check that the
+# current node is a dict that holds the key, and return `MISSING` the moment it is not. Hand
+# back whatever you reach unchanged — judging it is exercise 2's job.
+#
+# </details>
 
 # %%
 def field_value(sources: dict, path: str) -> Any:
@@ -543,6 +614,23 @@ _try("exercise 1", _check_field_value)
 # template row somebody pasted in and never filled. It is a non-empty list — truthy, len 1 —
 # and it sources nothing. So emptiness recurses: a list or dict is sourced when at least one
 # thing inside it is.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two edges, in opposite directions. Truthiness throws away a measured zero and a `False`;
+# stopping at the container accepts a list of blank template rows. What does "empty" mean for
+# a string, and what does it mean for a container?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Deal with the absences first — the sentinel and `None` — then strings, which are unsourced
+# when blank after stripping. Then containers: a dict by its values, the other kinds by their
+# elements, recursing, and sourced as soon as any one thing inside is. Everything else,
+# numbers and booleans included, is sourced.
+#
+# </details>
 
 # %%
 def is_sourced(value: Any) -> bool:
@@ -608,6 +696,24 @@ _try("exercise 2", _check_is_sourced)
 # An `any_of` path that is missing or empty is **not** reported in `missing` or `empty`. Only
 # the group verdict matters: a provider who applied no harmonised standards has nothing wrong
 # with their pack, and a report that nags about it teaches people to ignore the report.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three kinds of not-ready go to three different teams. Which of your two earlier functions
+# tells an absent field from a blank one? And an either/or path that is blank is not a defect
+# on its own — only the group as a whole can fail.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each required path, resolve it: the sentinel goes to `missing`, present-but-unsourced to
+# `empty`, and anything else adds its artefact name to a set. For each `any_of` group, keep
+# the sourced paths; if there are none, the whole group goes to `unmet_choices` as a tuple,
+# otherwise their artefacts join the set — and the group's paths never land in `missing` or
+# `empty`. Return tuples, the artefact names sorted.
+#
+# </details>
 
 # %%
 class SectionStatus(NamedTuple):
@@ -695,7 +801,7 @@ def _check_check_section() -> None:
     print("exercise 3 ok · absent, blank and unmet-either/or are three different verdicts")
 
 
-_try("exercise 3", _check_check_section)
+_try("exercise 3", _check_check_section, builds_on=("exercise 1", "exercise 2"))
 
 # %%
 def _show_completeness() -> None:
@@ -714,7 +820,8 @@ def _show_completeness() -> None:
           "which is what an honest\nmid-programme pack looks like.")
 
 
-_try("completeness report", _show_completeness)
+_try("completeness report", _show_completeness,
+     needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 7. Exercise 4 — `provenance_stamp()`: which artefact, which run, which bytes
@@ -728,6 +835,21 @@ _try("completeness report", _show_completeness)
 # runs, even when it produces byte-identical output. Your staleness report then flags all
 # nine sections every morning, everyone switches it off by Friday, and the drift you built it
 # to catch sails through. The digest covers the **payload** and nothing else.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# If the pipeline re-runs tomorrow and produces exactly the same bytes, should the digest
+# move? What does that tell you about which part of the artefact to hash?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Three of the four keys come straight off the artefact's own fields. The fourth is
+# `content_hash` of the payload alone — not of the whole `Artefact`, and never with the run id
+# or the timestamp folded in.
+#
+# </details>
 
 # %%
 def provenance_stamp(artefact: Artefact) -> dict:
@@ -787,6 +909,24 @@ _try("exercise 4", _check_provenance_stamp)
 # reason that names every path blocking it, so the message alone tells an engineer what to go
 # and fix. No placeholder, no em dash, no "TBC" — those are how a pack goes green while
 # sourcing nothing.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A section either passes `check_section` or is not emitted at all — no placeholder, no dash.
+# What does an omitted section's reason need to contain for the message alone to be
+# actionable? And an either/or section emits only the side that is sourced.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Run `check_section` for each spec, in order. When it is complete, `fields` holds every
+# required path's value plus only the sourced `any_of` paths, and `provenance` has one stamp
+# per name in the status's `artefacts`, in that order. When it is not, carry the three lists
+# through and build a reason string that names every blocking path, both branches of an unmet
+# group included. The document is complete only when nothing was omitted.
+#
+# </details>
 
 # %%
 def render_document(specs: tuple, sources: dict) -> dict:
@@ -865,7 +1005,8 @@ def _check_render_document() -> None:
           f"{len(doc['omitted'])} refused with reasons")
 
 
-_try("exercise 5", _check_render_document)
+_try("exercise 5", _check_render_document,
+     builds_on=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
 
 # %% [markdown]
 # ## 9. Exercise 6 — `staleness_report()`: the day the document stopped being true
@@ -880,6 +1021,23 @@ _try("exercise 5", _check_render_document)
 # stamps it, keeps its old timestamp and sails straight through. Both happen in the snapshot
 # below. Key the report on the **digest**: it answers "are these the bytes the document was
 # generated from", which is the actual question.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which signal decides — the digest or the clock? The snapshot below holds both a re-run with
+# identical bytes and a hand-edit that kept its old timestamp. And when an artefact has gone,
+# what can you honestly say about either?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the sections, then each section's stamps: one `Drift` per stamp. If the artefact is not
+# in `sources`, say so with both flags off and carry on. Otherwise recompute the payload's
+# digest and compare it with the stamp's — that alone sets the verdict — and compare
+# `generated_at` separately, reporting it for both verdicts as a diagnostic.
+#
+# </details>
 
 # %%
 SOURCES_AS_FILED: dict[str, Artefact] = dict(SOURCES)
@@ -972,7 +1130,7 @@ def _check_staleness_report() -> None:
     print("exercise 6 ok · the hand-edit is caught, the re-run is not flagged")
 
 
-_try("exercise 6", _check_staleness_report)
+_try("exercise 6", _check_staleness_report, builds_on=("exercise 5",))
 
 # %% [markdown]
 # ## 10. The artefact: the document, its provenance table and its verdict
@@ -1003,7 +1161,8 @@ def _emit_document() -> None:
           f"sections sourced")
 
 
-_try("the document", _emit_document)
+_try("the document", _emit_document,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 
 # %%
@@ -1029,7 +1188,9 @@ def _emit_staleness() -> None:
           "of the real drift.")
 
 
-_try("the staleness verdict", _emit_staleness)
+_try("the staleness verdict", _emit_staleness,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6"))
 
 # %% [markdown]
 # ## 11. Common mistakes
@@ -1169,16 +1330,29 @@ def check_self_check(answers: dict) -> None:
 #
 # **Again, and finally: this is engineering, not legal advice.**
 
+# %% [markdown]
+# ## Your progress
+#
+# The cell below re-runs every exercise's check against your code as it stands now, and
+# prints one line per exercise: ✅ passed, ❌ failed or ⏳ not started. Run it whenever you like.
+
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_field_value),
-                          ("exercise 2", _check_is_sourced),
-                          ("exercise 3", _check_check_section),
-                          ("exercise 4", _check_provenance_stamp),
-                          ("exercise 5", _check_render_document),
-                          ("exercise 6", _check_staleness_report)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
-        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
+    _failing = _progress_board((
+        ("exercise 1", "field_value()", _check_field_value),
+        ("exercise 2", "is_sourced()", _check_is_sourced),
+        ("exercise 3", "check_section()", _check_check_section),
+        ("exercise 4", "provenance_stamp()", _check_provenance_stamp),
+        ("exercise 5", "render_document()", _check_render_document),
+        ("exercise 6", "staleness_report()", _check_staleness_report),
+    ))
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends the run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel that would be a traceback at the foot of the
+    # page, so there it is one printed line instead.
+    if _failing:
+        if "ipykernel" in sys.modules:
+            print("\nstill failing: " + ", ".join(_failing)
+                  + ". Each one's own cell above says what went wrong.")
+        else:
+            raise SystemExit("checks failed: " + ", ".join(_failing))

@@ -105,8 +105,10 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib
 import math
+import sys
 import time
 from pathlib import Path
+from typing import Callable
 
 import mujoco
 import numpy as np
@@ -162,6 +164,63 @@ print(f"torque limits (N*m): ankle {CTRL_RANGE[0]}, hip {CTRL_RANGE[1]}")
 print(f"horizon {HORIZON_STEPS} steps = {HORIZON_STEPS * MODEL.opt.timestep:.1f} s "
       f"of simulated time; a lean past {FALL_ANGLE} rad counts as fallen")
 
+
+# True in a notebook and when this file is run as a script; False when the autograder
+# imports it. Every check and demo below runs under this guard, so the cell you are sitting
+# in reports on itself, while importing the lesson never runs anything.
+_IS_MAIN = __name__ == "__main__"
+
+# The five exercises, in the order the progress board in the last cell lists them.
+_EXERCISES = {
+    "exercise 1": "rollout",
+    "exercise 2": "apply_parameters",
+    "exercise 3": "evaluate",
+    "exercise 4": "sample_conditions",
+    "exercise 5": "can_run_isaac_sim",
+}
+# label -> "passed" | "failed" | "not started": the latest verdict of every check that has
+# run. The progress board in the last cell reads it.
+_STATUS: dict = {}
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. Nothing is swallowed: every verdict is
+    recorded in `_STATUS`, and the last cell exits non-zero if any check came back wrong when
+    this file runs as a script.
+
+    `needs` names the exercises a demo consumes. Until each of them has passed its own check,
+    the demo says which one it is waiting for and skips, instead of failing on its behalf.
+    """
+    waiting = [n for n in needs if _STATUS.get(n) != "passed"]
+    if waiting:
+        _STATUS.pop(label, None)
+        one = len(waiting) == 1
+        names = [f"{n} ({_EXERCISES[n]})" for n in waiting] if len(waiting) <= 2 else waiting
+        names = names[0] if one else ", ".join(names[:-1]) + " and " + names[-1]
+        print(f"{label}: skipped — it needs {names} to pass first. Finish "
+              f"{'that' if one else 'those'}, re-run "
+              + ("its check cell" if one else "their check cells") + ", then re-run this one.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        print(f"{label}: " + (f"not started yet — {exc}" if str(exc) else
+                              "not implemented yet — fill in the stub above")
+              + ", then re-run this cell.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
 # %% [markdown]
 # ## 1. The gap is not one thing, it is four
 #
@@ -205,6 +264,26 @@ print("it is already falling forwards; the controller has to catch it")
 # Two of the four gaps live inside this loop. **Latency** is a pipeline: the torque you apply
 # now was computed several steps ago. **Sensor noise** corrupts what the controller *sees*,
 # never the true state — that distinction is the whole point, so read it twice.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Keep apart three things the loop exists to separate: the TRUE state, which only MuJoCo
+# changes; what the controller SEES, the true state plus noise; and what the motor RECEIVES,
+# a command from some steps ago that may be beyond its limit. Most wrong answers blur two of
+# them. Then ask: with a delay of three steps, which commands are the first three applied?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Before the loop: reset to the lean, build the generator once, and fill the pipeline with as
+# many zero commands as the delay. Each step: observe (the noise goes on a copy, never on
+# `data`), compute the command with its minus sign, append it and take the oldest off the
+# front, test that RAW command against the range, write it unclamped, step. Only then add the
+# squared ankle angle and test the absolute lean. On a fall, count the step you just took —
+# that count is also what the saturation fraction divides by.
+#
+# </details>
 
 # %%
 def rollout(model, data, gains, delay_steps: int = 0, noise_std: float = 0.0,
@@ -293,6 +372,10 @@ def _check_rollout() -> None:
           f"saturated {r['saturated_fraction']:.0%} of the episode")
 
 
+if _IS_MAIN:
+    _try("exercise 1", _check_rollout)
+
+
 # %% [markdown]
 # ## 3. Saturation: the lie the controller is never told
 #
@@ -321,6 +404,22 @@ print(f"the ankle's real ceiling is {CTRL_RANGE[0][1]:.0f} N*m, and the controll
 # That is also the trap. Edit it in place and forget to restore it, and every later condition
 # silently inherits the previous one's mass. Always set from the stored baseline, never
 # multiply what is already there.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Call it twice with the same arguments and the model must end up the same — that is the
+# whole contract, and anything that reads the CURRENT mass to work out the new one breaks it.
+# Notice too that a call which mentions only friction still sets the mass, back to its default.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Work the torso mass out from the constant stored at start-up, never from the model; write
+# the friction into every joint's entry, not just one; then ask MuJoCo to rebuild what it
+# derived from the old mass. Three statements, and none reads a value a previous call left.
+#
+# </details>
 
 # %%
 def apply_parameters(model, data, mass_scale: float = 1.0,
@@ -380,12 +479,32 @@ def _check_apply_parameters() -> None:
     print("exercise 2 looks right: mass and friction set from baseline, no compounding")
 
 
+if _IS_MAIN:
+    _try("exercise 2", _check_apply_parameters)
+
+
 # %% [markdown]
 # ## 5. Exercise 3 — `evaluate`, one condition end to end
 #
 # A *condition* is one dict describing one imagined robot: `mass_scale`, `frictionloss`,
 # `delay_steps`, `noise_std`, `seed`. Two of those keys are model edits and three are loop
 # arguments. Splitting them correctly is the exercise.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Sort the five keys into two piles: those that change the machine, and those that change how
+# the episode is run. Then picture the model as the NEXT condition finds it, if this one had a
+# heavy torso — the check runs exactly that sequence on one model.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Call `apply_parameters` every time — nominal included — with this condition's mass and
+# friction, so nothing from the previous condition survives. Then run the rollout with this
+# condition's delay, noise and seed as keyword arguments, and return its dict untouched.
+#
+# </details>
 
 # %%
 def evaluate(model, data, gains, condition: dict) -> dict:
@@ -435,6 +554,11 @@ def _check_evaluate() -> None:
         "mass. apply_parameters must set from the baseline on every call."
     )
     print("exercise 3 looks right: conditions apply, and they do not leak into each other")
+
+
+# evaluate hands its work to your rollout and apply_parameters, so it waits for both.
+if _IS_MAIN:
+    _try("exercise 3", _check_evaluate, needs=("exercise 1", "exercise 2"))
 
 
 # %% [markdown]
@@ -501,6 +625,11 @@ def _check_sweeps() -> None:
           "\nSurvival is not the only thing worth measuring, and it is often the last to move.")
 
 
+if _IS_MAIN:
+    _try("the sweeps", _check_sweeps,
+         needs=("exercise 1", "exercise 2", "exercise 3"))
+
+
 # %% [markdown]
 # ## 7. Exercise 4 — the domain-randomisation wrapper
 #
@@ -511,6 +640,23 @@ def _check_sweeps() -> None:
 #
 # Your job is the sampler. Draw the numbers in exactly the documented order, so that a given
 # seed reproduces exactly, for you and for the grader.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The same seed must give the same list, for you and for the grader, which draws its own copy
+# in the documented order — so the ORDER of the five draws matters as much as their ranges.
+# And ask where each condition's own rollout seed comes from: not the `seed` you were handed.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# One generator, made once from the seed, before the loop. For each condition, five draws in
+# the order the docstring lists, each turned into a plain Python float or int as it comes out
+# — a numpy integer is not an int. Read the ranges from the `spec` argument, not from the
+# module-level table. The fifth draw is that condition's rollout seed.
+#
+# </details>
 
 # %%
 DR_SPEC = {
@@ -613,6 +759,10 @@ def _check_sample_conditions() -> None:
     print("exercise 4 looks right: reproducible, in range, one rollout seed per condition")
 
 
+if _IS_MAIN:
+    _try("exercise 4", _check_sample_conditions)
+
+
 # %% [markdown]
 # ## 8. Does it actually narrow the gap?
 #
@@ -668,6 +818,11 @@ def _check_comparison() -> None:
           "\n  model you tuned on. Only the held-out column is evidence of anything.")
 
 
+if _IS_MAIN:
+    _try("the held-out comparison", _check_comparison,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
+
+
 # %% [markdown]
 # ## 9. Exercise 5 — what this course cannot give you
 #
@@ -681,6 +836,22 @@ def _check_comparison() -> None:
 # has RT Cores** (NVIDIA's own product page says so) and its 16 GB meets the 16 GB floor
 # exactly. The L4 clears both bars more comfortably still, with third-generation RT Cores and
 # 24 GB. The real obstacles are different, and your function has to name them precisely.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three independent checks, each able to add one reason: do not stop at the first failure.
+# Watch the boundary — a card with exactly the minimum VRAM meets the minimum. And the grader
+# hands you a relaxed requirement, so every threshold must come from the argument.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Start an empty list. Test for RT Cores only when the requirement asks for them; test VRAM
+# against the requirement's minimum with a strict less-than, quoting both numbers; test
+# whether NVIDIA names the card. Append in that order. `ok` is whether the list stayed empty.
+#
+# </details>
 
 # %%
 # Every field below is from a primary source, recorded in claims.yaml with its access date.
@@ -764,6 +935,10 @@ def _check_can_run_isaac_sim() -> None:
           "\nlacking RT Cores. Check the claim, not the folklore.")
 
 
+if _IS_MAIN:
+    _try("exercise 5", _check_can_run_isaac_sim)
+
+
 # %% [markdown]
 # ## 10. The hardware ladder, with prices that carry their receipts
 #
@@ -815,6 +990,10 @@ def ladder_table(ladder: list = HARDWARE_LADDER) -> None:
                   f"GPU-hours of Isaac Sim")
     print("\nEvery source URL is in claims.yaml with the date it was read. Prices move; the"
           "\nmethod of checking them before you repeat them does not.")
+
+
+if _IS_MAIN:
+    ladder_table()
 
 
 # %% [markdown]
@@ -930,6 +1109,17 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+def _check_self_check_answered() -> None:
+    """The self-check, through the guard: four question marks are not started, not wrong."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("put your four letters in SELF_CHECK above")
+    _check_self_check()
+
+
+if _IS_MAIN:
+    _try("self-check", _check_self_check_answered)
+
+
 # %% [markdown]
 # ## What you built, and where it goes next
 #
@@ -942,13 +1132,26 @@ def _check_self_check(answers: dict = None) -> None:
 # exactly the `sample_conditions` / `evaluate` contract you implemented here.
 
 # %%
-if __name__ == "__main__":
-    _check_rollout()
-    _check_apply_parameters()
-    _check_evaluate()
-    _check_sweeps()
-    _check_sample_conditions()
-    _check_comparison()
-    _check_can_run_isaac_sim()
-    ladder_table()
-    _check_self_check()
+# Your progress board. It reads the verdict each check cell recorded the last time it ran, so
+# after you fix an exercise, re-run that exercise's check cell and then this one.
+def _progress_board() -> list:
+    """Print one line per exercise, then the tally. Returns the labels that came back wrong."""
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("\nprogress board")
+    for label, what in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {marks[state]} {label}  {what:<20s} {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
+
+
+if _IS_MAIN:
+    _failed = _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends the run non-zero, so a green exit code cannot paper
+    # over it. Inside a notebook kernel the same verdict is a printed line, not a traceback.
+    if _failed and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(_failed))
+    if _failed:
+        print("checks failed: " + ", ".join(_failed) + " — each printed its reason above")

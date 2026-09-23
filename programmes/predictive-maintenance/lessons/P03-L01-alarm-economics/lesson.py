@@ -112,8 +112,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Any, Callable, NamedTuple
 
 import numpy as np
@@ -172,25 +175,73 @@ def _show(fig: "matplotlib.figure.Figure") -> None:
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("burst_rms",),
+    "exercise 2": ("causal_rolling_median",),
+    "exercise 3": ("health_index",),
+    "exercise 4": ("alarm_times",),
+    "exercise 5": ("classify_outcomes",),
+    "exercise 6": ("sweep_thresholds",),
+    "exercise 7": ("roc_points",),
+    "exercise 8": ("pr_points",),
+    "exercise 9": ("expected_cost",),
+    "exercise 10": ("accuracy",),
+    "exercise 11": ("best_operating_point",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (health_index)"; several -> "exercises 3, 6 and 8"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -312,6 +363,18 @@ print("number per hour that rises when a bearing is degrading and does not other
 # the mean first. On a burst with any DC component — a bias on the accelerometer's amplifier,
 # a slow thermal ramp — the two answers differ, and the one the instrument is calibrated
 # against is the RMS.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Picture a burst sitting on a steady DC bias. One of RMS and standard deviation keeps that
+# bias in the answer and one throws it away: which is which? Then: the input may be 1-D, 2-D
+# or 3-D, so which axis always holds the samples of one burst?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Square every sample, average along the last axis only, then take the square root. Never
+# centre the burst first; that single step is what turns RMS into standard deviation.
+# </details>
 
 # %%
 def burst_rms(bursts: np.ndarray) -> np.ndarray:
@@ -371,6 +434,20 @@ _try("exercise 1", _check_burst_rms)
 #   is unavailable, and if you tune a threshold against it you have tuned against information
 #   the plant will not have. The first `window - 1` hours therefore use a *growing* window of
 #   whatever history exists, not a padded one.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# At hour `t`, which samples exist yet? In the first few hours, before a full window of
+# history exists, how many values are in the window — and what is the median of an even
+# number of them? Padding with the first value is not the same answer, and neither is a mean.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject a `window` below 1 with `ValueError` before anything else. Then, for each position
+# along the last axis, take the slice that ENDS at `t` and starts `window - 1` earlier, never
+# before zero, and take its median along that axis so a 2-D input is smoothed row by row. A
+# plain loop over `t` is fine: correctness is the point here, not speed.
+# </details>
 
 # %%
 def causal_rolling_median(x: np.ndarray, window: int) -> np.ndarray:
@@ -453,7 +530,7 @@ def _show_median_versus_mean() -> None:
     print("forklift. That is what a nuisance alarm is, and section 6 puts a price on it.")
 
 
-_try("median vs mean", _show_median_versus_mean)
+_try("median vs mean", _show_median_versus_mean, needs=("exercise 2",))
 
 # %% [markdown]
 # ## 4. Exercise 3 — `health_index()`
@@ -470,6 +547,19 @@ _try("median vs mean", _show_median_versus_mean)
 # amplitude. Use the raw RMS for the baseline, not the smoothed series — the smoother's
 # growing window makes its first few values depend on `window`, and a baseline that moves when
 # you retune your filter is a baseline that will silently retune every threshold you set.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which series is the baseline taken from, the raw hourly RMS or the smoothed one? And once
+# you have one baseline per machine, what shape must it have to divide each machine's own row
+# of hours rather than being broadcast across machines?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `baseline_hours` first. Take the RMS of every burst (exercise 1), smooth that along
+# the hours axis (exercise 2), and separately take each machine's median of the RAW RMS over
+# its first `baseline_hours` hours, kept as a column. Divide the smoothed series by it.
+# </details>
 
 # %%
 def health_index(bursts: np.ndarray, baseline_hours: int = BASELINE_HOURS,
@@ -553,7 +643,7 @@ def _plot_fleet_health() -> None:
     print("so any threshold below that worst value will alarm on a machine that was fine.")
 
 
-_try("fleet health", _plot_fleet_health)
+_try("fleet health", _plot_fleet_health, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 5. From a number to a decision
@@ -575,6 +665,22 @@ _try("fleet health", _plot_fleet_health)
 # |---|---|---|
 # | **machine failed** | true positive: planned intervention | false negative: unplanned failure |
 # | **machine survived** | false positive: false alarm | true negative: nothing happened |
+#
+# **Exercise 4** finds each machine's first alarm hour; **exercise 5**, below it, sorts the
+# fleet into those four cells.
+#
+# <details><summary>💡 Exercise 4 · Hint 1 — what to think about</summary>
+#
+# Is a health index exactly equal to the threshold an alarm? And what does `np.argmax` return
+# for a row that never crosses at all — how would you tell that apart from a machine that
+# crossed in its very first hour?
+# </details>
+# <details><summary>💡 Exercise 4 · Hint 2 — the approach, in words</summary>
+#
+# Build a boolean mask of "at or above the threshold". Its first True per row is the alarm
+# hour; separately ask whether each row has any True at all, and use the docstring's
+# never-alarmed marker wherever it has none. Return one integer per machine.
+# </details>
 
 # %%
 def alarm_times(health: np.ndarray, threshold: float) -> np.ndarray:
@@ -592,6 +698,47 @@ def alarm_times(health: np.ndarray, threshold: float) -> np.ndarray:
     raise NotImplementedError
 
 
+def _check_alarm_times() -> None:
+    h = np.array([[1.0, 1.5, 2.0], [1.0, 1.0, 1.0]])
+    got = alarm_times(h, 1.5)
+    assert np.asarray(got).tolist() == [1, -1], (
+        f"alarm_times gave {np.asarray(got).tolist()}, expected [1, -1]. A 2 means you used "
+        "> instead of >=; a 0 for the second machine means argmax returned 0 for a row with "
+        "no crossing at all — you have to test whether any crossing happened"
+    )
+    assert np.asarray(alarm_times(h, 1.0)).tolist() == [0, 0], (
+        "at a threshold of 1.0 both machines alarm in their first hour"
+    )
+    assert np.asarray(alarm_times(h, 9.0)).tolist() == [-1, -1], (
+        "no machine reaches 9.0, so every entry is -1, not the number of hours"
+    )
+    print("exercise 4 looks right — the first alarm hour, and -1 for a machine that never alarms")
+
+
+# %%
+_try("exercise 4", _check_alarm_times)
+
+# %% [markdown]
+# ### Exercise 5 — `classify_outcomes()`
+#
+# One alarm hour per machine in, the four cells of the table above out, with the lead-time
+# rule deciding which side of the table a failing machine lands on.
+#
+# <details><summary>💡 Exercise 5 · Hint 1 — what to think about</summary>
+#
+# A failing machine that alarmed one hour before it broke: which of the four cells is it
+# in? And a machine that never failed but alarmed once, at any hour — which cell is that?
+# Whatever you count, every machine must land in exactly one cell.
+# </details>
+# <details><summary>💡 Exercise 5 · Hint 2 — the approach, in words</summary>
+#
+# Reject a negative `lead_hours` first. Split the fleet by whether it failed. A failed machine
+# is a catch only if it alarmed at all AND its warning was at least `lead_hours`, inclusive;
+# every other failed machine is a miss. A survivor that alarmed is a false alarm, a survivor
+# that did not is a true negative. Return the four counts as a `Counts`.
+# </details>
+
+# %%
 class Counts(NamedTuple):
     """The four outcomes. Each field is an int for one threshold, or an array over many."""
 
@@ -620,21 +767,7 @@ def classify_outcomes(alarm_idx: np.ndarray, fail_hour: np.ndarray,
     raise NotImplementedError
 
 
-def _check_decision() -> None:
-    h = np.array([[1.0, 1.5, 2.0], [1.0, 1.0, 1.0]])
-    got = alarm_times(h, 1.5)
-    assert np.asarray(got).tolist() == [1, -1], (
-        f"alarm_times gave {np.asarray(got).tolist()}, expected [1, -1]. A 2 means you used "
-        "> instead of >=; a 0 for the second machine means argmax returned 0 for a row with "
-        "no crossing at all — you have to test whether any crossing happened"
-    )
-    assert np.asarray(alarm_times(h, 1.0)).tolist() == [0, 0], (
-        "at a threshold of 1.0 both machines alarm in their first hour"
-    )
-    assert np.asarray(alarm_times(h, 9.0)).tolist() == [-1, -1], (
-        "no machine reaches 9.0, so every entry is -1, not the number of hours"
-    )
-
+def _check_classify_outcomes() -> None:
     counts = classify_outcomes(np.array([5, 95, -1, 20]), np.array([100, 100, 100, -1]), 10)
     assert isinstance(counts, Counts), "classify_outcomes must return a Counts"
     assert (int(counts.tp), int(counts.fp), int(counts.fn), int(counts.tn)) == (1, 1, 2, 0), (
@@ -655,11 +788,11 @@ def _check_decision() -> None:
         pass
     else:
         raise AssertionError("a negative lead_hours must raise ValueError")
-    print("exercise 4 and 5 look right — alarms, lead time, and the four outcomes")
+    print("exercise 5 looks right — lead time, and the four outcomes")
 
 
 # %%
-_try("exercises 4 and 5", _check_decision)
+_try("exercise 5", _check_classify_outcomes)
 
 # %% [markdown]
 # ## 6. Exercises 6-8 — sweep the threshold, then draw the curves everybody draws
@@ -667,6 +800,40 @@ _try("exercises 4 and 5", _check_decision)
 # One threshold gives one confusion matrix. A sweep gives a curve. Build the sweep, then the
 # two standard curves — and notice, when you have them, that neither one tells you which
 # point on it to use.
+#
+# <details><summary>💡 Exercise 6 · Hint 1 — what to think about</summary>
+#
+# You already have the decision rule for ONE threshold. Should the answer be a list of
+# `Counts`, or one `Counts` of arrays — and whose `lead_hours` must reach the inner calls?
+# </details>
+# <details><summary>💡 Exercise 6 · Hint 2 — the approach, in words</summary>
+#
+# Loop over the thresholds. At each, call `alarm_times` and then `classify_outcomes` with the
+# caller's `lead_hours`, and append each of the four counts to its own list. At the end, turn
+# the four lists into integer arrays and return them as a single `Counts`.
+# </details>
+# <details><summary>💡 Exercise 7 · Hint 1 — what to think about</summary>
+#
+# Which rate goes on which axis, and in which order does the docstring say to return them?
+# What does a fleet with no failures in it do to the true-positive rate's denominator?
+# </details>
+# <details><summary>💡 Exercise 7 · Hint 2 — the approach, in words</summary>
+#
+# The true-positive rate is caught failures over all failures; the false-positive rate is
+# false alarms over all survivors. Compute both through the `safe_ratio` helper from the setup
+# cell so an empty denominator never becomes a NaN, and return the false-positive rate first.
+# </details>
+# <details><summary>💡 Exercise 8 · Hint 1 — what to think about</summary>
+#
+# At a threshold so high that nothing is flagged there are no true and no false alarms. What
+# does the docstring's convention say precision is then, and why is a NaN the worst answer?
+# </details>
+# <details><summary>💡 Exercise 8 · Hint 2 — the approach, in words</summary>
+#
+# Recall is the true-positive rate again. Precision is caught failures over everything
+# flagged, through `safe_ratio` with the docstring's nothing-flagged convention passed as its
+# `when_zero` argument rather than left at the default. Return recall first.
+# </details>
 
 # %%
 THRESHOLDS = np.round(np.arange(1.00, 4.01, 0.05), 2)
@@ -724,7 +891,7 @@ def pr_points(counts: Counts) -> tuple[np.ndarray, np.ndarray]:
     raise NotImplementedError
 
 
-def _check_curves() -> None:
+def _check_sweep_thresholds() -> None:
     h = np.array([[1.0, 3.0], [1.0, 1.0]])
     swept = sweep_thresholds(h, np.array([1, -1]), np.array([2.0, 4.0]), lead_hours=0)
     assert isinstance(swept, Counts), "sweep_thresholds must return a Counts"
@@ -739,7 +906,10 @@ def _check_curves() -> None:
     assert np.all(totals == 2), (
         f"every threshold must account for all 2 machines exactly once, got {totals.tolist()}"
     )
+    print("exercise 6 looks right — one Counts of arrays, one entry per threshold")
 
+
+def _check_roc_points() -> None:
     demo = Counts(tp=np.array([3, 0]), fp=np.array([1, 0]), fn=np.array([1, 4]),
                   tn=np.array([9, 10]))
     fpr, tpr = roc_points(demo)
@@ -747,6 +917,17 @@ def _check_curves() -> None:
         f"expected fpr [0.1, 0.0] and tpr [0.75, 0.0], got {np.asarray(fpr).tolist()} and "
         f"{np.asarray(tpr).tolist()} — roc_points returns (fpr, tpr) in that order"
     )
+    empty = roc_points(Counts(tp=np.array([0]), fp=np.array([0]), fn=np.array([0]),
+                              tn=np.array([0])))
+    assert np.all(np.isfinite(empty[0])) and np.all(np.isfinite(empty[1])), (
+        "an all-zero Counts must give 0.0 rates, not NaN — guard the division"
+    )
+    print("exercise 7 looks right — the ROC points, in (fpr, tpr) order")
+
+
+def _check_pr_points() -> None:
+    demo = Counts(tp=np.array([3, 0]), fp=np.array([1, 0]), fn=np.array([1, 4]),
+                  tn=np.array([9, 10]))
     rec, prec = pr_points(demo)
     assert np.allclose(rec, [0.75, 0.0]), f"recall should be [0.75, 0.0], got {rec}"
     assert np.allclose(prec, [0.75, 1.0]), (
@@ -754,16 +935,13 @@ def _check_curves() -> None:
         "threshold flags nothing at all: that is precision 1.0 by convention, not 0.0 and "
         "certainly not a NaN"
     )
-    empty = roc_points(Counts(tp=np.array([0]), fp=np.array([0]), fn=np.array([0]),
-                              tn=np.array([0])))
-    assert np.all(np.isfinite(empty[0])) and np.all(np.isfinite(empty[1])), (
-        "an all-zero Counts must give 0.0 rates, not NaN — guard the division"
-    )
-    print("exercises 6-8 look right — the sweep and both curves")
+    print("exercise 8 looks right — recall, precision, and the nothing-flagged convention")
 
 
 # %%
-_try("exercises 6-8", _check_curves)
+_try("exercise 6", _check_sweep_thresholds)
+_try("exercise 7", _check_roc_points)
+_try("exercise 8", _check_pr_points)
 
 # %% [markdown]
 # Draw them. The area under the ROC curve is printed from your own points, so the sentence
@@ -771,6 +949,9 @@ _try("exercises 6-8", _check_curves)
 
 # %%
 COUNTS: Counts | None = None
+# Everything from here on reads HEALTH (set by the fleet plot) and COUNTS (set by the curves
+# below), so each later cell waits on the exercises those two need, plus its own.
+_FOR_CURVES = ("exercise 3", "exercise 6", "exercise 7", "exercise 8")
 
 
 def _plot_curves() -> None:
@@ -801,7 +982,7 @@ def _plot_curves() -> None:
     print("every point on that curve. The curve is a menu. It does not tell you what to order.")
 
 
-_try("curves", _plot_curves)
+_try("curves", _plot_curves, needs=_FOR_CURVES)
 
 # %% [markdown]
 # ## 7. Exercises 9-11 — put a price on every cell of the matrix
@@ -826,6 +1007,19 @@ _try("curves", _plot_curves)
 # The numbers below are a **scenario**, not a measurement: they are here to be edited. Your
 # plant's finance team owns the real ones, and the whole point of the next three exercises is
 # that the answer moves when they do.
+#
+# <details><summary>💡 Exercise 9 · Hint 1 — what to think about</summary>
+#
+# Which of the four outcomes costs nothing at all? And will the same few lines work when each
+# field of `counts` is a single int AND when each is an array over thresholds?
+# </details>
+# <details><summary>💡 Exercise 9 · Hint 2 — the approach, in words</summary>
+#
+# Price each costed outcome with its own field of the `CostModel` — catches at the planned
+# price, misses at the unplanned price, false alarms at the false-alarm price — and add the
+# three products. Leave the true negatives out entirely. Plain arithmetic on the fields is
+# already elementwise, so no loop is needed.
+# </details>
 
 # %%
 class CostModel(NamedTuple):
@@ -855,6 +1049,59 @@ def expected_cost(counts: Counts, costs: CostModel) -> np.ndarray:
     raise NotImplementedError
 
 
+def _check_expected_cost() -> None:
+    one = Counts(tp=2, fp=3, fn=1, tn=94)
+    cheap = CostModel(planned=10.0, unplanned=100.0, false_alarm=1.0)
+    cost = expected_cost(one, cheap)
+    assert np.isclose(cost, 123.0), (
+        f"expected 2*10 + 1*100 + 3*1 = 123.0, got {cost!r}. If you got 217.0 you charged "
+        "for the 94 true negatives; nothing happening is free"
+    )
+    swept = Counts(tp=np.array([2, 1]), fp=np.array([8, 0]), fn=np.array([0, 1]),
+                   tn=np.array([90, 98]))
+    costs_over = expected_cost(swept, cheap)
+    assert np.allclose(costs_over, [28.0, 110.0]), (
+        f"the same function must work on arrays: expected [28, 110], got "
+        f"{np.asarray(costs_over).tolist()}"
+    )
+    print("exercise 9 looks right — every costed outcome priced, true negatives free")
+
+
+# %%
+_try("exercise 9", _check_expected_cost)
+
+# %% [markdown]
+# ### Exercises 10 and 11 — `accuracy()` and `best_operating_point()`
+#
+# Accuracy is here so that you can measure how badly it chooses. The chooser takes either
+# objective, so the two operating points in section 8 come from the same function.
+#
+# <details><summary>💡 Exercise 10 · Hint 1 — what to think about</summary>
+#
+# Which outcomes count as "right", what is the denominator, and what must come back for an
+# empty fleet rather than a division warning?
+# </details>
+# <details><summary>💡 Exercise 10 · Hint 2 — the approach, in words</summary>
+#
+# Add the catches and the true negatives, and divide by the sum of all four counts through
+# `safe_ratio`, so an empty fleet and a whole array of thresholds both go through unchanged.
+# </details>
+# <details><summary>💡 Exercise 11 · Hint 1 — what to think about</summary>
+#
+# One objective is minimised and the other maximised: which is which? On a tie, which index do
+# numpy's arg-functions return? And what must you check before you index anything, so that a
+# mismatch cannot report the wrong threshold for the right counts?
+# </details>
+# <details><summary>💡 Exercise 11 · Hint 2 — the approach, in words</summary>
+#
+# Accept exactly "cost" or "accuracy", case and all, and check that every field of `counts`
+# has one entry per threshold; raise `ValueError` otherwise. Compute the whole cost array and
+# the whole accuracy array, pick the index with `argmin` for cost or `argmax` for accuracy,
+# then build the `OperatingPoint` from that index: the threshold, the cost and accuracy there,
+# and a `Counts` of plain ints sliced out of the four swept fields.
+# </details>
+
+# %%
 def accuracy(counts: Counts) -> np.ndarray:
     """(tp + tn) / (tp + fp + fn + tn), elementwise, and 0.0 where the fleet is empty.
 
@@ -900,24 +1147,17 @@ def best_operating_point(thresholds: np.ndarray, counts: Counts, costs: CostMode
     raise NotImplementedError
 
 
-def _check_economics() -> None:
+def _check_accuracy() -> None:
     one = Counts(tp=2, fp=3, fn=1, tn=94)
-    cheap = CostModel(planned=10.0, unplanned=100.0, false_alarm=1.0)
-    cost = expected_cost(one, cheap)
-    assert np.isclose(cost, 123.0), (
-        f"expected 2*10 + 1*100 + 3*1 = 123.0, got {cost!r}. If you got 217.0 you charged "
-        "for the 94 true negatives; nothing happening is free"
-    )
     assert np.isclose(accuracy(one), 0.96), (
         f"accuracy of tp=2, fp=3, fn=1, tn=94 is (2+94)/100 = 0.96, got {accuracy(one)!r}"
     )
+    print("exercise 10 looks right — the share of machines called correctly")
+
+
+def _check_best_operating_point() -> None:
     swept = Counts(tp=np.array([2, 1]), fp=np.array([8, 0]), fn=np.array([0, 1]),
                    tn=np.array([90, 98]))
-    costs_over = expected_cost(swept, cheap)
-    assert np.allclose(costs_over, [28.0, 110.0]), (
-        f"the same function must work on arrays: expected [28, 110], got "
-        f"{np.asarray(costs_over).tolist()}"
-    )
     model = CostModel(planned=10.0, unplanned=1000.0, false_alarm=1.0)
     by_cost = best_operating_point(np.array([1.0, 2.0]), swept, model, "cost")
     by_acc = best_operating_point(np.array([1.0, 2.0]), swept, model, "accuracy")
@@ -954,11 +1194,12 @@ def _check_economics() -> None:
             "1 threshold against 2 counts must raise ValueError — a silent mismatch here "
             "reports the wrong threshold for the right confusion matrix"
         )
-    print("exercises 9-11 look right — costs, accuracy and the chooser")
+    print("exercise 11 looks right — the chooser, its ties and its refusals")
 
 
 # %%
-_try("exercises 9-11", _check_economics)
+_try("exercise 10", _check_accuracy)
+_try("exercise 11", _check_best_operating_point)
 
 # %% [markdown]
 # ## 8. The result
@@ -984,7 +1225,7 @@ def _show_the_gap() -> None:
           "unplanned.")
 
 
-_try("the gap", _show_the_gap)
+_try("the gap", _show_the_gap, needs=_FOR_CURVES + ("exercise 11",))
 
 # %%
 def _plot_cost_curve() -> None:
@@ -1008,7 +1249,8 @@ def _plot_cost_curve() -> None:
     _show(fig)
 
 
-_try("cost curve", _plot_cost_curve)
+_try("cost curve", _plot_cost_curve,
+     needs=_FOR_CURVES + ("exercise 9", "exercise 10", "exercise 11"))
 
 # %% [markdown]
 # The two vertical lines are the whole lesson. They come from one detector, one health index
@@ -1055,7 +1297,7 @@ def _show_scenarios() -> None:
     print("paper, a vendor default or the last plant you worked at.")
 
 
-_try("scenarios", _show_scenarios)
+_try("scenarios", _show_scenarios, needs=_FOR_CURVES + ("exercise 11",))
 
 # %% [markdown]
 # ## 10. Common mistakes
@@ -1100,7 +1342,8 @@ def _show_the_null_detector() -> None:
     print("accuracy, and it is the one that points the wrong way.")
 
 
-_try("null detector", _show_the_null_detector)
+_try("null detector", _show_the_null_detector,
+     needs=_FOR_CURVES + ("exercise 9", "exercise 10", "exercise 11"))
 
 # %% [markdown]
 # ## 11. Self-check
@@ -1160,7 +1403,7 @@ def _handover() -> None:
     print("  re-derive whenever any of those three prices changes.")
 
 
-_try("handover note", _handover)
+_try("handover note", _handover, needs=_FOR_CURVES + ("exercise 11",))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1177,16 +1420,48 @@ _try("handover note", _handover)
 # without asking what things cost.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_burst_rms),
-                          ("exercise 2", _check_causal_rolling_median),
-                          ("exercise 3", _check_health_index),
-                          ("exercises 4 and 5", _check_decision),
-                          ("exercises 6-8", _check_curves),
-                          ("exercises 9-11", _check_economics)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_burst_rms),
+                              ("exercise 2", _check_causal_rolling_median),
+                              ("exercise 3", _check_health_index),
+                              ("exercise 4", _check_alarm_times),
+                              ("exercise 5", _check_classify_outcomes),
+                              ("exercise 6", _check_sweep_thresholds),
+                              ("exercise 7", _check_roc_points),
+                              ("exercise 8", _check_pr_points),
+                              ("exercise 9", _check_expected_cost),
+                              ("exercise 10", _check_accuracy),
+                              ("exercise 11", _check_best_operating_point)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

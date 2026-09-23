@@ -115,7 +115,9 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import math
 import sys
 from datetime import date
@@ -146,26 +148,77 @@ print(f"Phi(Z_BETA_80)  = {normal_cdf(Z_BETA_80):.6f}  (must be 0.800000)")
 assert abs(normal_cdf(Z_ALPHA_95) - 0.975) < 1e-6
 assert abs(normal_cdf(Z_BETA_80) - 0.800) < 1e-6
 
-_FAILED_CHECKS: list[str] = []
+# Every check and every demo below reports how it went here, and the progress board at the
+# foot of the notebook reads it: label -> "passed", "failed" or "not started". Each run of a
+# cell overwrites its own entry, so the board shows where your code stands now.
+_STATUS: dict[str, str] = {}
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _and(items: list) -> str:
+    """'a', 'a and b', 'a, b and c' — for naming exercises in a sentence."""
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " and " + items[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (),
+         builds_on: tuple = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other five.
+    exercise never hides the feedback on the other five. Every outcome is recorded for the
+    progress board, and outside a notebook the `__main__` block at the foot of this file exits
+    non-zero if any check is still failing.
+
+    `needs` names the exercises a demo consumes. Until each has passed its check, the demo says
+    which it is waiting for and skips, rather than running on a stub or on a wrong answer.
+    `builds_on` names the earlier exercises a check also calls. The check always runs, but
+    when one of those has not passed yet it says so, so you fix the right function first.
     """
+    waiting = [need for need in needs if _STATUS.get(need) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_and(waiting)} to pass "
+              f"{'its check' if len(waiting) == 1 else 'their checks'} first, then re-run "
+              "this cell.")
+        return
+    behind = [need for need in builds_on if _STATUS.get(need) != "passed"]
+    note = (f" (It also runs your {_and(behind)}, which "
+            f"{'has' if len(behind) == 1 else 'have'} not passed yet: start there.)"
+            if behind else "")
     try:
         check()
     except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        _STATUS[label] = "not started"
+        print(f"{label}: not implemented yet — fill in the stub above, then re-run this "
+              f"cell.{note}")
     except AssertionError as exc:
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: FAILED — {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: FAILED — {exc}{note}")
     except Exception as exc:  # a half-finished implementation raising something else
-        _FAILED_CHECKS.append(label)
-        print(f"{label}: raised {type(exc).__name__}: {exc}")
+        _STATUS[label] = "failed"
+        print(f"{label}: raised {type(exc).__name__}: {exc}{note}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board(exercises: tuple) -> list:
+    """Re-check every exercise against your code as it stands now, and print the board.
+
+    The checks run quietly here — each already printed its message in its own cell — so the
+    board also picks up anything you fixed after running those cells. Returns the labels of
+    every check or demo that is still failing.
+    """
+    for label, _title, check in exercises:
+        with contextlib.redirect_stdout(io.StringIO()):
+            _try(label, check)
+    marks = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+    print("progress board")
+    for label, title, _check in exercises:
+        state = _STATUS[label]
+        print(f"  {marks[state]} {state:11s}  {label} · {title}")
+    done = sum(_STATUS[label] == "passed" for label, _title, _check in exercises)
+    print(f"\n{done} of {len(exercises)} exercises complete")
+    return [label for label, state in _STATUS.items() if state == "failed"]
 
 
 def power(statistic: str, value: float, statement: str) -> dict:
@@ -439,6 +492,25 @@ print(f"min support {MIN_SUPPORT} rows · allowed licences {len(ALLOWED_LICENCES
 # leaving out `z_beta` — using only the confidence term — reports a floor about a third too
 # small. The demo cell below computes both directions of that ratio from your own code, so
 # the figure is one you measured rather than one you read here.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# For the share floor, the rule of three is only the approximation, and at small `n` it drifts
+# — so start from the exact event: drawing none of a stratum in `n` rows. For the difference
+# floor, which of the two group sizes dominates, and what goes missing if you keep only the
+# confidence term?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# `min_detectable_share` solves its docstring's equation for the share, using the `confidence`
+# argument rather than a hard-coded 5 %, and deals with a non-positive `n` before any
+# arithmetic. `min_detectable_difference` adds both quantiles, multiplies by the square root
+# of the pooled variance times the sum of the two reciprocal group sizes, deals with an empty
+# group first, and caps what it returns.
+#
+# </details>
 
 # %%
 def min_detectable_share(n: int, confidence: float = 0.95) -> float:
@@ -539,7 +611,7 @@ def _show_power() -> None:
           f"three runs {100 * ((3 / 20) / min_detectable_share(20) - 1):.1f}% high at n = 20.")
 
 
-_try("power demo", _show_power)
+_try("power demo", _show_power, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 4. Exercise 2 — leakage across the splits
@@ -559,6 +631,26 @@ _try("power demo", _show_power)
 #
 # The third shape has nothing to do with duplicates. `applicant_ref` is an identifier, and
 # identifiers are not features. Correlate it with the target anyway.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What counts as "the same row"? Raw floats miss every re-entry and a loose tolerance merges
+# strangers. Table cells are numpy scalars, so do not trust what `round()` hands back to be a
+# plain `int`. When you count, count test rows — and the near set contains the exact one, it
+# does not sit beside it.
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# `near_key` is the three categorical fields as strings, income rounded to whole units and
+# converted explicitly to an `int`, and debt-to-income rounded to `dti_dp` places. In
+# `leakage_report`, build one set of exact keys and one of near keys over the training rows,
+# then scan each test row against both, collecting the `row_id`s of the near matches.
+# Correlate `applicant_ref` with the label over the whole table with `pearson_r`, take its
+# absolute value, and raise one finding per defect actually present.
+#
+# </details>
 
 # %%
 def exact_key(table: dict, i: int) -> tuple:
@@ -702,6 +794,24 @@ _try("exercise 2", _check_leakage)
 # - **over** — more than `OVER_REPRESENTATION_FACTOR` times its declared share. Over-
 #   representation is a representativeness defect too. A model that saw one region three times
 #   more often than it will meet it is not calibrated for the population it was declared for.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A loop over the declared population never meets the stratum nobody declared, and that one
+# outranks every other status. Over-representation is a defect too. For the gap report: which
+# statuses belong on it, and which of them can actually be short of rows?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Count rows per `(region, age_band)` in the split, then walk the union of declared and
+# observed strata, deciding each status in the docstring's order. The gap report keeps every
+# stratum that is not `ok`, gives a shortfall — rounded up, never negative — only to the two
+# shortages, attaches the remedy for its status, and sorts by declared share, largest first,
+# with the stratum tuple breaking ties.
+#
+# </details>
 
 # %%
 def coverage_report(table: dict, declared: dict = DECLARED_POPULATION, split: str = "train",
@@ -819,7 +929,7 @@ def _check_coverage() -> None:
 
 
 # %%
-_try("exercise 3", _check_coverage)
+_try("exercise 3", _check_coverage, builds_on=("exercise 1",))
 
 # %%
 def _show_gaps() -> None:
@@ -831,7 +941,7 @@ def _show_gaps() -> None:
               f"{row['action'][:46]}")
 
 
-_try("gap report", _show_gaps)
+_try("gap report", _show_gaps, needs=("exercise 1", "exercise 3"))
 
 # %% [markdown]
 # ## 6. Exercise 4 — drift between training and test
@@ -847,6 +957,24 @@ _try("gap report", _show_gaps)
 # that walks the test set's categories scores it zero. For a numeric feature, the
 # **standardised mean difference**: the gap between the means over the pooled standard
 # deviation, so the answer does not change when somebody switches from euros to thousands.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Total variation distance is taken over the union of categories: a category that vanished
+# from test still carries its whole training share. For numeric features, which standard
+# deviation makes the answer independent of units — and with which `ddof`?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Categorical: the share of each category in each split, absolute differences summed over the
+# union, then halved. Numeric: test mean minus train mean, signed, over the pooled standard
+# deviation built from the two `ddof=1` variances weighted by their degrees of freedom; flag
+# on the absolute value. Sort the drifted names, and take the power from your exercise 1
+# difference floor at the worst-case rate the docstring names.
+#
+# </details>
 
 # %%
 def drift_report(table: dict, train_split: str = "train", test_split: str = "test",
@@ -912,7 +1040,7 @@ def _check_drift() -> None:
 
 
 # %%
-_try("exercise 4", _check_drift)
+_try("exercise 4", _check_drift, builds_on=("exercise 1",))
 
 # %% [markdown]
 # ## 7. Exercise 5 — provenance, of the data and of the labels
@@ -929,6 +1057,25 @@ _try("exercise 4", _check_drift)
 # you may use; test membership of `ALLOWED_LICENCES`, not truthiness. And an unapproved method
 # is not the same defect as a missing one: the first is a decision somebody made and can
 # defend, the second is a hole.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A non-empty licence string is not a licence you may use. An empty `label_source` is a hole,
+# while `vendor_inferred` is a decision somebody can defend — two defects, two remedies. And
+# which `n` does each share divide by?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each split in sorted order, read its source record with a fallback, so a split with no
+# record cannot raise, and test the licence by membership of the allow-list. Count labels that
+# are blank after stripping and, separately, those whose method maps to unapproved — over that
+# split's own rows. Add one reason per defect in the docstring's order, the undocumented share
+# only when strictly above the threshold. For the power statement, say what a census actually
+# cannot see.
+#
+# </details>
 
 # %%
 def provenance_report(table: dict, sources: dict = SOURCES,
@@ -1030,6 +1177,25 @@ _try("exercise 5", _check_provenance)
 # is the loudest number in the table and it is not a finding, and an examination that reports
 # it as one is worse than no examination, because it sends the remediation budget to three
 # people while the real disparity goes unnamed.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The loudest number in the test split comes from a subgroup far too small to carry it. Which
+# gate has to run before any comparison, and does a subgroup sitting exactly on the floor
+# clear it? And would one fixed threshold be fair to a small subgroup and a large one alike?
+#
+# </details>
+#
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# A prediction is a score at or above the threshold; an error is a prediction that differs
+# from the label. Take the baseline over the whole split, then for each observed subgroup, in
+# sorted order: its count, errors, rate, signed gap, and your exercise 1 difference floor for
+# the subgroup against the rest of the split at the baseline rate. Support decides first; only
+# a supported subgroup whose absolute gap reaches its own floor is flagged. The power is the
+# largest floor among the supported subgroups only.
+#
+# </details>
 
 # %%
 def bias_probe(table: dict, split: str = "test", min_support: int = MIN_SUPPORT,
@@ -1112,7 +1278,7 @@ def _check_bias_probe() -> None:
 
 
 # %%
-_try("exercise 6", _check_bias_probe)
+_try("exercise 6", _check_bias_probe, builds_on=("exercise 1",))
 
 # %%
 def _show_subgroups() -> None:
@@ -1126,7 +1292,7 @@ def _show_subgroups() -> None:
     print("Note also which stratum north/18-29 is: the one the training split has none of.")
 
 
-_try("subgroup table", _show_subgroups)
+_try("subgroup table", _show_subgroups, needs=("exercise 1", "exercise 6"))
 
 # %% [markdown]
 # ## 9. The artefact
@@ -1159,7 +1325,9 @@ def _show_record() -> None:
     print(f"\n  OVERALL    {record['verdict'].upper()} · {len(record['gaps'])} declared gaps")
 
 
-_try("the record", _show_record)
+_try("the record", _show_record,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6"))
 
 # %% [markdown]
 # ## 10. Common mistakes
@@ -1208,7 +1376,9 @@ def _show_without_power() -> None:
     print("no evidence. This is the difference the module is about.")
 
 
-_try("record without power", _show_without_power)
+_try("record without power", _show_without_power,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+            "exercise 6"))
 
 # %% [markdown]
 # ## 11. Self-check
@@ -1318,16 +1488,29 @@ def check_self_check(answers: dict) -> None:
 #
 # **Again, and finally: this is engineering, not legal advice.**
 
+# %% [markdown]
+# ## Your progress
+#
+# The cell below re-runs every exercise's check against your code as it stands now, and
+# prints one line per exercise: ✅ passed, ❌ failed or ⏳ not started. Run it whenever you like.
+
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_power_tools),
-                          ("exercise 2", _check_leakage),
-                          ("exercise 3", _check_coverage),
-                          ("exercise 4", _check_drift),
-                          ("exercise 5", _check_provenance),
-                          ("exercise 6", _check_bias_probe)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
-        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
+    _failing = _progress_board((
+        ("exercise 1", "min_detectable_share() and min_detectable_difference()", _check_power_tools),
+        ("exercise 2", "near_key() and leakage_report()", _check_leakage),
+        ("exercise 3", "coverage_report() and gap_report()", _check_coverage),
+        ("exercise 4", "drift_report()", _check_drift),
+        ("exercise 5", "provenance_report()", _check_provenance),
+        ("exercise 6", "bias_probe()", _check_bias_probe),
+    ))
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends the run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel that would be a traceback at the foot of the
+    # page, so there it is one printed line instead.
+    if _failing:
+        if "ipykernel" in sys.modules:
+            print("\nstill failing: " + ", ".join(_failing)
+                  + ". Each one's own cell above says what went wrong.")
+        else:
+            raise SystemExit("checks failed: " + ", ".join(_failing))

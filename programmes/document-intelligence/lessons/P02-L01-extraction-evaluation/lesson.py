@@ -102,11 +102,14 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import random
 import re
 import sys
 import time
-from typing import Iterable, Mapping, NamedTuple, Sequence
+import traceback
+from typing import Callable, Iterable, Mapping, NamedTuple, Sequence
 
 import numpy as np
 
@@ -187,24 +190,67 @@ class FieldScore(NamedTuple):
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("normalise_value",),
+    "exercise 2": ("match_value",),
+    "exercise 3": ("score_field", "macro_f1"),
+    "exercise 4": ("classify_cell", "confusion_by_field_type"),
+    "exercise 5": ("review_queue", "apply_reviews"),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 1"] -> "exercise 1 (normalise_value)"; several -> "exercises 2, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
-    message — which names the likely mistake — and the notebook carries on to the next cell,
-    so one broken exercise never hides the feedback on the other five.
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -442,6 +488,28 @@ print("output tells you which is which — that is the instrument you are about 
 # performance strongest on short-text identifiers and weakest on currency fields requiring
 # normalisation or aggregation (arXiv 2605.05532). Normalisation is not a tidying step you
 # bolt on at the end; it is where a third of your reported defects come from.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Five small policies, not one clever one. Three traps carry most of the marks. In money, the
+# whole question is which separator is the decimal one, and that depends on which separators
+# appear and on how many digits follow a lone comma. In text, a legal form written with full
+# stops has to come out as ONE token, or you will never find it in the suffix list. And a
+# value you cannot parse must survive: an empty string is how a normaliser silently deletes a
+# value the extractor really produced.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Deal with blank input and an unknown field type first, then branch on the type. Money: keep
+# the digits and separators only; when both separators appear the later one is the decimal
+# point; a lone comma is decimal only with exactly two digits after it; then format to two
+# places. Date: try ISO, then the slashed form read day first, then day, month name, year.
+# Text: lower case, delete full stops and commas outright, turn any other punctuation into a
+# space, then pop trailing tokens while they are in COMPANY_SUFFIXES. Any branch that fails to
+# parse falls back to the raw string, upper-cased, whitespace collapsed.
+#
+# </details>
 
 # %%
 def normalise_value(value: str, field_type: str) -> str:
@@ -534,7 +602,7 @@ def _show_surface_gap() -> None:
     print("model that was already right.")
 
 
-_try("surface gap", _show_surface_gap)
+_try("surface gap", _show_surface_gap, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 4. Exercise 2 — `match_value`
@@ -542,6 +610,25 @@ _try("surface gap", _show_surface_gap)
 # Three modes, one function. `exact` is raw string equality. `normalised` compares canonical
 # forms. `fuzzy` additionally accepts near-identical **text**, and nothing else: an amount that
 # is one digit out looks 86% similar to the right answer and is a payment incident.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The three modes differ in one thing each, and the trap is fuzzy. "Nearly the same string" is
+# harmless on a smudged supplier name and a payment incident on an amount, a date or an
+# invoice id, where one changed character is a different value. Decide, too, what an empty
+# side means before you compare anything — and what an unrecognised mode should do, because
+# quietly answering "no match" would hide a typo in the caller.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the mode first, so an unknown one raises ValueError instead of quietly answering.
+# An empty side never matches, whatever the mode. Exact compares the raw strings. Normalised
+# compares `normalise_value` of both sides. Fuzzy accepts normalised equality, and only when
+# the field type is text does it ALSO accept a `similarity` of the two normalised forms at or
+# above `FUZZY_THRESHOLD`; every other type gets no fuzzy branch at all.
+#
+# </details>
 
 # %%
 def match_value(pred: str, gold: str, field_type: str, mode: str) -> bool:
@@ -604,6 +691,27 @@ _try("exercise 2", _check_match)
 # **a wrong value is both a false positive and a false negative.** You claimed something that
 # was not true (precision) and you failed to produce the value that was (recall). Counting it
 # once flatters whichever number you happened to put in the deck.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Look at one cell and ask two independent questions: did the extractor claim something that
+# is not true, and did it fail to produce something that is? A present but wrong value answers
+# yes to BOTH, and counting it once flatters whichever of precision and recall it lands on.
+# For `macro_f1`, ask whether a field that appears on few documents should count for less than
+# one that appears on every page.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Walk the records with the prediction and gold for the field. A `match_value` hit under the
+# given mode is a true positive. Otherwise a non-empty prediction adds a false positive and a
+# non-empty gold adds a false negative — two separate ifs, not an elif. Both empty adds
+# nothing. Divide once at the end, guarding every denominator as the docstring says, with F1
+# the harmonic mean. `macro_f1` is the plain mean of `score_field`'s F1 over every field in
+# SCHEMA: average the scores, never pool the counts, and do not skip a field just because it
+# has no data.
+#
+# </details>
 
 # %%
 def score_field(records: Sequence[Mapping], field: str, mode: str) -> FieldScore:
@@ -665,6 +773,11 @@ def _check_score() -> None:
                         "currency", "exact")
     assert empty.precision == 0.0 and empty.f1 == 0.0, \
         "no predictions and no gold: return 0.0, do not divide by zero"
+    per_field = [score_field(RECORDS, f, "normalised").f1 for f in SCHEMA]
+    want, got = sum(per_field) / len(per_field), macro_f1(RECORDS, "normalised")
+    assert abs(got - want) < 1e-9, (
+        f"macro_f1 gave {got:.4f} but the unweighted mean of your own per-field F1 scores is "
+        f"{want:.4f} — average the F1s over every field in SCHEMA; do not pool the counts")
     print("exercise 3 looks right")
 
 
@@ -686,7 +799,7 @@ def _show_mode_table() -> None:
     print("fuzzy moves only the text field, because you confined it to the text field.")
 
 
-_try("mode table", _show_mode_table)
+_try("mode table", _show_mode_table, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 6. Exercise 4 — the confusion analysis
@@ -694,6 +807,25 @@ _try("mode table", _show_mode_table)
 # An F1 of 0.84 does not tell you what to fix. Four hundred defects split as *mostly misses*
 # and *mostly wrong values* demand opposite responses: the first is a recall problem you solve
 # with a better reader, the second is a precision problem you solve by making the model abstain.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every cell lands in exactly one of five labels, so the ORDER of your questions is the
+# design: emptiness first, agreement second. The table's trap is holes — a field type or a
+# label that never occurred must still be there with a zero, or the rows cannot be read
+# across. And the table is keyed by field TYPE, not field name: two fields of one type share a
+# row.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# `classify_cell`: both sides empty is a true negative, gold only is a miss, prediction only
+# is spurious, and when both are present let `match_value` under the mode decide between
+# correct and wrong_value. `confusion_by_field_type`: build the whole table first — every type
+# in SCHEMA's values, every label in ERROR_LABELS, all at zero — then walk every record and
+# every field, classify the cell, and add one to that field type's row.
+#
+# </details>
 
 # %%
 def classify_cell(pred: str, gold: str, field_type: str, mode: str) -> str:
@@ -776,7 +908,7 @@ def _show_confusion() -> None:
     print("the field is often absent and the extractor answers anyway.")
 
 
-_try("confusion table", _show_confusion)
+_try("confusion table", _show_confusion, needs=("exercise 1", "exercise 2", "exercise 4"))
 
 # %% [markdown]
 # ## 7. Exercise 5 — the review queue
@@ -790,6 +922,25 @@ _try("confusion table", _show_confusion)
 # designed so that it can be effectively overseen by natural persons while it is in use.
 # Whether your particular pipeline is high risk depends on what it decides. Whether your
 # oversight is real depends on whether you measured it, which is the next section.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The queue is a sort, and the marks are in its edges: which way the confidence runs, what
+# breaks a tie so that two runs queue the same work, and which cells are candidates at all — a
+# confident silence looks exactly like a miss from outside, so it must be eligible. For
+# `apply_reviews`, ask what the second budget in section 8 measures if the first one wrote its
+# corrections into the records it was handed.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Reject a negative budget with ValueError. Collect every (doc_id, field) cell of every
+# record, predicted or not, with its confidence; sort on confidence, then doc_id, then field,
+# all ascending; return the first `budget` of them as a tuple. For `apply_reviews`, build a
+# new record with fresh copies of its pred and conf dicts, give each routed cell its gold
+# value and full confidence, and leave the input exactly as it came in.
+#
+# </details>
 
 # %%
 def review_queue(records: Sequence[Mapping], budget: int) -> tuple[tuple[str, str], ...]:
@@ -942,7 +1093,8 @@ def _show_quality_cost_curve() -> None:
     print("as opposed to what the reviewers are worth.")
 
 
-_try("quality/cost curve", _show_quality_cost_curve)
+_try("quality/cost curve", _show_quality_cost_curve,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 9. Common mistakes
@@ -986,7 +1138,7 @@ def _show_what_fuzzy_money_would_cost() -> None:
           f"did so.\nEach one is an invoice that does not reconcile.")
 
 
-_try("fuzzy on money", _show_what_fuzzy_money_would_cost)
+_try("fuzzy on money", _show_what_fuzzy_money_would_cost, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 10. Self-check
@@ -1059,7 +1211,8 @@ def _show_scorecard() -> None:
           f"per document in the placeholder cost model")
 
 
-_try("scorecard", _show_scorecard)
+_try("scorecard", _show_scorecard,
+     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1071,16 +1224,44 @@ _try("scorecard", _show_scorecard)
 # scored by this harness rather than by a new one invented for the occasion.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_normalise),
-                          ("exercise 2", _check_match),
-                          ("exercise 3", _check_score),
-                          ("exercise 4", _check_confusion),
-                          ("exercise 5", _check_queue)):
-        _try(_name, _check)
-    print(f"\nlesson wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
-    # A stub you have not reached yet is not a failure — it prints "not implemented yet" and
-    # the notebook carries on. A check that RAN and came back wrong is a failure, and it ends
-    # this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_normalise),
+                             ("exercise 2", _check_match),
+                             ("exercise 3", _check_score),
+                             ("exercise 4", _check_confusion),
+                             ("exercise 5", _check_queue)):
+            _try(_name, _check)
+    _progress_board()
+    _wall = time.perf_counter() - _LESSON_T0
+    # Whole seconds: two machines disagree at the first decimal, and that is noise, not a result.
+    print("\nlesson wall time so far: " + ("under a second" if _wall < 1 else f"{_wall:.0f}s"))
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

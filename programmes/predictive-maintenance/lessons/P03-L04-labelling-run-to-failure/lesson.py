@@ -114,8 +114,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from datetime import datetime, timedelta
 from typing import Callable, NamedTuple, Sequence
 
@@ -213,25 +216,71 @@ THRESHOLDS = np.round(np.arange(1.10, 5.01, 0.05), 2)
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("parse_log_hour",),
+    "exercise 2": ("classify_work_order",),
+    "exercise 3": ("event_hour",),
+    "exercise 4": ("build_runs",),
+    "exercise 5": ("horizon_labels",),
+    "exercise 6": ("split_by_unit",),
+    "exercise 7": ("rank_auc",),
+    "exercise 8": ("leakage_report",),
+    "exercise 9": ("cost_optimal_threshold",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (health_index)"; several -> "exercises 3, 6 and 8"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def stamp(hour: int) -> str:
@@ -395,6 +444,20 @@ for _o in ORDERS[:3]:
 # the second one: this plant is European and writes **day first**. `04/03/2026` is the fourth
 # of March. Read it month-first and every label on that unit moves by a month, silently,
 # because the result is still a valid date.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three formats share one column and one of them is day-first. What does `strptime` do when a
+# format does not match — and how do you move on to the next one? What should padding around
+# the stamp do, and what should a stamp from before the epoch return?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Strip the text, then try each entry of `LOG_FORMATS` in order, catching the `ValueError` a
+# mismatch raises and moving on. At the first success, subtract `LOG_EPOCH` and turn the
+# difference into whole hours; a negative answer is allowed. If nothing matched, raise
+# `ValueError` yourself.
+# </details>
 
 # %%
 def parse_log_hour(text: str) -> int:
@@ -468,6 +531,20 @@ _try("exercise 1", _check_parse_log_hour)
 # The rules below are an ordering, and the order is the exercise. A no-fault-found call-out is
 # raised as a breakdown; the job-type column says `BM`; the fitter found nothing. Check the
 # text *first* or you will invent a failure every time somebody's shift was interrupted.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A no-fault-found call-out carries the job type `BM`, exactly like a real breakdown. Which
+# rule must see it before the job-type rule does? And do the job-type column and the fitters'
+# free text agree about capitals?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Normalise once, up front: the text to lower case, the job type to upper case. Then walk the
+# four rules in the docstring's order and return at the first that matches — a no-fault
+# phrase; then a failure job type or failure word; then a suspension job type or suspension
+# word; otherwise ignore.
+# </details>
 
 # %%
 NO_FAULT_PHRASES = ("no fault found", "nff", "operator error", "false trip")
@@ -566,6 +643,20 @@ _try("exercise 2", _check_classify_work_order)
 # - `"trip"` — the process historian's stop hour. Closest to the physics, absent on some jobs,
 #   and falls back to `"raised"` where it is. The handover note at the foot of this notebook
 #   prints how many of this log's orders carry no historian record.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which policy needs a fallback, and what exactly means "the historian has nothing"? Is hour 0
+# a real trip? And what should a policy name outside `POLICIES` — a typo, a capital, a `None` —
+# do?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse anything not in `POLICIES` before doing anything else. "closed" and "raised" parse
+# their stamp with exercise 1. "trip" returns the historian's hour when it is zero or more and
+# otherwise falls back to the raised answer — test it against zero explicitly, never by
+# truthiness.
+# </details>
 
 # %%
 def event_hour(order: WorkOrder, policy: str) -> int:
@@ -639,7 +730,7 @@ def _show_policy_disagreement() -> None:
     print("all three are defensible; only one of them is close to what the machine did")
 
 
-_try("policy disagreement", _show_policy_disagreement)
+_try("policy disagreement", _show_policy_disagreement, needs=("exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 5. Exercise 4 — `build_runs()`, and right-censoring
@@ -660,6 +751,20 @@ _try("policy disagreement", _show_policy_disagreement)
 # Two traps. The log is not sorted, so "the first order for this unit" is not "the earliest".
 # And a close date can land past the end of the sensor history, which has to be clamped —
 # a bookkeeping decision, made here, in the open, rather than by an out-of-bounds slice later.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What happens to a unit the log never mentions — and what would dropping it do to your
+# false-alarm rate? Is the first terminating order in the file the earliest one? Which orders
+# may end a run at all, and where must an end hour outside the history land?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `n_units`, `horizon_end` and every order's unit. Keep only orders that exercise 2
+# calls a failure or a suspension; per unit, take the smallest event hour under `policy`, a
+# failure winning a tie, and clamp it into `[0, horizon_end]`. Every unit left without one is
+# censored at `horizon_end`. Return one `Run` per unit, in unit order.
+# </details>
 
 # %%
 def build_runs(orders: Sequence[WorkOrder], n_units: int, horizon_end: int,
@@ -788,7 +893,7 @@ def runs_for(policy: str) -> list[Run]:
     return _RUN_CACHE[policy]
 
 
-_try("run tables", _show_run_tables)
+_try("run tables", _show_run_tables, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 6. Exercise 5 — `horizon_labels()`, where most of the damage is done
@@ -807,6 +912,20 @@ _try("run tables", _show_run_tables)
 #
 # Unknown is encoded as `-1` and dropped downstream. Calling it 0 asserts a survival nobody
 # observed, and on this plant it is the majority of the rows you would get wrong.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Is the hour the run ended a row at all? On a failing unit, is an hour exactly `horizon` before
+# the end inside the positive window? And on a censored or suspended unit, what do you really
+# know about its last `horizon` hours?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `horizon`, `kind` and `end_hour`. Start from an `int8` array filled with the unknown
+# code and compute each hour's distance to the end. Only hours strictly before the end get a
+# label: on a failure, inside the horizon is positive and beyond it negative; on anything else,
+# beyond the horizon is negative and inside it stays unknown.
+# </details>
 
 # %%
 def horizon_labels(n_hours: int, end_hour: int, kind: str, horizon: int) -> np.ndarray:
@@ -934,7 +1053,7 @@ def _show_horizon_choice() -> None:
           "need, not a hyper-parameter to tune")
 
 
-_try("horizon choice", _show_horizon_choice)
+_try("horizon choice", _show_horizon_choice, needs=("exercise 5",))
 
 # %% [markdown]
 # ## 7. Exercise 6 — `split_by_unit()`
@@ -943,6 +1062,19 @@ _try("horizon choice", _show_horizon_choice)
 # from the same bearing, minutes apart, and any model at all will score beautifully on the
 # second having seen the first. Split by **unit**, and stratify on the event so that a fold
 # with no failures in it never happens.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Failures are a minority of units. What can one shuffle over the whole fleet hand you as a
+# test set? And what must the same seed give you twice, and a different seed not?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the fraction — strictly between 0 and 1 — and reject a repeated unit id. Separate
+# the failure units from the rest and, from ONE `default_rng(seed)`, draw the rounded fraction
+# of each group without replacement. Everything not drawn is train; return both sides sorted,
+# as `int64`.
+# </details>
 
 # %%
 def split_by_unit(runs: Sequence[Run], test_fraction: float, seed: int
@@ -1038,7 +1170,7 @@ def _show_row_split_leak() -> None:
           f"{labels.size} rows in the table")
 
 
-_try("row split leak", _show_row_split_leak)
+_try("row split leak", _show_row_split_leak, needs=("exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 8. Exercises 7 and 8 — measuring a score, and catching one that is too good
@@ -1052,6 +1184,32 @@ _try("row split leak", _show_row_split_leak)
 # The **score ceiling** needs nothing but the score. A ranking statistic far above what an
 # honest labelling of the same feature produces is evidence about the labels, not about the
 # model. First you need the statistic, and `sklearn` is not installed, so you write it.
+#
+# <details><summary>💡 Exercise 7 · Hint 1 — what to think about</summary>
+#
+# Which labels may reach the statistic at all — what would an unknown row do if it were scored
+# as a negative? And when several scores tie, which rank does each of them take?
+# </details>
+# <details><summary>💡 Exercise 7 · Hint 2 — the approach, in words</summary>
+#
+# Validate the lengths, the label values and that both classes are present. Rank every score
+# from 1 upwards, then give each group of tied scores the average of the ranks it spans. Sum
+# the positives' ranks, apply the docstring's rank-sum identity, and return a plain float.
+# </details>
+
+# <details><summary>💡 Exercise 8 · Hint 1 — what to think about</summary>
+#
+# Is a row at exactly its unit's end hour before the end, or at it? What do you need to look up
+# for every row, and what if its unit is missing from the reference? Is the ceiling test
+# strict?
+# </details>
+# <details><summary>💡 Exercise 8 · Hint 2 — the approach, in words</summary>
+#
+# Check the four arrays align. Map each unit to its end hour from `reference`, raising if a
+# unit in the table has no run there. Count the rows at or after their unit's end, take the
+# AUC from exercise 7, and call the table suspect if either detector fires — with the ceiling
+# inclusive.
+# </details>
 
 # %%
 def rank_auc(scores: np.ndarray, labels: np.ndarray) -> float:
@@ -1101,7 +1259,7 @@ def leakage_report(units: np.ndarray, hours: np.ndarray, labels: np.ndarray,
     raise NotImplementedError
 
 
-def _check_auc_and_leakage() -> None:
+def _check_rank_auc() -> None:
     got = rank_auc(np.array([0.1, 0.4, 0.35, 0.8]), np.array([0, 0, 1, 1]))
     assert np.isclose(got, 0.75), (
         f"expected 0.75 on the worked example, got {got!r}. 0.25 means the positives and "
@@ -1131,7 +1289,10 @@ def _check_auc_and_leakage() -> None:
         else:
             raise AssertionError(
                 f"rank_auc({bad_scores.tolist()}, {bad_labels.tolist()}) must raise ValueError")
+    print("exercise 7 looks right — a tie-aware AUC that refuses unknown labels")
 
+
+def _check_leakage_report() -> None:
     ref = [Run(0, 4, FAILURE)]
     rep = leakage_report(np.array([0, 0]), np.array([3, 5]), np.array([1, 0]),
                          np.array([2.0, 1.0]), ref, 0.99)
@@ -1167,11 +1328,12 @@ def _check_auc_and_leakage() -> None:
         pass
     else:
         raise AssertionError("misaligned arrays must raise ValueError")
-    print("exercises 7 and 8 look right — a tie-aware AUC and two independent leak detectors")
+    print("exercise 8 looks right — two independent leak detectors")
 
 
 # %%
-_try("exercises 7 and 8", _check_auc_and_leakage)
+_try("exercise 7", _check_rank_auc)
+_try("exercise 8", _check_leakage_report)
 
 
 # %% [markdown]
@@ -1238,7 +1400,8 @@ def _show_leakage() -> None:
           "earn their keep, and they catch different things.")
 
 
-_try("leakage table", _show_leakage)
+_try("leakage table", _show_leakage,
+     needs=("exercise 4", "exercise 5", "exercise 7", "exercise 8"))
 
 # %% [markdown]
 # ## 9. Exercise 9 — `cost_optimal_threshold()`, and what the bookkeeping cost
@@ -1252,6 +1415,19 @@ _try("leakage table", _show_leakage)
 # negative. That last line is a simplification the lesson owes you: a censored unit that
 # alarms *might* have been about to fail. Charging it as a false alarm is the conservative
 # choice and it is a decision, not a fact.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# In which hours may you search for an alarm — all of them, or only those before that unit's
+# run ended? Is exactly `lead_hours` of warning a catch? And which threshold wins a tie?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `thresholds` and `lead_hours`. For each threshold and each run, look only at that
+# unit's hours before its end and find the first at or above the threshold. Sort the run into
+# the docstring's four outcomes, price the counts, and keep the cheapest operating point,
+# replacing it only when a later threshold is strictly cheaper.
+# </details>
 
 # %%
 def cost_optimal_threshold(health: np.ndarray, runs: Sequence[Run], thresholds: np.ndarray,
@@ -1363,7 +1539,7 @@ def _show_policy_economics() -> None:
     print("No model was trained. No feature was changed. A date column did this.")
 
 
-_try("policy economics", _show_policy_economics)
+_try("policy economics", _show_policy_economics, needs=("exercise 4", "exercise 9"))
 
 # %%
 def _plot_policy_curves() -> None:
@@ -1388,7 +1564,7 @@ def _plot_policy_curves() -> None:
     print("plotted: four cost curves over one unchanged health index")
 
 
-_try("cost curves", _plot_policy_curves)
+_try("cost curves", _plot_policy_curves, needs=("exercise 4", "exercise 9"))
 
 # %% [markdown]
 # ## 10. Common mistakes
@@ -1439,7 +1615,8 @@ def _price_the_censoring_bug() -> None:
           f"not show up\nin the score, which is the entire problem with looking for it there")
 
 
-_try("the censoring bug, priced", _price_the_censoring_bug)
+_try("the censoring bug, priced", _price_the_censoring_bug,
+     needs=("exercise 5", "exercise 7"))
 
 # %% [markdown]
 # ## 11. Self-check
@@ -1514,7 +1691,8 @@ def _handover() -> None:
           "config change.")
 
 
-_try("handover note", _handover)
+_try("handover note", _handover,
+     needs=("exercise 2", "exercise 4", "exercise 5", "exercise 7", "exercise 8", "exercise 9"))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1533,18 +1711,46 @@ _try("handover note", _handover)
 # work-order log, and ask who decides when a run ended.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_parse_log_hour),
-                          ("exercise 2", _check_classify_work_order),
-                          ("exercise 3", _check_event_hour),
-                          ("exercise 4", _check_build_runs),
-                          ("exercise 5", _check_horizon_labels),
-                          ("exercise 6", _check_split_by_unit),
-                          ("exercises 7 and 8", _check_auc_and_leakage),
-                          ("exercise 9", _check_cost_optimal_threshold)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_parse_log_hour),
+                              ("exercise 2", _check_classify_work_order),
+                              ("exercise 3", _check_event_hour),
+                              ("exercise 4", _check_build_runs),
+                              ("exercise 5", _check_horizon_labels),
+                              ("exercise 6", _check_split_by_unit),
+                              ("exercise 7", _check_rank_auc),
+                              ("exercise 8", _check_leakage_report),
+                              ("exercise 9", _check_cost_optimal_threshold)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

@@ -100,8 +100,18 @@ def classify(res) -> str:
 # differ across environments; that line is a banner, not a result.
 BANNER = re.compile(r"\b(python|numpy|matplotlib|mujoco|tokenizers|torch|pyyaml|clang|gcc)"
                     r"\s+v?\d+\.\d+", re.I)
-TIMING = re.compile(r"(\bwall\b|\bseconds?\b|\d\s*ms\b|\bMiB\b|\bGiB\b|\belapsed\b|"
-                    r"\btime\b|\d+(\.\d+)?\s*s\b|\bs/it\b|it/s\b)", re.I)
+# A measurement of THIS machine -- a number carrying a unit of time, memory or rate -- is not a
+# result, and is replaced by a placeholder before any comparison. Only the measurement is
+# masked, not its line: "tuned on the nominal model alone (1.1s)" still has its words compared.
+# Masking whole lines by pattern would hide results that share a line with a timing; relying
+# only on two same-environment runs misses coarse readings like "0.9 s" that happen to repeat.
+MEASURE = re.compile(
+    r"(?<![\w.])\d[\d,]*(?:\.\d+)?\s*"
+    r"(?:s|ms|us|µs|ns|secs?|seconds?|milliseconds?|microseconds?|nanoseconds?"
+    r"|KiB|MiB|GiB|kB|MB|GB|Hz|kHz|MHz|x|×"
+    # rates of THIS machine. Not m/s: a simulated walking speed is a deterministic result.
+    r"|(?:B|KB|kB|MB|GB|KiB|MiB|GiB|bytes|steps|it|samples|calls|ticks|rows|records|tokens"
+    r"|docs|documents|captures|readings|lines|fields|events|merges)/s)(?![\w/])")
 BUILD_JUNK = shutil.ignore_patterns("lesson_bin", "lesson_bin *", "*.o", "*.dSYM", "__pycache__",
                                     "* [0-9]", "* [0-9].*", "lesson.ipynb", "build", ".ipynb_checkpoints")
 
@@ -152,6 +162,10 @@ def completed(d: Path, env: str, timeout: int) -> dict:
                             (str(Path(tmp).resolve()), "<tmp>"), (str(Path(tmp)), "<tmp>"),
                             *idents]:
             out = out.replace(real, label)
+        out = MEASURE.sub("<measured>", out)
+        # Column padding follows the width of whatever was printed in the column; two timings of
+        # different widths shift the spaces around them. Alignment is not a result.
+        out = "\n".join(re.sub(r"[ \t]+", " ", l).strip() for l in out.splitlines())
     last = (err.strip().splitlines() or [""])[-1][:200]
     return {"rc": rc, "secs": round(time.time() - t0, 1), "err": last,
             "installed": missing, "out": out.splitlines()}

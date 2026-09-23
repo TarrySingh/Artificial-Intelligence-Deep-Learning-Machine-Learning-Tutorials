@@ -194,5 +194,5 @@ points: 155        # = sum of RUBRIC points in tests/test_lesson.py
 # additions. Budget and tier hold: 16.2 s against 180 s, 38 MiB against cpu8.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 — 4/4 gates re-run green; 19 fresh mutants, 17 caught first pass (79%-98%) and 2 rubric defects found and closed (an unstratified bootstrap patching eventless replicates with 0.5, and a generator in the default argument), both now caught at 151/155 and 152/155 with the reference still 155/155; 1 survivor proved near-equivalent by measurement (retry-until-valid draw, se ratio 0.99-1.14) and documented in the docstring rather than failed; claims re-fetched and verbatim; scope matches MODULES.md module 4"
-measured_seconds: 15.9
+measured_seconds: 15.7
 measured_peak_mib: 38

@@ -106,12 +106,16 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import math
+import re
 import struct
 import subprocess
 import sys
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -143,18 +147,28 @@ DATA_NOTE = ("SYNTHETIC. Every exposure and every probability of default in this
              "the notebook and in lesson.c. No real portfolio is used anywhere.")
 
 _BUILD = None
+_BUILT_FROM = None
 _CACHE = {}
 
 
 def build(verbose: bool = True):
-    """Compile the C source with make. Cached: the compiler runs once per session."""
-    global _BUILD
-    if _BUILD is None:
+    """Compile the C source with make. Cached, once per SAVED version of the source.
+
+    Save an edit to the C file and the next cell that runs the binary rebuilds it and forgets
+    every output the old binary produced — so a check you re-run judges the code you just
+    wrote, not the code you had when the notebook started.
+    """
+    global _BUILD, _BUILT_FROM
+    src = LESSON_DIR / C_SRC
+    stamp = src.stat().st_mtime_ns if src.exists() else None
+    if _BUILD is None or stamp != _BUILT_FROM:
         proc = subprocess.run(
             ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
              f"SRC={C_SRC}", f"BIN={BIN}"],
             capture_output=True, text=True, timeout=600)
         _BUILD = (proc.returncode == 0, (proc.stdout + proc.stderr).strip())
+        _BUILT_FROM = stamp
+        _CACHE.clear()
     ok, out = _BUILD
     if verbose:
         print("build OK" if ok else "BUILD FAILED\n" + out)
@@ -214,21 +228,146 @@ def make_test():
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
-_FAILURES = []
+# The six exercises, and where each one lives. `_try` records the latest outcome of every
+# check in `_STATUS`; the progress board at the foot of the notebook reads it.
+_EXERCISES: dict[str, str] = {
+    "exercise 1": "naive_sum in lesson.c",
+    "exercise 2": "pairwise_sum in lesson.c",
+    "exercise 3": "kahan_sum in lesson.c",
+    "exercise 4": "ulps_between",
+    "exercise 5": "agreeing_significant_digits",
+    "exercise 6": "reproduce in lesson.c",
+}
+# Which exercise each stub belongs to, so an unfinished stub can be traced to its owner.
+_STUB_OWNER: dict[str, str] = {
+    "naive_sum": "exercise 1", "pairwise_sum": "exercise 2", "kahan_sum": "exercise 3",
+    "ulps_between": "exercise 4", "agreeing_significant_digits": "exercise 5",
+    "reproduce": "exercise 6",
+}
+_C_EXERCISES = ("exercise 1", "exercise 2", "exercise 3", "exercise 6")
+_STATUS: dict[str, str] = {}     # label -> "passed" | "failed" | "not started"
+_SELFTEST: dict[str, str] = {}   # C exercise -> the verdict its own line of `make test` gave
+_SELFTEST_LINE: dict[str, str] = {}  # C exercise -> that line, word for word
+_SELFTEST_OF = None              # the saved version of the C file those verdicts describe
+_FAILED_CHECKS: list[str] = []
 
 
-def _try(fn, *a, **k):
-    """Run a public check, print what it says, and remember whether it passed."""
+def _selftest(show: bool = True) -> None:
+    """Run `make test`, and take each C exercise's verdict from its own line of the report.
+
+    The binary tests each C function on hand-worked cases of its own, so one exercise's line
+    never waits on another's — unlike the portfolio checks, which need all three sums from a
+    single run of the binary.
+    """
+    global _SELFTEST_OF
+    build(verbose=False)
+    if not show and _SELFTEST and _SELFTEST_OF == _BUILT_FROM:
+        return                         # the binary has not changed since its last self-test
+    code, out = make_test()
+    if show:
+        print(out)
+        print(f"exit code {code}  (0 = all pass, 2 = something is still a stub, "
+              "1 = a failure)\n")
+    _SELFTEST.clear()
+    _SELFTEST_LINE.clear()
+    verdicts = {"PASS": "passed", "TODO": "not started", "FAIL": "failed"}
+    for line in out.splitlines():
+        m = re.match(r"\s*(PASS|TODO|FAIL)\s+exercise \d+\s+(\w+)", line)
+        if m and m.group(2) in _STUB_OWNER:
+            _SELFTEST[_STUB_OWNER[m.group(2)]] = verdicts[m.group(1)]
+            _SELFTEST_LINE[_STUB_OWNER[m.group(2)]] = " ".join(line.split())
+    _SELFTEST_OF = _BUILT_FROM
+
+
+def _stub_owner(exc: NotImplementedError):
+    """The exercise whose unfinished stub raised `exc`: a C stub names itself in the binary's
+    message, and a Python stub is the innermost frame of the traceback."""
+    m = re.search(r"(\w+)\(\) is still a stub", str(exc))
+    if m:
+        return _STUB_OWNER.get(m.group(1))
+    tb, name = exc.__traceback__, ""
+    while tb is not None:
+        name, tb = tb.tb_frame.f_code.co_name, tb.tb_next
+    return _STUB_OWNER.get(name)
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (), quiet: bool = False) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so, and a demo that `needs` an exercise you
+    have not passed yet names that exercise and skips. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on. A C exercise is
+    judged twice: by its own line of `make test`, and by a portfolio check that cannot run
+    until all three sums exist; until it can, the `make test` line is the verdict. Every
+    outcome lands in `_STATUS` for the progress board; `quiet` silences all but a failure.
+    """
+    say = (lambda *_: None) if quiet else print
+    waiting = [ex for ex in needs if _STATUS.get(ex) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        if len(waiting) == 1:
+            named = f"{waiting[0]} (`{_EXERCISES[waiting[0]]}`)"
+        else:
+            nums = [ex.split()[-1] for ex in waiting]
+            named = "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+        say(f"{label}: skipped — needs {named} first. Re-run this cell once "
+            f"{'that check passes' if len(waiting) == 1 else 'those checks pass'}.")
+        return
+    if label in _C_EXERCISES:
+        _selftest(show=False)          # its own verdict, from the C file as it stands now
     try:
-        fn(*a, **k)
-    except NotImplementedError as e:
-        print(f"  TODO {fn.__name__}: {e}")
-        _FAILURES.append(fn.__name__)
-    except AssertionError as e:
-        print(f"  FAIL {fn.__name__}: {e}")
-        _FAILURES.append(fn.__name__)
+        with contextlib.redirect_stdout(io.StringIO()) if quiet else contextlib.nullcontext():
+            check()
+    except NotImplementedError as exc:
+        owner = _stub_owner(exc)
+        if owner in (None, label) or _SELFTEST.get(label) == "not started":
+            _STATUS[label] = "not started"
+            say(f"{label}: not implemented yet — fill in `{_EXERCISES[label]}`, then re-run "
+                "this cell." if label in _EXERCISES else f"{label}: not started — {exc}")
+        elif label in _C_EXERCISES:
+            # The portfolio check cannot run yet, so your function's own line of `make test`
+            # is the verdict — and a FAIL there is a failure, here and in the exit code.
+            _STATUS[label] = _SELFTEST.get(label, "not started")
+            if _STATUS[label] == "failed":
+                _FAILED_CHECKS.append(label)
+                print(f"{label}: FAILED — `make test` says: {_SELFTEST_LINE.get(label, '')}")
+            else:
+                say(f"{label}: the portfolio check waits on {owner} (`{_EXERCISES[owner]}`), "
+                    "still a stub — the binary computes all three sums in one run. Until "
+                    "then, your function's own line of `make test` is its verdict.")
+        else:
+            _STATUS[label] = "not started"
+            say(f"{label}: skipped — needs {owner} (`{_EXERCISES[owner]}`) first.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
     else:
-        print(f"  ok   {fn.__name__}")
+        if _SELFTEST.get(label) == "failed":
+            _STATUS[label] = "failed"
+            _FAILED_CHECKS.append(label)
+            print(f"{label}: FAILED — the portfolio check passed, but `make test` still fails "
+                  f"your function on a hand-worked case: {_SELFTEST_LINE.get(label, '')}")
+        else:
+            _STATUS[label] = "passed"
+            say(f"{label}: passed")
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    marks = {"passed": "✅ passed", "failed": "❌ failed", "not started": "⏳ not started"}
+    width = max(len(label) for label in _EXERCISES)
+    print("\nYOUR PROGRESS")
+    for label, where in _EXERCISES.items():
+        mark = marks[_STATUS.get(label, "not started")]
+        print(f"  {mark:<15} {label:<{width}}  {where}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    quiz = marks[_STATUS.get("self-check", "not started")]
+    print(f"  {done} of {len(_EXERCISES)} exercises complete · self-check quiz: {quiz}")
 
 
 if _IS_MAIN:
@@ -252,20 +391,26 @@ if _IS_MAIN:
 # in this lesson is a number somebody typed.
 
 # %%
-if _IS_MAIN:
-    _facts = metrics(cached("facts"))
-    print(f"  a double carries {_facts['mant_dig']:.0f} bits of significand")
-    print(f"  DBL_EPSILON     = {_facts['dbl_epsilon']!r}")
-    print(f"  unit roundoff u = {_facts['unit_roundoff']!r}  (= DBL_EPSILON / 2 = 2^-53)")
+def _show_machine_facts() -> None:
+    # Through `_try`, like every cell that runs the binary: if an edit to lesson.c stops it
+    # compiling, this says so and Run all carries on to your exercise cells and the board.
+    facts = metrics(cached("facts"))
+    print(f"  a double carries {facts['mant_dig']:.0f} bits of significand")
+    print(f"  DBL_EPSILON     = {facts['dbl_epsilon']!r}")
+    print(f"  unit roundoff u = {facts['unit_roundoff']!r}  (= DBL_EPSILON / 2 = 2^-53)")
     print(f"  python agrees:    {sys.float_info.epsilon!r}, "
           f"{sys.float_info.mant_dig} bits")
-    print(f"  pairwise block  = {_facts['pairwise_block']:.0f}")
-    _wider = _facts["ldbl_mant_dig"] > _facts["mant_dig"]
-    print(f"  long double     = {_facts['sizeof_long_double']:.0f} bytes, "
-          f"{_facts['ldbl_mant_dig']:.0f} bits of significand — "
-          + ("wider than a double here" if _wider
+    print(f"  pairwise block  = {facts['pairwise_block']:.0f}")
+    wider = facts["ldbl_mant_dig"] > facts["mant_dig"]
+    print(f"  long double     = {facts['sizeof_long_double']:.0f} bytes, "
+          f"{facts['ldbl_mant_dig']:.0f} bits of significand — "
+          + ("wider than a double here" if wider
              else "THE SAME as a double here, so accumulating in one buys nothing"))
     print(f"\n  {DATA_NOTE}")
+
+
+if _IS_MAIN:
+    _try("machine facts", _show_machine_facts)
 
 # %% [markdown]
 # ## 2. The portfolio, built out of exact bits
@@ -323,7 +468,7 @@ def _check_bit_identity() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_bit_identity)
+    _try("bit identity", _check_bit_identity)
 
 # %% [markdown]
 # ## 3. Exercise 1 — `naive_sum()` in `lesson.c`
@@ -334,6 +479,25 @@ if _IS_MAIN:
 #
 # Your feedback loop is `make test`, and the cell below runs it. The Python mirror is given
 # so you can see the two languages agree: same order, same additions, same 64 bits out.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This one is graded bit for bit against the same loop in Python, so the question is whether
+# you do exactly what the definition says and nothing cleverer. Any reordering, any partial
+# sums, a wider accumulator, any correction — each gives a different double, and a different
+# double is wrong here even when it lands closer to the true total. The worked example in the
+# stub's comment is SUPPOSED to lose the 1.0.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# One double accumulator starting at zero, which also covers an empty array; walk the elements
+# in index order adding each one into it; return the accumulator untouched. Save the file and
+# run the cell: the `make test` line judges your function on its hand-worked cases, and the
+# portfolio check compares your two-million-element total with Python's, to the last bit, once
+# all three sums exist.
+#
+# </details>
 
 # %%
 def python_naive_sum(xs) -> float:
@@ -361,10 +525,8 @@ def _check_naive_sum() -> None:
 
 
 if _IS_MAIN:
-    _code, _out = make_test()
-    print(_out)
-    print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a failure)\n")
-    _try(_check_naive_sum)
+    _selftest()
+    _try("exercise 1", _check_naive_sum)
 
 # %% [markdown]
 # ## 4. Exercise 2 — `pairwise_sum()` in `lesson.c`
@@ -377,6 +539,24 @@ if _IS_MAIN:
 # That is not hypothetical. numpy's `sum` documentation says it uses "partial pairwise
 # summation" (`claims.yaml`), and the cell below shows numpy's answer and yours are both
 # pairwise and still not the same number.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Pairwise summation is a family of algorithms, and this exercise wants exactly one member of
+# it, because two pairwise sums that split differently do not reproduce each other. Two details
+# decide the bits: where the recursion stops — a block of PAIRWISE_BLOCK or fewer elements is
+# summed left to right — and where it splits — at half of n in integer division, so when n is
+# odd the LEFT half is the shorter one.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Return zero for an empty array. When the block is small enough, sum it left to right exactly
+# as naive_sum does. Otherwise work out the half with integer division, call the function on
+# the first half and on the rest, and add the two results. If the check reports that pairwise
+# came back identical to naive over two million values, your recursion is never splitting.
+#
+# </details>
 
 # %%
 def _check_pairwise_sum() -> None:
@@ -399,7 +579,7 @@ def _check_pairwise_sum() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_pairwise_sum)
+    _try("exercise 2", _check_pairwise_sum)
 
 # %% [markdown]
 # ## 5. Exercise 3 — `kahan_sum()` in `lesson.c`
@@ -419,6 +599,27 @@ if _IS_MAIN:
 # This lesson measures the ranking rather than deriving it. The analysis is in Higham, *The
 # accuracy of floating-point summation*, SIAM J. Sci. Comput. 14(4):783-799, 1993
 # (`claims.yaml`).
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A second accumulator carries the low-order part each addition rounds away. Three things go
+# wrong. The compensation is overwritten on every element instead of accumulated, so only the
+# last correction survives. The function returns the running sum without adding the
+# compensation back. Or it uses the unbranched 1965 form, which loses the correction whenever
+# an element is larger in magnitude than the sum so far — the self-test case built around 1e16
+# exists to catch exactly that.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Keep a running sum and a compensation, both starting at zero. For each element form the new
+# total, then recover what that addition threw away: when the running sum is at least as large
+# in magnitude as the element, it is the old sum minus the new total, plus the element;
+# otherwise it is the element minus the new total, plus the old sum. Add that to the
+# compensation, move the new total into the running sum, and return the running sum plus the
+# compensation at the end.
+#
+# </details>
 
 # %%
 def _key(x: float) -> int:
@@ -451,7 +652,7 @@ def _check_kahan_sum() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_kahan_sum)
+    _try("exercise 3", _check_kahan_sum)
 
 # %% [markdown]
 # ## 6. The same numbers, four orders
@@ -490,7 +691,8 @@ def _check_order_dependence() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_order_dependence)
+    _try("order dependence", _check_order_dependence,
+         needs=("exercise 1", "exercise 3"))
 
 # %% [markdown]
 # ## 7. Exercise 4 — `ulps_between(a, b)`, in Python
@@ -502,6 +704,24 @@ if _IS_MAIN:
 # The recipe is in the stub. The trap is signed zero and the crossing of zero: `-0.0` and
 # `+0.0` are equal and must be zero steps apart, while the two doubles either side of zero
 # are one step apart even though their bit patterns differ in the top bit.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Both traps sit at zero, and the checks test both. The two zeros compare equal, so they must
+# be zero steps apart even though their bit patterns differ — so test equality before you touch
+# the bits. And the two doubles either side of zero are one step apart, although subtracting
+# their raw bit patterns gives an enormous number: the key has to map negative doubles so that
+# it keeps increasing straight through zero. A NaN has no position on the line at all.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Raise ValueError if either argument is a NaN, and return zero when the two compare equal.
+# Otherwise turn each number into the ordering key the docstring describes — the given `_key`
+# helper in section 5 already builds exactly that — and return the absolute difference of the
+# two keys, keeping the arithmetic in Python integers all the way.
+#
+# </details>
 
 # %%
 def ulps_between(a: float, b: float) -> int:
@@ -552,6 +772,9 @@ def _check_ulps_between() -> None:
         pass
     else:
         raise AssertionError("a NaN argument must raise ValueError, not return a number")
+
+
+def _show_ulps_on_the_portfolio() -> None:
     ex, _pd = generate_portfolio(N)
     exact = math.fsum(ex.tolist())
     m = metrics(cached("sums", "--n", str(N)))
@@ -560,7 +783,9 @@ def _check_ulps_between() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_ulps_between)
+    _try("exercise 4", _check_ulps_between)
+    _try("ULPs on the portfolio", _show_ulps_on_the_portfolio,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4"))
 
 # %% [markdown]
 # ## 8. Exercise 5 — `agreeing_significant_digits(a, b)`, in Python
@@ -568,6 +793,25 @@ if _IS_MAIN:
 # ULPs are the right unit for arguing with an engineer. Digits are the unit a committee
 # reads. Both belong in the finding, and they say different things: two numbers can be
 # hundreds of ULPs apart and still agree to thirteen printed digits.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The rules are ordered, and the order is the trap. Equality comes first — so the two zeros
+# agree on everything — then infinities, then the sign, then the decimal exponent, and only
+# then the digits. Skip the exponent test and a figure and the same figure ten times larger
+# agree on all seventeen digits, because their mantissa strings are identical. A NaN has no
+# digits to agree on.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Work down the docstring's rules in their order and return as soon as one of them decides the
+# answer: a NaN, equality, an infinity, then a sign that math.copysign says differs. Next
+# format both numbers in the docstring's scientific form and split each at the exponent marker
+# — different exponents decide it too. Only then drop the sign and the decimal point from each
+# mantissa and count matching digits from the left, stopping at the first mismatch.
+#
+# </details>
 
 # %%
 def agreeing_significant_digits(a: float, b: float) -> int:
@@ -621,6 +865,10 @@ def _check_agreeing_significant_digits() -> None:
         pass
     else:
         raise AssertionError("a NaN argument must raise ValueError")
+
+
+def _show_digits_on_the_portfolio() -> None:
+    f = agreeing_significant_digits
     m = metrics(cached("sums", "--n", str(N)))
     block = rows(cached("order", "--n", str(N)), "order")
     fwd, rev = block[0][1], block[1][1]
@@ -634,7 +882,9 @@ def _check_agreeing_significant_digits() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_agreeing_significant_digits)
+    _try("exercise 5", _check_agreeing_significant_digits)
+    _try("digits on the portfolio", _show_digits_on_the_portfolio,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 9. Exercise 6 — `reproduce()` in `lesson.c`
@@ -649,7 +899,28 @@ if _IS_MAIN:
 # no partial sum exceeds `sum_abs`. Three verdicts: `REPRODUCED` (0) when the two are equal
 # bit for bit, `EXPLAINED` (1) when the gap is inside the bound, `FINDING` (2) otherwise.
 #
-# Fill in `reproduce` in `lesson.c`, then run this.
+# Fill in `reproduce` in `lesson.c`, then run this. (`make test` numbers the four C
+# exercises on their own, so its line for this one reads `exercise 4  reproduce`.)
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three verdicts in a fixed order: bit-for-bit equality first, then a gap inside the bound —
+# inclusive, so a gap sitting exactly on it is explained — and a finding otherwise. The bound
+# is graded to the bit as well, so compute it in the order the stub's comment gives, and treat
+# sum_abs as the magnitude it is: handed a signed figure by mistake, a negative bound turns
+# every reconciliation into a finding. No constant tolerance anywhere, and no special case for
+# NaN — it falls through on its own.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Fill the struct's gap with the absolute difference of the two figures. Set the bound to zero
+# when there are no additions to blame, and otherwise to the number of additions as a double,
+# times the unit roundoff, times the absolute value of sum_abs, in that order. Then choose the
+# verdict: reproduced when the two figures are equal, explained when the gap is no larger than
+# the bound, and a finding otherwise.
+#
+# </details>
 
 # %%
 def verdict_of(a: float, b: float, n: int, sum_abs: float) -> dict:
@@ -682,6 +953,8 @@ def _check_reproduce() -> None:
         f"{near['bound']!r}. sum_abs is a magnitude; a negative bound makes gap <= bound "
         "false for every gap, so every reconciliation would come back a finding.")
 
+
+def _show_the_two_teams_adjudicated() -> None:
     ex, _pd = generate_portfolio(N)
     m = metrics(cached("sums", "--n", str(N)))
     block = rows(cached("order", "--n", str(N)), "order")
@@ -697,7 +970,9 @@ def _check_reproduce() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_reproduce)
+    _try("exercise 6", _check_reproduce)
+    _try("the two teams adjudicated", _show_the_two_teams_adjudicated,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 6"))
 
 # %% [markdown]
 # ## 10. Why `EXPLAINED` is not a resolution
@@ -738,7 +1013,8 @@ def _check_a_real_error_hides_inside_the_bound() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_a_real_error_hides_inside_the_bound)
+    _try("a real error inside the bound",
+         _check_a_real_error_hides_inside_the_bound, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 11. The metric, not just the total
@@ -771,7 +1047,8 @@ def _check_weighted_mean() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_weighted_mean)
+    _try("weighted mean", _check_weighted_mean,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 12. Common mistakes
@@ -826,7 +1103,8 @@ def _demonstrate_common_mistakes() -> None:
 
 
 if _IS_MAIN:
-    _try(_demonstrate_common_mistakes)
+    _try("common mistakes", _demonstrate_common_mistakes,
+         needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 13. Self-check
@@ -882,8 +1160,16 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+def _self_check_marked() -> None:
+    """Mark the quiz, or report it as not started while every answer is still '?'."""
+    if all(str(v).strip() == "?" for v in SELF_CHECK.values()):
+        raise NotImplementedError("put a, b, c or d against each question in SELF_CHECK, then "
+                                  "re-run this cell")
+    _check_self_check()
+
+
 if _IS_MAIN:
-    _try(_check_self_check)
+    _try("self-check", _self_check_marked)
 
 # %% [markdown]
 # ## 14. What you built
@@ -898,7 +1184,27 @@ if _IS_MAIN:
 
 # %%
 if _IS_MAIN:
-    if _FAILURES:
-        print(f"\n{len(_FAILURES)} check(s) still failing: {', '.join(_FAILURES)}")
-        sys.exit(1)
-    print("\nall public checks green — now run:  python tools/grade.py <this lesson>")
+    # Re-run every exercise's check against the C file and your functions as they stand NOW, so
+    # the board reports your latest edit rather than whatever each cell said the last time you
+    # ran it. Quietly: a pass or an untouched stub says nothing here; a failure still says why.
+    for _label, _check in (("exercise 1", _check_naive_sum),
+                           ("exercise 2", _check_pairwise_sum),
+                           ("exercise 3", _check_kahan_sum),
+                           ("exercise 4", _check_ulps_between),
+                           ("exercise 5", _check_agreeing_significant_digits),
+                           ("exercise 6", _check_reproduce),
+                           ("self-check", _self_check_marked)):
+        _try(_label, _check, quiet=True)
+    _progress_board()
+    if all(_STATUS.get(label) == "passed" for label in (*_EXERCISES, "self-check")):
+        print("\nall public checks green — now run:  python tools/grade.py <this lesson>")
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _still_failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if "ipykernel" in sys.modules:
+        if _still_failing:
+            print("\nstill failing: " + ", ".join(_still_failing)
+                  + " — each one's message above names the likely mistake.")
+    elif _FAILED_CHECKS:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

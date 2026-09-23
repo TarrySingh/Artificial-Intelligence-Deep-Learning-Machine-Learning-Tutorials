@@ -107,9 +107,12 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import math
 import sys
 import time
+import traceback
 from typing import Callable, NamedTuple
 
 import numpy as np
@@ -136,24 +139,80 @@ DATA_NOTE = (
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in order, and the function each one asks you to write. `_try` records the
+# latest outcome of every check in `_STATUS`; the progress board at the foot reads it.
+_EXERCISES: dict[str, str] = {
+    "exercise 1": "average_ranks, auc_by_ranks",
+    "exercise 2": "ks_and_gini",
+    "exercise 3": "bootstrap_auc_ci",
+    "exercise 4": "paired_bootstrap_difference",
+    "exercise 5": "delong_components, delong_auc_ci, delong_test",
+    "exercise 6": "measurability",
+    "exercise 7": "interval_coverage",
+}
+_STATUS: dict[str, str] = {}     # label -> "passed" | "failed" | "not started"
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _try(label: str, check: Callable[[], None], needs: tuple = (), quiet: bool = False) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
-    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    A stub you have not filled in yet simply says so, and a demo that `needs` an exercise you
+    have not passed yet names that exercise and skips. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other six.
+    exercise never hides the feedback on the other six. Every outcome lands in `_STATUS`
+    for the progress board; `quiet` silences a pass or a stub, never a failure.
     """
+    waiting = [ex for ex in needs if _STATUS.get(ex) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        if len(waiting) == 1:
+            named = f"{waiting[0]} (`{_EXERCISES[waiting[0]]}`)"
+        else:
+            nums = [ex.split()[-1] for ex in waiting]
+            named = "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+        print(f"{label}: skipped — needs {named} first. Re-run this cell once "
+              f"{'that check passes' if len(waiting) == 1 else 'those checks pass'}.")
+        return
     try:
-        check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+        with contextlib.redirect_stdout(io.StringIO()) if quiet else contextlib.nullcontext():
+            check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        # The frame that raised names the stub. If it belongs to an EARLIER exercise that this
+        # one builds on, say that, rather than telling you to fill in a function you have.
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name
+        owner = [ex for ex, funcs in _EXERCISES.items()
+                 if stub in funcs.split(", ") and ex != label]
+        if quiet:
+            pass
+        elif owner:
+            print(f"{label}: skipped — needs {owner[0]} (`{_EXERCISES[owner[0]]}`) first: "
+                  f"{stub}() is still a stub. Re-run this cell once that check passes.")
+        else:
+            print(f"{label}: not implemented yet — fill in the stub above, then re-run "
+                  "this cell.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    marks = {"passed": "✅ passed", "failed": "❌ failed", "not started": "⏳ not started"}
+    width = max(len(label) for label in _EXERCISES)
+    print("\nYOUR PROGRESS")
+    for label, function in _EXERCISES.items():
+        mark = marks[_STATUS.get(label, "not started")]
+        print(f"  {mark:<15} {label:<{width}}  {function}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"  {done} of {len(_EXERCISES)} exercises complete")
 
 
 def _sigmoid(x: np.ndarray) -> np.ndarray:
@@ -294,6 +353,28 @@ print("\nThe rank identity in exercise 1 does the same arithmetic in one sort.")
 # Give every member of a tied block the AVERAGE of the ranks that block spans. That is
 # `average_ranks()`, the first of the two stubs below; `auc_by_ranks()` is the identity built
 # on top of it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Ties are the whole exercise. A pair of records with the same score is half a win, and ranking
+# them in whatever order a sort happened to leave them counts it as a whole one — invisible on
+# continuous scores, and most of your data on a banded scorecard. So every member of a tied
+# block takes the average of the ranks the block spans, and the ranks go back in the order the
+# records arrived, not in sorted order. Check the inputs before you rank anything: with one
+# class absent, AUC is undefined, not zero.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# For average_ranks: a stable sort gives the order; the unique sorted values with their counts
+# give every tied block's size at once; each block's rank is the midpoint of the 1-based ranks
+# it covers; scatter those back to the original positions through the sort order, with no
+# Python loop over ties. For auc_by_ranks: validate lengths, emptiness, labels and both
+# classes; rank all the scores together; sum the event ranks, subtract the smallest sum the
+# events could have had, divide by the number of event and non-event pairs, and return a plain
+# float.
+#
+# </details>
 
 # %%
 def average_ranks(x: np.ndarray) -> np.ndarray:
@@ -393,6 +474,26 @@ _try("exercise 1", _check_auc)
 # maximum sits at a data point and a grid will walk past it. And compare SHARES within each
 # class, never counts: with 300 events and 5,700 non-events, a count-based curve measures the
 # class imbalance rather than the separation.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Gini is free once you have the AUC. KS is where the traps are: the widest gap sits at an
+# observed score, so a grid walks straight past it; each cumulative curve is a share of its OWN
+# class, or the gap measures class imbalance instead of separation; and "at or below" decides
+# which side of a threshold a tied score counts on. When two thresholds attain the same gap,
+# the lower one is reported.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Take the AUC from exercise 1 and derive Gini from it. Use the unique observed scores as the
+# thresholds. Sort each class's scores and, for every threshold, count how many in that class
+# score at or below it with a sorted search that counts a score equal to the threshold, then
+# divide by that class's own size. KS is the largest absolute gap between the two curves, and
+# its threshold is the first — so the lowest — score attaining it. Return every field as a
+# plain float.
+#
+# </details>
 
 # %%
 class Discrimination(NamedTuple):
@@ -459,7 +560,7 @@ def _show_headline_metrics() -> None:
           "That is a number. It is not yet a finding.")
 
 
-_try("headline metrics", _show_headline_metrics)
+_try("headline metrics", _show_headline_metrics, needs=("exercise 2",))
 
 # %% [markdown]
 # ## 4. Exercise 3 — `bootstrap_auc_ci()`
@@ -480,6 +581,28 @@ _try("headline metrics", _show_headline_metrics)
 # unstratified draw will sooner or later hand you a replicate with no events at all, and AUC
 # is undefined there. Conditioning on the class counts also matches how the sample was
 # designed: nobody is uncertain about how many defaults they had.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three rules carry the marks. A record is a label and a score bolted together, so a resample
+# draws RECORDS and applies the same positions to both arrays — shuffle one against the other
+# and a perfect model scores a coin toss. Draw within each class, so no replicate is left
+# without events. And a 95% interval runs between the 2.5th and 97.5th percentiles, around a
+# point estimate that is the sample's own AUC, never the average of the replicates. Every
+# random number comes from the generator you were handed, or from one seeded inside the call.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate n_boot and alpha, and create a generator inside the call when none is passed.
+# Compute the point estimate on the original arrays. Find the positions of the events and of
+# the non-events. For each replicate, draw as many positions as there are events from the
+# events, and as many as there are non-events from the non-events, with replacement; join them,
+# index BOTH the labels and the scores with them, and compute the AUC. The interval is the two
+# tail quantiles at alpha/2 of the replicates, se is their standard deviation, and n_boot is
+# echoed back.
+#
+# </details>
 
 # %%
 class Interval(NamedTuple):
@@ -582,7 +705,7 @@ def _show_single_intervals() -> None:
     print("Hold on to that answer. Section 7 puts a number on why it is the wrong question.")
 
 
-_try("single-model intervals", _show_single_intervals)
+_try("single-model intervals", _show_single_intervals, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 5. Exercise 4 — `paired_bootstrap_difference()`
@@ -600,6 +723,26 @@ _try("single-model intervals", _show_single_intervals)
 #
 # That is the number a validator quotes when they compare two intervals by eye, and the whole
 # of section 7 is about what it costs.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The pairing IS the result: one draw of records per replicate, scored by both models, so an
+# unlucky month moves both AUCs together and cancels out of the difference. Draw separately for
+# each model and a model compared with itself suddenly looks uncertain — the check tries
+# exactly that. The independent standard error is kept only for contrast, and the difference
+# itself is measured on the original sample, not averaged over replicates.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the three lengths and set up the generator as in exercise 3. Measure both AUCs on
+# the original sample; their difference is diff. For each replicate make ONE stratified draw of
+# positions and score both models on those same records, keeping both replicate arrays. The
+# interval is the tail quantiles of the replicate differences, se_paired is the spread of those
+# differences, se_independent combines the two per-model spreads in quadrature, and corr is the
+# correlation between the two replicate arrays.
+#
+# </details>
 
 # %%
 class PairedDifference(NamedTuple):
@@ -698,6 +841,29 @@ _try("exercise 4", _check_paired)
 #
 # and for two models on the same records, the same components taken jointly give the
 # covariance — which is where the pairing lives.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each event is scored against the whole non-event population and each non-event against the
+# whole event population, and a tie counts half on BOTH sides. Get a side or a tie wrong and
+# the components stop averaging to the AUC — the first thing to check. The variances are sample
+# variances. And the test of a difference lives in the cross term: two models on the same
+# records covary, and leaving the covariance out turns the paired test back into the
+# independent one this lesson warns against.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Components: sort each class once, and for every event count the non-events strictly below it
+# and the ones tied with it using sorted searches from each side; do the mirror image for each
+# non-event, counting events above. Interval: add each component vector's sample variance
+# divided by its class size, take the square root, and scale by the normal quantile at 1 -
+# alpha/2; report no replicates. Test: stack the two models' component vectors, take the two
+# covariance matrices, combine them the same way, and read the variance of the difference as
+# the two diagonal terms minus twice the off-diagonal one. Guard z when the standard error is
+# zero, and make the p-value two-sided.
+#
+# </details>
 
 # %%
 class DelongResult(NamedTuple):
@@ -822,7 +988,8 @@ def _show_delong_vs_bootstrap() -> None:
           f"{boot.se_independent / boot.se_paired:.1f}x the wrong standard error costs you")
 
 
-_try("DeLong against the bootstrap", _show_delong_vs_bootstrap)
+_try("DeLong against the bootstrap", _show_delong_vs_bootstrap,
+     needs=("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 7. How often does the independent shortcut give the wrong answer?
@@ -864,7 +1031,7 @@ def _show_power_study() -> None:
           "used in meetings.")
 
 
-_try("power study", _show_power_study)
+_try("power study", _show_power_study, needs=("exercise 5",))
 
 # %% [markdown]
 # ## 8. Exercise 6 — `measurability()`
@@ -882,6 +1049,27 @@ _try("power study", _show_power_study)
 # a difference of `material` becomes detectable:
 #
 # > `n_required = ceil( n * (mdd / material)**2 )`
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Order matters. Significance is decided first, and a result exactly on the critical value
+# clears it; only a result that is not significant goes on to ask whether the sample could have
+# seen a material difference at all. The minimum detectable difference adds the power quantile
+# to the critical one — not the critical value alone. The record count rounds UP, because a
+# fraction of a record short is still short. And the reason opens with the exact head the
+# docstring gives, so a downstream report can parse it.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate the inputs. Take the two normal quantiles — at 1 - alpha/2 and at the power — and
+# form the critical difference and the mdd from the standard error. Scale n by the square of
+# mdd over material and round up to an int. Then decide: SIGNIFICANT if the absolute observed
+# difference reaches the critical difference; otherwise NOT MEASURABLE if mdd exceeds material;
+# otherwise NOT SIGNIFICANT. Build the reason from the formatted head, a semicolon and a
+# sentence, and make the NOT MEASURABLE sentence name the records required.
+#
+# </details>
 
 # %%
 class Measurability(NamedTuple):
@@ -988,6 +1176,25 @@ _try("exercise 6", _check_measurability)
 # Report the standard error of the coverage estimate too — it is a proportion measured on a
 # finite number of trials, and it has its own uncertainty, which is the joke this whole
 # lesson is built on.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The two miss counts are named for where the TRUTH fell, not the interval: an interval sitting
+# wholly above the truth is a miss low, because the truth is below it. Both endpoints are
+# inclusive, so an interval that touches the truth covers it. And the coverage figure is itself
+# a proportion measured on finitely many trials, so it carries a binomial standard error of its
+# own.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Validate that the two arrays have the same, non-zero length. Count the intervals whose lower
+# end is above the truth and those whose upper end is below it; every other interval is a hit.
+# Coverage is hits over the number of intervals, and its standard error is the usual binomial
+# one for a proportion on that many trials. Return them, with the count and the two miss
+# counts, in a Coverage.
+#
+# </details>
 
 # %%
 class Coverage(NamedTuple):
@@ -1086,7 +1293,7 @@ def _show_coverage_study() -> None:
           "skewed statistic does.")
 
 
-_try("coverage study (DeLong)", _show_coverage_study)
+_try("coverage study (DeLong)", _show_coverage_study, needs=("exercise 5", "exercise 7"))
 
 # %%
 BOOT_COVER_TRIALS = 400
@@ -1125,7 +1332,8 @@ def _show_bootstrap_coverage() -> None:
     print("and you only have it because the sample came from a distribution you chose.")
 
 
-_try("coverage study (bootstrap)", _show_bootstrap_coverage)
+_try("coverage study (bootstrap)", _show_bootstrap_coverage,
+     needs=("exercise 3", "exercise 5", "exercise 7"))
 
 # %% [markdown]
 # ## 11. Out of time: the same model, a later period, and a much smaller one
@@ -1154,7 +1362,7 @@ def _show_out_of_time() -> None:
           f"because the later period had {N_OOT} records, not {N_DEV}.")
 
 
-_try("out-of-time holdout", _show_out_of_time)
+_try("out-of-time holdout", _show_out_of_time, needs=("exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 12. Common mistakes
@@ -1197,7 +1405,7 @@ def _show_broken_pairing() -> None:
           "error at all.")
 
 
-_try("broken pairing", _show_broken_pairing)
+_try("broken pairing", _show_broken_pairing, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 13. Self-check
@@ -1250,16 +1458,25 @@ print(f"\nlesson wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
 
 # %%
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_auc),
+    # Re-run every check against your code as it stands NOW, so the board reports your latest
+    # edit rather than whatever each check cell said the last time you ran it. Quietly: a pass
+    # or an untouched stub says nothing here, and a check that fails still says why.
+    for _label, _check in (("exercise 1", _check_auc),
                           ("exercise 2", _check_ks),
                           ("exercise 3", _check_bootstrap),
                           ("exercise 4", _check_paired),
                           ("exercise 5", _check_delong),
                           ("exercise 6", _check_measurability),
                           ("exercise 7", _check_coverage)):
-        _try(_name, _check)
-    # tools/execute.py runs this file and reads the exit code. Every check and every demo
-    # above went through _try, so a reference implementation that is quietly wrong lands here
-    # rather than in a PASS line.
-    if _FAILED_CHECKS:
+        _try(_label, _check, quiet=True)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel it is a printed line, never a traceback.
+    _still_failing = [label for label, state in _STATUS.items() if state == "failed"]
+    if "ipykernel" in sys.modules:
+        if _still_failing:
+            print("\nstill failing: " + ", ".join(_still_failing)
+                  + " — each one's message above names the likely mistake.")
+    elif _FAILED_CHECKS:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

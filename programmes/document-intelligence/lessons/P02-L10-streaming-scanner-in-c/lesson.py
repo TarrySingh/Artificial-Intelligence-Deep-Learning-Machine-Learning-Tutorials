@@ -134,6 +134,89 @@ _paths = subprocess.run(["make", "-C", str(LESSON_ROOT), f"PYTHON={sys.executabl
                         capture_output=True, text=True)
 print(_paths.stdout.strip() or _paths.stderr.strip())
 
+
+_FAILED_CHECKS: list[str] = []
+
+# The exercises, in the order you meet them, and the functions each one asks you to write in
+# lesson.c. The progress board at the foot of the notebook is built from this, and a cell that
+# is waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("field_push",),
+    "exercise 2": ("field_complete",),
+    "exercise 3": ("scan_chunk",),
+    "exercise 4": ("scan_finish",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
+
+
+def _named(labels: list[str]) -> str:
+    """["exercise 1"] -> "exercise 1 (field_push)"; several -> "exercises 1, 2 and 4"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _stub_name(exc: NotImplementedError) -> str:
+    """The unfinished function a NotImplementedError is about.
+
+    Your stubs live in lesson.c, so the Python frame that raised is only the wrapper that ran
+    the binary. The binary names the function on stderr as `NOT_IMPLEMENTED <name>`, and
+    `run_c` carries that line into the exception's message.
+    """
+    text = str(exc)
+    if "NOT_IMPLEMENTED " in text:
+        return text.split("NOT_IMPLEMENTED ", 1)[1].split()[0]
+    import traceback   # here, not in the setup cell: see the note on imports below
+    return traceback.extract_tb(exc.__traceback__)[-1].name
+
+
+# A note on imports. Section 10 imports this file in a fresh interpreter and reports that
+# process's peak memory, so every module imported at the top of this notebook is part of a
+# number the lesson measures. The helpers here therefore import nothing up front: traceback
+# is loaded only on the rare path that needs it, and contextlib only in the last cell.
+def _try(label: str, check, needs: tuple[str, ...] = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    message — which names the likely mistake — and the notebook carries on, so one broken
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
+    """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
+    try:
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = _stub_name(exc)
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() in lesson.c, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
+
+
 # %% [markdown]
 # ## 1. The export, and the one-line scanner that gets it wrong
 #
@@ -421,7 +504,8 @@ if __name__ == "__main__":
 # calls one sub-command per exercise, so each function is graded on its own: a `field_push`
 # that works still scores while `scan_chunk` is a TODO.
 #
-# Run this cell before writing any C. It should fail — loudly, and by name.
+# Run this cell before writing any C. Until all four exercises exist it names, by function,
+# the first one still missing — and once they do, it is your binary's own self-test.
 
 # %%
 def c_selftest() -> str:
@@ -433,7 +517,8 @@ def c_selftest() -> str:
         capture_output=True, text=True,
     )
     if "NOT_IMPLEMENTED" in proc.stderr:
-        raise NotImplementedError(proc.stderr.strip().splitlines()[-1])
+        raise NotImplementedError(next(line for line in proc.stderr.splitlines()
+                                       if "NOT_IMPLEMENTED" in line))
     if proc.returncode != 0:
         raise AssertionError(f"make test failed:\n{proc.stdout}\n{proc.stderr}")
     return proc.stdout
@@ -464,11 +549,13 @@ def c_bench(nbytes: int, chunk: int = 1 << 16) -> dict:
     return run_c(["bench", "--bytes", str(nbytes), "--chunk", str(chunk)])
 
 
+def _show_selftest() -> None:
+    print(c_selftest())
+
+
 if __name__ == "__main__":
-    try:
-        print(c_selftest())
-    except NotImplementedError as _exc:
-        print("as expected, nothing is implemented yet:", _exc)
+    # Until all four exercises exist this names the first one still missing, by name.
+    _try("self-test", _show_selftest)
 
 # %% [markdown]
 # ## 5. Exercise 1 — `field_push`, the buffer that never grows
@@ -476,6 +563,25 @@ if __name__ == "__main__":
 # Open `lesson.c`, find EXERCISE 1, fill it in. Three counters, one rule each: every byte is
 # *seen*, at most `kFieldCap` bytes are *kept*, and an over-long field is *one* overflow.
 # Then run this check.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three counters with three different jobs. `seen_len` counts every byte the field HAD;
+# `field_len` counts the bytes you KEPT and can never pass the cap; `field_overflow` counts
+# FIELDS that did not fit, so it fires exactly once per field, at the moment the field first
+# outgrows the buffer. A field that exactly fills the buffer has not overflowed — work out
+# which comparison that means before you write it.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# In `lesson.c`: increment `seen_len` unconditionally. If `field_len` is still below
+# `kFieldCap`, store the byte at that index of `field` and increment `field_len` — it is the
+# FIRST bytes you keep. Otherwise drop the byte, and increment `field_overflow` only when this
+# is the first byte past the cap, which `seen_len` can tell you. No allocation, and no call to
+# anything.
+#
+# </details>
 
 # %%
 def _check_field_push() -> None:
@@ -514,7 +620,7 @@ def _check_field_push() -> None:
 
 
 if __name__ == "__main__":
-    _check_field_push()
+    _try("exercise 1", _check_field_push)
 
 # %% [markdown]
 # ## 6. Exercise 2 — `field_complete`, where a forgotten field pays its way
@@ -526,6 +632,25 @@ if __name__ == "__main__":
 # `1,234.56`, because a comma in a money field is a thousands separator in one convention and
 # a decimal point in another, and P02-L01 measured what guessing costs. A refusal adds
 # nothing at all; it does not add zero as a guess.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The field is about to be forgotten, so every question anyone will ask about it is answered
+# now. Each trap is a condition you could drop: the money rule applies to one column only and
+# adds ONLY when `parse_cents` says yes; the currency rule compares the whole field, on its
+# own column; the longest-field counter uses the length the field HAD, not the length you
+# kept; and `records` belongs to `record_complete`, not to you.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Increment `fields`. Raise `max_field_len` to `seen_len` if that is larger. If `col` is
+# `kColAmount`, call `parse_cents` on the kept bytes and add the cents only when it returns
+# true. If `col` is `kColCurrency` and the field is exactly the three bytes E, U, R, increment
+# `eur_records`. Then advance `col`, and reset `field_len` and `seen_len` so the next field
+# starts clean.
+#
+# </details>
 
 # %%
 def _check_field_complete() -> None:
@@ -567,7 +692,7 @@ def _check_field_complete() -> None:
 
 
 if __name__ == "__main__":
-    _check_field_complete()
+    _try("exercise 2", _check_field_complete)
 
 # %% [markdown]
 # ## 7. Exercise 3 — `scan_chunk`, and the property that makes it streaming
@@ -578,6 +703,26 @@ if __name__ == "__main__":
 #
 # So the test that matters is not "does it parse my example". It is: the same bytes, split
 # twenty different ways, must give one answer.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is a four-state machine, and the table in the EXERCISE 3 comment of `lesson.c` is the
+# whole specification — implement it row by row. The property that catches people is
+# chunk-independence: the caller may split the stream between ANY two bytes, so anything you
+# need to remember must live in the `Scanner` struct. A local holding the previous byte, or a
+# peek at the next one, works until a boundary lands between them.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Loop over the n bytes once, counting each in `bytes`. Switch on `s->state` and, within each
+# state, on the byte, doing exactly what the table says: call `field_push`, `field_complete`
+# and `record_complete`, count a newline inside quotes in `embedded_newlines`, drop a CR
+# outside quotes, and set the next state. The quote that opens or closes a field is never
+# pushed; only a doubled quote inside a quoted field pushes one. Never look ahead —
+# `kQuoteSeen` exists so that you do not have to.
+#
+# </details>
 
 # %%
 _QUOTING_CASES = [
@@ -632,7 +777,7 @@ def _check_scan_chunk() -> None:
 
 
 if __name__ == "__main__":
-    _check_scan_chunk()
+    _try("exercise 3", _check_scan_chunk)
 
 # %% [markdown]
 # ## 8. Exercise 4 — `scan_finish`, and the difference between "short" and "unterminated"
@@ -642,6 +787,25 @@ if __name__ == "__main__":
 # supplier name. The bytes look almost identical; the right answers are opposite.
 #
 # Fill in EXERCISE 4, then run this.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two tails look almost identical and need opposite answers. A final record with all its
+# fields and no trailing newline is legal; a stream cut inside quotes, or part-way through a
+# short record, is truncation. And a stream that ended cleanly on a record boundary has
+# nothing pending at all — completing an "empty" field there would invent a phantom record.
+#
+# </details>
+# <details><summary>💡 Hint 2 — the approach in words</summary>
+#
+# Apply the four rules of the EXERCISE 4 comment, in order. If the state is `kQuoted`, flag
+# truncation and count nothing. Otherwise, if nothing is pending — the field-start state, no
+# column yet, no kept bytes — do nothing. Otherwise, if completing the pending field would
+# make col + 1 equal `kColumns`, call `field_complete` and then `record_complete`. Otherwise
+# flag truncation. Whatever happened, finish by resetting the state, the column and both
+# lengths, so the scanner is left clean.
+#
+# </details>
 
 # %%
 _FINISH_CASES = [
@@ -688,7 +852,7 @@ def _check_scan_finish() -> None:
 
 
 if __name__ == "__main__":
-    _check_scan_finish()
+    _try("exercise 4", _check_scan_finish)
 
 # %% [markdown]
 # ## 9. The measurement, part one: throughput
@@ -736,7 +900,7 @@ def _check_throughput() -> None:
 
 
 if __name__ == "__main__":
-    _check_throughput()
+    _try("throughput", _check_throughput, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 10. The measurement, part two: memory, and whose win it is
@@ -809,15 +973,26 @@ def memory_report(nbytes: int = RACE_BYTES) -> list:
     return [{"how": how, "peak_mib": raw * scale / (1 << 20)} for how, raw in rows]
 
 
-if __name__ == "__main__":
+def _show_memory() -> None:
+    if not NOTEBOOK_PATH.exists():
+        # A notebook service opens lesson.ipynb on its own. The two Python rows import the
+        # lesson as a .py file in a fresh interpreter, and there is no such file here.
+        print(f"memory: skipped — the two Python rows import {NOTEBOOK_PATH.name} in a fresh "
+              "interpreter, and there is no such file beside this notebook. Run this section "
+              "from a clone of the repository to measure all three rows.")
+        return
     print(f"ru_maxrss unit measured as {rss_scale()} byte(s) per unit\n")
     print(f"{'how the export was read':<32} {'peak RSS (MiB)':>15}")
-    for _row in memory_report():
-        print(f"{_row['how']:<32} {_row['peak_mib']:15.1f}")
+    for row in memory_report():
+        print(f"{row['how']:<32} {row['peak_mib']:15.1f}")
     print(f"\nThe export is {RACE_BYTES / (1 << 20):.0f} MiB. The third row carries it, plus a")
     print("Python list object per line and per field, and it is also WRONG — it splits inside")
     print("quotes. The second row is Python and is flat. Streaming is an algorithm, not a")
     print("language; C bought the throughput, the chunk loop bought the memory.")
+
+
+if __name__ == "__main__":
+    _try("memory", _show_memory, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 11. The measurement, part three: flat memory over a growing export
@@ -852,10 +1027,10 @@ def _check_constant_memory() -> None:
         "in your scanner is keeping the data. The usual cause is accumulating fields or "
         "records somewhere instead of folding them into a counter in field_complete."
     )
-    print(f"{'export MiB':>11} {'records':>10} {'seconds':>9} {'MB/s':>8} {'peak RSS MiB':>14}")
+    print(f"{'export MiB':>11} {'records':>10} {'time':>9} {'throughput':>11} {'peak RSS':>12}")
     for row in rows:
-        print(f"{row['mib']:11.0f} {row['records']:10d} {row['seconds']:9.3f} "
-              f"{row['mb_s']:8.0f} {row['peak_mib']:14.2f}")
+        print(f"{row['mib']:11.0f} {row['records']:10d} {row['seconds']:7.3f} s "
+              f"{row['mb_s']:6.0f} MB/s {row['peak_mib']:8.2f} MiB")
     print(f"\nData up {rows[-1]['mib'] / rows[0]['mib']:.0f}x, peak RSS up "
           f"{grew:.2f} MiB. Read the last column DOWN, not across: that flatness is the")
     print("whole claim. An export that does not fit in memory is not a different problem for")
@@ -863,7 +1038,7 @@ def _check_constant_memory() -> None:
 
 
 if __name__ == "__main__":
-    _check_constant_memory()
+    _try("constant memory", _check_constant_memory, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 12. What "truncated" costs, measured
@@ -885,17 +1060,22 @@ def truncation_table(text: str = _TRUNCATION_DEMO) -> list:
             for cut in sorted(cuts)]
 
 
-if __name__ == "__main__":
+def _show_truncation() -> None:
+    rows = truncation_table()
     print(f"{'bytes kept':>11} {'records':>8} {'fields':>7} {'cents':>7} {'truncated':>10}")
-    for _row in truncation_table():
-        print(f"{_row['bytes']:11d} {_row['records']:8d} {_row['fields']:7d} "
-              f"{_row['amount_cents']:7d} {_row['truncated_tail']:10d}")
+    for row in rows:
+        print(f"{row['bytes']:11d} {row['records']:8d} {row['fields']:7d} "
+              f"{row['amount_cents']:7d} {row['truncated_tail']:10d}")
     print("\nWatch the cents column rise while the records column does not. The second")
     print("invoice's amount is committed the moment its comma arrives, several bytes before")
     print("its record exists. If your downstream needs record-atomic totals, you hold the")
     print("record's contributions in a second set of counters and fold them in at")
     print("record_complete — still constant memory, one more thing to get right. What you may")
     print("NOT do is ship the number without saying which of the two it is.")
+
+
+if __name__ == "__main__":
+    _try("truncation", _show_truncation, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 13. Common mistakes
@@ -952,13 +1132,18 @@ def overflow_counted_per_byte(text: str) -> dict:
     return {"field_len": kept, "seen_len": seen, "field_overflow": overflow}
 
 
-if __name__ == "__main__":
+def _show_overflow_per_byte() -> None:
+    rows = [(n, c_push("x" * n)["field_overflow"]) for n in (FIELD_CAP, FIELD_CAP + 3,
+                                                             FIELD_CAP * 40)]
     print(f"{'field bytes':>12} {'correct':>9} {'per-byte bug':>14}")
-    for _n in (FIELD_CAP, FIELD_CAP + 3, FIELD_CAP * 40):
-        _right = c_push("x" * _n)["field_overflow"]
-        print(f"{_n:12d} {_right:9d} {overflow_counted_per_byte('x' * _n)['field_overflow']:14d}")
+    for n, right in rows:
+        print(f"{n:12d} {right:9d} {overflow_counted_per_byte('x' * n)['field_overflow']:14d}")
     print("\nThe right-hand column is a measure of how long the field was, which max_field_len")
     print("already reports. A count of fields is a count of fields.")
+
+
+if __name__ == "__main__":
+    _try("overflow per byte", _show_overflow_per_byte, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 14. Self-check
@@ -1004,13 +1189,15 @@ if __name__ == "__main__":
 
 # %%
 if __name__ == "__main__":
-    # A final sweep of the correctness checks. The measurements above are deliberately not
-    # repeated: they are the slowest cells in the lesson and nothing below them changed.
-    _check_field_push()
-    _check_field_complete()
-    _check_scan_chunk()
-    _check_scan_finish()
-    print("\nall correctness checks green")
+    # A final sweep of the four correctness checks against lesson.c as it stands NOW, each
+    # printing its own message, so every exercise's feedback sits in one place. The
+    # measurements above are deliberately not repeated: they are the slowest cells in the
+    # lesson and they are not exercises.
+    for _name, _check in (("exercise 1", _check_field_push),
+                          ("exercise 2", _check_field_complete),
+                          ("exercise 3", _check_scan_chunk),
+                          ("exercise 4", _check_scan_finish)):
+        _try(_name, _check)
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1022,3 +1209,45 @@ if __name__ == "__main__":
 # proves the second one. Module 11 asks you to put numbers like these into an evidence pack
 # that a validator can reproduce — and this one is reproducible because every digit above came
 # out of a run you did.
+
+# %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its check.")
+
+
+# Your progress board. Every correctness check is re-run here, quietly, against lesson.c as it
+# stands now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited the C and did not re-run its check. The measurements are not
+# repeated: they are the slowest cells in the lesson and they are not exercises.
+if __name__ == "__main__":
+    import contextlib
+    import io
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_field_push),
+                              ("exercise 2", _check_field_complete),
+                              ("exercise 3", _check_scan_chunk),
+                              ("exercise 4", _check_scan_finish)):
+            _try(_name, _check)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

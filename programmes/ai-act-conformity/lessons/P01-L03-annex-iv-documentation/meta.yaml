@@ -176,5 +176,5 @@ status: reviewed        # draft | executed | reviewed | shipped
 # Still open for the owner, unchanged by this review: no flagships/F09 directory exists, and
 # tools/build_student_bundle.py has still not been run against any lesson under programmes/.
 reviewed_by: "independent reviewer (Claude Opus 5), 2026-09-16 — all four gates re-run; 16 mutants + 1 control mutation-tested; 2 rubric defects found in check_section (artefact ordering unpinned beyond two names, absent any_of branch never exercised) and fixed in tests/test_lesson.py; claims re-verified against primary sources; points unchanged at 61"
-measured_seconds: 0.1
+measured_seconds: 0.0
 measured_peak_mib: 21

@@ -40,5 +40,5 @@ datasets:
 points: 40
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "second independent review 2026-09-16: rubric mutation-tested with 32 broken solutions, 4 that scored 40/40 fixed (log-of-softmax cross-entropy, swapped Q/K cache labels, mask cached as None, off-by-one batch bound hidden by try/except), 2 survivors measured and proved equivalent; prerequisite set to T00-L01-the-8gb-track; all 4 sources re-fetched and 1 unsourced prose claim added to claims.yaml; 4 gates re-run green"
-measured_seconds: 7.4
-measured_peak_mib: 61
+measured_seconds: 6.8
+measured_peak_mib: 56

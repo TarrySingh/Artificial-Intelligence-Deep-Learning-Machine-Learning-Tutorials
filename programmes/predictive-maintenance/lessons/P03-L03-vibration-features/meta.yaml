@@ -174,5 +174,5 @@ points: 106        # = sum of RUBRIC points in tests/test_lesson.py
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-16 — 4 gates re-run green (106/106 solution, 0/106 student, execute PASS, jupytext converts); 14 fresh breaking mutants graded, 3 survived at 100% and were confirmed non-equivalent by measurement (fit_load_model n_fit<4, prevalence interval made strict, cheapest_alarm candidates unsorted), all 3 fixed by extending the case that owned the rule and now fail at 98/98/96% with every mutant scoring 81-98% and the correct-but-different rank-sum control still 106/106; claims re-fetched and supported; prose figures re-measured against executed output; open note: self-check Q4 types the figure 1.000 rather than generating it"
 
-measured_seconds: 1.0
-measured_peak_mib: 219
+measured_seconds: 0.9
+measured_peak_mib: 221
