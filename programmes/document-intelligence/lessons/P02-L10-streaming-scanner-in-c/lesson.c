@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 /* P02-L10-streaming-scanner-in-c — the streaming field scanner, in C.
  *
  * Four functions are yours to write. Everything else — the synthetic export generator, the

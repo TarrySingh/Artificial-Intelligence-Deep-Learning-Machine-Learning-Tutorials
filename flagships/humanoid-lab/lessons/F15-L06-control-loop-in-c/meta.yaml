@@ -16,10 +16,10 @@ objectives:
   - "Explain why a PD law leaves a steady-state error, from a measured comparison of that error against qfrc_bias divided by the gain"
 datasets:
   - name: "arm2.xml — pinned two-link planar arm, authored for this lesson"
-    licence: "CC0-1.0"
+    licence: "CC-BY-NC-SA-4.0"
     url: "https://creativecommons.org/publicdomain/zero/1.0/"
     licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the Synapsa Commons project; dedicated to the public domain"
+    copyright: "Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA 4.0 with the rest of the course"
     cached_at: "assets/arm2.xml"
     retrieved: 2026-09-16
     gated: false
@@ -30,10 +30,10 @@ datasets:
       the per-actuator clamp the student writes is load-bearing rather than dead code.
       Provenance and the reasoning behind each modelling choice are in assets/SOURCE.md.
   - name: "arm2_floating.xml — the same arm on a free-floating base, authored for this lesson"
-    licence: "CC0-1.0"
+    licence: "CC-BY-NC-SA-4.0"
     url: "https://creativecommons.org/publicdomain/zero/1.0/"
     licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the Synapsa Commons project; dedicated to the public domain"
+    copyright: "Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA 4.0 with the rest of the course"
     cached_at: "assets/arm2_floating.xml"
     retrieved: 2026-09-16
     gated: false

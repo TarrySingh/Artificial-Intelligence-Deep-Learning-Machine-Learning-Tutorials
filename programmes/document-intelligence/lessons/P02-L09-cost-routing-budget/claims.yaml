@@ -1,0 +1,127 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# Every quote below was fetched with curl on 2026-09-23 from the live page at source_url and
+# found there word for word (whitespace collapsed); quote_context says where on the page.
+#
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * MACHINE_COST_PER_DOCUMENT, REVIEWER_COST_PER_HOUR, EXPENSIVE_COST_PER_PAGE and
+#   BUDGET_PER_DOCUMENT are PLACEHOLDERS. The notebook says, in its opening cell, its setup
+#   cell and the recommendation paragraph itself, that they are illustrative and are not the
+#   price of any real product, vendor or payroll. Nothing in the lesson attributes a price to
+#   anyone, so there is nothing to source.
+# * REVIEWED_FIELDS_PER_HOUR is the pace this programme's own module 6 SIMULATED for its chosen
+#   rota. It describes that simulation, not real reviewers, and the notebook says so.
+# * The eight segments and their accuracies are fixtures shaped on what this programme's earlier
+#   modules measured on their own synthetic corpora; the `mirrors` column names the module. They
+#   are not claims about any real document stream.
+# * The measured statements about greedy in section 6 (where it matches the sweep, the
+#   breakpoints, the price-per-error equivalence, the random mixes) are computed by the notebook
+#   on every run, not claimed. The two theoretical statements the prose leans on are sourced
+#   below.
+claims:
+  - id: routing-budget-is-a-multiple-choice-knapsack
+    claim: >-
+      Choosing exactly one tier for every segment so as to maximise field accuracy under one
+      cap on cost per document is the multiple-choice knapsack problem: items (tiers) are
+      divided into disjoint classes (segments), exactly one item is chosen from each class, and
+      the total value is maximised under a single weight limit. The lesson's formulation in
+      section 3 is that problem with value = volume x accuracy and weight = volume x unit cost.
+    where: "lesson.py section 3 (the formulation above exercise 1)"
+    source_url: https://arxiv.org/html/2306.14690v2
+    source_title: "Chance-Constrained Multiple-Choice Knapsack Problem: Model, Algorithms, and Applications — Xuanfeng Li, Shengcai Liu, Jin Wang, Xiao Chen, Yew-Soon Ong and Ke Tang (arXiv 2306.14690v2, 15 Dec 2023), HTML full text"
+    quote: >-
+      such as to maximize the total value while adhering to a predefined weight limit (i.e.,
+      the knapsack constraint)
+    quote_context: >-
+      Section I (Introduction). The full sentence reads "The objective of MCKP is to select
+      exactly one item from each class [ 1 , 7 ] such as to maximize ..."; the bracketed
+      citation markers are the page's own, so the quote starts after them. The sentence before
+      it on the page: "The items are divided into several disjoint classes."
+    accessed: 2026-09-23
+
+  - id: multiple-choice-knapsack-is-np-hard
+    claim: >-
+      The multiple-choice knapsack problem is classed as NP-hard, which is why the lesson treats
+      the exhaustive sweep as affordable only for a handful of segments and measures a greedy
+      rule as the scalable alternative, rather than claiming a fast exact method exists for
+      every instance.
+    where: "lesson.py section 3 (formulation) and section 6 (why greedy is the rule people reach for)"
+    source_url: https://arxiv.org/abs/2306.14690v2
+    source_title: "Chance-Constrained Multiple-Choice Knapsack Problem: Model, Algorithms, and Applications (arXiv 2306.14690v2, abstract page)"
+    quote: >-
+      The multiple-choice knapsack problem (MCKP) is a classic NP-hard combinatorial
+      optimization problem.
+    quote_context: "first sentence of the abstract"
+    accessed: 2026-09-23
+
+  - id: upper-hull-lp-bound-and-one-jump-rounding
+    claim: >-
+      For the multiple-choice knapsack problem, the classical geometry of each class's upper
+      hull gives a linear-programming bound, and rounding down to a feasible solution loses no
+      more than a single adjacent hull jump. Greedy's path in section 6 walks those hull
+      vertices; the lesson MEASURES, at every cap it tries and on the random mixes, that the
+      shortfall against the sweep never exceeds the value of the one move greedy could not
+      afford, and cites this result as the reason the bound holds.
+    where: "lesson.py section 6 (the measurement cell after exercise 4, and its preamble)"
+    source_url: https://arxiv.org/abs/2603.18653
+    source_title: "A Certifying MCKP Framework for Γ-Robust Discrete Pricing — Zi Yuan Eric Shao (arXiv 2603.18653v2, 9 Aug 2026; v1 19 Mar 2026), abstract page"
+    quote: >-
+      classical upper-hull geometry yields an LP bound and a feasible one-item rounding rule
+      whose loss is bounded by a single adjacent hull-value jump
+    quote_context: >-
+      abstract, third sentence ("For each threshold, classical upper-hull geometry yields
+      ..."). The paper applies the result inside a pricing model; the lesson uses only the
+      general MCKP statement, which the abstract calls classical.
+    accessed: 2026-09-23
+
+  - id: cascades-route-queries-to-cheaper-models
+    claim: >-
+      Sending each input to a cheaper or a dearer model according to where the dearer one earns
+      its price is an established pattern, not an invention of this lesson: FrugalGPT learns
+      which combinations of language-model APIs to use for different queries in order to reduce
+      cost and improve accuracy.
+    where: "lesson.py section 1 (the router and its three tiers)"
+    source_url: https://arxiv.org/abs/2305.05176
+    source_title: "FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance — Chen, Zaharia and Zou (arXiv 2305.05176)"
+    quote: >-
+      a simple yet flexible instantiation of LLM cascade which learns which combinations of
+      LLMs to use for different queries in order to reduce cost and improve accuracy
+    quote_context: "abstract, fifth sentence ('As an example, we propose FrugalGPT, ...')"
+    accessed: 2026-09-23
+
+  - id: model-api-fees-differ-by-orders-of-magnitude
+    claim: >-
+      The per-query fees of commercial language-model APIs have been measured to differ by
+      orders of magnitude, which is why the lesson's tiers are priced orders of magnitude apart.
+      The lesson's own tier prices are placeholders and are not taken from this or any source.
+    where: "lesson.py section 1 (the router and its three tiers)"
+    source_url: https://arxiv.org/abs/2305.05176
+    source_title: "FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance — Chen, Zaharia and Zou (arXiv 2305.05176)"
+    quote: >-
+      these models have heterogeneous pricing structures, with fees that can differ by two
+      orders of magnitude
+    quote_context: "abstract, second sentence"
+    accessed: 2026-09-23
+
+  - id: cost-accuracy-pareto-frontier-in-document-benchmarks
+    claim: >-
+      At least one recent benchmark of document-extraction systems reports its results as
+      positions on a cost-accuracy Pareto frontier, with cost per document as one of its axes:
+      a March 2026 benchmark of multi-agent LLM architectures for financial document processing
+      measures cost per document alongside field-level F1 and places one architecture in the
+      most favourable position on that frontier. The frontier in section 5 is the same object,
+      built from placeholder prices.
+    where: "lesson.py section 5 (exercise 3 preamble, the Pareto frontier)"
+    source_url: https://arxiv.org/abs/2603.22651
+    source_title: "Benchmarking Multi-Agent LLM Architectures for Financial Document Processing: A Comparative Study of Orchestration Patterns, Cost-Accuracy Tradeoffs and Production Scaling Strategies (arXiv 2603.22651v1, 24 Mar 2026)"
+    quote: >-
+      hierarchical architectures occupy the most favorable position on the cost-accuracy
+      Pareto frontier
+    quote_context: >-
+      abstract; the same abstract lists "cost per document" among its five measurement axes.
+      v1 only on the access date.
+    accessed: 2026-09-23

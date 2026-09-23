@@ -1,0 +1,184 @@
+id: P02-L08-pipeline-drift-monitor
+title: Drift monitoring for a live document pipeline — PSI and KL say which distribution moved, a budgeted CUSUM on the audited defect rate says whether quality moved, and only the second one pages
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 180
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P02-L01-extraction-evaluation
+objectives:
+  - "Implement a population stability index and a KL divergence over binned field-value and confidence distributions, on edges cut once on a baseline, floored on both sides, with one bin per category for categorical fields"
+  - "Implement the audited defect rate as a daily quality proxy and an upper one-sided CUSUM with reset on it"
+  - "Measure the false-page rate of a CUSUM threshold on simulated no-change years and choose the most sensitive threshold inside an explicit false-page budget instead of a round number"
+  - "Replay a synthetic year with a vendor template change, a seasonal mix shift and a model regression, catch the regression without paging for the other two, and tell the three apart by which distribution moved and whether quality moved"
+  - "Explain why a drift statistic, or a label-free confidence proxy, pages for the harmless changes and misses the harmful one"
+datasets:
+  - name: synthetic remittance-advice pipeline year with three injected events
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      One replay year of 364 days x 200 documents, generated in section 1 by simulate_year()
+      from numpy.random.default_rng(20260923), with a random audit of 25 documents a day, and
+      three counterfactual copies of the same year with one event switched off each (identical
+      random numbers, so every difference is caused by the event). Nothing is read from disk
+      and nothing is downloaded.
+points: 96              # = sum of RUBRIC points in tests/test_lesson.py, over 27 cases
+# Authored 2026-09-23 as module 8 of the document-intelligence programme. Every gate was run
+# from the repo root on .venv/bin/python; the measured figures at the foot of this file were
+# written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md ASKED FOR (module 8, "Drift monitoring for a live document pipeline", cpu8)
+# and where each piece is:
+#   * PSI and KL divergence over field-value and confidence distributions — exercises 1 and 2
+#     (population_stability_index, kl_divergence) and exercise 3 (fit_edges, drift_scores) over
+#     three value signals (emitted log10 amount, currency code, payment-terms code) and six
+#     confidence signals, one per SCHEMA field. Conventions are the model-risk programme's
+#     (programmes/model-risk/lessons/P04-L01-validation-suite): quantile_edges copied verbatim,
+#     edges cut ONCE on the baseline quarter, half-open bins with the last closed and outer
+#     values clipped, shares not counts, PSI_FLOOR = 1e-6 on BOTH sides, StabilityResult with
+#     the same fields. KL is computed on the same floored shares, so KL(a||e) + KL(e||a) = PSI
+#     exactly (graded).
+#   * a CUSUM chart on a daily quality proxy — exercise 4 (daily_defect_rate: the audited defect
+#     rate, module 1's miss/spurious/wrong_value over every reviewed cell, from a RANDOM audit of
+#     AUDIT_DOCS documents a day) and exercise 5 (cusum: NIST's tabular upper CUSUM in sigma
+#     units, strict "exceeds h", reset after each page). The chart is plotted in section 9.
+#   * an alarm threshold chosen against an explicit false-alarm budget rather than a round number
+#     — exercise 6 (false_pages_per_quarter, choose_threshold): the smallest h in H_GRID whose
+#     false-page rate, measured on NULL_YEARS simulated no-change years, is at most
+#     FALSE_PAGE_BUDGET = 1.0 per quarter (the brief's own example). Section 7 prints the chosen
+#     h beside the handbook's rule-of-thumb h = 4 and 5 with their measured rates and the days /
+#     documents each lets through before paging on a MIN_SHIFT rise.
+#   * replay a year with a vendor template change, a seasonal mix shift and one real regression;
+#     catch the regression without paging for the other two, graded on both — sections 9-10 and
+#     tests test_replay_catches_the_regression / test_replay_does_not_page_for_template_or_mix
+#     (12 of the 96 points).
+#   * distinguish the three by what the monitor sees — exercise 7 (triage) and the section 4
+#     table: the mix shift moves only value signals, the template change only confidence
+#     signals, the regression only the audited defect rate (plus a small, real nudge to the
+#     amount distribution from the wrong amounts it writes).
+#   * artefact: a monitor whose threshold states its false-alarm rate — the Threshold record
+#     carries h WITH its measured rate and budget, and section 11 prints a monitor card on which
+#     every threshold (h, and both drift levels) states the rate at which it fires under no
+#     change and how that rate was measured.
+#
+# WHAT WAS DONE DIFFERENTLY, AND WHY:
+#   * "Did the monitor page FOR an event" is decided by counterfactual, not by calendar.
+#     simulate_year() draws every random number up front whatever the events, so COUNTERFACTUALS
+#     (the same year with one event switched off) differ from LOG only by that event. A page
+#     caused by an event is one that vanishes without it. A calendar test ("no page inside the
+#     template window") would have graded noise: at a budget of one false page per quarter a
+#     correct monitor is EXPECTED to page for nothing now and then, and such a page can land in
+#     any window. On this seed it happens not to (0 unexplained pages in the 105 event-free
+#     monitored days, printed beside the ~1.2 the budget allows), but the grading does not rely
+#     on that luck.
+#   * The no-change years are a day-level bootstrap of the baseline quarter, not draws from the
+#     generator, because a production team has no generator — only its baseline. The notebook
+#     states the cost: a resampled year never holds a day worse than the worst baseline day, so
+#     its tail is thinner than reality's; section 9 re-checks the budget on the replay's quiet
+#     stretches. A one-day (Shewhart) comparison row was drafted for the threshold table and
+#     DROPPED for exactly this reason: on a 91-value bootstrap support its measured false-page
+#     rate jumps from over budget to exactly 0.000 between two neighbouring limits, which would
+#     have taught a wrong number.
+#   * "Moved" for a drift family is a measured level, not a round one: the (1 - DRIFT_FLAG_RATE)
+#     quantile of the family's largest PSI over DRIFT_DRAWS simulated no-change windows, each a
+#     resampled baseline quarter against an independent resampled four-week window with edges
+#     re-cut on the resampled baseline. A first draft resampled only the window against the real
+#     baseline; that null is in-sample, its levels came out roughly a quarter to a third lower,
+#     and it flagged quiet weeks as moved.
+#   * The seasonal mix shift is placed at the half-year close (days 140-181) and the template
+#     change last (from day 294), so each event's signature is read in a window of its own; a
+#     template change early in the year would have kept the confidence family "moved" against
+#     the frozen baseline for the rest of the year. Section 12's rolling-baseline cell shows why
+#     re-baselining it away is not the fix.
+#   * A section-12 demo of "re-cut edges read near zero" was drafted and REMOVED after it was
+#     measured: re-cutting the edges on the mix window moved that window's PSI only from 0.6094
+#     to 0.6056. The true hazard is a rolling baseline, which the replacement cell measures (the
+#     template change's confidence PSI falls from 0.3769 to 0.0053 in four weekly reports), and self-check 4 was rewritten
+#     around it.
+#   * The mix shift changes currency and amount only; per-cell error rates do not depend on
+#     them, so the pooled defect rate cannot move with the mix. A mix-dependent error rate would
+#     make the pooled proxy move without any per-segment change (a Simpson effect) and would need
+#     a mix-standardised proxy; that is a real subtlety this module deliberately leaves out.
+#   * The pipeline log is columnar (numpy arrays) rather than module 1's one dict per document,
+#     because a year is 72,800 documents; it keeps module 1's names (SCHEMA, ERROR_LABELS) and
+#     its three defect classes. No function is imported from another lesson (gate 13).
+#
+# MUTATION TESTING (author), 2026-09-23, against the 93-point rubric the author wrote; the
+# independent review below found four gaps it missed and closed them. 34 plausible-wrong variants of the reference solution were graded
+# in private temp copies (tempfile.mkdtemp, outside the repo), plus 2 differently shaped right
+# answers. Scores are measured, not predicted. 33 of 34 are caught, every one keeping partial
+# credit (67 to 91 of 93); the 34th is proved equivalent below.
+#   PSI:  counts not shares 76 · floor on the current side only 89 · searchsorted side='left'
+#         90 · floored shares reported as the pct vectors 90 · edges not validated 91.
+#   KL:   direction swapped 81 · log base 2 81 · unfloored weight (0 log 0 = 0) 89 · floored
+#         shares renormalised, as scipy.stats.entropy does 89.
+#   edges/drift: quantile edges on categorical codes 89 · category bins from the codes SEEN 89 ·
+#         one edge short (np.arange(n) - 0.5) 89 · drift_scores re-cutting on the window 89 ·
+#         drift_scores KL(baseline||current) 89.
+#   defect rate: denominator of ALL cells 83 (also loses the replay: MIN_SHIFT is in rate units,
+#         so a rate diluted eightfold makes k = 2.9 sigma and the chart never pages) · true
+#         negatives left out 89 · wrong_value only 86 · 0.0 for an unreviewed day 90 · code 0
+#         ('correct') read as unreviewed 82.
+#   cusum: no reset 75 · S >= h 91 · no floor at zero 67 (also loses the replay: quiet weeks bank
+#         negative credit and the regression never climbs out) · post-reset value recorded 89 ·
+#         k subtracted only on positive days 89.
+#   budget: years-with-a-page counted 89 · four quarters per row hard-coded 81 · strict < budget
+#         88 · grid walked in given order 88 · largest h returned 88 · largest h returned when
+#         none meets the budget 90.
+#   triage: pages on drift 82 (also loses test_replay_does_not_page_for_template_or_mix) · drift
+#         explains a quality alarm away 85 · both-moved label dropped 90.
+#   EQUIVALENT, not a gap: drift_scores passing current as the EXPECTED sample to PSI scores
+#   93/93. On fixed edges with both sides floored, (a - e) ln(a / e) is symmetric term by term,
+#   and drift_scores exposes only .psi, so no observable differs.
+#   Controls, 93/93 each: (1) np.digitize binning, linspace category edges, KL built from the
+#   PSI record, a comprehension drift_scores; (2) a while-loop CUSUM, a CUSUM vectorised across
+#   simulated years for false_pages_per_quarter, choose_threshold filtering a dict of all rates,
+#   a pure-Python defect-rate loop and a dict-lookup triage.
+#   Five cases that first ERRORED under a mutant (a shape mismatch, or a ValueError on a valid
+#   day) were rewritten to FAIL with a message naming the mistake.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root; 46 mutants of the
+# reference solution graded in mktemp copies, including a one-step sweep of every graded edge.
+# FOUR RUBRIC GAPS scored full marks under the author's rubric and are now caught:
+#   * KL binning with searchsorted's default side='left' (a value ON an inner edge in the wrong
+#     bin): no KL case put a value on an edge -> new test_kl_bins_like_psi (3 points), and the
+#     public _check_kl gained an on-edge case. Now 93/96.
+#   * rejecting exactly two edges (size < 3) in PSI or KL: the valid boundary was never
+#     exercised -> both edge-validation cases now require a one-bin pair to work. Now 94/96.
+#   * daily_defect_rate ignoring n_days (a trailing day no document mentions silently shortens
+#     the array instead of raising) -> test_defect_rate_days_and_empty_day. Now 93/96.
+#   * the denominator as reviewed DOCUMENTS x fields (read from verdict[:, 0], as section 1's
+#     own print does) instead of reviewed CELLS -> a partly reviewed document in
+#     test_defect_rate_counts_reviewed_cells_only. Now 92/96.
+# Every other mutant is caught with partial credit (70 to 94 of 96). Three score 96/96 and are
+# EQUIVALENT: drift_scores swapping PSI's samples (proved above); false_pages_per_quarter as a
+# per-year mean over quarters per year (the same quotient); PSI accepting a one-edge array,
+# which still raises ValueError because bincount rejects the negative index it produces.
+# Three new differently shaped right answers (np.digitize + vectorised null years + dict of
+# rates; np.histogram after clipping + pure-Python loops; broadcast-comparison binning +
+# day-by-day masks + an unsorted-grid minimum) score 93/93 before and 96/96 after.
+# Notebook fixes: two bare asserts in _check_triage now name the mistake; the exercise 3 check
+# and hints now name the unseen-code trap; the section 4 closing print no longer claims "each
+# event moved a different family" beneath a table showing the regression and the mix shift
+# both flag values; self-check 3 (b) no longer says a threshold's false-page rate depends on
+# the budget; the closing no longer claims module 9 prices this audit.
+#
+# WHAT COULD NOT BE VERIFIED:
+#   * The Yurdakul and Naranjo quotes were read from the hosted PDF's decompressed text streams,
+#     not from a rendered page; word spacing in two sentences is lost in that extraction and was
+#     restored by reading.
+#   * Whether numpy's Generator streams stay identical beyond numpy 2.4.6 and 2.5.3 (the two
+#     portable environments, which print identical output) is not something this lesson can
+#     check; every printed number would move with them.
+#   * No claim is made that real extraction pipelines see these events at these sizes; the
+#     generator is synthetic and read by the student before it runs.
+#
+# OWNER ACTIONS (files this lesson may not touch): programmes/document-intelligence/MODULES.md
+# module 8 still reads "(specified)" and the status table row is regenerated by tools/status.py.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23: all gates re-run green (solution 96/96, stubs 0/96 all TODO, py311+py312 identical); 46 mutants with a one-step boundary sweep, 4 rubric gaps closed (KL edge binning, the two-edge boundary, a trailing empty day, partly reviewed documents), 3 proved equivalent; 3 controls 100% before and after; all 7 quotes re-verified on the live sources; board wiring proved; 2 bare check asserts, a prose-vs-table contradiction and a wrong self-check option fixed"
+measured_seconds: 8.8
+measured_peak_mib: 128

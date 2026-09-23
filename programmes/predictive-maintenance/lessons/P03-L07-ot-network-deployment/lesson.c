@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 // P03-L07 — Deployment on an OT network. THE GATEWAY.
 //
 // Four exercises live in this file: gw_alloc, frame_decode, q_health, and the three

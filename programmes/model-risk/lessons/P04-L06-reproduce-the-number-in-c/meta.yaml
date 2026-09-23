@@ -207,7 +207,7 @@ points: 75         # = sum of RUBRIC points in tests/test_lesson.py
 #      key = {1: ("b", ...), 2: ("c", ...), 3: ("b", ...), 4: ("d", ...)} in lesson.py, three
 #      lines below the cell where the student types their answers, so the four questions tested
 #      nothing — against QUALITY.md gate 8 and against the house style of T00-L01, which says
-#      only "Answers are in this lesson's worked solution in the course repository." The marker now compares a
+#      only "Answers come with this lesson's worked solution when you enrol on Synapsa." The marker now compares a
 #      salted SHA-256 digest per question, so the instant feedback and the section pointer
 #      survive and the letters do not appear in the student bundle. The worked reasoning stays
 #      where it was, in the solution file.

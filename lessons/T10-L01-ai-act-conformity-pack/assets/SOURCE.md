@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Origin | Authored for this lesson. Not a third-party dataset. |
-| Licence | CC0-1.0 — public domain dedication, same terms as the lesson text |
+| Licence | CC BY-NC-SA 4.0 — (c) 2026 RealAI, same terms as the lesson text |
 | Gated? | No. Nothing is downloaded, so there is nothing to gate. |
 | Retrieved | Not applicable: it is written, not fetched |
 

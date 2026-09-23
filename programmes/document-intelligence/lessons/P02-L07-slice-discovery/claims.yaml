@@ -1,0 +1,174 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# The evaluation set is generated inside the lesson, so it has no dataset to license. ALPHA,
+# MARGIN, POWER, N_BOOT and MIN_SLICE are labelled in the notebook as policy decisions a team
+# writes down before it looks, and nothing here asserts they are typical of any organisation,
+# so they are not claims either.
+#
+# Each quote below was checked against the text of the live page on the access date: the
+# arXiv, R, statsmodels, scipy, NIST and PMC pages as fetched HTML, the JSTOR and Project
+# Euclid abstracts as rendered in a browser, and the Benjamini-Hochberg abstract through the
+# publisher's Crossref record, because the Oxford Academic page answers a script with a bot
+# check (see that entry).
+claims:
+  - id: aggregate-hides-slices
+    claim: >-
+      A model's overall score can fail to reflect its score on smaller subsets of the
+      evaluation data, which is why slices are searched automatically rather than guessed at.
+      The Slice Finder work (Chung, Kraska, Polyzotis, Tae and Whang) frames automated data
+      slicing for model validation around exactly this. Section 2's headline and section 8's
+      release note, computed from the same documents, are this lesson's own instance of it.
+    where: "lesson.py introduction and section 3 (exercise 1 preamble)"
+    source_url: https://arxiv.org/abs/1807.06068
+    source_title: "Automated Data Slicing for Model Validation: A Big data - AI Integration Approach (arXiv 1807.06068, v3 of 7 Jan 2019)"
+    quote: >-
+      This is an important problem in model validation because the overall model performance
+      can fail to reflect that of the smaller subsets, and slicing allows users to analyze the
+      model performance on a more granular-level.
+    quote_context: "abstract, verbatim in the fetched HTML of the abstract page"
+    accessed: 2026-09-23
+
+  - id: bootstrap-efron-1979
+    claim: >-
+      The bootstrap is a general method for estimating the sampling distribution of a
+      statistic from the observed sample alone. Exercise 3 uses it for the change in a slice's
+      macro F1, which has no elementary closed-form variance.
+    where: "lesson.py section 5 (exercise 3 preamble)"
+    source_url: https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full
+    source_title: "Efron — Bootstrap Methods: Another Look at the Jackknife, The Annals of Statistics 7(1):1-26, January 1979"
+    quote: >-
+      A general method, called the "bootstrap," is introduced, and shown to work satisfactorily
+      on a variety of estimation problems.
+    quote_context: >-
+      Abstract, third sentence. The page answers a script with a bot check, so it was read in
+      a browser; the sentence is plain text there. The abstract's first sentence states the
+      problem as estimating the sampling distribution of a prespecified random variable on the
+      basis of the observed data.
+    accessed: 2026-09-23
+
+  - id: monte-carlo-p-value-plus-one
+    claim: >-
+      A p-value estimated from r of n simulated replicates is written (r + 1)/(n + 1) rather
+      than r/n; the r/n form underestimates the p-value and can return exactly zero. Exercise 3
+      computes its one-sided bootstrap p-value in that form.
+    where: "lesson.py section 5 (exercise 3 preamble and docstring); section 10, last bullet"
+    source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC379178/
+    source_title: "North, Curtis and Sham — A Note on the Calculation of Empirical P Values from Monte Carlo Procedures, American Journal of Human Genetics 71(2):439-441, 2002"
+    quote: >-
+      Davison and Hinkley (1997) give the correct formula for obtaining an empirical P value as
+      (r+1)/(n+1).
+    quote_context: >-
+      Body text. The page sets r and n in italics, which a text extraction renders with spaces
+      around them; the words and symbols are otherwise as quoted.
+    accessed: 2026-09-23
+
+  - id: holm-sequentially-rejective-fwer
+    claim: >-
+      Holm's procedure is sequentially rejective — hypotheses are rejected one at a time until
+      no further rejection is possible — and it protects the chosen significance level against
+      any false rejection whichever combination of hypotheses is true. That is the
+      family-wise guarantee a release gate needs, and the stopping rule exercise 4 grades.
+    where: "lesson.py section 6 (exercise 4 preamble) and section 8 (why the gate uses Holm)"
+    source_url: https://www.jstor.org/stable/4615733
+    source_title: "Holm — A Simple Sequentially Rejective Multiple Test Procedure, Scandinavian Journal of Statistics 6(2):65-70, 1979"
+    quote: >-
+      This paper presents a simple and widely applicable multiple test procedure of the
+      sequentially rejective type, i.e. hypotheses are rejected one at a time until no further
+      rejections can be done. It is shown that the test has a prescribed level of significance
+      protection against error of the first kind for any combination of true hypotheses.
+    quote_context: >-
+      JSTOR abstract, first two sentences. JSTOR answers a script with a bot check, so the page
+      was read in a browser, where the abstract is plain text.
+    accessed: 2026-09-23
+
+  - id: holm-is-step-down
+    claim: >-
+      Holm's method is a step-down procedure built on Bonferroni adjustments, which is the
+      direction exercise 4's running maximum encodes.
+    where: "lesson.py section 6 (exercise 4 preamble and holm_adjust docstring)"
+    source_url: https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html
+    source_title: "statsmodels documentation — statsmodels.stats.multitest.multipletests"
+    quote: "holm : step-down method using Bonferroni adjustments"
+    quote_context: "the list of available methods under the `method` parameter"
+    accessed: 2026-09-23
+
+  - id: holm-valid-under-any-dependence
+    claim: >-
+      Holm's method dominates the plain Bonferroni correction and is valid under arbitrary
+      assumptions — no independence between the tests is required. The lesson's slices
+      overlap (every document sits in one slice per attribute), so their tests are dependent,
+      and this is one of the two reasons the release gate uses Holm.
+    where: "lesson.py section 6 (exercise 4 preamble) and section 8 (exercise 6 preamble)"
+    source_url: https://stat.ethz.ch/R-manual/R-devel/library/stats/html/p.adjust.html
+    source_title: "R documentation — p.adjust {stats}: Adjust P-values for Multiple Comparisons"
+    quote: >-
+      There seems no reason to use the unmodified Bonferroni correction because it is
+      dominated by Holm's method, which is also valid under arbitrary assumptions.
+    quote_context: >-
+      Details section. The same section says the first four methods, Holm's among them, are
+      designed to give strong control of the family-wise error rate.
+    accessed: 2026-09-23
+
+  - id: bh-false-discovery-rate
+    claim: >-
+      Benjamini and Hochberg's procedure controls the false discovery rate — the expected
+      proportion of falsely rejected hypotheses among the rejections — which equals the
+      family-wise error rate when every null hypothesis is true and is smaller otherwise; it
+      buys power by promising less. Its guarantee is proved for independent test statistics.
+      The lesson uses it for the error-analysis queue, not the release gate.
+    where: "lesson.py section 6 (exercise 4 preamble), section 8 (exercise 6 preamble), section 10"
+    source_url: https://academic.oup.com/jrsssb/article/57/1/289/7035855
+    source_title: "Benjamini and Hochberg — Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing, JRSS Series B 57(1):289-300, 1995 (doi 10.1111/j.2517-6161.1995.tb02031.x)"
+    quote: >-
+      It calls for controlling the expected proportion of falsely rejected hypotheses — the
+      false discovery rate. This error rate is equivalent to the FWER when all hypotheses are
+      true but is smaller otherwise.
+    quote_context: >-
+      Summary (abstract). The Oxford Academic page answers both a script and the browser used
+      here with a bot check, which was not bypassed. The text was read from the publisher's
+      Crossref record, https://api.crossref.org/works/10.1111/j.2517-6161.1995.tb02031.x,
+      verbatim, and agrees with a fetch of the article page. The same abstract says the
+      procedure "is proved to control the false discovery rate for independent test
+      statistics" (spelled "Bonferronitype" in the record).
+    accessed: 2026-09-23
+
+  - id: bh-guarantee-needs-independence-or-positive-dependence
+    claim: >-
+      The Benjamini-Hochberg guarantee holds for independent tests or tests with positive
+      regression dependencies; arbitrary dependence needs the more conservative
+      Benjamini-Yekutieli adjustment. Section 10 cites this as the second reason BH is not the
+      release gate here.
+    where: "lesson.py section 10 (common mistakes, the BH bullet)"
+    source_url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.false_discovery_control.html
+    source_title: "SciPy documentation — scipy.stats.false_discovery_control"
+    quote: >-
+      The same is true even for dependent tests when the p-values are adjusted accorded to the
+      more conservative Benjaminini-Yekutieli procedure.
+    quote_context: >-
+      Notes section, verbatim including the page's own typos ("accorded", "Benjaminini"). The
+      sentence before it states the independent / positive-regression-dependency condition for
+      BH; it carries inline mathematics and a reference marker, so the plain-text sentence that
+      follows it is the one quoted.
+    accessed: 2026-09-23
+
+  - id: sample-size-normal-approximation
+    claim: >-
+      For a one-sided test with the standard deviation taken as known, the minimum sample size
+      is (z(1 - alpha) + z(1 - beta))^2 (sigma / delta)^2, and when the standard deviation is
+      not known exactly the best estimate available from a previous experiment is used.
+      Exercise 5 implements this with power = 1 - beta, delta = MARGIN, and sigma estimated
+      from the whole-set paired bootstrap.
+    where: "lesson.py section 7 (exercise 5 preamble and docstring)"
+    source_url: https://www.itl.nist.gov/div898/handbook/prc/section2/prc222.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, section 7.2.2.2: Sample sizes required"
+    quote: >-
+      A restriction is that the standard deviation must be known. Lacking an exact value for
+      the standard deviation requires some accommodation, perhaps the best estimate available
+      from a previous experiment.
+    quote_context: >-
+      Under "Limitation and interpretation". The one-sided formula itself is typeset as
+      mathematics on the same page, under "Standard deviation assumed to be known":
+      N = (z_{1-alpha} + z_{1-beta})^2 (sigma/delta)^2 -> one-sided test.
+    accessed: 2026-09-23

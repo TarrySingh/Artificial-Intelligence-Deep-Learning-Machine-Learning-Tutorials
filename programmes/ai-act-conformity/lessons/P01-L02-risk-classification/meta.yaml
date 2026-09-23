@@ -17,7 +17,7 @@ objectives:
   - "Explain why a panel's disagreement is best reported as the earliest question they split on rather than as a spread of verdicts"
 datasets:
   - name: "SYSTEMS and PANEL — nine fictional AI system descriptions and four analyst intake forms"
-    licence: "CC0-1.0"
+    licence: "CC-BY-NC-SA-4.0"
     url: "none — authored in this repository, constructed inside lesson.py"
     origin: authored-for-this-lesson
     cached_at: "none — module-level literals in lesson.py, nothing is read from disk"

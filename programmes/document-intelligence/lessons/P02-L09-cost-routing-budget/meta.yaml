@@ -1,0 +1,191 @@
+id: P02-L09-cost-routing-budget
+title: Cost per document, and the routing budget that sets it — a three-tier router priced from the earlier modules, solved exactly by sweep and approximately by greedy, with its Pareto frontier and a recommendation generated from the numbers
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 120
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track               # the tier gate, and the house shape
+  - P02-L01-extraction-evaluation       # the cheap tier, the cost placeholders, field-level scoring
+  - P02-L03-sequence-labelling          # the expensive tier is shaped on its trained tagger
+  - P02-L06-review-queues-real-reviewers  # the human tier: its measured pace and cells still wrong
+  - P02-L07-slice-discovery             # segments are slices on its attributes
+objectives:
+  - "Implement cost per document and field accuracy of a routing plan as volume-weighted means over segments, and measure how far the unweighted mean over segments misstates the monthly bill and the wrong fields"
+  - "Implement the routing budget as an exhaustive sweep over every plan that picks the most accurate plan fitting a cap, and the Pareto frontier of field accuracy against cost per document as a staircase rather than a convex hull"
+  - "Implement the greedy marginal-yield rule and measure where it matches the sweep — at its own breakpoints, under a price per wrong field, on random segment mixes — and by how much it falls short between breakpoints"
+  - "Construct a segment mix on this router's own tiers on which the greedy rule is beaten by the sweep, and explain from the construction why greedy cannot recover"
+  - "Generate from the computed numbers alone a routing recommendation a finance partner could sign, including the price per wrong field avoided of the next step up the frontier"
+datasets:
+  - name: three-tier router price list, eight-segment traffic fixture, and random segment mixes
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      The tiers are priced in section 1 from named placeholders (module 1's machine cost and
+      reviewer rate, module 6's simulated reviewing pace, a per-page price for the expensive
+      tier); the eight segments in section 2 are a fixed fixture of volumes, page counts and
+      per-tier field accuracies shaped on what modules 1-4 and 6-8 measured, each labelled with
+      the module it mirrors. Section 6 draws 150 random six-segment mixes and caps from
+      random.Random(20260923). Nothing is read from disk and nothing is downloaded.
+points: 100             # = sum of RUBRIC points in tests/test_lesson.py, over 30 cases
+# Authored 2026-09-23 as module 9 of the document-intelligence programme. Every gate in the
+# brief was run from the repo root on .venv/bin/python; the measured figures at the foot were
+# written back by tools/execute.py and never typed. lesson.py and solutions/lesson_solution.py
+# were cut from ONE master by a script (stubs replace the marked bodies), so they cannot drift.
+#
+# WHAT MODULES.MD ASKED FOR (module 9, cpu8), and where it is.
+#   * a three-tier router — cheap extractor, expensive extractor, human -> section 1 (TIERS,
+#     given), priced from named placeholders, with each tier's provenance printed;
+#   * per-tier cost and accuracy from the earlier modules -> section 2 (SEGMENTS, a fixture;
+#     see deviation 1), each segment labelled with the module it mirrors;
+#   * formulate the budget allocation -> section 3 (plan, volume-weighted cost per document and
+#     field accuracy, "maximise accuracy subject to cost <= B", named as a multiple-choice
+#     knapsack) and exercise 1 (`evaluate_plan`);
+#   * solve it by sweep -> exercise 2 (`sweep_plans`, `best_within_budget`);
+#   * then by a greedy marginal-yield rule -> exercise 4 (`greedy_allocation`);
+#   * show where greedy is optimal and construct the case where it is not (from the brief) ->
+#     the section 6 measurement cell (breakpoints, a price per wrong field, 150 random mixes,
+#     the one-jump bound) and exercise 5 (`greedy_counterexample`), graded with REFERENCE
+#     greedy and sweep so it must be a genuine counterexample;
+#   * plot the Pareto frontier of quality against cost per document -> exercise 3
+#     (`pareto_frontier`) and the two plots in sections 5 and 6;
+#   * the one-paragraph recommendation a finance partner would sign, generated, never typed ->
+#     exercise 6 (`recommend`) plus the given `render_recommendation`, and a cell that traces
+#     every figure in the paragraph back to a computed value;
+#   * costs illustrative and no vendor named -> said in the opening cell, the setup cell, the
+#     axis label and the paragraph itself; claims.yaml records the prices as non-claims;
+#   * artefact: a routing budget with its frontier and the recommendation it implies -> the
+#     routing table, the frontier plot, the paragraph and the routing card (section 10).
+#
+# WHAT IS DIFFERENT FROM THE SPEC, AND WHY.
+#  1. MODULES.md says per-tier cost and accuracy are "measured from the student's own earlier
+#     modules". A notebook runs alone (gate 13) and may not import another lesson's results, so
+#     they are a FIXTURE shaped on what those modules print, as the brief allowed. Where a
+#     number is carried, it was read from the earlier module's reference run on 2026-09-23
+#     (run in a mktemp directory): the clean segment's cheap accuracy 0.810 is module 1's
+#     extractor (correct + true-negative cells, 875 of 1080, normalised; module 6 prints the
+#     same 0.810 for 'accept everything'); its expensive 0.964 is module 3's held-out tagger
+#     macro F1 (0.9639; the rule scored 0.836); its human 0.969 is module 6's chosen rota
+#     leaving 7.5 of 240 routed cells wrong; REVIEWED_FIELDS_PER_HOUR 35.6 is module 6's
+#     chosen rota; MACHINE_COST_PER_DOCUMENT 0.004 and REVIEWER_COST_PER_HOUR 30.0 are module
+#     1's placeholders; section 9's sensitivity cell uses module 1's 40 s per field. The
+#     two-column segment's cheap 0.604 is 0.810 x 0.745, module 2's raster-order field F1 as
+#     MODULES.md states it (module 2 was not re-run). The other segments (tables, poor scans,
+#     new vendor template, long supplier names, multi-page, unfamiliar language) copy the
+#     DIRECTION of a finding in modules 3, 4, 7 and 8, not a number, and the column says only
+#     which module they mirror. Accuracy is field accuracy, not macro F1: macro F1 does not
+#     add up over segments, and the knapsack decomposition needs a quantity that does.
+#  2. `greedy_allocation` returns `Greedy(plan, start, moves)`, not only a plan. The path must
+#     be replayed for the breakpoints and the plot, and two of the likeliest mistakes (a yield
+#     weighted by volume, largest gain first) often end on the right plan by the wrong route.
+#  3. The paragraph's WORDING is given (`render_recommendation`); the student computes every
+#     figure in it (`Recommendation`). Free prose cannot be graded reliably; the numbers can,
+#     and the renderer adds no figure of its own — the trace cell proves it on each run.
+#  4. BUDGET_PER_DOCUMENT = 0.30 was chosen, among round placeholders, as a cap at which the
+#     sweep and greedy disagree, so the recommendation visibly depends on using the sweep. The
+#     notebook calls it a placeholder and claims nothing about it.
+#  5. The human tier reviews every field of the cheap tier's draft and pays for the draft; the
+#     expensive tier is billed by the page. Both are modelling choices, stated in section 1.
+#
+# RESULTS THE REFERENCE PRINTS (deterministic; identical on py311 and py312 per
+# verify_portable --completed, 143 lines, 0 varying run to run). 6,561 plans; 736 fit the cap;
+# the sweep's plan costs 0.2920 per document (15,357 a month for 52,600 documents), field
+# accuracy 0.9357, 20,283 of 315,600 fields wrong a month, poor scans to human review, long
+# supplier names on the cheap tier, the rest on the expensive tier; greedy at the same cap
+# leaves 2,436 more fields wrong a month; the next frontier step costs 0.3490 per document at
+# 1.74 per wrong field avoided. 48 frontier plans. Greedy matched the sweep at 213 of 241 caps
+# (worst shortfall 0.0426 at a cap of 0.0220), at 15 of 15 of its own breakpoints, under a price
+# per wrong field at 61 of 61 prices, and on 130 of 150 random mixes (worst 0.0721, median
+# 0.0046); the one-jump bound held at 241 of 241 caps and 150 of 150 mixes. Swapping module 6's
+# reviewing pace for module 1's placeholder moves 1 of 8 segments to another tier.
+#
+# MUTATION TESTING, 2026-09-23. 46 plausible-wrong variants of the reference were written as
+# text substitutions, graded with tools/grade.py --solution in mktemp copies outside the repo,
+# and run as scripts. Scores are measured. All 46 are caught, each keeping partial credit
+# (84 to 98 of 100):
+#   evaluate_plan  unweighted mean 87 · negative index accepted 97 · per-page price ignored 86
+#                  · no zero-volume guard 97 · off-by-one tier bound 97 · (accuracy, cost)
+#                  swapped 84
+#   sweep          last segment slowest 93 · unweighted 97 · plans as floats 93
+#   best           strict < on the cap 97 · np.argmax tie-break 97 · ignores the cap 93 ·
+#                  cheapest plan that fits 90 · None when nothing fits 97 · ties to the
+#                  highest index 97
+#   frontier       >= keeps flat steps 92 · convex hull 91 · index order 89 · duplicates keep the
+#                  highest index 98 · sorted by cost alone 96
+#   greedy         next tier up only 94 · stops at the first move that does not fit 95 · yield
+#                  weighted by volume 95 · largest gain first 93 · buys dearer tiers that score
+#                  no better 95 · starts on tier 0 97 · strict < on the cap 91 · start not
+#                  checked 97 · tie to the higher index 98 · start tie ignores accuracy 97 ·
+#                  monthly spend against a per-document cap 90 · moves record the tier left 86
+#   counterexample greedy-optimal cap 95 · the docstring's shape example 95 · accuracies as
+#                  percentages 97 · seven segments 92
+#   recommend      greedy's plan 91 · next plan by cost 91 · next = cheapest more-accurate plan
+#                  of ALL plans 95 · price per wrong document 96 · wrong fields per document 92
+#                  · crashes at the top 97 · spend x number of segments 96 · greedy figure is
+#                  the sweep's 96 · plans_checked counts plans that fit 95 · price per accuracy
+#                  point per document 96
+# Holes found and closed during the run: "next = cheapest more-accurate plan of ALL plans"
+# scored 100/100 (no two plans in the fixture cost exactly the same) until an equal-cost router
+# was added to test_recommend_next_step_is_on_the_frontier; the greedy tie-break mutant was
+# caught only incidentally by a boundary case with a misleading hint until
+# test_greedy_ties_go_to_the_lower_index was added (29 -> 30 cases, points unchanged). Five
+# mutants (index-order frontier, tier-0 start, unchecked start, next plan by cost, greedy
+# figure copied from the sweep) passed the notebook's own public checks; each check now
+# catches them. Equivalent survivors: none among the 46.
+# CONTROLS, differently shaped and right: (1) pure-Python loops — itertools with evaluate_plan
+# per plan, a scanning best, a frontier walked from the most accurate plan down, a greedy that
+# re-prices the whole plan for every candidate, a recommendation that indexes the frontier by
+# position; (2) numpy — np.indices sweep, lexsort best, maximum.accumulate frontier, a vectorised
+# greedy over a candidate matrix, and a counterexample found by random search from a fixed
+# seed. Both score 100/100 and run clean as scripts.
+#
+# BOARD WIRED (2026-09-23, scratch copies): exercise 1 filled correctly shows ✅ and "1 of 6";
+# filled wrongly it shows ❌ with its check's message, the demos that need it skip, and the
+# script exits 1; both notebooks run in a py312 kernel with no error output.
+#
+# NOT VERIFIED, AND SAID SO. Module 2's 0.745 was read from MODULES.md, not re-run. The
+# upper-hull bound is cited from the abstract of arXiv 2603.18653, not its full text; the
+# lesson's own measurement is the evidence it leans on. Live badge URLs were not tested
+# (COMMONS_RAW_OVERRIDE serves siblings locally; this lesson has none).
+#
+# FOR THE OWNER (nothing outside this directory was touched): MODULES.md module 9 still reads
+# "specified" and says costs are measured from the student's own modules — deviation 1 above is
+# the wording to adopt; tools/status.py needs a re-run. Its status table also still lists
+# modules 5-8 as specified.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root; all six claims.yaml
+# quotes re-fetched and found verbatim; the carried figures re-read from fresh runs of modules
+# 1, 3 and 6 (0.810, 0.9639, 35.6 items an hour, 7.5 of 240 cells still wrong; 0.604 is
+# 875/1080 x 0.745 before rounding). 66 distinct mutants graded in mktemp copies: 60 wrong ones
+# all lose marks (79-98), 3 are right answers (counterexample cap 1e-7 above the boundary, a
+# 0.0011 gap, next step read by frontier position), 3 are equivalent (a zero-cost move allowed:
+# from the start and after every move no same-cost tier is more accurate; ">=" plus "not the
+# chosen plan" in recommend: the chosen plan is always on the frontier; no zero-volume guard in
+# greedy: outside its docstring); the first two were also identical on 7,656 tie-heavy random
+# instances. Defects found and fixed:
+#  1. A greedy start keyed on (cost, -accuracy, -index) scored 100/100: the docstring's "then to
+#     the lower index" was ungraded. test_greedy_starts_on_the_cheapest_tier now grades it.
+#  2. `<` for "at or under" in greedy was reported under the tie-break, yield-order and jump
+#     hints, because those cases sat a plan exactly on the cap. They now have room to spare; the
+#     boundary (moves AND the start) is graded and hinted by the inclusive-cap case alone, in the
+#     rubric and in _check_greedy.
+#  3. Exercise 5 was not graded in isolation: an exercise-1 mistake cost up to 8 more points
+#     through the cap priced with evaluate_plan. Its cases now run under _references_in_place,
+#     and the notebook's exercise 5 now waits on exercise 1.
+#  4. _check_evaluate raised a bare IndexError for an off-by-one bound and gave one message for
+#     every malformed plan; each case now names its own mistake. _check_recommend now checks
+#     next_point (left None, the board said ✅ and the next cell crashed).
+#  5. Module 1's 40 s a field is carried under module 1's own name, SECONDS_PER_REVIEWED_CELL.
+# Controls, three differently shaped right answers (pure-Python loops; numpy with np.indices,
+# lexsort, maximum.accumulate, a vectorised greedy and a counterexample by seeded random search;
+# recursion, groupby, fsum, bisect and a three-segment counterexample with a three-page segment):
+# 100/100 and 6 of 6 before and after. Board wired: one exercise right shows ✅ and 1 of 6 with
+# the rest ⏳; the same exercise wrong shows ❌ with its hint, the py312 kernel run has no error
+# output, and the script exits 1.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude), 2026-09-23: all gates re-run and pass; 66 mutants, 5 defects fixed, 3 controls at 100%"
+
+measured_seconds: 0.8
+measured_peak_mib: 83

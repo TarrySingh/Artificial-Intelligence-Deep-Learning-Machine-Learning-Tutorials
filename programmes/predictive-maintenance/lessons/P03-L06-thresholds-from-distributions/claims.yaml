@@ -1,10 +1,11 @@
 # Every factual claim this lesson makes about the world, with a primary source URL and the
 # date the source was read. Numbers a student sees in the notebook's output are computed by
 # the code they run — every optimal intervention time, every expected and realised cost, the
-# width and centre sweeps, the calendar price, the capacity price and the planner's error —
-# and are therefore not claims. They do not appear here.
+# width and centre sweeps, the calendar price, the capacity price, the planner's error, and
+# section 13's skewness, extra cost and failure-risk ratios on module 5's draws — and are
+# therefore not claims. They do not appear here.
 #
-# Four things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# Five things this lesson deliberately does NOT claim are recorded at the foot of this file,
 # because a reviewer should be able to see that each omission was a decision.
 claims:
   - id: survival-function-definition
@@ -24,7 +25,7 @@ claims:
     quote_context: >-
       Opening sentence of the section; the same page defines the reliability function R(t),
       also written S(t), as "the probability a unit survives beyond time t".
-    accessed: 2026-09-22
+    accessed: 2026-09-23
 
   - id: hazard-rate-definition
     claim: >-
@@ -45,7 +46,7 @@ claims:
       Definition paragraph of the section, which also gives h(t) = f(t)/[1 - F(t)] = f(t)/R(t)
       and describes the failure rate as the rate at which the survivors at a given instant
       are "falling over the cliff".
-    accessed: 2026-09-22
+    accessed: 2026-09-23
 
   - id: nasa-pcoe-optional-corpus
     claim: >-
@@ -53,8 +54,8 @@ claims:
       Turbofan Engine Degradation Simulation (C-MAPSS) sets as a direct download with no
       registration, under a disclaimer that users employ the data at their own risk and that
       neither NASA nor the donators assume liability. The lesson names this corpus in section
-      1 as an OPTIONAL off-path extension a student can point the same code at once module 5
-      is producing forecasts from it. Nothing the grader needs touches it, nothing in the
+      1 as an OPTIONAL off-path extension a student can point the same code at by fitting
+      module 5's model to it and handing the draws to exercise 10. Nothing the grader needs touches it, nothing in the
       lesson downloads it, and the lesson runs with the machine offline.
     where: "lesson.py section 1 (the optional extension note); meta.yaml datasets: (off-path)"
     source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
@@ -68,7 +69,7 @@ claims:
       with no login; the repository notes that a few other sets are "currently unavailable for
       download directly" and must be requested, which is precisely why nothing required is
       taken from it.
-    accessed: 2026-09-22
+    accessed: 2026-09-23
 
 # --- deliberate non-claims -----------------------------------------------------------------
 #
@@ -103,3 +104,13 @@ claims:
 #    typical capacity or a typical planning horizon; the constants are at the top of the
 #    notebook precisely so a student can replace them with their own plant's and re-run
 #    everything below.
+#
+# 5. SECTION 13's MODULE-5 INPUTS ARE COURSE MATERIAL, NOT FACTS ABOUT THE WORLD. The copy of
+#    rul_samples() is module 5's own code; the four posteriors are rounded from one run of
+#    module 5's reference solution on its synthetic fleet, and are labelled as inputs in the
+#    cell that defines them. No claim is made that they, the skewness of their draws, or the
+#    measured cost of reading them through two moments describe any real machine. The
+#    sentence that the posterior covariance depends only on the reading times is algebra on
+#    module 5's conjugate update with a fixed noise level, not an empirical claim. The demo's
+#    finding is a comparison at fixed prices on these four units, printed by the student's
+#    own code, and the notebook states it no more widely than that.

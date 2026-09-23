@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 // F15-L07 — sampling-based model-predictive control (MPPI), in C++.
 //
 // Three functions are stubs. Fill them in, then run:

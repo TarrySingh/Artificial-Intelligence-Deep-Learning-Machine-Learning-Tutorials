@@ -209,14 +209,19 @@ claims:
 
   - id: walker-model-licence
     claim: >-
-      assets/planar_walker.xml was authored for this lesson by the Synapsa Commons project and is
-      dedicated to the public domain under CC0-1.0. It is not a download: there is nothing to
-      register for and no network access is required on any path through the lesson.
-    where: "meta.yaml datasets; assets/SOURCE.md; lesson.py walker_xml_path(), which has no download branch"
-    source_url: https://creativecommons.org/publicdomain/zero/1.0/
+      assets/planar_walker.xml was authored for this lesson by the Synapsa Commons project,
+      copyright 2026 RealAI, and is licensed under CC BY-NC-SA 4.0 with the rest of the course:
+      free to share and adapt with credit, not for commercial purposes. It is not a download:
+      there is nothing to register for and no network access is required on any path through
+      the lesson.
+    where: "meta.yaml datasets; assets/SOURCE.md; the XML file's header; lesson.py walker_xml_path(), which has no download branch"
+    source_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
     source_kind: primary (the licence deed itself)
-    licence_url: https://creativecommons.org/publicdomain/zero/1.0/legalcode
-    accessed: 2026-09-16
+    licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+    accessed: 2026-09-23
+    quote: "You may not use the material for commercial purposes"
     verified: >-
-      Both the CC0 deed and its legal code returned HTTP 200 on 2026-09-16. The dedication is
-      recorded in the XML file's own header comment and in assets/SOURCE.md.
+      Fetched 2026-09-23: the deed's NonCommercial term reads, verbatim, "NonCommercial — You may
+      not use the material for commercial purposes", under the heading "Attribution-NonCommercial-
+      ShareAlike 4.0 International". The model was earlier dedicated to CC0; it was relicensed on
+      2026-09-23 with the rest of Synapsa Commons.

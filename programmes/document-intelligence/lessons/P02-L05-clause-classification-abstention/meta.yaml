@@ -1,0 +1,164 @@
+id: P02-L05-clause-classification-abstention
+title: Contract clause classification and calibrated abstention — a classifier that says "I don't know" at a rate you chose and priced
+track: P02
+flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 180
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P02-L01-extraction-evaluation
+objectives:
+  - "Implement a bag-of-subwords featuriser (every repeat counted, log-damped, each row scaled to unit length) over a byte-pair-encoding vocabulary fitted with tokenizers on the training split only, and verify that the vocabulary is byte-identical across runs and across Python 3.11 and 3.12"
+  - "Implement multinomial logistic regression in numpy — a stable softmax, the cross-entropy gradient and full-batch gradient descent with a stated stopping rule"
+  - "Measure per-clause precision, recall and F1 with abstentions counted as false negatives, and the recall that abstaining costs each clause type"
+  - "Implement temperature scaling and the expected calibration error on a calibration split, and measure what calibration changes (confidence, ECE, the meaning of a threshold) and what it cannot (accuracy)"
+  - "Choose an abstention threshold from the coverage/accuracy curve, explain why it must be fitted away from the reported split, and price the abstention rate it implies through module 1's review queue"
+datasets:
+  - name: synthetic contract clause corpus, six clause types, four splits
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      6000 clauses (1800 train, 600 calibration, 600 test, 3000 next quarter) drafted in
+      section 1 by build_corpus() from one random.Random seed (20260923): stock sentences per
+      clause type with slots for parties, jurisdictions, caps and notice periods; hybrid
+      clauses that borrow the confusable neighbour's sentences; OCR-style character smudges;
+      and truncation. The pool is deduplicated by text BEFORE it is shuffled and split, so no
+      clause appears in two splits. Nothing is read from disk and nothing is downloaded.
+points: 100             # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-23. Every gate run from the repo root on .venv/bin/python; the measured
+# figures at the foot were written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md ASKED FOR (module 5, "Contract clause classification and calibrated
+# abstention", cpu8) and where each piece is:
+#   * a subword vocabulary with `tokenizers` over a synthetic clause corpus of governing law,
+#     limitation of liability, termination for convenience, assignment, indemnity and change of
+#     control — sections 1 and 2 (build_corpus, train_subword_vocab, given code);
+#   * multinomial logistic regression in numpy — exercises 1-3 (bag_of_subwords, softmax,
+#     loss_and_gradient, train_softmax_regression, with the stopping rule written into the
+#     docstring and graded to the exact step count);
+#   * calibrate the probabilities and implement an abstention rule — exercises 5-7
+#     (fit_temperature, expected_calibration_error, coverage_accuracy_curve, choose_threshold,
+#     predict_or_abstain, fit_policy);
+#   * per-clause F1, the coverage/accuracy curve and what abstention costs in recall —
+#     exercise 4 (score_classes, macro_f1) and the section 8 and 9 cells;
+#   * feeding module 1's review queue — exercise 7 (to_review_records) and section 11, which
+#     carries a faithful copy of module 1's FieldScore, normalise_value (id rule only),
+#     match_value, score_field, review_queue, apply_reviews and random_queue under the same
+#     names and record format, because a notebook runs alone and may not import P02-L01.
+# The brief added: temperature fitted on a held-out split and never the test split, with that
+# ORDERING graded (test_policy_ignores_every_other_split re-fits with the train and test
+# labels and test logits replaced and requires an identical Policy); confusable pairs
+# (assignment / change of control, indemnity / limitation of liability); and a prototype of
+# the tokenizers risk MODULES.md flags.
+#
+# THE PROTOTYPE, AND WHAT IT FOUND. MODULES.md says this module "carries real implementation
+# risk inside this environment's package set and should be prototyped". Before any lesson code
+# was written, a scratch script (outside the repo) trained tokenizers 0.23.2's BpeTrainer
+# (Lowercase normaliser, Whitespace pre-tokenizer, min_frequency 2, one special token) on a
+# fixed corpus and hashed the serialised vocabulary and merge list: three separate processes,
+# the corpus in shuffled order, TOKENIZERS_PARALLELISM=false, and the py311 and py312 portable
+# environments all produced the same SHA-256. The trainer is deterministic here: word counts
+# are order-free sums and merge ties break on the pair, not on hash-map order. No workaround
+# (sorting the input, disabling parallelism) was needed, so none is in the lesson. The lesson
+# re-proves it at run time — it trains twice, the second time on the training clauses in
+# reverse order, and prints both fingerprints — and verify_portable --completed compares the
+# printed fingerprint between Python 3.11 + numpy 2.4.6 and 3.12 + numpy 2.5.3. The real risk
+# the prototype found was not in tokenizers at all: 804 of the first draft's 6000 clauses were
+# exact duplicates, i.e. test clauses already in training, and exact duplicates also put exact
+# ties in the confidences, where a one-ulp difference between two numpy builds could move a
+# clause across the threshold. The corpus is therefore deduplicated as one pool and only then
+# split (a first attempt deduplicated split by split, which starved the later splits of short
+# boilerplate clauses and made the next quarter measurably harder; it was replaced).
+#
+# DEVIATIONS FROM THE SPEC, each stated in the notebook:
+#  1. The vocabulary training is GIVEN code, not an exercise. Filling in a BpeTrainer call is
+#     API lookup, not a skill this module teaches; what the student does with it is measure it
+#     (determinism, UNK rate) and featurise it (exercise 1). The graded subtlety there is
+#     numpy's `X[i, ids] += 1`, which drops repeated ids silently.
+#  2. A fourth split, `next_quarter`, exists so the lesson can check its own reports. Section
+#     10 shuffles all held-out clauses into tune / report / future sets 100 times and measures,
+#     rather than asserts, what tuning on the reported split does to the report.
+#  3. Abstained clauses are handed to module 1's queue with pred "" and their REAL calibrated
+#     confidence, and the lesson checks that a budget equal to the number of abstentions routes
+#     exactly the abstained set. Module 1's reviewer is still perfect; module 6 removes that.
+#  4. Section 11 prices the abstention rate with four placeholder costs, as module 1 did with
+#     three. COST_OF_AN_UNREVIEWED_ERROR = 15.0 was chosen, among arbitrary placeholder values,
+#     so that the cheapest target is interior to the sweep and both halves of the trade-off
+#     are visible; the notebook says the cheapest row moves when the placeholders do.
+#
+# RESULTS THE LESSON DID NOT PLAN AND DOES NOT HIDE.
+#   * The classifier is UNDERconfident, not overconfident: the fitted temperature is below 1.
+#     The ridge penalty and the loss-decrease stopping rule both shrink the weights. The prose
+#     says calibration must be measured rather than assumed, and self-check question 2 asks
+#     what T < 1 means, instead of repeating the familiar "networks are overconfident" line.
+#   * Temperature scaling DOES reorder confidences across clauses in the multiclass case (the
+#     top probability depends on the whole logit vector, so dividing by T can swap two
+#     clauses). Section 7 counts the reversed pairs rather than claiming the ranking is kept;
+#     only the per-clause argmax is invariant, and that is what the prose claims.
+#   * A whole-word vocabulary of the same size misses only a fraction of a per cent of test
+#     words on this template corpus; the subword vocabulary misses none. The notebook prints
+#     both and does not oversell the gap.
+#   * Even the honest point-estimate threshold meets the target on the future only about as
+#     often as a coin flip, because it is chosen to JUST meet it. Section 12 says so and names
+#     selective classification with a guaranteed risk (Geifman and El-Yaniv) as the fix this
+#     lesson does not implement.
+#
+# WHAT COULD NOT BE VERIFIED. CUAD's category table was read on the ar5iv rendering of arXiv
+# 2103.06268v2; the claim that CUAD has no indemnity category rests on a full-text search of
+# that rendering, not on the dataset files, which were not downloaded. Guo et al.'s section
+# 4.2 and section 2 sentences were read on ar5iv, since arXiv serves no HTML for a 2017 paper.
+#
+# MUTATION TESTING, 2026-09-23. 40 plausible-wrong variants of the reference solution were built
+# in a `mktemp -d` scratch directory outside the repo and GRADED with tools/grade.py --solution;
+# scores are measured, not predicted. All 40 are caught, and each loses only the points for the
+# behaviour it breaks, so partial credit survives every one (77 to 98 of 100):
+#   bag_of_subwords  X[i, ids] += 1 91 · no log1p 91 · normalise then log1p 88 · normalise
+#                    columns 91 · no id validation 97
+#   softmax / loss   no max shift 96 · normalise axis 0 77 · bias penalised 87 · sum not mean
+#                    82 · l2 not halved 92 · grad_b summed not averaged 85
+#   training         abs() of the drop 96 · relative tolerance 95 · bias never updated 95 ·
+#                    n_iter off by one 88 · random initialisation 92
+#   scores           ABSTAIN counted as a last-class false positive 92 · abstentions dropped 92 ·
+#                    support-weighted macro F1 97 · arithmetic-mean F1 97
+#   calibration      T multiplies the logits 89 · T searched only in [0.5, 2] 95 · T applied to
+#                    probabilities 89 · unweighted ECE 96 · floor (left-closed) bins 96 · ECE on
+#                    the true-class probability 97
+#   threshold        ties split into one point per clause 90 · first-miss scan 89 · strict >
+#                    target 89 · largest qualifying threshold 89 · 1.0 instead of inf when
+#                    unreachable 97 · abstain AT the threshold 97
+#   policy           T fitted on test 90 · on cal+test pooled 90 · on train 90 · threshold on
+#                    raw confidences 96 · threshold chosen on test 90
+#   records          ABSTAIN written as LABELS[-1] 98 · abstained confidence 0.0 98 · gold and
+#                    pred swapped 96
+# The three ordering mutants (T on test, pooled, on train) and the threshold-on-test mutant
+# all fail test_policy_ignores_every_other_split, the case that grades the ordering itself.
+# Two CONTROLS, differently shaped and correct, score 100/100: (A) Counter-built rows,
+# log-sum-exp softmax, einsum gradients, a while-loop trainer, a confusion-matrix scorer, a
+# geometric grid plus ternary search for T, np.digitize/np.bincount ECE and an np.unique curve;
+# (B) np.bincount rows, np.logaddexp softmax, a per-clause Python loop for the gradient, a
+# Counter scorer, BISECTION on d NLL / d(1/T), a masked-loop ECE and a set-based curve.
+# Control A also runs end to end and prints output identical to the reference apart from the
+# two timing lines. One rubric check was relaxed during this pass: to_review_records was first
+# graded with `type(x) is float`, which would fail a harmless numpy scalar; it is isinstance now.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root. 49 mutants written
+# independently of the 40 above, plus 8 more in a tolerance and boundary sweep. 7 of the 49
+# first scored 100/100. Six were one-step boundaries the docstrings state but the rubric only
+# graded far from the edge: stop on `<=` tol, max_iter = 1 rejected, a true label of
+# len(labels) accepted, a true label of -1 accepted, target 1.0 rejected, and a temperature
+# search that ignores T_BOUNDS. Each now fails the row that owns it (tests/test_lesson.py,
+# points unchanged). The seventh is equivalent: a numpy float64 confidence in
+# to_review_records, which subclasses float. Also fixed: section 2 said the smudged example "shares pieces" with its
+# clean word, but here the clean word is ONE subword and they share none, so the prose now
+# says what is true and the cell prints the comparison; exercise 2's second hint read as
+# "divide by n, then take the column mean" for grad_b (n twice); section 11 generalised one
+# documented service to "services"; two claim quotes began inside typeset maths; objective 1
+# now names exercise 1, the featuriser it had omitted. Three differently-shaped correct
+# controls score 100/100 before and after, and print the reference's output line for line.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "independent reviewer (Claude), 2026-09-23: gates re-run, 49 mutants + tolerance sweep, 3 controls, 11 quotes re-fetched verbatim"
+
+measured_seconds: 2.1
+measured_peak_mib: 196

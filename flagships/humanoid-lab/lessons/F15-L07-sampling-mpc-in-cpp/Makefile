@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: CC-BY-NC-SA-4.0
+# Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 # F15-L07 build. Nothing here is hard-coded to one machine: the MuJoCo header directory and
 # the shared library are discovered by asking the interpreter that is running the lesson where
 # its own mujoco package lives. Pass PYTHON=... to use a different interpreter (the lesson's

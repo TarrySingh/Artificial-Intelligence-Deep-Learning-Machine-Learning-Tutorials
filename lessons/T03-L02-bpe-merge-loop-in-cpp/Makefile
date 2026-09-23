@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: CC-BY-NC-SA-4.0
+# Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 # T03-L02 build. Nothing here is tied to one machine or one checkout: the lesson directory is
 # derived from this makefile's own path, and the compiler and interpreter are discovered on
 # PATH. Only the C++ standard library is linked — there is no third-party dependency to find.

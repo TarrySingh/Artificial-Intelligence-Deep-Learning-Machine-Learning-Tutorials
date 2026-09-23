@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Source | Authored for this lesson by the Synapsa Commons project. Not a download. |
-| Licence | CC0-1.0 — <https://creativecommons.org/publicdomain/zero/1.0/> |
+| Licence | CC BY-NC-SA 4.0 — (c) 2026 RealAI, part of Synapsa Commons — <https://creativecommons.org/licenses/by-nc-sa/4.0/> |
 | Retrieved | 2026-09-16 (written, not fetched) |
 | Gated? | No. Nothing to register for, nothing to agree to, no network access required. |
 

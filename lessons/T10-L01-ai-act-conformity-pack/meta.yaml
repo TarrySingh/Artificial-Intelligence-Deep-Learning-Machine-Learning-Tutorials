@@ -14,7 +14,7 @@ objectives:
   - "Justify which date binds a system that is both an Annex III use case and a safety component of a product regulated under Annex I"
 datasets:
   - name: "systems.yaml — fictional AI system registry authored for this lesson"
-    licence: "CC0-1.0"
+    licence: "CC-BY-NC-SA-4.0"
     url: "none — authored in this repository, ships at assets/systems.yaml"
     origin: authored-for-this-lesson
     cached_at: "assets/systems.yaml"

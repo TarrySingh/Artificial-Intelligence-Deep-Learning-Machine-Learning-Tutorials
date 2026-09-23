@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: CC-BY-NC-SA-4.0
+# Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 # P02-L10-streaming-scanner-in-c build. Nothing here is tied to one machine or one checkout: the lesson directory is
 # derived from this makefile's own path, and the compiler and interpreter are discovered on
 # PATH. There is no third-party library to link — the scanner uses the C standard library and

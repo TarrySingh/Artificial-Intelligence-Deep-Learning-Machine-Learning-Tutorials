@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-NC-SA-4.0
+// Synapsa Commons - Copyright 2026 RealAI - free to learn from and share, not to sell; see NOTICE.
 // T03-L02 — the BPE merge loop, in C++.
 //
 // Four functions are yours to write. Everything else — pre-tokenisation, argument parsing,
