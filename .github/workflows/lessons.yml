@@ -30,6 +30,8 @@ jobs:
         run: .venv/bin/python tools/notebooks.py --check
       - name: student bundles build with no solution leaks
         run: .venv/bin/python tools/build_student_bundle.py
+      - name: status tables in MODULES.md and README.md match the lessons
+        run: .venv/bin/python tools/status.py --check
 
   portable:
     name: opens anywhere (${{ matrix.env }})
