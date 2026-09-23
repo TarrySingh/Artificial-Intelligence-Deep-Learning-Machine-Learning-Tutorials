@@ -1,0 +1,437 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in the notebook's output are computed by the
+# code they run - the route counts, the gap counts, the per-route evidence counts, the
+# planted-defect counts, the substantial and uncovered change counts, the declaration and
+# marking counts and keep_until - and are therefore not claims; they do not appear here.
+#
+# Article numbers in the prose are citations, not measurements. Each one that carries weight
+# in a decision the code makes is below, with the operative words quoted.
+#
+# Independent re-verification, 2026-09-23. Every URL below was re-fetched and every quote
+# matched verbatim against the live page, after stripping artificialintelligenceact.eu's
+# inline glossary tooltips and normalising the whitespace its inline links introduce. The one
+# quote that did not survive that check - the Annex VI one - has been replaced with the
+# annex's own words; see its quote_note. Annex III was re-counted on the live page and still
+# has exactly eight numbered points, in the order the claim states.
+#
+# Cross-checking, 2026-09-22. Article 43, Article 47 and Article 48 were each read on TWO
+# independent reproductions of the consolidated text - artificialintelligenceact.eu and
+# euaiact.com - and the operative wording agreed on both. Where only one of the two was
+# consulted the claim says so. EUR-Lex was not used as a primary retrieval for the Digital
+# Omnibus for the reason P01-L02's claims.yaml records: it returns an empty body for
+# OJ:L_202601744.
+#
+# Four things this lesson deliberately does NOT claim are recorded at the bottom, under
+# `not_claimed`. Three of them are readings the notebook labels as readings in its own prose,
+# in sections 4, 6 and 7, and the fourth is a question the sources do not answer.
+
+claims:
+  # --- which route applies -----------------------------------------------------------
+
+  - id: art43-1-point-1-two-procedures
+    claim: >-
+      For the Annex III point 1 (biometrics) systems, where the provider has applied the
+      harmonised standards or, where applicable, the common specifications, Article 43(1)
+      gives the provider a choice between two named procedures: internal control under
+      Annex VI, and assessment of the quality management system and of the technical
+      documentation with the involvement of a notified body under Annex VII. This is the
+      only place in Article 43 where a provider chooses anything, and it is why
+      `assessment_route` consults `context["chosen_route"]` for point 1 and for nothing else.
+    where: "lesson.py section 1 and section 5; assessment_route() rule 3b; tests/test_lesson.py::test_route_point_1_choice_is_only_a_choice_without_a_gap"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "Article 43: Conformity Assessment - EU Artificial Intelligence Act"
+    quote: >-
+      the provider shall opt for one of the following conformity assessment procedures based
+      on: (a) the internal control referred to in Annex VI; or (b) the assessment of the
+      quality management system and the assessment of the technical documentation, with the
+      involvement of a notified body, referred to in Annex VII.
+    corroborating_url: https://www.euaiact.com/article/43
+    accessed: 2026-09-22
+
+  - id: art43-1-second-subparagraph-four-cases
+    claim: >-
+      Article 43(1)'s second subparagraph lists four situations in which the Annex VII
+      procedure is compulsory rather than optional: (a) no harmonised standard exists and no
+      common specification is available; (b) the provider has not applied, or applied only
+      part of, the harmonised standard; (c) common specifications exist and the provider has
+      not applied them; (d) a harmonised standard was published with a restriction, and then
+      only as to the restricted part. `standards_gap()` implements these four as independent
+      tests because the article lists them as independent cases, two of which can hold at
+      once.
+    where: "lesson.py section 4; standards_gap(); tests/test_lesson.py::test_standards_gap_matches_an_independent_derivation"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "Article 43: Conformity Assessment - EU Artificial Intelligence Act"
+    quote: >-
+      the provider shall follow the conformity assessment procedure set out in Annex VII
+      where: (a) harmonised standards referred to in Article 40 do not exist, and common
+      specifications referred to in Article 41 are not available; (b) the provider has not
+      applied, or has applied only part of, the harmonised standard; (c) the common
+      specifications referred to in point (a) exist, but the provider has not applied them;
+      (d) one or more of the harmonised standards referred to in point (a) has been published
+      with a restriction, and only on the part of the standard that was restricted.
+    quote_note: >-
+      Retrieved as a single subparagraph with its four lettered points and reproduced here in
+      the article's own order and lettering. No wording was altered.
+    accessed: 2026-09-22
+
+  - id: art43-1-third-subparagraph-market-surveillance-authority
+    claim: >-
+      Where the high-risk system is intended to be put into service by law enforcement,
+      immigration or asylum authorities, or by Union institutions, bodies, offices or
+      agencies, the market surveillance authority referred to in Article 74(8) or (9) acts as
+      the notified body. This is the source of AUTHORITY_DEPLOYERS and of the
+      "market_surveillance_authority" value of `notified_body_role`.
+    where: "lesson.py section 1 AUTHORITY_DEPLOYERS; assessment_route() role rule; tests/test_lesson.py::test_route_notified_body_role_and_the_annex_i_case"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "Article 43: Conformity Assessment - EU Artificial Intelligence Act"
+    quote: >-
+      However, where the high-risk AI system is intended to be put into service by law
+      enforcement, immigration or asylum authorities or by Union institutions, bodies, offices
+      or agencies, the market surveillance authority referred to in Article 74(8) or (9), as
+      applicable, shall act as a notified body.
+    accessed: 2026-09-22
+
+  - id: art43-2-points-2-to-8-is-unconditional
+    claim: >-
+      For Annex III points 2 to 8 the conformity assessment procedure is internal control
+      under Annex VI, with no notified body, and Article 43(2) states this without any
+      condition attached - no standards test, no provider choice. This single sentence is the
+      asymmetry the whole lesson is built around, and it is why `assessment_route` does not
+      call `standards_gap` on a points 2-to-8 system and reports its gaps as empty.
+    where: "lesson.py section 1 and section 5; assessment_route() rule 3d; tests/test_lesson.py::test_route_points_2_to_8_ignore_the_standards_gap"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "Article 43: Conformity Assessment - EU Artificial Intelligence Act"
+    quote: >-
+      For high-risk AI systems referred to in points 2 to 8 of Annex III, providers shall
+      follow the conformity assessment procedure based on internal control as referred to in
+      Annex VI, which does not provide for the involvement of a notified body.
+    corroborating_url: https://www.euaiact.com/article/43
+    accessed: 2026-09-22
+
+  - id: art43-3-annex-i-folds-into-the-product-procedure
+    claim: >-
+      A high-risk system covered by the Union harmonisation legislation listed in Section A of
+      Annex I follows the conformity assessment procedure that legislation already requires,
+      with the Chapter III Section 2 requirements assessed as part of it and the Article 17
+      quality management system assessed as well. This is why the tier "high_risk_annex_i"
+      routes to "annex_i_product_procedure" and why whether a notified body is involved is
+      read off the context rather than decided by Article 43. Article 43(3) is the one
+      paragraph of Article 43 the Digital Omnibus amended; the amendment adds provisions on
+      bodies already notified under the sectoral legislation and a 28 January 2028 date by
+      which they must apply for designation under the AI Act, and it does not disturb the
+      fold-into-the-product-procedure rule this lesson implements.
+    where: "lesson.py section 1 and section 5; assessment_route() rule 2; tests/test_lesson.py::test_route_notified_body_role_and_the_annex_i_case"
+    source_url: https://www.euaiact.com/article/43
+    source_title: "Art. 43 Conformity Assessment - EU AI Act"
+    quote: >-
+      Assessment of the quality management system set out in Article 17 shall also be
+      undertaken, and points 3, 4.3, 4.4. and 4.5, the fifth paragraph of point 4.6 and point
+      5 of Annex VII shall apply.
+    corroborating_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+    quote_note: >-
+      artificialintelligenceact.eu marks paragraph 3 "amended" without naming the amending
+      act; the Digital Omnibus explorer page identifies Regulation (EU) 2026/1744 as the
+      amending act and reproduces the change as "in Article 43, paragraph 3 is replaced by
+      the following". The sentence quoted here is part of that REPLACEMENT and is not in the
+      original Regulation (EU) 2024/1689 text, which required only points 4.3, 4.4, 4.5 and
+      the fifth paragraph of point 4.6 of Annex VII; the Article 17 quality management system
+      assessment and Annex VII points 3 and 5 are what the amendment added. The replacement
+      also adds the notified-body provisions and the 28 January 2028 designation date named
+      in the claim, and a further subparagraph restricting a product manufacturer's option to
+      rely on a conformity assessment that does not involve a third party. None of it
+      disturbs the fold-into-the-product-procedure rule this lesson implements, and the
+      Article 17 sentence is why the Annex I route's evidence list asks for the quality
+      management system. Both pages were read on 2026-09-22 and re-read on 2026-09-23.
+    accessed: 2026-09-23
+
+  # --- what resets the route ----------------------------------------------------------
+
+  - id: art3-23-substantial-modification
+    claim: >-
+      'Substantial modification' is defined in Article 3(23) as a change after placing on the
+      market or putting into service that was not foreseen or planned in the initial
+      conformity assessment, and that either affects compliance with the Chapter III Section 2
+      requirements or modifies the intended purpose for which the system was assessed. The
+      definition has two limbs and they are alternatives, which is why
+      `is_substantial_modification` returns substantial on either one alone.
+    where: "lesson.py section 6; is_substantial_modification() rules 2 and 4; tests/test_lesson.py::test_substantial_matches_an_independent_derivation"
+    source_url: https://artificialintelligenceact.eu/article/3/
+    source_title: "Article 3: Definitions - EU Artificial Intelligence Act"
+    quote: >-
+      a change to an AI system after its placing on the market or putting into service which
+      is not foreseen or planned in the initial conformity assessment carried out by the
+      provider and as a result of which the compliance of the AI system with the requirements
+      set out in Chapter III, Section 2 is affected or results in a modification to the
+      intended purpose for which the AI system has been assessed
+    accessed: 2026-09-22
+
+  - id: art43-4-new-assessment-after-a-substantial-modification
+    claim: >-
+      A high-risk system that has already been through a conformity assessment must go through
+      a new one when it is substantially modified, and it makes no difference whether the
+      modified system is to be distributed further or stays with the deployer who already has
+      it. This is the rule `readiness()` enforces as the verdict "reassessment_required", and
+      it is why a complete evidence pack does not earn a declaration.
+    where: "lesson.py section 7 and section 9; readiness() verdict ladder; tests/test_lesson.py::test_end_to_end_cv_ranker_is_refused_and_a_clean_twin_is_not"
+    source_url: https://www.euaiact.com/article/43
+    source_title: "Art. 43 Conformity Assessment - EU AI Act"
+    quote: >-
+      High-risk AI systems that have already been subject to a conformity assessment procedure
+      shall undergo a new conformity assessment procedure in the event of a substantial
+      modification, regardless of whether the modified system is intended to be further
+      distributed or continues to be used by the current deployer.
+    corroborating_url: https://artificialintelligenceact.eu/article/43/
+    accessed: 2026-09-22
+
+  - id: art43-4-pre-determined-changes-are-not-substantial
+    claim: >-
+      For systems that continue to learn after being placed on the market, changes to the
+      system and its performance that the provider pre-determined at the moment of the initial
+      conformity assessment AND that are part of the information contained in the technical
+      documentation referred to in point 2(f) of Annex IV do not constitute a substantial
+      modification. Both halves are in the sentence, which is why
+      `is_substantial_modification` requires `documented_in_annex_iv_2f` as well as membership
+      of `pre_determined`.
+    where: "lesson.py section 6; is_substantial_modification() rule 3; tests/test_lesson.py::test_substantial_pre_determined_needs_the_annex_iv_description"
+    source_url: https://artificialintelligenceact.eu/article/43/
+    source_title: "Article 43: Conformity Assessment - EU Artificial Intelligence Act"
+    quote: >-
+      changes to the high-risk AI system and its performance that have been pre-determined by
+      the provider at the moment of the initial conformity assessment and are part of the
+      information contained in the technical documentation referred to in point 2(f) of Annex
+      IV, shall not constitute a substantial modification
+    accessed: 2026-09-22
+
+  # --- the declaration and the marking ------------------------------------------------
+
+  - id: art47-1-declaration-and-the-ten-year-clock
+    claim: >-
+      The provider draws up a written, machine-readable, physically or electronically signed
+      EU declaration of conformity for each high-risk AI system, and keeps it at the disposal
+      of the national competent authorities for ten years after the system is placed on the
+      market or put into service. The ten years run from the placing, not from the date of
+      signature, which is why `declaration_of_conformity` computes `keep_until` from
+      `pack["placed_on_market"]`.
+    where: "lesson.py section 10; declaration_of_conformity() keep_until; tests/test_lesson.py::test_declaration_annex_v_fields_and_the_ten_year_clock"
+    source_url: https://www.euaiact.com/article/47
+    source_title: "Art. 47 EU Declaration of Conformity - EU AI Act"
+    quote: >-
+      The provider shall draw up a written machine readable, physical or electronically signed
+      EU declaration of conformity for each high-risk AI system, and keep it at the disposal of
+      the national competent authorities for 10 years after the high-risk AI system has been
+      placed on the market or put into service.
+    corroborating_url: https://artificialintelligenceact.eu/article/47/
+    accessed: 2026-09-22
+
+  - id: art47-2-content-is-annex-v
+    claim: >-
+      The EU declaration of conformity states that the high-risk system meets the Chapter III
+      Section 2 requirements, and contains the information set out in Annex V. The eight keys
+      named `annex_v_1_system` through `annex_v_8_signature` are Annex V's eight numbered
+      points in the annex's own order.
+    where: "lesson.py section 10; declaration_of_conformity(); tests/test_lesson.py::test_declaration_annex_v_fields_and_the_ten_year_clock"
+    source_url: https://artificialintelligenceact.eu/article/47/
+    source_title: "Article 47: EU Declaration of Conformity - EU Artificial Intelligence Act"
+    quote: >-
+      The EU declaration of conformity shall contain the information set out in Annex V
+    corroborating_url: https://www.euaiact.com/article/47
+    accessed: 2026-09-22
+
+  - id: annex-v-eight-points
+    claim: >-
+      Annex V lists eight numbered items the declaration must contain: the system's name, type
+      and an unambiguous reference allowing its identification and traceability; the provider's
+      (or authorised representative's) name and address; a statement that the declaration is
+      issued under the provider's sole responsibility; a statement of conformity with the
+      Regulation and any other relevant Union law; where personal data are processed, a
+      statement about the data protection law; references to any harmonised standards or common
+      specifications used; where applicable the notified body's name and identification number,
+      the procedure performed and the certificate identification; and the place and date of
+      issue with the signatory's name, function and signature.
+    where: "lesson.py section 10; the ten declaration keys; tests/test_lesson.py::test_declaration_annex_v_fields_and_the_ten_year_clock"
+    source_url: https://artificialintelligenceact.eu/annex/5/
+    source_title: "Annex V: EU Declaration of Conformity - EU Artificial Intelligence Act"
+    quote: >-
+      name and type and any additional unambiguous reference allowing the identification and
+      traceability of the AI system
+    quote_note: >-
+      Point 1 is quoted in full; the remaining seven points are summarised in the claim rather
+      than reproduced, and each is reflected by one key of the declaration the lesson builds.
+      `keep_until` is NOT an Annex V item - it is the Article 47(1) retention date, computed
+      by the lesson and kept alongside the declaration so the obligation travels with it.
+    accessed: 2026-09-22
+
+  - id: art47-4-drawing-it-up-assumes-responsibility
+    claim: >-
+      By drawing up the EU declaration of conformity the provider assumes responsibility for
+      compliance with the Chapter III Section 2 requirements, and must keep the declaration
+      up to date. This is the reason `declaration_of_conformity` has no draft state and
+      refuses outright rather than emitting a provisional document.
+    where: "lesson.py section 10 prose and section 13; declaration_of_conformity() refusal; tests/test_lesson.py::test_declaration_refuses_and_names_the_verdict_that_stopped_it"
+    source_url: https://artificialintelligenceact.eu/article/47/
+    source_title: "Article 47: EU Declaration of Conformity - EU Artificial Intelligence Act"
+    quote: >-
+      By drawing up the EU declaration of conformity, the provider shall assume responsibility
+      for compliance with the requirements set out in Section 2.
+    accessed: 2026-09-22
+
+  - id: art48-2-digital-marking-only-if-accessible
+    claim: >-
+      For a high-risk system provided digitally, a digital CE marking is used only if it can
+      easily be accessed via the interface from which the system is accessed, or via an easily
+      accessible machine-readable code or other electronic means. The word "only" is what
+      `ce_marking_record` implements as the refusal "digital_marking_not_accessible", and it
+      is the reason `loan-copilot` holds a valid declaration it cannot mark.
+    where: "lesson.py section 11; ce_marking_record() rule 2; tests/test_lesson.py::test_ce_marking_form_and_basis_over_the_whole_truth_table"
+    source_url: https://artificialintelligenceact.eu/article/48/
+    source_title: "Article 48: CE Marking - EU Artificial Intelligence Act"
+    quote: >-
+      For high-risk AI systems provided digitally, a digital CE marking shall be used, only if
+      it can easily be accessed via the interface from which that system is accessed or via an
+      easily accessible machine-readable code or other electronic means.
+    accessed: 2026-09-22
+
+  - id: art48-3-affixing-and-the-fallback
+    claim: >-
+      The CE marking is affixed visibly, legibly and indelibly for high-risk AI systems, and
+      where that is not possible or not warranted on account of the nature of the system it is
+      affixed to the packaging or to the accompanying documentation. This is the source of the
+      "physical" and "accompanying_documentation" forms, and of the basis "Article 48(3)" both
+      carry.
+    where: "lesson.py section 11; ce_marking_record() rule 3; tests/test_lesson.py::test_ce_marking_form_and_basis_over_the_whole_truth_table"
+    source_url: https://www.euaiact.com/article/48
+    source_title: "Art. 48 CE Marking - EU AI Act"
+    quote: >-
+      The CE marking shall be affixed visibly, legibly and indelibly for high-risk AI systems.
+      Where that is not possible or not warranted on account of the nature of the high-risk AI
+      system, it shall be affixed to the packaging or to the accompanying documentation, as
+      appropriate.
+    corroborating_url: https://artificialintelligenceact.eu/article/48/
+    accessed: 2026-09-22
+
+  - id: art48-4-notified-body-identification-number
+    claim: >-
+      Where applicable, the CE marking is followed by the identification number of the notified
+      body responsible for the conformity assessment procedures set out in Article 43. "Where
+      applicable" is why `notified_body_number` is None on the internal-control route, and
+      "responsible for the Article 43 procedures" is why the lesson reads the number off the
+      declaration's Annex V point 7 rather than off the pack, which may name a body that had
+      no part in this route.
+    where: "lesson.py section 11 and section 13; ce_marking_record() notified_body_number; tests/test_lesson.py::test_ce_marking_number_is_read_off_the_declaration"
+    source_url: https://www.euaiact.com/article/48
+    source_title: "Art. 48 CE Marking - EU AI Act"
+    quote: >-
+      Where applicable, the CE marking shall be followed by the identification number of the
+      notified body responsible for the conformity assessment procedures set out in Article 43.
+    corroborating_url: https://artificialintelligenceact.eu/article/48/
+    accessed: 2026-09-22
+
+  # --- the annexes the routes name ----------------------------------------------------
+
+  - id: annex-iii-has-eight-points
+    claim: >-
+      Annex III lists exactly eight numbered points - biometrics; critical infrastructure;
+      education and vocational training; employment and workers' management; access to
+      essential private and public services; law enforcement; migration, asylum and border
+      control; and administration of justice and democratic processes. ANNEX_III_POINTS is
+      therefore 1 to 8, and `annex_iii_point` returns None for a number outside that range
+      because such a number is a typo in a record rather than a ninth category.
+    where: "lesson.py section 3 ANNEX_III_POINTS; annex_iii_point(); tests/test_lesson.py::test_annex_iii_point_rejects_a_point_outside_annex_iii"
+    source_url: https://artificialintelligenceact.eu/annex/3/
+    source_title: "Annex III: High-Risk AI Systems Referred to in Article 6(2) - EU Artificial Intelligence Act"
+    quote: >-
+      Biometrics, in so far as their use is permitted under relevant Union or national law:
+    quote_note: >-
+      Point 1's opening words are quoted; the count of eight and the subject of each point
+      were read off the same page on the same date.
+    accessed: 2026-09-22
+
+  - id: annex-vi-internal-control-is-the-providers-own-work
+    claim: >-
+      Annex VI's internal control procedure is carried out by the provider: the provider
+      verifies that the established quality management system complies with Article 17,
+      examines the technical documentation against the Chapter III Section 2 requirements, and
+      verifies that the design, development and post-market monitoring are consistent with
+      that documentation. No third party appears in it, which is the substance behind
+      ROUTE_EVIDENCE's internal-control item list.
+    where: "lesson.py section 1 and section 8 ROUTE_EVIDENCE"
+    source_url: https://artificialintelligenceact.eu/annex/6/
+    source_title: "Annex VI: Conformity Assessment Procedure Based on Internal Control - EU Artificial Intelligence Act"
+    quote: >-
+      The provider verifies that the established quality management system is in compliance
+      with the requirements of Article 17.
+    quote_note: >-
+      Point 2 is quoted in full, because it is the point that puts the provider - and nobody
+      else - in the chair. Points 1, 3 and 4 are summarised in the claim rather than
+      reproduced. Beware when reading this source: artificialintelligenceact.eu renders the
+      Article 3 definition of each defined term as an inline glossary tooltip inside the
+      annex text, so a naive copy out of the rendered page can pick up Article 3(20)'s
+      definition of "conformity assessment" and attribute it to Annex VI. Re-verified against
+      the page with those tooltips stripped.
+    accessed: 2026-09-23
+
+  - id: annex-vii-certificate
+    claim: >-
+      Annex VII's procedure has the notified body assess the quality management system (point
+      3) and control the technical documentation (point 4), and where the system conforms the
+      notified body issues a Union technical documentation assessment certificate. The Annex
+      VII route therefore asks for two evidence items the internal-control route does not -
+      a quality management system approval and that certificate - and Annex V point 7 of the
+      declaration cites the certificate.
+    where: "lesson.py section 8 ROUTE_EVIDENCE and CERTIFICATE_ITEM; declaration_of_conformity(); tests/test_lesson.py::test_declaration_notified_body_entry_follows_the_route"
+    source_url: https://artificialintelligenceact.eu/annex/7/
+    source_title: "Annex VII: Conformity Based on an Assessment of the Quality Management System and an Assessment of the Technical Documentation - EU Artificial Intelligence Act"
+    quote: >-
+      the notified body shall issue a Union technical documentation assessment certificate
+    accessed: 2026-09-22
+
+not_claimed:
+  - id: msa-identification-number
+    what: >-
+      Whether a market surveillance authority acting as a notified body under Article 43(1)'s
+      third subparagraph has an identification number to affix under Article 48(4), and what
+      form such a number takes.
+    why: >-
+      Nothing in Article 43, Article 48 or Annex V that I could read on 2026-09-22 answers it.
+      Article 48(4) names "the notified body responsible for the conformity assessment
+      procedures set out in Article 43", which on its face covers an authority acting in that
+      capacity, but the notified-body numbering scheme is a designation artefact and an
+      authority is not designated. The lesson therefore takes the number from the pack rather
+      than deriving one: border-biometrics' pack records "NL-MSA-0001", which is a fixture
+      value and not a claim that such numbers exist or take that shape. A reader who knows
+      better should change the fixture, not the code.
+
+  - id: intended-purpose-before-the-carve-out
+    what: >-
+      That Article 43(4)'s pre-determined-changes carve-out does not reach a change to the
+      intended purpose.
+    why: >-
+      This is the lesson's READING, labelled as one in section 6's prose, in the answer key
+      and here. The carve-out is drafted about "changes to the high-risk AI system and its
+      performance"; Article 3(23) names the intended purpose as a separate limb; and Annex IV
+      point 2(f), which the carve-out cross-refers to, describes pre-determined changes to
+      performance. Nothing states the ordering, and a reader who puts the carve-out first is
+      reading the same words differently. The rubric grades the ordering as this lesson's
+      rule rather than as law.
+
+  - id: same-day-assessment-boundary
+    what: >-
+      That a substantial modification dated exactly on the date of the assessment on file is
+      not covered by that assessment.
+    why: >-
+      A modelling choice about ambiguity, labelled as one in section 7's prose. Change logs in
+      this lesson carry day granularity, and a day cannot order two events inside it. The
+      lesson takes the reading that leaves the provider re-assessing. Nobody wrote this down;
+      a log with timestamps would not need the choice at all.
+
+  - id: common-specification-cross-reference
+    what: >-
+      That Article 43(1)(c) bites whenever common specifications exist and were not applied,
+      independently of whether a harmonised standard was applied.
+    why: >-
+      Point (c) refers back to "the common specifications referred to in point (a)", and point
+      (a) speaks of them being "not available". The cross-reference is circular on its face and
+      the lesson reads (c) as what it literally says. Section 4's prose flags this as a reading
+      of a cross-reference rather than a ruling. The lesson's own fixture never puts a
+      harmonised standard and an unapplied common specification together, so the reading
+      changes no route the notebook prints; it is visible only in the rubric's swept contexts.

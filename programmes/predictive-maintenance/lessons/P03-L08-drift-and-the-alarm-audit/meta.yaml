@@ -1,0 +1,208 @@
+id: P03-L08-drift-and-the-alarm-audit
+title: Tell a moved instrument from a moved duty point from a fleet that is genuinely older, apply the one fix each of them needs, and re-derive the alarm threshold from the plant's own audited prices
+track: P03
+programme: predictive-maintenance
+flagship:               # none: this module feeds the programme's capstone, not a flagship
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P03-L01-alarm-economics
+  - P03-L07-ot-network-deployment
+objectives:
+  - "Implement reference_bins and psi so a drift statistic is computed on bins taken from the reference alone, and measure this plant's own alert level by scoring the reference window against itself"
+  - "Implement conditional_psi so a drift explained by the duty point disappears and a drift inside a duty point does not, and so a duty point the reference never contained raises rather than being scored"
+  - "Implement diagnose_drift in the order that makes a moved instrument outrank a moved duty point, and explain why every other statistic is untrustworthy once the check standard has moved"
+  - "Implement the three fixes and measure, from a sixteen-cell cost matrix, what applying the wrong one to the right diagnosis costs on this fleet"
+  - "Implement estimate_prices so a class the audit barely saw keeps the kick-off guess and is reported as one, and re-derive module 1's threshold from the audited prices"
+datasets:
+  - name: synthetic-drifting-fleet-and-alarm-audit
+    kind: synthetic
+    description: "300 units x 480 hourly health-index readings with a duty-point tag per reading and 48 instrument self-test readings per unit, in six parallel windows (reference, steady, recalibration, regime change, ageing, and a turnaround that did two at once), plus a 60-line alarm audit priced off invoices, generated in lesson.py by generate_fleet(seed=20260922) and generate_audit"
+    generator: "lesson.py :: generate_fleet, generate_audit"
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    downloads: false
+points: 148        # = sum of RUBRIC points in tests/test_lesson.py, over 37 cases
+# Why the data is synthetic, recorded here because gate 11 is about honesty rather than about
+# having a URL: this module grades a DIAGNOSIS. To mark a diagnosis right or wrong you need
+# to know which of three drifts was injected, and no plant historian carries that column.
+# The generator is in the notebook, is seeded, and is read by the student before it is run.
+# claims.yaml names NASA's C-MAPSS turbofan sets as an optional off-path extension with their
+# real licence line and direct download URL; nothing the grader touches downloads anything.
+#
+# What MODULES.md module 8 asked for, and what was built:
+#
+# * "Three kinds of drift, distinguished by their fix" — built as five windows of one fleet
+#   plus a sixth that does two at once, a four-way diagnosis, three fixes and a 4x4 cost
+#   matrix scored on a live half the thresholds were never fitted on.
+# * "Implement unsupervised drift detection on the feature distribution" — PSI over
+#   reference-quantile bins, its regime-conditional form, and the instrument self-test. No
+#   function in this lesson reads a label, and the alert level is measured from the reference
+#   window's own null band rather than quoted from a rule of thumb.
+# * "then the audit that closes the loop — every alarm raised, what was found, and the
+#   running estimate of the three prices" — `generate_audit` writes one line per alarm
+#   inspected and per failure that arrived without one, `estimate_prices` turns that into the
+#   three prices AND the names of the ones still resting on a guess, and section 12 re-derives
+#   module 1's threshold from them on the plant's own history.
+#
+# Where this deviates from the brief, and why:
+#
+# * THE BRIEF SAYS a recalibration is detected and re-baselined. It does not say what makes
+#   it distinguishable from ageing, and from the feature distribution alone it is NOT: "every
+#   sensor reads half a unit high" and "every machine is half a unit worse" produce the same
+#   histogram. The lesson therefore gives each transmitter an instrument self-test reading —
+#   a check standard in NIST's sense, cited in claims.yaml — and says plainly in section 5
+#   that without one the problem is unidentifiable rather than merely hard. `rebaseline`
+#   re-zeros against that check, which is why it is a strict no-op on a window where the
+#   instruments never moved, and why applying it to an ageing fleet costs exactly what doing
+#   nothing costs.
+# * THE VERSION OF RE-BASELINING MOST SYSTEMS SHIP — re-estimating each unit's quiet level
+#   from its own recent readings — is kept, as a given `naive_rebaseline`, and priced in
+#   section 13's common mistakes rather than graded. On the ageing window it gives up seven
+#   more failures than the check-based fix and costs a quarter again as much, because it
+#   subtracts the fleet's decline instead of measuring it. It is not a graded exercise because
+#   it is not a defensible answer; it is the trap.
+# * PREREQUISITES. The brief names P03-L07-ot-network-deployment, and its directory exists in
+#   this tree and was being authored concurrently while this module was written. This lesson
+#   uses only the ONE fact module 7 establishes that matters here — the data path out of the
+#   plant is one-way, so the detector cannot be supervised — and states that fact in its own
+#   opening rather than importing anything. Section 8 also resolves the apparent contradiction
+#   (the audit does carry outcomes) explicitly: the audit returns through people, weeks late,
+#   a few dozen rows at a time, which is useless for training and sufficient for pricing.
+#   OWNER ACTION: if module 7 ships under a different id, this prerequisite line moves with it.
+#
+# Design notes for a reviewer:
+#
+# * Every number in the prose is printed by the notebook. Nothing in the narrative is typed:
+#   the alert level, the three statistics per window, the sixteen matrix cells, the audited
+#   prices, the count of jobs behind each one, the re-derived threshold and every ratio are
+#   computed at run time. The self-check deliberately does NOT quote the usual PSI rule of
+#   thumb, because the author could not verify a primary source for it and inventing a
+#   constant in a lesson about not inventing constants would have been the wrong ending.
+# * The lesson's central claim is measured, not asserted, and the rubric grades the
+#   measurement: on this fleet the diagonal of the 4x4 matrix is the cheapest cell in every
+#   row. Conditioning on duty when the fleet is simply older costs 5.46x what re-pricing
+#   costs and gives up 45 more failures; re-zeroing instruments that never moved costs
+#   exactly what doing nothing costs, to the currency unit, on both the regime and the ageing
+#   windows.
+# * Each fix is scored on the LIVE half of a fleet whose HISTORY half is the only thing the
+#   re-derived threshold ever saw. An earlier draft re-derived in-sample; every fix looked
+#   equally good and the matrix was a comparison of one thing with itself.
+# * `_try` wraps every demonstration, so a completely unfilled lesson.py imports cleanly,
+#   prints one hint per exercise and scores 0/148 with a TODO row for all 37 rubric entries.
+#   tools/grade.py's partial credit is reachable for exactly the students who need it.
+# * Gate 3 measured, not assumed: the longest run of consecutive prose before the next
+#   runnable cell is 33 raw / 27 non-blank lines (the title block). The self-check was 41 raw
+#   lines in an earlier draft and is now split by a runnable cell that prints the four numbers
+#   its questions turn on, which is a better place for them than a reader's memory.
+# Mutation testing of the rubric, 2026-09-23. Thirty plausible wrong implementations were
+# built from the reference solution in a throwaway temporary directory, one break each, and
+# graded. ALL THIRTY were caught, and every one kept partial credit rather than collapsing to
+# zero; the scores span 77% to 98%:
+#
+#   psi over counts instead of proportions 77% · estimate_prices averaging an empty class to
+#   zero 84% · apply_fix re-deriving the threshold under every fix 88% · re-baselining against
+#   the feature's own quiet level 90% · re-baselining by ADDING the shift 90% · drift_signature
+#   with marginal and conditional swapped 90% · psi as a one-sided KL divergence 91% · psi
+#   dropping empty bins instead of flooring them 92% · apply_fix re-deriving in sample 93% ·
+#   apply_fix counting on the unadjusted feature 93% · min_observations compared with `>` 94% ·
+#   still_guessed reported in reverse order 94% · apply_fix pricing at baseline.prices 94% ·
+#   'reprice' also conditioning the feature 95% · equal-width reference bins 95% ·
+#   respond_to_drift swapping two of the four fixes 96% · conditional_psi weighted by the
+#   current mix 97% · conditional_psi on pooled bins 97% · conditional_psi as an unweighted
+#   mean 97% · conditional_psi skipping an unseen regime 97% · the check stream scored on the
+#   health stream's bins 97% · duty tested before the instrument 97% · the duty test with a
+#   strict `<` 97% · rebaseline using the mean self-test reading 97% · condition using one
+#   offset per unit 97% · respond_to_drift hardcoding explained_fraction 97% ·
+#   respond_to_drift hardcoding n_bins 97% · the quiet test with `<=` 98% · duplicate bin
+#   edges kept 98% · reference_bins keeping duplicate cuts 98%.
+#
+# Two of those survived at 148/148 on an earlier rubric and the rubric was fixed, not the
+# mutant:
+#
+#   1. conditional_psi skipping an unseen regime. The old case handed it a current window
+#      whose ONLY regime was unseen, so the skipping mutant fell through to the
+#      "nothing can be compared" branch and raised ValueError anyway — for the wrong reason.
+#      The case now mixes a well-populated seen regime with an unseen one, where the mutant
+#      returns an ordinary number and the reference raises. The mutant scores 97%.
+#   2. drift_signature scoring the instrument check against the HEALTH stream's bins. The old
+#      case only asserted that the recalibration window's check PSI was far above the ageing
+#      window's, which stayed true. The case now checks all three components against the
+#      candidate's OWN psi / conditional_psi / reference_bins, which pins the bin source
+#      without pinning the implementation. The mutant scores 97%.
+#
+# A third weakness was found by construction rather than by a survivor: respond_to_drift's
+# `n_bins` and `explained_fraction` were never passed anything but their defaults, so a body
+# that ignored them was invisible. This fleet's diagnoses are robust to the bin count from 2
+# bins to 48 — a good property of the design and a useless one for a test — so
+# test_respond_passes_its_parameters_through grades the bin count on a purpose-built toy pair
+# where a single median cut sees nothing and the quartiles see it, and grades
+# explained_fraction on the real regime window with a fraction small enough to change the
+# answer. Both mutants score 97%.
+#
+# Two differently-shaped RIGHT answers were built as controls and both still score 148/148:
+# one rewrites reference_bins with np.percentile and psi with np.histogram over clipped
+# values; the other rewrites conditional_psi with np.average(weights=...) over a list
+# comprehension and estimate_prices with dict comprehensions and a plain sum/len mean. The
+# rubric grades the behaviour the docstrings ask for and not one way of writing it.
+#
+# INDEPENDENT REVIEW, 2026-09-23. A second agent re-ran the four gates from the repo root and
+# re-measured everything reported above rather than trusting it. Eighteen fresh mutants were
+# built, none of them repeats of the thirty listed above, and eight initially scored 148/148.
+# Seven were rubric defects and the rubric was tightened for each; the eighth was proved
+# indistinguishable from the reference over the lesson's own input domain and was left alone:
+#
+#   1. conditional_psi binning each regime on the CURRENT window's readings — the mistake
+#      section 2's prose warns about — scored 148/148. It also broke the lesson's centrepiece
+#      silently: section 6's `_wrong_order` comparison came out to 0 disagreements instead of
+#      1, and the cell then printed an inequality that was false. The weighting case could not
+#      catch it because its two samples are disjoint, which makes reference-bins and
+#      current-bins agree to machine precision by symmetry. A single-regime case on
+#      overlapping, differently-shaped samples now pins the bin source against the candidate's
+#      own psi and reference_bins. The mutant scores 97%.
+#   2. estimate_prices taking the MEDIAN cost rather than the mean scored 148/148; every unit
+#      case used samples whose mean and median coincide. A five-line right-skewed class where
+#      the mean is 20 and the median 10 now separates them. The mutant scores 97%.
+#   3. respond_to_drift ignoring its `thresholds` argument and 4. ignoring `lead_hours` both
+#      scored 148/148 — the same class of hole the author had already closed for `n_bins` and
+#      `explained_fraction`, left open for the other two. The parameter case now re-prices the
+#      ageing window on a two-point grid and re-scores it at one hour and at 240. Both mutants
+#      score 97%.
+#   5. conditional_psi dividing by the regime COUNT instead of the weight it accumulated
+#      scored 148/148, because the two agree whenever no regime is skipped and the rubric
+#      never skipped one. A current window missing one of the reference's regimes now does.
+#      The mutant scores 97%.
+#   6. drift_signature reporting a MEAN shift under the name median_shift scored 148/148; the
+#      only ordering assertion survives a mean. A toy pair whose median and mean disagree in
+#      SIGN now pins it. The mutant scores 98%.
+#   7. adjust_feature validating only the upper regime index, so -1 silently indexes the last
+#      offset, scored 148/148. A negative index joined the validation list. The mutant is at 99%.
+#
+# EQUIVALENT SURVIVOR, proved rather than fixed: psi smoothing additively (`p + floor`)
+# instead of flooring (`np.maximum(p, floor)`) still scores 148/148, and that is correct
+# behaviour to accept. Measured over every call the lesson makes: the largest divergence in
+# any PSI is 7e-5 absolute on a value of 3.08 (2.3e-5 relative), the measured alert level
+# moves from 0.0110532 to 0.0110531, every figure the notebook prints is identical at the
+# precision it prints, and every diagnosis, price, matrix cell and threshold is unchanged.
+# Pinning the floor arithmetic tighter would reject a defensible implementation, which is the
+# failure mode the rubric exists to avoid.
+#
+# After tightening: 17 of 18 mutants caught, scores 75%-99%, every one keeping partial credit
+# and losing only the rows it broke. Three further differently-shaped right answers, built by
+# the reviewer and independent of the author's two, score 148/148 before and after the change:
+# percentile plus a manual dedupe with a digitize-and-loop psi; np.average weights with
+# comprehension pricing and a rule-table diagnose; per-unit loops with an early-return
+# apply_fix and an if/elif fix map.
+#
+# Also fixed in this review: "80% high duty" was typed into section 11's prose and printed
+# nowhere (gate 12) — `_show_the_regime_trap` now computes and prints the high-duty share of
+# both windows and the sentence no longer carries the number; apply_fix's docstring named
+# adjust_feature with four arguments when it takes five; and self-check answer 4 labelled the
+# "estimate is invalid" option (c') where it is (b).
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Author self-verification 2026-09-23 — four gates run from the repo root (execute PASS, solution 148/148, stub file 0/148 with a TODO row for all 37 cases, jupytext converts to 64 cells); 30 mutants all caught at 77-98% with partial credit and 2 differently-shaped right answers still at 148/148; all four sources re-fetched and every quote matched verbatim (the two NIST pages and the NASA repository page from stripped HTML, the two Federal Reserve PDFs from reconstructed content-stream text, method recorded in claims.yaml). INDEPENDENT REVIEW 2026-09-23 by a second agent: four gates re-run from the repo root (execute PASS 2.5s/94MiB against a 90s cpu8 budget, solution 148/148, stub file 0/148 with a TODO row for all 37 cases, jupytext converts to 64 cells); 18 fresh mutants, 8 initial full-marks survivors, 7 of them rubric defects now fixed and 1 proved indistinguishable over the lesson's input domain; 17 of 18 now caught at 75-99% with partial credit; 3 reviewer-built right answers at 148/148 before and after; all four sources re-fetched independently (NIST mpc12 and the NASA PCOE repository as HTML, SR 11-7 from the PDF via pdftotext, SR 26-2 from its HTML landing page) and every quote matched verbatim with SR 11-7 confirmed superseded by SR 26-2 of 17 April 2026; gate 12 violation found and fixed; the MODULES.md status row is the owner's to update"
+
+measured_seconds: 2.4
+measured_peak_mib: 93

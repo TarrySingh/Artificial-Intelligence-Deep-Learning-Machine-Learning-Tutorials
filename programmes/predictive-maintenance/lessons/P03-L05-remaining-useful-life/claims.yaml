@@ -1,0 +1,176 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — the prior, every predictive interval, the interval-narrowing table,
+# every metric at every quantile, the coverage of the 90% interval and all of section 11's
+# ratios — and are therefore not claims. They do not appear here.
+#
+# One thing this lesson could NOT verify to its own standard is recorded at the foot of this
+# file, because a reviewer should be able to see that the gap was found rather than missed.
+claims:
+  - id: prognostics-needs-uncertainty
+    claim: >-
+      The prognostic-metrics paper from NASA's Prognostics Center of Excellence states that
+      prognostics is meaningless unless the uncertainty in a prediction is accounted for, and
+      that a prediction is properly represented by a probability density function rather than
+      by a point. The lesson's central design decision — answering with a distribution and
+      making every metric read the distribution rather than a single number — is this
+      sentence turned into code.
+    where: "lesson.py sections 5 and 6 (rul_samples, rul_track), section 12 (calibration)"
+    source_url: https://papers.phmsociety.org/index.php/ijphm/article/download/1336/324
+    source_title: >-
+      Saxena, Celaya, Saha, Saha and Goebel, "Metrics for Offline Evaluation of Prognostic
+      Performance", International Journal of Prognostics and Health Management, 2010
+    quote: >-
+      prognostics is meaningless unless the uncertainties in the predictions are accounted for
+    quote_context: >-
+      Opening sentence of section 5.1, "Incorporating Uncertainty Estimates", page 10. The
+      same section adds that mean and variance "are appropriate only for Normal cases" and
+      recommends the median and the inter-quartile range otherwise, which is why this lesson
+      reports quantiles of the Monte-Carlo draws rather than a mean and a standard deviation.
+    accessed: 2026-09-22
+
+  - id: alpha-lambda-accuracy-definition
+    claim: >-
+      The same paper defines alpha-lambda accuracy as a binary metric that asks whether the
+      prediction at a given time instant falls inside alpha-bounds, and states that those
+      bounds are expressed as a percentage of the actual remaining useful life at that
+      instant. Exercise 7 implements exactly that: a cone of (1 - alpha) * true_rul to
+      (1 + alpha) * true_rul, which is why the rubric's scaling case rejects a fixed
+      tolerance in hours.
+    where: "lesson.py section 9 (cone_breakdown) and the accuracy-cone plot"
+    source_url: https://papers.phmsociety.org/index.php/ijphm/article/download/1336/324
+    source_title: >-
+      Saxena, Celaya, Saha, Saha and Goebel, "Metrics for Offline Evaluation of Prognostic
+      Performance", International Journal of Prognostics and Health Management, 2010
+    quote: >-
+      The alpha-bounds here are expressed as a percentage of actual RUL
+    quote_context: >-
+      Page 15, immediately after the definition "alpha-lambda accuracy is defined as a binary
+      metric that evaluates whether the prediction accuracy at specific time instance falls
+      within specified alpha-bounds". The Greek letters are spelled out here because this
+      file is read by tools that do not agree about encodings; the source prints them as the
+      symbols. The paper's worked example is "whether a prediction falls within 10% accuracy
+      (alpha = 0.1) of the true RUL halfway to failure from the time the first prediction is
+      made (lambda = 0.5)"; this lesson uses alpha = 0.20 and scores every checkpoint rather
+      than one lambda, which section 9 says in the prose.
+    accessed: 2026-09-22
+
+  - id: alpha-lambda-is-a-shrinking-cone
+    claim: >-
+      The same paper describes alpha-lambda accuracy as a more stringent requirement than the
+      prognostic horizon because it requires predictions to stay within a cone of accuracy
+      whose bounds shrink as time passes. The lesson's cone plot is that sentence drawn, and
+      the lesson's argument against the metric is that the cone is symmetric: shrinking
+      equally on both sides means an early miss and a late miss score the same.
+    where: "lesson.py section 9, and the two-model comparison printed under the cone plot"
+    source_url: https://papers.phmsociety.org/index.php/ijphm/article/download/1336/324
+    source_title: >-
+      Saxena, Celaya, Saha, Saha and Goebel, "Metrics for Offline Evaluation of Prognostic
+      Performance", International Journal of Prognostics and Health Management, 2010
+    quote: >-
+      it requires predictions to stay within a cone of accuracy i.e., the bounds that shrink
+      as time passes
+    quote_context: >-
+      Page 15, right column, comparing alpha-lambda accuracy with the prognostic horizon.
+    accessed: 2026-09-22
+
+  - id: cmapss-score-is-asymmetric
+    claim: >-
+      The NASA paper that generated the C-MAPSS turbofan data and ran the 2008 PHM
+      prognostics challenge states that its scoring algorithm was asymmetric around the true
+      time of failure, penalising late predictions more heavily than early ones, and that in
+      a PHM context predicting early is generally preferable to predicting late. Exercise 6
+      implements that scoring function, and section 11 uses it as the metric that disagrees
+      with RMSE.
+    where: "lesson.py section 8 (phm_score) and section 11 (the metric sweep)"
+    source_url: https://ntrs.nasa.gov/api/citations/20090029214/downloads/20090029214.pdf
+    source_title: >-
+      Saxena, Goebel, Simon and Eklund, "Damage Propagation Modeling for Aircraft Engine
+      Prognostics", International Conference on Prognostics and Health Management, Denver,
+      October 2008 (NASA NTRS 20090029214)
+    quote: >-
+      the scoring algorithm for this challenge was asymmetric around the true time of failure
+      such that late predictions were more heavily penalized than early predictions
+    quote_context: >-
+      Section VII, "Performance Evaluation". The preceding paragraph states "In PHM context,
+      since the key aspect is to avoid failures, it is generally desirable to predict early as
+      compared to predicting late", and adds that in settings where failures are not life
+      threatening "one may not prefer conservative predictions" — which is why this lesson
+      keeps the two time constants as named module-level constants a plant can re-price
+      rather than hard-coding them into the formula.
+    accessed: 2026-09-22
+
+  - id: cmapss-error-sign-convention
+    claim: >-
+      The same paper defines the scoring function's error as the estimated RUL minus the true
+      RUL, so a positive error is a prediction that promised more life than the unit had — a
+      late prognosis. The lesson uses that sign convention throughout, and it is the reason
+      `phm_score`, `cone_breakdown` and `warning_lead` all agree about which direction is
+      dangerous.
+    where: "lesson.py section 8, and the docstrings of cone_breakdown and warning_lead"
+    source_url: https://ntrs.nasa.gov/api/citations/20090029214/downloads/20090029214.pdf
+    source_title: >-
+      Saxena, Goebel, Simon and Eklund, "Damage Propagation Modeling for Aircraft Engine
+      Prognostics", International Conference on Prognostics and Health Management, Denver,
+      October 2008 (NASA NTRS 20090029214)
+    quote: >-
+      (Estimated RUL - True RUL)
+    quote_context: >-
+      The definition of d beneath equation (9), page 8, written in the source as the
+      difference of two subscripted symbols with this parenthetical gloss beside it. The
+      source separates the two words with an en dash; this file uses a hyphen so that the
+      quote survives an ASCII pipeline, and that is the only difference from the page.
+    accessed: 2026-09-22
+
+  - id: cmapss-turbofan-corpus
+    claim: >-
+      NASA's Prognostics Center of Excellence publishes the Turbofan Engine Degradation
+      Simulation (C-MAPSS) sets, produced by simulating engine degradation under different
+      combinations of operational conditions and fault modes, and offers them with the note
+      that users employ the data at their own risk and that neither NASA nor the donators
+      assume any liability. MODULES.md names this corpus for module 5. It is NOT on this
+      lesson's required path: the archive sits behind a repository page, which gate 11 does
+      not allow for data the grader needs, and the lesson must run offline. It is recorded
+      here as the optional extension a student can run the same code against afterwards.
+    where: "lesson.py section 0 (the data note) and meta.yaml's deviation comment"
+    source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+    source_title: "Prognostics Center of Excellence Data Set Repository - NASA"
+    quote: >-
+      Engine degradation simulation was carried out using the Commercial Modular
+      Aero-Propulsion System Simulation (C-MAPSS). Four different sets were simulated under
+      different combinations of operational conditions and fault modes.
+    quote_context: >-
+      The repository's description of data set 6. Its terms read in full "Users employ the
+      data at their own risk. Neither NASA nor the donators of the data sets assume any
+      liability for the use of the data, or any system developed using the data", and it
+      requests that publications acknowledge the repository and the donators. The direct
+      download the page offers is
+      https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip
+      and the requested citation is "A. Saxena and K. Goebel (2008). 'Turbofan Engine
+      Degradation Simulation Data Set', NASA Prognostics Data Repository, NASA Ames Research
+      Center, Moffett Field, CA".
+    accessed: 2026-09-22
+
+# NOT CLAIMED, and why.
+#
+# * The two time constants. Every C-MAPSS paper since 2008 uses exp(-d/13) - 1 for an early
+#   prediction and exp(d/10) - 1 for a late one, and the lesson uses that form. The primary
+#   source above states the exponential shape, the sign convention and the direction of the
+#   asymmetry in prose, all quoted here, and its Figure 9 plots a score of roughly 150 at an
+#   error of +50 and roughly 50 at -50, which is exp(50/10) against exp(50/13). The equation
+#   as typeset in the NTRS copy labels its two parameters a1 = 10 and a2 = 13 against the
+#   d < 0 and d >= 0 branches respectively, which would make the EARLY branch the harsher
+#   one — the opposite of the same page's own sentence and of its own figure. The printed
+#   equation is therefore internally inconsistent in this copy, so this file does not quote
+#   it as authority for which constant goes where. The lesson names the constants LATE_TAU
+#   and EARLY_TAU at module level, prints the ratio it derives from them, and its argument
+#   depends only on LATE_TAU < EARLY_TAU, which the quoted sentence does establish.
+#
+# * The exponential degradation model itself. That health indices of rotating machinery
+#   often grow roughly exponentially is a modelling assumption this lesson makes and its
+#   generator enforces, not a measured fact about any real fleet, so it is stated as an
+#   assumption in section 1 and is not claimed here.
+#
+# * Every price and every lead time. LEAD_HOURS, ACTION_RUL, the failure level and the
+#   evaluation horizon are scenario parameters carried forward from module 1's cost model.
+#   They describe no real plant and the notebook says so.

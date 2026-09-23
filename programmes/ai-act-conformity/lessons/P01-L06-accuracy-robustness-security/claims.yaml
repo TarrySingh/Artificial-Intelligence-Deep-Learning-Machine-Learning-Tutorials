@@ -1,0 +1,212 @@
+# Every factual claim this lesson makes about the world, with a source and the date the source
+# was read. Numbers a student sees in output — the accuracy and its interval, every severity
+# and crossing, the flag rates, the query budget, the days to extraction — are computed by the
+# code they run from the synthetic applicants built in lesson.py section 3. They are not claims
+# about the world and do not appear here. The data set is synthetic and declared as such in
+# meta.yaml.
+#
+# This lesson is engineering material about the evidence an Article 15 duty implies. It is not
+# legal advice, and nothing here substitutes for the Official Journal text or for professional
+# advice on a specific system.
+#
+# SOURCING RULE, inherited from P01-L01, T10-L01 and P01-L04: a `quote` field contains text
+# actually retrieved from `source_url` on the `accessed` date. No quote is reconstructed from
+# memory or stitched across an ellipsis. Where the authoritative text could not be retrieved
+# directly it is recorded under `authoritative_text_url` and the claim is carried by sources
+# that WERE retrieved. Every article quotation below was taken from TWO independent
+# reproductions of the consolidated text and compared word for word; both are listed, and on
+# the access date the two agreed on all five paragraphs of Article 15.
+#
+# WHAT IS NOT A CLAIM ABOUT THE WORLD, and is therefore not in this file. Every threshold in
+# the lesson is the lesson's own modelling choice, argued for where it appears and labelled as
+# a choice in the opening disclaimer: the 0.86 accuracy floor and its rationale, the four
+# perturbation families and their severity grids, each family's expected operating severity,
+# the 30-row minimum support, the 15-neighbour window, the 0.30 neighbour-agreement floor, the
+# 0.95 extraction target, the 500-query daily limit, the 90-day target, the seven catalogued
+# residual risks and the contents of EXACT_QUANTITIES. None of them is a statement about what
+# any authority would accept, and none is sourced here because none is sourceable.
+claims:
+  - id: article-15-1-appropriate-level-and-consistency
+    claim: >-
+      Article 15(1) requires high-risk AI systems to be designed and developed so that they
+      achieve an appropriate level of accuracy, robustness and cybersecurity, and so that they
+      perform consistently in those respects throughout their lifecycle. It sets a LEVEL duty
+      and states no number, which is why every threshold in this lesson is labelled as the
+      lesson's own choice rather than as a requirement it quotes. The words "perform
+      consistently ... throughout their lifecycle" are the ones the lesson turns into the
+      robustness sweep, the poisoning scan and the extraction budget, none of which a single
+      clean-test-set figure can speak to.
+    where: "lesson.py section 1 (DUTIES art15_1_levels) and the opening 'part of 15(1) people skip'"
+    source_url: https://www.euaiact.com/article/15
+    source_title: "Art. 15 Accuracy, Robustness and Cybersecurity — Regulation (EU) 2024/1689"
+    quote: >-
+      High-risk AI systems shall be designed and developed in such a way that they achieve an
+      appropriate level of accuracy, robustness, and cybersecurity, and that they perform
+      consistently in those respects throughout their lifecycle.
+    corroborating_url: https://ai-act-law.eu/article/15/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-22
+    retrieval_note: >-
+      Retrieved from euaiact.com and compared word for word against the independent
+      reproduction at ai-act-law.eu on the access date; the two agree on all five paragraphs
+      of Article 15. EUR-Lex is recorded as the authoritative text and was not retrieved
+      automatically.
+
+  - id: article-15-3-declared-in-the-instructions-for-use
+    claim: >-
+      Article 15(3) requires the levels of accuracy and the relevant accuracy metrics of
+      high-risk AI systems to be declared in the accompanying instructions of use. It says the
+      levels and the metrics must be declared; it does not say an interval must accompany them.
+      The lesson's position — that a declaration without its interval, level, method and sample
+      size can be neither falsified nor defended, and that what should be declared is the
+      defensible end of the interval — is an ENGINEERING argument the lesson makes and grades,
+      not a reading of this sentence.
+    where: "lesson.py section 1 (art15_3_declared), section 5 (declare) and section 7"
+    source_url: https://www.euaiact.com/article/15
+    source_title: "Art. 15 Accuracy, Robustness and Cybersecurity — Regulation (EU) 2024/1689"
+    quote: >-
+      The levels of accuracy and the relevant accuracy metrics of high-risk AI systems shall be
+      declared in the accompanying instructions of use.
+    corroborating_url: https://ai-act-law.eu/article/15/
+    accessed: 2026-09-22
+
+  - id: article-15-4-resilience-to-errors-faults-inconsistencies
+    claim: >-
+      Article 15(4) requires high-risk AI systems to be as resilient as possible regarding
+      errors, faults or inconsistencies that may occur within the system or the environment in
+      which the system operates, in particular due to their interaction with natural persons or
+      other systems, and says technical and organisational measures shall be taken in that
+      regard. "Errors, faults or inconsistencies ... within the system or the environment" is
+      the provision behind the four perturbation families: a missing field defaulted by the
+      serving pipeline, an upstream feed changing units, plausible measurement error and a
+      feature one refresh cycle behind are all environment inconsistencies rather than attacks.
+    where: "lesson.py section 1 (art15_4_resilience) and section 8 (PERTURBATIONS)"
+    source_url: https://www.euaiact.com/article/15
+    source_title: "Art. 15 Accuracy, Robustness and Cybersecurity — Regulation (EU) 2024/1689"
+    quote: >-
+      High-risk AI systems shall be as resilient as possible regarding errors, faults or
+      inconsistencies that may occur within the system or the environment in which the system
+      operates, in particular due to their interaction with natural persons or other systems.
+      Technical and organisational measures shall be taken in this regard.
+    corroborating_url: https://ai-act-law.eu/article/15/
+    accessed: 2026-09-22
+
+  - id: article-15-5-ai-specific-vulnerabilities
+    claim: >-
+      Article 15(5) requires high-risk AI systems to be resilient against attempts by
+      unauthorised third parties to alter their use, outputs or performance by exploiting system
+      vulnerabilities, and says the technical solutions addressing AI-specific vulnerabilities
+      shall include, where appropriate, measures to prevent, detect, respond to, resolve and
+      control for attacks trying to manipulate the training data set (data poisoning), or
+      pre-trained components used in training (model poisoning), inputs designed to cause the AI
+      model to make a mistake (adversarial examples or model evasion), confidentiality attacks
+      or model flaws. Data poisoning is named first and confidentiality attacks are named among
+      them; those two are the pair this lesson builds evidence for. Adversarial examples and
+      model poisoning are named in the article and are NOT covered by anything the lesson
+      measures, which is why the residual-risk catalogue reports them as unbounded.
+    where: "lesson.py section 1 (art15_5_security), section 10 (poison_scan), section 11 and RESIDUAL_RISKS"
+    source_url: https://www.euaiact.com/article/15
+    source_title: "Art. 15 Accuracy, Robustness and Cybersecurity — Regulation (EU) 2024/1689"
+    quote: >-
+      The technical solutions to address AI specific vulnerabilities shall include, where
+      appropriate, measures to prevent, detect, respond to, resolve and control for attacks
+      trying to manipulate the training data set (data poisoning), or pre-trained components
+      used in training (model poisoning), inputs designed to cause the AI model to make a
+      mistake (adversarial examples or model evasion), confidentiality attacks or model flaws.
+    corroborating_url: https://ai-act-law.eu/article/15/
+    accessed: 2026-09-22
+
+  - id: annex-iv-2-g-metrics-and-test-logs
+    claim: >-
+      Annex IV point 2(g) — the technical documentation Article 11 requires — asks for the
+      validation and testing procedures used, the metrics used to measure accuracy, robustness
+      and compliance with the other Chapter III Section 2 requirements as well as potentially
+      discriminatory impacts, and the test logs and test reports dated and signed by the
+      responsible persons. This is why the artefact in this lesson is a dated report with a
+      sequence-numbered ledger behind it rather than a figure in a slide: the documentation duty
+      asks for the test logs, not only for the number they produced.
+    where: "lesson.py section 1 (annex_iv_2g) and section 14 (article_15_report)"
+    source_url: https://www.euaiact.com/annex/4
+    source_title: "Annex IV: Technical Documentation — Regulation (EU) 2024/1689"
+    quote: >-
+      the validation and testing procedures used, including information about the validation and
+      testing data used and their main characteristics; metrics used to measure accuracy,
+      robustness and compliance with other relevant requirements set out in Chapter III, Section
+      2, as well as potentially discriminatory impacts; test logs and all test reports dated and
+      signed by the responsible persons, including with regard to pre-determined changes as
+      referred to under point (f)
+    corroborating_url: https://ai-act-law.eu/annex/4/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-22
+
+  - id: omnibus-2026-1744-dates-and-what-it-left-alone
+    claim: >-
+      Regulation (EU) 2026/1744, the Digital Omnibus on AI, entered into force on 27 July 2026,
+      three days after publication in the Official Journal. It moved the main compliance
+      obligations for stand-alone Annex III high-risk systems to 2 December 2027 and those for
+      Annex I product-embedded high-risk systems to 2 August 2028. It did NOT amend Article 15:
+      the consolidated reproductions consulted below carry Article 15(1) to 15(5) unchanged and
+      carry no deletion or insertion marker on any of them, in contrast to Article 10(5), which
+      the same regulation deleted and which the same source does mark as deleted — a difference
+      P01-L04 had to account for and this lesson does not.
+    where: "lesson.py section 1 (OMNIBUS) and the paragraph introducing it"
+    source_url: https://www.hunton.com/privacy-and-cybersecurity-law-blog/eu-digital-omnibus-on-ai-enters-into-force
+    source_title: "EU Digital Omnibus on AI Enters Into Force"
+    quote: >-
+      December 2, 2027: New application date for the main compliance obligations for stand-alone
+      high-risk AI systems listed in Annex III, including systems used in employment and
+      education.
+    corroborating_url: https://www.euaiact.com/article/15
+    authoritative_text_url: https://eur-lex.europa.eu/eli/reg/2026/1744/oj
+    accessed: 2026-09-22
+    retrieval_note: >-
+      The entry-into-force date and both application dates were read from the Hunton note; the
+      "Article 15 unamended" half of the claim is a NEGATIVE observation made against
+      euaiact.com and ai-act-law.eu, which reproduce the consolidated text and which mark
+      amended and deleted provisions where they exist. A negative observation on two secondary
+      reproductions is weaker evidence than a positive quotation, and is recorded as such: the
+      lesson relies on it only to say the article text is settled, and every operative statement
+      it makes is carried by the quoted text of the paragraphs themselves.
+
+  - id: optional-off-path-real-credit-data
+    claim: >-
+      The Statlog (German Credit Data) set in the UCI Machine Learning Repository is 1000 credit
+      applications with 20 attributes and a good/bad credit-risk label, published under a
+      Creative Commons Attribution 4.0 International licence and downloadable from a direct link
+      with no registration. A student who wants to run this lesson's code against real credit
+      data rather than the synthetic table can do so afterwards.
+    where: >-
+      Nowhere on any required path. This entry exists so the suggestion can be made honestly if
+      a reader asks; lesson.py reads nothing from disk and downloads nothing, and no exercise,
+      public check or rubric case touches this data set. Gate 11 forbids a gated or
+      registration-walled set on a required path, and this one is neither gated nor required.
+    source_url: https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data
+    source_title: "Statlog (German Credit Data) — UCI Machine Learning Repository"
+    quote: >-
+      This dataset is licensed under a Creative Commons Attribution 4.0 International (CC BY
+      4.0) license.
+    download_url: https://archive.ics.uci.edu/static/public/144/statlog+german+credit+data.zip
+    accessed: 2026-09-22
+    retrieval_note: >-
+      The licence line was read from the dataset page on the access date. The direct archive
+      link is the one the page itself offers and it is not behind a form. Anyone using it owes
+      the attribution the licence requires.
+
+  - id: bootstrap-method-attribution
+    claim: >-
+      The percentile bootstrap this lesson implements — resample the observed rows with
+      replacement, recompute the statistic, and read the interval off the percentiles of the
+      resulting distribution — is Efron's, introduced in "Bootstrap Methods: Another Look at the
+      Jackknife" (Annals of Statistics, 1979). The lesson teaches the percentile form because it
+      is the one a reader can check by hand from the code; it is not the only interval, and BCa
+      and the basic bootstrap correct biases the percentile form does not.
+    where: "lesson.py section 4, and the `method` field every interval in the report carries"
+    source_url: https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full
+    source_title: "Bootstrap Methods: Another Look at the Jackknife — B. Efron, Ann. Statist. 7(1), 1979"
+    quote: ""
+    accessed: 2026-09-22
+    retrieval_note: >-
+      Attribution only; no wording from the paper is quoted or relied on, and nothing in the
+      lesson depends on this entry beyond naming where the method comes from. The landing page
+      was not retrieved automatically on the access date, so the citation is given as author,
+      title, journal, volume and year rather than as a quotation.

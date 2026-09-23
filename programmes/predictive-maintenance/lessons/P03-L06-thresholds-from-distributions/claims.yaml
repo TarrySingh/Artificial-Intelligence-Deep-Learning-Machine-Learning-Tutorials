@@ -1,0 +1,105 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — every optimal intervention time, every expected and realised cost, the
+# width and centre sweeps, the calendar price, the capacity price and the planner's error —
+# and are therefore not claims. They do not appear here.
+#
+# Four things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# because a reviewer should be able to see that each omission was a decision.
+claims:
+  - id: survival-function-definition
+    claim: >-
+      The NIST/SEMATECH e-Handbook of Statistical Methods defines the reliability or survival
+      function as the probability that a unit survives beyond time t, and states that survival
+      is the complementary event to failure. Section 3 of the lesson defines
+      `survival[k] = P(RUL > hours[k]) = 1 - cumsum(pmf)[k]` on exactly that reading — the
+      comparison is strictly greater than, so the last bin of a finite grid is 0 — and the
+      rubric's test_survival_values grades the alternative, P(RUL >= hours[k]), as the
+      off-by-one-bin error it is.
+    where: "lesson.py section 3 (survival_and_hazard)"
+    source_url: https://www.itl.nist.gov/div898/handbook/apr/section1/apr122.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 8.1.2.2 Reliability or survival function"
+    quote: >-
+      Survival is the complementary event to failure
+    quote_context: >-
+      Opening sentence of the section; the same page defines the reliability function R(t),
+      also written S(t), as "the probability a unit survives beyond time t".
+    accessed: 2026-09-22
+
+  - id: hazard-rate-definition
+    claim: >-
+      The same handbook defines the failure rate, also called the hazard rate, as the
+      instantaneous rate of failure among the survivors to time t during the next instant of
+      time. That conditioning on the survivors is the whole content of exercise 2's
+      denominator: the population at risk at the start of hour k is the machines that reached
+      it, which in a discrete grid is `survival[k] + pmf[k]` and not `survival[k]`. Section 6
+      then uses the hazard, and nothing else about the distribution, to locate the optimal
+      intervention time.
+    where: "lesson.py section 3 (survival_and_hazard) and section 6 (hazard_crossing)"
+    source_url: https://www.itl.nist.gov/div898/handbook/apr/section1/apr123.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 8.1.2.3 Failure (or hazard) rate"
+    quote: >-
+      The failure rate is defined for non repairable populations as the (instantaneous) rate
+      of failure for the survivors to time t during the next instant of time.
+    quote_context: >-
+      Definition paragraph of the section, which also gives h(t) = f(t)/[1 - F(t)] = f(t)/R(t)
+      and describes the failure rate as the rate at which the survivors at a given instant
+      are "falling over the cliff".
+    accessed: 2026-09-22
+
+  - id: nasa-pcoe-optional-corpus
+    claim: >-
+      NASA's Prognostics Center of Excellence Prognostics Data Repository publishes the
+      Turbofan Engine Degradation Simulation (C-MAPSS) sets as a direct download with no
+      registration, under a disclaimer that users employ the data at their own risk and that
+      neither NASA nor the donators assume liability. The lesson names this corpus in section
+      1 as an OPTIONAL off-path extension a student can point the same code at once module 5
+      is producing forecasts from it. Nothing the grader needs touches it, nothing in the
+      lesson downloads it, and the lesson runs with the machine offline.
+    where: "lesson.py section 1 (the optional extension note); meta.yaml datasets: (off-path)"
+    source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+    source_title: "NASA Prognostics Center of Excellence Data Set Repository"
+    quote: >-
+      Users employ the data at their own risk. Neither NASA nor the donators of the data sets
+      assume any liability for the use of the data, or any system developed using the data.
+    quote_context: >-
+      Repository disclaimer, above the dataset list. The turbofan set is offered at
+      https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip
+      with no login; the repository notes that a few other sets are "currently unavailable for
+      download directly" and must be requested, which is precisely why nothing required is
+      taken from it.
+    accessed: 2026-09-22
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. THE BALANCE CONDITION IS DERIVED, NOT QUOTED. Section 6 states that the optimal
+#    intervention time is where the hazard reaches life_per_hour / (unplanned - planned). That
+#    is one line of calculus on THIS module's own cost function, not a result imported from
+#    anybody's paper, and the notebook does not assert it: `hazard_crossing` recomputes the
+#    answer from the student's own hazard curve and the check requires it to land within two
+#    hours of the student's own cost sweep on every machine in the fleet. The author did not
+#    verify that this reproduces any particular published age-replacement policy — the
+#    classical results are in textbooks the author could not link to a quotable primary
+#    source — and the lesson therefore makes no claim of correspondence, only of internal
+#    consistency, which it measures.
+#
+# 2. THE PRICES ARE A SCENARIO, NOT A MEASUREMENT. `SCENARIO` prices a planned intervention at
+#    9,000, an unplanned failure at 180,000 and an hour of discarded remaining life at 220.
+#    The first two are carried over from module 1 so the two modules can be read side by side;
+#    the third exists only in this module. No source is cited because none is claimed, and the
+#    setup cell says so. The module's argument is about how the ANSWER moves, and every result
+#    in it is a comparison at fixed prices rather than a level.
+#
+# 3. THE PLANT IS SYNTHETIC AND SAYS SO IN ITS FIRST SCREEN. `make_forecast` and
+#    `generate_fleet` are in the notebook, are seeded, and are read by the student before they
+#    are run. meta.yaml declares them under `datasets:` with kind `synthetic` and
+#    `downloads: false`. Nothing in the lesson claims that this fleet's RUL spreads, its
+#    calibration, its calendar or its workshop capacity describe any real plant, or that a
+#    log-normal is the right predictive shape for any particular machine. It is the right
+#    shape for the EXPERIMENT, which needs the mean held fixed while the width moves.
+#
+# 4. THE WORKSHOP CALENDAR IS A SCENARIO. Weekdays at 08:00, one machine per slot, a fortnight
+#    of shortlisted slots. No claim is made that this is a typical maintenance calendar, a
+#    typical capacity or a typical planning horizon; the constants are at the top of the
+#    notebook precisely so a student can replace them with their own plant's and re-run
+#    everything below.

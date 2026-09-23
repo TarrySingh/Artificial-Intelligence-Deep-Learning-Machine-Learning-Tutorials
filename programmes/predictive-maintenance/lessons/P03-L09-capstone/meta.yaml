@@ -1,0 +1,290 @@
+id: P03-L09-capstone
+title: Deliver a monitoring programme for one asset class as a runnable notebook plus a one-page specification, and implement the checklist that refuses a threshold reported without its price or without the failures it gives up named
+track: P03
+programme: predictive-maintenance
+flagship:               # none: this module IS the programme's capstone
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P03-L01-alarm-economics
+  - P03-L02-sensor-physics
+  - P03-L03-vibration-features
+  - P03-L04-labelling-run-to-failure
+  - P03-L05-remaining-useful-life
+  - P03-L06-thresholds-from-distributions
+  - P03-L07-ot-network-deployment
+  - P03-L08-drift-and-the-alarm-audit
+objectives:
+  - "Implement causal_health and causality_margin so that the claim 'this feature is causal' is a number the notebook prints, and measure what a whole-window fit does to readings that were already recorded"
+  - "Implement label_runs and censoring_report so a suspension is censored rather than counted as a survivor, and report what the policy censors in units and in unobserved unit-hours"
+  - "Implement price_the_outcomes and choose_operating_point so the threshold is derived in currency from audited prices, and so a price the audit could not support is carried as a labelled guess"
+  - "Implement failures_given_up and measure, for every failure the chosen threshold does not catch, the reason and the price of catching it anyway"
+  - "Implement deployment_report and rederivation_trigger so the smoothing window is decided by the gateway's arena and the re-derivation rule is two measured numbers rather than a sentence"
+  - "Implement check_specification and explain why a submission that reports a threshold without its prices, or without naming the failures it gives up, must fail however good its detector is"
+datasets:
+  - name: synthetic-feed-pump-fleet-log-and-alarm-audit
+    kind: synthetic
+    description: "140 boiler feed pumps x 720 hourly conditioned vibration readings with a duty and an ambient channel per reading, 24 run-to-failure units (19 with a slow P-F interval and 5 whose whole P-F interval is shorter than the lead requirement) and 16 suspensions, plus a 66-row CMMS work-order export including 26 no-fault-found call-outs and a 36-line alarm audit priced off invoices, generated in lesson.py by generate_fleet(seed=20260923), generate_log and generate_audit"
+    generator: "lesson.py :: generate_fleet, generate_log, generate_audit"
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    downloads: false
+points: 183        # = sum of RUBRIC points in tests/test_lesson.py, over 45 cases
+# Why the data is synthetic, recorded here because gate 11 is about honesty rather than about
+# having a URL: this module grades a PROGRAMME, and to mark a programme right or wrong you
+# need to know which pumps really failed, when each defect really started, which removals had
+# nothing to do with condition, and what the invoices really said. No plant historian carries
+# those four columns, and the last three are the ones every module of this programme has
+# argued are the hard part. The generator is in the notebook, is seeded, and is read by the
+# student before it is run. claims.yaml names NASA's C-MAPSS turbofan sets as an optional
+# off-path extension with their real licence line and direct download URL; nothing the grader
+# touches downloads anything and the lesson runs with the machine offline.
+#
+# What MODULES.md module 9 asked for, and what was built:
+#
+# * "THE DELIVERABLE IS NOT A MODEL. It is a monitoring programme for one asset class,
+#   submitted as a runnable notebook PLUS a one-page specification, and graded on both." —
+#   built as ten graded functions plus a `Specification` the student fills in and a
+#   `check_specification` they run over it. The rubric grades the runnable half in 43 cases
+#   and the specification half in two more (`test_the_specification_passes_its_own_checklist`
+#   grades the document, and `test_checklist_refuses_a_threshold_without_its_prices` and
+#   `..._without_its_give_ups` grade the checker that judges it).
+# * The seven things the brief lists are the eight items of CHECKLIST_ITEMS, one per line of
+#   the handover note in section 16: the feature with its measured causality margin; the
+#   labelling policy with the units and the unit-hours it censors; the alarm rule with its
+#   lead time; the three prices with per-price provenance; the threshold; the failures given
+#   up, named, with a reason each; the deployment constraint with its byte count and its
+#   wire threshold; and the re-derivation trigger as two measured numbers.
+# * "An autograded rubric checks the runnable half. The specification is checked against a
+#   STRUCTURED CHECKLIST THE STUDENT CAN RUN THEMSELVES before submitting — implement that
+#   checker as real code they execute, not as a markdown list." — exercise 10 IS the checker.
+#   Section 14 runs it on the student's own document and section 15 runs it on four
+#   submissions that fail, printing eight lines and a verdict for each.
+# * "THE PASS CONDITION is ... a threshold defended in currency, with the failures it accepts
+#   named out loud. A submission that reports a threshold without its price, or without
+#   naming what it gives up, must fail the rubric however good its model is." — items 3 and 5
+#   of the checklist, graded by two rubric cases worth 5 points each, and demonstrated in
+#   section 15 by specifications A and B, which pass seven of eight items apiece. Section 15
+#   then runs a fourth submission, D, whose detector is different and whose document is
+#   honest on seven lines, and it is refused on line one by the causality margin alone.
+# * "Reuse the earlier modules' functions and vocabulary throughout." — `Run`, `Prices`,
+#   `Counts`, `OperatingPoint`, `WorkOrder`, `AuditEntry`, `FAILURE`/`CENSORED`,
+#   `classify_work_order`, `causal_rolling_median`, `alarm_hours`, `classify_runs`,
+#   `sweep_counts`, `expected_cost`, `accuracy`, `fit_duty_model`, `reference_bins`, `psi`
+#   and `null_psi_band` all arrive GIVEN, each labelled with the module it came from, and
+#   section 1 says why: a capstone that made the student rewrite eight modules would be a
+#   test of typing.
+#
+# Where this deviates from the brief, and why:
+#
+# * THE BRIEF SAYS "the three prices and where they came from". It does not say what happens
+#   when the audit cannot support one of them, and on this plant it cannot: the false-alarm
+#   column has four invoices against a minimum of five, because a call-out that found nothing
+#   is the job nobody writes up. The lesson therefore makes provenance a first-class field
+#   (`AUDITED` or `GUESSED` per price) rather than a sentence, and the checklist compares the
+#   whole tuple. A specification that claims three audited prices when one of them came off a
+#   whiteboard fails item 3 exactly as hard as one that omits the prices altogether.
+# * THE BRIEF SAYS "the feature and why it is causal". "Why" is prose, and prose is what
+#   gate 12 exists to distrust, so the lesson makes it a measurement: `causality_margin`
+#   perturbs the last 72 hours of all three channels and reads the head. The specification
+#   carries the number, the checklist requires it to be exactly 0.0, and section 15's fourth
+#   submission is refused on that line alone.
+# * AN EIGHTH CHECKLIST ITEM was added beyond the brief's seven: "alarm rule carries its lead
+#   time" is graded separately from the threshold, because the lead-time requirement is what
+#   makes a late alarm a missed failure rather than a hit, and a document that states a
+#   threshold without it has not stated the alarm rule.
+# * THE SPECIFICATION IS NOT AUTOGRADED FOR ITS PROSE. `my_specification` is a stub the
+#   student fills in and it is not in `_EXERCISES`' graded numbering; its three prose fields
+#   are checked only for being present and non-empty. Grading English would be grading the
+#   wrong thing, and the brief asks for a checker the student runs, which is what was built.
+#   The document IS graded for every number it carries, against the evidence bundle.
+# * THE LEAKY-BACKTEST COMPARISON in section 8 does not always move the threshold, and the
+#   prose says so with an if/else rather than asserting a direction. On this fleet the leaky
+#   feature happens to choose the same threshold and promise a cost 6% away from what it
+#   delivers. An earlier draft asserted that the leak "moved the number you ship"; that was
+#   true of one tuning of the generator and not of the shipped one, and the honest version —
+#   the promise is not a forecast in either direction — is the one that survived.
+#
+# Design notes for a reviewer:
+#
+# * Every number in the prose is printed by the notebook. Nothing in the narrative is typed:
+#   the causality margins, the percentage of already-recorded readings the leak moves, the
+#   policy comparison, the censored counts and unobserved unit-hours, the audited prices and
+#   their job counts, both operating points and the ratio between them, the named give-ups
+#   and the cost of catching each, the window sweep with its byte counts, the price-move
+#   triggers, the measured PSI alert level and every checklist detail are computed at run
+#   time. The one constant that appears in prose without being computed is the gateway's
+#   arena, which is a declared input (`GATEWAY`), printed beside every use of it.
+# * The lesson's central claim is measured, not asserted, and the rubric grades the
+#   measurement. On this fleet the cost-optimal threshold is dearer in accuracy than the
+#   accuracy-optimal one and cheaper in currency by a factor the notebook prints; the
+#   accuracy point gives up 17 more failures.
+#   `test_the_cost_optimal_point_is_cheaper_than_the_accuracy_optimal_one` fails any
+#   implementation that quietly maximises accuracy, and
+#   `test_the_programme_gives_up_failures_and_names_them` ties the named list to the swept
+#   `fn` at the same threshold, so the two halves of the deliverable cannot disagree.
+# * The five sudden failures exist to make one row of the give-up table honest: a defect
+#   whose whole P-F interval is shorter than the lead time the contract asks for is not a
+#   modelling problem. Section 9 prices the alternative anyway — the highest threshold that
+#   catches each given-up pump, and what the fleet then costs — so "deliberately" is
+#   arithmetic rather than a word.
+# * The deployment constraint bites, and it was tuned until it did. The cheapest smoothing
+#   window on this fleet does not fit the gateway's arena; the lesson ships the widest window
+#   that does and prints the difference in currency. The shock model is what makes the window
+#   a real decision: shocks arrive in bursts of one to three hours, so a three-hour median is
+#   defeated by them and a longer one is not.
+# * `_try` wraps every demonstration, so a completely unfilled lesson.py imports cleanly,
+#   prints one hint per exercise and scores 0/183 with a TODO row for all 45 rubric entries.
+#   The evidence bundle is built lazily and cached, so a stub raises NotImplementedError into
+#   `grade.py`'s TODO branch rather than breaking the import for every other case.
+# * Gate 3 measured, not assumed: the longest run of consecutive prose before the next
+#   runnable cell is 37 raw lines (the title block). The pass-condition and data-policy
+#   paragraphs were moved below the setup cell to get there, and the self-check is split by a
+#   runnable cell that prints the numbers its last two questions turn on.
+# * `solutions/lesson_solution.py` is the single source of truth. Each exercise body sits
+#   between `# SOLUTION` and `# END SOLUTION` markers and `lesson.py` is generated from it,
+#   so the student file and the reference cannot drift.
+# MUTATION TESTING OF THE RUBRIC, 2026-09-23. Fifty-six plausible wrong implementations were
+# built from the reference solution in a throwaway temporary directory, one break each, and
+# graded. ALL FIFTY-SIX are caught, and every one keeps partial credit rather than collapsing
+# to zero; the scores span 81% to 98%. A representative sample:
+#
+#   check_specification returning the items in its own order 81% · causal_health fitting the
+#   duty model on the whole window 84% · choose_operating_point maximising accuracy 84% ·
+#   label_runs letting a suspension win a tie 85% · causal_health normalising on the whole
+#   window 86% · label_runs dropping units the log never mentions 89% · price_the_outcomes
+#   zeroing a thin class 89% · causal_health forgetting the smoothing 89% · label_runs letting
+#   a no-fault-found call-out end the run 89% · label_runs booking the closed hour 91% ·
+#   choose_operating_point returning the swept arrays 92% · failures_given_up reporting a
+#   zero warning for a pump that never alarmed 92% · causality_margin perturbing the head
+#   instead of the tail 92% · rederivation_trigger reporting 0.0 when nothing moves 93% ·
+#   check_specification accepting an empty give-up list 94% · failures_given_up including
+#   censored runs 95% · causality_margin comparing the whole array 95% · price_the_outcomes
+#   comparing min_observations with > 96% · causality_margin perturbing only raw 98% ·
+#   deployment_report flooring the wire threshold 97% · deployment_report comparing the
+#   rounded health with the raw threshold 97% · rederivation_trigger ignoring `which` 98% ·
+#   check_specification comparing the prices as an unordered multiset 97% ·
+#   check_specification ignoring the provenance 97% · my_specification typing the threshold by
+#   hand 97% · my_specification claiming all three prices are audited 97% · censoring_report
+#   counting the remaining hours of every run 97% · failures_given_up using > for the lead
+#   time 97% · deployment_report forgetting the per-unit constants 98% · causal_health taking
+#   the MEAN commissioning level 98% · causality_margin averaging the change 98% ·
+#   causal_health smoothing before normalising 98% · label_runs letting a later order
+#   overwrite an earlier one 98%.
+#
+# FIVE of those initially scored 183/183 and the RUBRIC was fixed, not the mutant:
+#
+#   1. causal_health taking the MEAN of the commissioning ratios instead of the median. Every
+#      toy in the rubric had a block whose ratio was constant, where the two agree. A case now
+#      gives two identical pumps, one of which took a single shock DURING commissioning, and
+#      requires them to read the same afterwards: with a mean, one shock makes a pump look
+#      10% healthier for the rest of its life. The mutant scores 98%.
+#   2. deployment_report rounding the health index but comparing it against the UNROUNDED
+#      threshold. The old case used a threshold that was exactly representable, so the two
+#      comparisons agreed by construction. A case now uses a threshold that rounds DOWN and a
+#      reading that rounds UP to meet it — the wire alarms where the float does not — which
+#      no other case in the rubric would notice. The mutant scores 97%.
+#   3. check_specification comparing the three prices as an unordered multiset. Every
+#      price-mismatch case changed a value, so a permutation slipped through, and a document
+#      that prices a missed failure as a planned repair is worse than one that omits the
+#      prices because it looks complete. Two permutations of the same three numbers joined
+#      the case. The mutant scores 97%.
+#   4. causality_margin returning the MEAN change over the head instead of the worst. Every
+#      case asserted only "above zero" or "exactly zero", both of which a mean satisfies — and
+#      a mean would report a leak that touches one reading in fifteen as 0.4 and let a
+#      centred filter through checklist item 1. A case now pins the exact worst-case value on
+#      a feature that reads one hour ahead of a twenty-hour history. The mutant scores 98%.
+#   5. causal_health smoothing BEFORE taking the commissioning level. This one is the most
+#      interesting of the five, because it is a defensible-sounding implementation: it scored
+#      183/183 and its threshold, cost, counts and give-up list on the real fleet were
+#      identical to the reference's. It is still a different feature — the fleet's readings
+#      differ by up to 0.15 health units — and the difference reaches the SPECIFICATION: the
+#      re-derivation trigger moves from "the unplanned price moves by 48%" to "nothing inside
+#      the scanned range", and the measured drift alert from 0.05512 to 0.04236. The
+#      docstring now says the order is part of the specification and a case pins it on a
+#      commissioning block containing a step. The mutant scores 98%.
+#
+# NO EQUIVALENT SURVIVORS were left standing: every one of the fifty-six is caught. The one
+# that came closest to being defensible is number 5 above, and it was pinned rather than
+# accepted because it changes a line of the document the checklist grades.
+#
+# INDEPENDENT REVIEW, 2026-09-23. A second pass re-ran the gates from the repo root and built
+# 75 further mutants from the reference, chosen without reference to the author's list and
+# aimed squarely at the places the author's list was thin: every validation bound in all ten
+# functions, loosened by exactly one step. 71 were caught, at 84% to 99%, every one keeping
+# partial credit. SIX scored 183/183 and were rubric defects; all six are now pinned, and the
+# case that pins each one also asserts the value just INSIDE the bound, so a guard tightened
+# by one is caught as well as a guard loosened by one. SEVEN defects, over nine mutants:
+#
+#   1. label_runs comparing the unit with `<= n_units`. A work order naming a pump the fleet
+#      does not have was written into a dict key that `return tuple(ends[u] for u in
+#      range(n_units))` never reads, so the order silently vanished instead of raising. The
+#      old case used unit 9 against a fleet of 3 and never touched the bound. Now 99%.
+#   2. label_runs comparing the raised hour with `<= horizon_end + 1`, which returns a run
+#      ending one hour past the end of the historian's window. The old case used hour 400
+#      against a horizon of 99. Now 99%.
+#   3. label_runs and censoring_report accepting a degenerate fleet — n_units 0 or
+#      horizon_end -1 — whenever the log is empty, which every old case avoided by passing a
+#      non-empty log that tripped a different guard first. Now 99%.
+#   4. censoring_report accepting an end hour equal to n_hours. The last hour of an n_hours
+#      window is n_hours - 1, and accepting one more returns a NEGATIVE
+#      unobserved_unit_hours — the one field of the report the specification quotes. Now 99%.
+#   5. failures_given_up comparing the unit with `> health.shape[0]`, so the first unit that
+#      has no row is reported by an IndexError from inside alarm_hours rather than by the
+#      ValueError the docstring promises. Now 98%.
+#   6. deployment_report counting the PUMPS that hold a disagreeing reading instead of the
+#      readings. Every old deployment case used one row holding at most one disagreement, so
+#      the two counts were the same number by construction. A case now gives one pump three
+#      disagreeing readings and requires 3 and 1. Now 97%.
+#   7. price_the_outcomes rejecting a cost below -1 rather than below 0. Every old case for
+#      that guard, and for the fallback prices, used -5.0 or -2.0, so the bound itself was
+#      never touched and an invoice of -0.5 dragged down the mean of its class. An audit row
+#      and a fallback price of -0.5 joined the case. Now 99%. This is the weakest of the
+#      seven — nobody writes `cost < -1` — but it is one entry in a list and it makes the
+#      treatment of the boundary uniform across all ten functions, which is the point.
+#
+# The last of the seven, check_specification dropping the `lead_hours <= 0` rule, scored 183/183:
+# the rule is in the docstring and no case could reach it, because every lead-time case broke
+# the document-against-evidence equality first and never moved both sides to zero together.
+# Pinned in test_checklist_refuses_a_leak_and_a_programme_that_will_not_fit. Now 98%.
+#
+# FOUR EQUIVALENT SURVIVORS were proved equivalent and deliberately left alone, because the
+# rubric grades behaviour and their behaviour does not differ anywhere in the lesson's input
+# domain. Each loosens a bound by one step, and at the one input where the two differ a guard
+# further down raises ValueError anyway:
+#
+#   * causal_health accepting baseline_hours 0 — fit_duty_model, which is GIVEN, rejects an
+#     empty block; and causal_health accepting window 0 — causal_rolling_median, also GIVEN,
+#     rejects it. Swept baseline_hours over -3..n_hours+2 on three fleets at two windows and
+#     window over the same range: 0 differences in value or exception type.
+#   * causality_margin accepting tail_hours == n_hours — the head is then empty and np.max of
+#     an empty reduction is itself a ValueError. Swept tail_hours over -2..n_hours+2 for
+#     three history lengths and five features, causal and leaky: 0 differences.
+#   * censoring_report accepting n_hours 0 — the run table is already guaranteed non-empty by
+#     the guard above it, and no end hour can satisfy 0 <= e <= -1, so every input raises.
+#
+# The message a student sees is worse in all four cases, but the message is not what these
+# rubric entries grade, and pinning them would grade the wording of a guard rather than the
+# guard. THREE DIFFERENTLY-SHAPED RIGHT ANSWERS, written independently of the author's three
+# (causal_health as a per-pump loop with np.quantile and an averaged-inverted-CDF median,
+# price_the_outcomes and choose_operating_point from comprehensions and min(key=...);
+# failures_given_up as a generator with a local verdict helper, deployment_report entirely in
+# integer Q-format counts, rederivation_trigger collecting every mover and sorting;
+# label_runs keyed on a (hour, kind) tuple, censoring_report vectorised in numpy,
+# check_specification as a table of eight closures) score 183/183 singly and all three
+# applied at once, both before and after the seven rubric changes.
+#
+# THREE DIFFERENTLY-SHAPED RIGHT ANSWERS were built as controls and all score 183/183, singly
+# and all three applied at once: (a) causal_health rewritten as a per-pump loop with
+# np.quantile(0.5), choose_operating_point with min(range, key=...) and price_the_outcomes
+# with dict comprehensions; (b) failures_given_up as a filtered comprehension with a local
+# helper, deployment_report in integer Q-format counts rather than floats, and
+# rederivation_trigger collecting every mover and sorting; (c) check_specification built from
+# a table of predicate/detail pairs zipped against CHECKLIST_ITEMS. The rubric grades the
+# behaviour the docstrings ask for and not one way of writing it.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Author self-verification 2026-09-23 plus INDEPENDENT REVIEW 2026-09-23 — gates re-run from the repo root by the reviewer (execute PASS, solution 183/183 over 45 cases, stub file 0/183 with a TODO row for all 45; jupytext converts lesson.py to 74 cells, 33 markdown and 41 code; measured seconds and peak MiB are execute.py's write-back and are not typed anywhere in this file); 75 further mutants built independently, 71 caught at 84-99% with partial credit intact, 7 full-marks survivors found to be rubric defects and pinned (5 validation bounds loosened by one step, deployment_report counting pumps instead of readings, and check_specification's unreachable zero-lead-time rule), 4 further survivors PROVED equivalent by exhaustive sweep of the differing parameter and left alone; 3 differently-shaped right answers at 183/183 singly and combined, before and after the rubric changes; lesson.py reconstructed from the reference and diffed — no drift outside the stub bodies; all 5 sources re-fetched over HTTPS and all 12 quoted fragments matched verbatim, SR 26-2 confirmed current with no supersession footer of its own; one factual error fixed (section 10 called 1.40 representable in Q8.8, which it is not: 1.40 x 256 = 358.4); OWNER ACTIONS OUTSTANDING: lesson.ipynb is not generated, so gate 13 is not met and tools/notebooks.py --check reports this lesson MISSING, and the MODULES.md status row is the owner's to update"
+measured_seconds: 1.0
+measured_peak_mib: 99

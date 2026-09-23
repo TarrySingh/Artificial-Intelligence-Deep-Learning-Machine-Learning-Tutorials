@@ -1,0 +1,326 @@
+# Every factual claim this lesson makes about the world, with a source and the date the
+# source was read. Numbers a student sees in output — the control limits, the window error
+# counts, the alert indices, the costs, the clock offset, the incident deadlines and the
+# hours remaining on each one — are computed by the code they run from the synthetic feeds
+# built in lesson.py section 2. They are not claims about the world and do not appear here.
+# The feeds are synthetic and declared as such in meta.yaml.
+#
+# This lesson is engineering material about the machinery a post-market monitoring duty and
+# an incident-reporting duty imply. It is not legal advice, and nothing here substitutes for
+# the Official Journal text or for professional advice on a specific system.
+#
+# SOURCING RULE, inherited from P01-L01 and T10-L01: a `quote` field contains text actually
+# retrieved from `source_url` on the `accessed` date. No quote is reconstructed from memory
+# or stitched across an ellipsis. Where the authoritative text could not be retrieved
+# directly it is recorded under `authoritative_text_url` and the claim is carried by sources
+# that WERE retrieved. EUR-Lex refuses automated retrieval, so every article quotation below
+# was taken from two INDEPENDENT reproductions of the consolidated text and compared word for
+# word; both are listed, and both state that they are checked against EUR-Lex.
+claims:
+  - id: article-72-1-establish-and-document
+    claim: >-
+      Article 72(1) requires providers to establish and document a post-market monitoring
+      system, in a manner proportionate to the nature of the AI technologies and the risks of
+      the high-risk AI system. It requires a SYSTEM that exists and is written down; it sets
+      no metric, no window and no threshold, which is why every such number in this lesson is
+      labelled as the lesson's own modelling choice.
+    where: "lesson.py section 1 (DUTIES, art72_1_system) and section 10 (monitoring_plan)"
+    source_url: https://www.euaiact.com/article/72
+    source_title: "Article 72: Post-market Monitoring by Providers and Post-market Monitoring Plan for High-risk AI Systems — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      Providers shall establish and document a post-market monitoring system in a manner that
+      is proportionate to the nature of the AI technologies and the risks of the high-risk AI
+      system.
+    corroborating_url: https://ai-act-law.eu/article/72/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-22
+    retrieval_note: >-
+      Retrieved from euaiact.com, which states that the page is Article 72 as amended by
+      Regulation (EU) 2026/1744 and has been checked against the consolidated text on
+      EUR-Lex, and compared word for word against the independent reproduction at
+      ai-act-law.eu. The two agree.
+
+  - id: article-72-2-deployer-data
+    claim: >-
+      Article 72(2) requires the post-market monitoring system to actively and systematically
+      collect, document and analyse relevant data which may be provided by deployers or
+      collected through other sources on the performance of high-risk AI systems throughout
+      their lifetime, and which allow the provider to evaluate continuous compliance with
+      Chapter III, Section 2. The "provided by deployers" clause is the whole reason this
+      lesson has an ingest path and a clock reconciliation rather than a single-party monitor.
+    where: "lesson.py section 1 (art72_2_collect), sections 6 and 7 (estimate_clock_offset, merge_deployer_feed)"
+    source_url: https://www.euaiact.com/article/72
+    source_title: "Article 72 — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      The post-market monitoring system shall actively and systematically collect, document
+      and analyse relevant data which may be provided by deployers or which may be collected
+      through other sources on the performance of high-risk AI systems throughout their
+      lifetime, and which allow the provider to evaluate the continuous compliance of AI
+      systems with the requirements set out in Chapter III, Section 2.
+    corroborating_url: https://ai-act-law.eu/article/72/
+    accessed: 2026-09-22
+    note: >-
+      The same paragraph goes on to exclude sensitive operational data of deployers which are
+      law-enforcement authorities. This lesson's fictional system is a credit scorer, so that
+      carve-out is not modelled and is not claimed to be irrelevant to other systems.
+
+  - id: article-72-3-plan-and-what-the-omnibus-changed
+    claim: >-
+      Article 72(3) requires the post-market monitoring system to be based on a post-market
+      monitoring PLAN, which is part of the Annex IV technical documentation. Regulation (EU)
+      2026/1744 amended the third sentence: the original 2024 text required the Commission to
+      adopt an implementing act laying down detailed provisions establishing a template for
+      the plan and the list of elements to be included in it by 2 February 2026; the amended
+      text requires the Commission, taking utmost account of the opinion of the Board, to
+      adopt guidance, including a template, on the post-market monitoring plan by
+      2 September 2027.
+    where: "lesson.py section 1 (art72_3_plan and OMNIBUS_NOTES), self-check question 5"
+    source_url: https://www.euaiact.com/article/72
+    source_title: "Article 72 — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      The post-market monitoring system shall be based on a post-market monitoring plan. The
+      post-market monitoring plan shall be part of the technical documentation referred to in
+      Annex IV. The Commission, taking utmost account of the opinion of the Board, shall adopt
+      guidance, including a template, on the post-market monitoring plan by 2 September 2027.
+    quote_2: >-
+      The Commission shall adopt an implementing act laying down detailed provisions
+      establishing a template for the post-market monitoring plan and the list of elements to
+      be included in the plan by 2 February 2026.
+    corroborating_url: https://ai-act-law.eu/article/72/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744
+    accessed: 2026-09-22
+    retrieval_note: >-
+      `quote` is the amended third paragraph, retrieved from euaiact.com and corroborated word
+      for word at ai-act-law.eu. `quote_2` is the SUPERSEDED sentence, retrieved from
+      artificialintelligenceact.eu/article/72/, which prints the pre-amendment wording
+      alongside the current one and marks it "amended". ai-act-law.eu additionally lists
+      omnibus recital 41, "Replacement of certain implementing acts with codes of practice",
+      against this article.
+
+  - id: article-26-5-deployer-monitors-and-tells-the-provider
+    claim: >-
+      Article 26(5) requires deployers to monitor the operation of the high-risk AI system on
+      the basis of the instructions for use and, where relevant, to inform providers in
+      accordance with Article 72; and, where they have identified a serious incident, to
+      inform first the provider and then the importer or distributor and the relevant market
+      surveillance authorities. This is the provision that puts a second party's feed, and a
+      second party's clock, into the provider's monitoring system.
+    where: "lesson.py section 1 (art26_5_deployer) and section 6 (the deployer feed)"
+    source_url: https://www.euaiact.com/article/26
+    source_title: "Article 26: Obligations of Deployers of High-Risk AI Systems — Regulation (EU) 2024/1689"
+    quote: >-
+      Deployers shall monitor the operation of the high-risk AI system on the basis of the
+      instructions for use and, where relevant, inform providers in accordance with Article 72.
+    quote_2: >-
+      Where deployers have identified a serious incident, they shall also immediately inform
+      first the provider, and then the importer or distributor and the relevant market
+      surveillance authorities of that incident.
+    corroborating_url: https://artificialintelligenceact.eu/article/26/
+    accessed: 2026-09-22
+    note: >-
+      euaiact.com states that Article 26 is "unchanged since it was adopted" and has been
+      checked against the consolidated text on EUR-Lex.
+
+  - id: article-3-49-serious-incident-four-points
+    claim: >-
+      Article 3, point (49) defines a serious incident as an incident or malfunctioning of an
+      AI system that directly or indirectly leads to any of the following: (a) the death of a
+      person, or serious harm to a person's health; (b) a serious and irreversible disruption
+      of the management or operation of critical infrastructure; (c) the infringement of
+      obligations under Union law intended to protect fundamental rights; (d) serious harm to
+      property or the environment. The four points are the lesson's `ARTICLE_3_49` table, and
+      the letters are what `classify_incident()` branches on.
+    where: "lesson.py section 1 (ARTICLE_3_49) and section 8 (classify_incident)"
+    source_url: https://www.euaiact.com/article/3
+    source_title: "Article 3: Definitions — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      ‘serious incident’ means an incident or malfunctioning of an AI system that directly
+      or indirectly leads to any of the following:
+    quote_2: >-
+      the death of a person, or serious harm to a person’s health;
+    corroborating_url: https://artificialintelligenceact.eu/article/3/
+    accessed: 2026-09-22
+    note: >-
+      Article 3 as a whole was amended by Regulation (EU) 2026/1744; the text retrieved is the
+      consolidated version, and point (49) reads identically on the independent reproduction
+      at artificialintelligenceact.eu. Points (b), (c) and (d) are reproduced verbatim in the
+      `ARTICLE_3_49` dict in the notebook and were compared character by character against
+      both sources.
+
+  - id: article-73-2-fifteen-days-from-awareness
+    claim: >-
+      Article 73(2) requires the report to be made immediately after the provider has
+      established a causal link between the AI system and the serious incident, or the
+      reasonable likelihood of such a link, and in any event not later than 15 days after the
+      provider or, where applicable, the deployer, becomes aware of the serious incident. Two
+      things this lesson grades come straight out of that sentence: the long stop is FIFTEEN
+      days, and it runs from AWARENESS rather than from the occurrence or from the day the
+      causal link was established.
+    where: "lesson.py section 1 (DEADLINE_DAYS, art73_2_clock), section 9 (incident_log), self-check questions 1 and 2"
+    source_url: https://www.euaiact.com/article/73
+    source_title: "Article 73: Reporting of Serious Incidents — Regulation (EU) 2024/1689"
+    quote: >-
+      The report referred to in paragraph 1 shall be made immediately after the provider has
+      established a causal link between the AI system and the serious incident or the
+      reasonable likelihood of such a link, and, in any event, not later than 15 days after
+      the provider or, where applicable, the deployer, becomes aware of the serious incident.
+    corroborating_url: https://ai-act-law.eu/article/73/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-22
+    note: >-
+      euaiact.com states that Article 73 is "unchanged since it was adopted" and has been
+      checked against the consolidated text on EUR-Lex. The next sentence of the same
+      paragraph — "The period for the reporting referred to in the first subparagraph shall
+      take account of the severity of the serious incident" — was also retrieved and is the
+      reason the lesson says the 15 days is a long stop rather than a schedule.
+
+  - id: article-73-3-two-days-and-its-trigger
+    claim: >-
+      Article 73(3) requires the report to be provided immediately, and not later than two
+      days after awareness, in the event of a widespread infringement OR a serious incident as
+      defined in Article 3, point (49)(b) — the critical-infrastructure point. It does not
+      name point (49)(c), the fundamental-rights point, which therefore runs on 73(2)'s
+      fifteen days. This is the single fact the lesson's exercise 6 exists to fix.
+    where: "lesson.py section 1 (art73_3_short), section 8 (classify_incident), self-check question 1"
+    source_url: https://www.euaiact.com/article/73
+    source_title: "Article 73: Reporting of Serious Incidents — Regulation (EU) 2024/1689"
+    quote: >-
+      Notwithstanding paragraph 2 of this Article, in the event of a widespread infringement
+      or a serious incident as defined in Article 3, point (49)(b), the report referred to in
+      paragraph 1 of this Article shall be provided immediately, and not later than two days
+      after the provider or, where applicable, the deployer becomes aware of that incident.
+    corroborating_url: https://ai-act-law.eu/article/73/
+    accessed: 2026-09-22
+    note: >-
+      "Widespread infringement" is itself a defined term, in Article 3, point (61). The lesson
+      does not implement that definition; it takes the flag as given on the candidate record
+      and says so in the exercise, because deciding whether an act or omission is a widespread
+      infringement is a legal assessment and not an arithmetic one.
+
+  - id: article-73-4-ten-days-for-a-death
+    claim: >-
+      Article 73(4) requires the report, in the event of the death of a person, to be provided
+      immediately after the provider or the deployer has established, or as soon as it
+      suspects, a causal relationship between the high-risk AI system and the serious
+      incident, but not later than 10 days after the date on which the provider or, where
+      applicable, the deployer becomes aware of the serious incident. The ten-day clock is for
+      a DEATH, not for every Article 3(49)(a) harm: (a) also covers serious harm to a person's
+      health, which the lesson routes to 73(2).
+    where: "lesson.py section 1 (art73_4_death), section 8 (classify_incident, the I-08 case)"
+    source_url: https://www.euaiact.com/article/73
+    source_title: "Article 73: Reporting of Serious Incidents — Regulation (EU) 2024/1689"
+    quote: >-
+      Notwithstanding paragraph 2, in the event of the death of a person, the report shall be
+      provided immediately after the provider or the deployer has established, or as soon as
+      it suspects, a causal relationship between the high-risk AI system and the serious
+      incident, but not later than 10 days after the date on which the provider or, where
+      applicable, the deployer becomes aware of the serious incident.
+    corroborating_url: https://ai-act-law.eu/article/73/
+    accessed: 2026-09-22
+
+  - id: article-73-5-an-incomplete-report-is-allowed
+    claim: >-
+      Article 73(5) permits the provider or the deployer, where necessary to ensure timely
+      reporting, to submit an initial report that is incomplete, followed by a complete one.
+      This is why the lesson's common-mistakes list says the reporting clock is not waiting
+      for the root-cause analysis: the Regulation itself provides for reporting before the
+      investigation is finished.
+    where: "lesson.py section 11 (common mistakes, the last entry)"
+    source_url: https://www.euaiact.com/article/73
+    source_title: "Article 73: Reporting of Serious Incidents — Regulation (EU) 2024/1689"
+    quote: >-
+      Where necessary to ensure timely reporting, the provider or, where applicable, the
+      deployer, may submit an initial report that is incomplete, followed by a complete report.
+    corroborating_url: https://ai-act-law.eu/article/73/
+    accessed: 2026-09-22
+
+  - id: article-113-application-dates-as-amended
+    claim: >-
+      Article 113 as amended by Regulation (EU) 2026/1744 states that the Regulation applies
+      from 2 August 2026, with listed exceptions: Chapters I and II from 2 February 2025 (with
+      named sub-exceptions from 2 December 2026); Chapter III Section 4, Chapter V, Chapter
+      VII, Chapter XII and Article 78 from 2 August 2025, except Article 101; Chapter III
+      Sections 1, 2 and 3, except Article 6(5), from 2 December 2027 for Article 6(2) /
+      Annex III systems and 2 August 2028 for Article 6(1) / Annex I systems; and Articles 102
+      to 110 from 27 July 2026. The lesson additionally READS the absence of Chapter IX from
+      that list of exceptions as meaning that Articles 72 and 73 run from the general date.
+    where: "lesson.py section 1 (OMNIBUS_NOTES and the paragraph above it)"
+    source_url: https://www.euaiact.com/article/113
+    source_title: "Article 113: Entry into Force and Application — Regulation (EU) 2024/1689 as amended by Regulation (EU) 2026/1744"
+    quote: >-
+      Chapter III, Sections 1, 2, and 3, with the exception of Article 6(5), shall apply from:
+      (i) 2 December 2027 as regards AI systems classified as high-risk pursuant to Article
+      6(2) and Annex III; and (ii) 2 August 2028 as regards AI systems classified as high-risk
+      pursuant to Article 6(1) and Annex I;
+    corroborating_url: https://artificialintelligenceact.eu/article/113/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32026R1744
+    accessed: 2026-09-22
+    note: >-
+      The READING is the lesson's, not the source's, and the notebook labels it in those words
+      ("That is a reading of a list, not a ruling"). What is quoted is the list; what is
+      claimed about Chapter IX is an argument from the list's silence, offered so a student can
+      disagree with it. No transitional provision in Article 111, and no guidance or case law,
+      was consulted on the point, and the lesson makes no claim about how any authority would
+      construe it. The two Chapter III dates are the same pair this programme's README and
+      P01-L01 and P01-L04 carry, and are repeated here so this lesson's claim stands on its
+      own source.
+
+  - id: p-chart-limits-are-a-convention-not-a-requirement
+    claim: >-
+      The control chart for a proportion — the p-chart — places a centre line at the process
+      proportion p and control limits at p +/- k * sqrt(p*(1-p)/n) for subgroups of size n,
+      with k = 3 the usual convention. Neither the AI Act nor any harmonised standard cited in
+      this lesson prescribes k, the subgroup size, or a run rule; those are engineering
+      choices, and this lesson's are argued for in the notebook and priced in section 5.
+    where: "lesson.py section 3 (control_limits) and section 5 (monitor_costs, the k sweep)"
+    source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc332.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.3.2: Proportions Control Charts"
+    quote: >-
+      The underlying statistical principles for a control chart for proportion nonconforming
+      are based on the binomial distribution.
+    accessed: 2026-09-22
+    note: >-
+      The same page gives the variance of the sample proportion as p(1-p)/n, which is the
+      standard error this lesson's `control_limits()` takes the square root of, and states
+      that the chart is called the p-chart. A tertiary source is used deliberately, because
+      the p-chart is arithmetic rather than a fact about the world: the notebook recomputes
+      the limits from the formula, and its public check fails an implementation that divides
+      by the baseline size instead of the window size. The k = 3 convention is treated here as
+      nothing more than a convention — the whole of section 5 exists to show that on this feed
+      it is not the cheapest setting — and no claim is made about who established it.
+
+  - id: median-absolute-deviation-is-the-robust-spread
+    claim: >-
+      The median absolute deviation — the median of the absolute deviations from the sample
+      median — is a measure of statistical dispersion that is more resilient to outliers than
+      the standard deviation, because the standard deviation squares the distances from the
+      mean and so weights large deviations more heavily. This is why the lesson's clock-offset
+      estimator reports the median and the MAD rather than the mean and the standard
+      deviation: a handful of re-exported rows moves the mean and does not move either robust
+      statistic.
+    where: "lesson.py section 6 (estimate_clock_offset) and section 11 (common mistakes)"
+    source_url: https://en.wikipedia.org/wiki/Median_absolute_deviation
+    source_title: "Median absolute deviation"
+    quote: >-
+      the MAD is a robust statistic, being more resilient to outliers in a data set than the
+      standard deviation
+    accessed: 2026-09-22
+    note: >-
+      Tertiary source, for the same reason as the p-chart above: this is a property of an
+      estimator rather than a fact about the world, and the notebook demonstrates it by
+      printing the median and the mean of the same 100 pairs side by side.
+
+# --- Explicitly NOT claimed -------------------------------------------------------------
+# This lesson makes no claim about what any market surveillance authority will accept as a
+# post-market monitoring plan, no claim about any actual incident, system, provider or
+# deployer, and no claim that a report filed within the deadlines it computes satisfies
+# Article 73. It also makes no claim about Article 3, point (61), "widespread infringement":
+# the flag is taken as given on each candidate record, and deciding it is a legal assessment
+# this lesson does not attempt.
+#
+# Considered and DROPPED for want of a retrievable primary source on 2026-09-22: a figure for
+# how many serious incidents have been reported under Article 73 since it began to apply; any
+# statement about the content of the Commission guidance under Article 72(3), which is not due
+# until 2 September 2027 and does not exist to be read; and any claim that Chapter IX's
+# application date has been confirmed by an authority rather than inferred from the list in
+# Article 113. None of the three appears in lesson.py.

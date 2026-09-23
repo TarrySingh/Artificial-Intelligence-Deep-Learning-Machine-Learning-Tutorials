@@ -1,0 +1,178 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — the causality margins, the share of recorded readings a leaky feature
+# moves, the labelling-policy comparison, the censored counts and unobserved unit-hours, the
+# audited prices and the jobs behind each, both operating points and the ratio between them,
+# the named give-ups and the cost of catching each one, the window sweep and its byte counts,
+# the price-move triggers, the measured PSI alert level and every line of every checklist run
+# — and are therefore not claims. They do not appear here.
+#
+# Four things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# because a reviewer should be able to see that each omission was a decision.
+#
+# HOW THE QUOTES WERE VERIFIED, because the method differs between the sources. The NIST page
+# and the NASA repository page were fetched over HTTPS, their script and style blocks removed,
+# their remaining tags stripped to text and their whitespace collapsed, and the quoted
+# sentences were then matched character for character in that text. The Federal Reserve
+# guidance is a PDF with no HTML equivalent; its text was extracted with `pdftotext -layout`
+# and its line wrapping collapsed before matching, so a reviewer re-checking those two
+# quotations should expect to do the same extraction rather than a plain text search of the
+# landing page. The supersession sentence was read on the letter's HTML landing page.
+claims:
+  - id: check-standard-baseline
+    claim: >-
+      The NIST/SEMATECH e-Handbook of Statistical Methods describes a check standard as a
+      device for controlling the bias and long-term variability of a measurement process
+      against a baseline established from the check standard's own history. This lesson
+      applies that idea to the plant rather than to the instrument: the commissioning window
+      (hours 0 to 119) is the baseline every constant in the feature is fitted against, and
+      the drift alert level in section 11 is measured on that same window's own null
+      behaviour rather than quoted from a rule of thumb. The lesson does not claim that NIST
+      prescribes either practice; the source is cited as the place the argument for a
+      measured baseline is made explicitly.
+    where: "lesson.py section 3 (causal_health fits on the commissioning block only), section 11 (null_psi_band on the commissioning block)"
+    source_url: https://www.itl.nist.gov/div898/handbook/mpc/section1/mpc12.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 2.1.2 What is a check standard?"
+    quote: >-
+      It is a device for controlling the bias and long-term variability of the process once a
+      baseline for these quantities has been established from historical data on the check
+      standard.
+    quote_context: >-
+      Third sentence of the opening paragraph, under the heading "A check standard is useful
+      for gathering data on the process". The same paragraph adds that check standard
+      methodology is "a tool for collecting data on the measurement process to expose errors
+      that afflict the process over time".
+    accessed: 2026-09-23
+
+  - id: ongoing-monitoring-is-part-of-the-deliverable
+    claim: >-
+      The interagency Revised Guidance on Model Risk Management, attached to Federal Reserve
+      SR letter 26-2, defines ongoing model monitoring as an evaluation of whether a model is
+      still performing as expected given changes in the conditions around it, and states that
+      a model that no longer performs as expected may warrant overlay, adjustment or
+      redevelopment. This lesson's seventh deliverable — the re-derivation trigger, expressed
+      as the smallest price move that shifts the threshold and the PSI level that counts as
+      drift — is that idea applied to a plant rather than a bank. The lesson does not claim
+      that this guidance applies to industrial condition monitoring; it is cited as the place
+      the argument that monitoring is part of the deliverable is made explicitly.
+    where: "lesson.py section 11 (rederivation_trigger), section 13 (checklist item 8), section 16 (the handover note's re-derive line)"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: "Revised Guidance on Model Risk Management, attachment to SR letter 26-2, Board of Governors of the Federal Reserve System, Office of the Comptroller of the Currency and Federal Deposit Insurance Corporation, 17 April 2026, section V, Ongoing Model Monitoring"
+    quote: >-
+      Ongoing model monitoring involves an evaluation of the extent to which a model is
+      performing as expected given potential changes in products, exposures, activities,
+      clients, data relevance, or market conditions.
+    quote_context: >-
+      First sentence under the heading "Ongoing Model Monitoring", on page 9 of the
+      attachment. The paragraph continues that "A model that no longer performs as expected
+      may warrant overlays, adjustment, or redevelopment of the model depending on a banking
+      organization's model risk management policy as it pertains to model deterioration."
+      The line wrapping of the PDF was collapsed before matching.
+    accessed: 2026-09-23
+
+  - id: documentation-supports-model-risk-management
+    claim: >-
+      The same guidance names documentation as something that supports effective model risk
+      management, and gives continuity of operations and the tracking of recommendations,
+      responses and exceptions as examples of what it is for. This lesson's central structural
+      choice — that the deliverable is a runnable notebook AND a one-page specification, and
+      that the specification is checked by code the author runs before submitting — rests on
+      that idea. The lesson does not claim the guidance prescribes a checklist, an
+      eight-item form, or anything about condition monitoring.
+    where: "lesson.py sections 12 to 16 (the evidence bundle, check_specification, the submission, the handover note)"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: "Revised Guidance on Model Risk Management, attachment to SR letter 26-2, section VI, Governance and Controls, under Documentation"
+    quote: >-
+      Adequate documentation helps to support effective model risk management.
+    quote_context: >-
+      Opening sentence under the heading "Documentation", on page 11 of the attachment. The
+      sentence that follows it reads "For example, documentation can help maximize the
+      likelihood of continuity of operations, including supporting the tracking of
+      recommendations, responses, and exceptions; it can also be used to more effectively
+      help manage any model remediation efforts."
+    accessed: 2026-09-23
+
+  - id: sr-11-7-superseded
+    claim: >-
+      SR letter 26-2, of 17 April 2026, attaches the Revised Guidance on Model Risk Management
+      and supersedes and replaces SR letter 11-7 of 4 April 2011 and SR letter 21-8 of 9 April
+      2021. This is recorded because earlier modules of this programme quote the 2011 wording,
+      and a reader moving between them should not have to work out which text is current.
+      This lesson quotes the 2026 attachment only.
+    where: "claims.yaml only; the lesson does not mention either letter by number"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "Supervisory Letter SR 26-2 on Revised Guidance on Model Risk Management, 17 April 2026"
+    quote: >-
+      which supersedes and replaces SR letter 11-7
+    quote_context: >-
+      From the letter's second paragraph, which states that the agencies are issuing the
+      attached Revised Guidance on Model Risk Management, "which supersedes and replaces SR
+      letter 11-7, Guidance on Model Risk Management (issued April 4, 2011) and SR letter
+      21-8, Interagency Statement on Model Risk Management for Bank Systems Supporting Bank
+      Secrecy Act/Anti-Money Laundering Compliance (issued April 9, 2021)". The letter's own
+      "Supersedes" footer repeats both.
+    accessed: 2026-09-23
+
+  - id: cmapss-optional-extension
+    claim: >-
+      NASA's Prognostics Center of Excellence data repository publishes the Turbofan Engine
+      Degradation Simulation (C-MAPSS) sets as a direct download with no registration form,
+      asks that publications acknowledge the repository and the donors, and states that users
+      employ the data at their own risk. This is recorded because a student who has finished
+      this capstone can run the same eight functions against a real run-to-failure corpus,
+      and C-MAPSS is the one with an operating-condition column per row — which is what
+      `causal_health`'s duty-and-ambient correction needs. It is an OPTIONAL, OFF-PATH
+      extension: nothing the grader touches downloads anything, and the lesson runs with the
+      machine offline.
+    where: "meta.yaml datasets note; not on any required path in lesson.py"
+    source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+    source_title: "NASA Prognostics Center of Excellence Data Set Repository, entry 6, Turbofan Engine Degradation Simulation"
+    quote: >-
+      Users employ the data at their own risk. Neither NASA nor the donators of the data sets
+      assume any liability for the use of the data, or any system developed using the data.
+    quote_context: >-
+      Repository-wide terms, immediately above the data set list. The preceding sentence asks
+      that "Publications making use of databases obtained from this repository are requested
+      to acknowledge both the assistance received by using this repository and the donators of
+      the data." Entry 6 describes four sets "simulated under different combinations of
+      operational conditions and fault modes" and links directly to
+      https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip
+      with the citation A. Saxena and K. Goebel (2008), "Turbofan Engine Degradation
+      Simulation Data Set", NASA Prognostics Data Repository, NASA Ames Research Center,
+      Moffett Field, CA.
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. NO RULE OF THUMB IS QUOTED FOR THE PSI ALERT LEVEL, for the reason module 8 gave: the
+#    widely repeated "0.1 is a small shift, 0.2 a large one" could not be traced to a primary
+#    source the author was willing to cite, and a capstone whose argument is that every
+#    number must be derived cannot end by inheriting one. Section 11 measures this plant's
+#    own null band with `null_psi_band` over random half-splits of the commissioning block
+#    and reports that, and the self-check's fifth question is phrased so that it does not
+#    have to name a number either.
+#
+# 2. THE PLANT IS SYNTHETIC AND SAYS SO IN ITS FIRST SCREEN. `generate_fleet`, `generate_log`
+#    and `generate_audit` are in the notebook, are seeded, and are read by the student before
+#    they are run. meta.yaml declares them under `datasets:` with kind `synthetic` and
+#    `downloads: false`. Nothing in the lesson claims that this fleet's base rate, duty mix,
+#    P-F intervals, shock rate, suspension rate, paperwork lag or audit booking rate describes
+#    any real population of pumps, any real maintenance department or any real plant. The
+#    reason the data is synthetic is specific to this module: it grades a PROGRAMME, which
+#    means marking a labelling policy, a give-up list and a price provenance right or wrong,
+#    and that needs four columns no historian carries.
+#
+# 3. THE PRICES ARE A SCENARIO. The kick-off numbers are a whiteboard guess and the lesson
+#    says so; the invoice levels the audit recovers are generator parameters, not a survey of
+#    maintenance costs. The argument the lesson makes — that a threshold is a function of
+#    three prices, that it moves when one of them is measured, and that a price the audit
+#    cannot support has to travel with a label — does not depend on their level, and the
+#    notebook prints ratios rather than defending the absolute numbers.
+#
+# 4. THE GATEWAY IS A DECLARED CONSTRAINT, NOT A PRODUCT. `GATEWAY` gives an 8,192-byte
+#    arena, four bytes a retained reading, twelve bytes of per-unit constants and a Q8.8
+#    register map. Those are the shape of the constraint module 7 established, chosen so that
+#    the window decision bites on this fleet; no claim is made that any particular OT gateway
+#    has those numbers. The lesson's point is that the numbers exist and have to be met,
+#    whatever they are, and the arena is printed beside every use of it so a reader can
+#    substitute their own.

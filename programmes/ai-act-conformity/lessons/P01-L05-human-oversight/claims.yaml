@@ -1,0 +1,234 @@
+# Every factual claim this lesson makes about the world, with a source and the date the
+# source was read. Numbers a student sees in output — the decision counts, the override rates,
+# the per-bin rates, the medians, the four-eyes counts, the detectable floors, the blocked
+# counts — are computed by the code they run from the synthetic log built in lesson.py
+# section 2. They are not claims about the world and do not appear here. The log itself is
+# synthetic and declared as such in meta.yaml.
+#
+# This lesson is engineering material about the measurements an Article 14 duty implies. It is
+# not legal advice, and nothing here substitutes for the Official Journal text or for
+# professional advice on a specific system.
+#
+# SOURCING RULE, inherited from P01-L01 and P01-L04: a `quote` field contains text actually
+# retrieved from `source_url` on the `accessed` date. No quote is reconstructed from memory or
+# stitched across an ellipsis. EUR-Lex refused automated retrieval on the access date, so
+# every article quotation below was taken from two INDEPENDENT reproductions of the
+# consolidated text — euaiact.com and ai-act-law.eu — and compared word for word; both are
+# listed, and both agreed on every sentence quoted here.
+claims:
+  - id: article-14-1-design-for-effective-oversight
+    claim: >-
+      Article 14(1) is a design duty on the provider: the high-risk system must be built,
+      including through its human-machine interface, so that natural persons can effectively
+      oversee it while it is in use. It says "effectively", and effectiveness is the thing
+      this lesson turns into a measurement rather than an assertion.
+    where: "lesson.py section 1 (the DUTIES table) and the opening cell"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      High-risk AI systems shall be designed and developed in such a way, including with
+      appropriate human-machine interface tools, that they can be effectively overseen by
+      natural persons during the period in which they are in use.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX%3A32024R1689
+    accessed: 2026-09-22
+    retrieval_note: >-
+      EUR-Lex returned no usable body to automated retrieval on the access date. The wording
+      above was retrieved from euaiact.com and compared character by character against the
+      independent reproduction at ai-act-law.eu; the two agree.
+
+  - id: article-14-4-b-automation-bias
+    claim: >-
+      Article 14(4)(b) names automation bias in the operative text, not in a recital, and
+      names it as something the overseer must remain AWARE of. Awareness cannot be measured
+      from a log; the shape it leaves can be, which is why this lesson measures override rate
+      as a function of the model's own confidence and labels that a proxy.
+    where: "lesson.py section 1 (DUTIES) and section 7 (automation_bias)"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      to remain aware of the possible tendency of automatically relying or over-relying on the
+      output produced by a high-risk AI system (automation bias), in particular for high-risk
+      AI systems used to provide information or recommendations for decisions to be taken by
+      natural persons;
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: article-14-4-d-override
+    claim: >-
+      Article 14(4)(d) requires the overseeing person to be able to decide, in any particular
+      situation, not to use the system or to disregard, override or reverse its output. This
+      is the provision behind the override rate: a system whose measured override rate is zero
+      has either a perfect model or a control that exists only on paper.
+    where: "lesson.py section 1 (DUTIES) and section 4 (override_rates)"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      to decide, in any particular situation, not to use the high-risk AI system or to
+      otherwise disregard, override or reverse the output of the high-risk AI system;
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: article-14-4-a-c-e-are-interface-duties
+    claim: >-
+      Article 14(4)(a), (c) and (e) — monitoring for anomalies, correctly interpreting the
+      output with the available tools, and intervening or halting the system through a stop
+      button — are properties of what the deployer is GIVEN, not of what the log records. The
+      lesson declares them unmeasurable from a log and carries them in the artefact's
+      not_measured list rather than silently omitting them.
+    where: "lesson.py section 1 (MEASURED_BY) and section 9 (oversight_plan)"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      to intervene in the operation of the high-risk AI system or interrupt the system through
+      a ‘stop’ button or a similar procedure that allows the system to come to a halt in a safe
+      state.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: article-14-5-two-natural-persons
+    claim: >-
+      Article 14(5) requires, for the systems referred to in point 1(a) of Annex III, that no
+      action or decision be taken by the deployer on the basis of the identification unless
+      that identification has been separately verified and confirmed by at least two natural
+      persons with the necessary competence, training and authority. "Two natural persons" is
+      the load-bearing phrase: this lesson counts distinct persons, not list entries, and the
+      twelve decisions in its log where one person is recorded twice are the case a
+      length test passes and the article does not.
+    where: "lesson.py section 1, section 6 (four_eyes_report) and POLICY"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      For high-risk AI systems referred to in point 1(a) of Annex III, the measures referred to
+      in paragraph 3 of this Article shall be such as to ensure that, in addition, no action or
+      decision is taken by the deployer on the basis of the identification resulting from the
+      system unless that identification has been separately verified and confirmed by at least
+      two natural persons with the necessary competence, training and authority.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: article-14-5-law-enforcement-carve-out
+    claim: >-
+      The second subparagraph of Article 14(5) disapplies the two-person requirement for
+      high-risk systems used for law enforcement, migration, border control or asylum where
+      Union or national law considers it disproportionate. The lesson states the carve-out and
+      does not implement it, because its fictional system is a credit scorer and none of those
+      purposes applies to it — but a plan that generalises 14(5) to every system is wrong in
+      both directions at once.
+    where: "lesson.py section 1 (the note under the duties table) and self-check question 3"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      The requirement for a separate verification by at least two natural persons shall not
+      apply to high-risk AI systems used for the purposes of law enforcement, migration, border
+      control or asylum, where Union or national law considers the application of this
+      requirement to be disproportionate.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: annex-iii-point-1a-remote-biometric-identification
+    claim: >-
+      Annex III point 1(a) is "remote biometric identification systems", under the heading
+      "Biometrics, in so far as their use is permitted under relevant Union or national law",
+      and it expressly excludes systems used for biometric VERIFICATION whose sole purpose is
+      to confirm that a person is who they claim to be. That is the whole population Article
+      14(5) reaches. The lesson's fictional system carries a remote biometric onboarding path
+      so that part of its log is in scope and the rest is not.
+    where: "lesson.py section 1 (the note under the duties table) and the fixture's
+      identification_basis field"
+    source_url: https://www.euaiact.com/annex/3
+    source_title: "Annex III: High-Risk AI Systems Referred to in Article 6(2) — Regulation (EU) 2024/1689"
+    quote: >-
+      Biometrics, in so far as their use is permitted under relevant Union or national law:
+      (a) remote biometric identification systems. This shall not include AI systems intended
+      to be used for biometric verification the sole purpose of which is to confirm that a
+      specific natural person is the person he or she claims to be;
+    corroborating_url: https://ai-act-law.eu/annex/3/
+    accessed: 2026-09-22
+    retrieval_note: >-
+      Retrieved from euaiact.com/annex/3 on the access date. The quote concatenates point 1's
+      chapeau and its point (a) in the order the page prints them, with no text omitted
+      between them.
+
+  - id: article-26-2-deployer-assigns-competent-persons
+    claim: >-
+      Article 26(2) places the competence duty on the DEPLOYER: oversight is assigned to
+      natural persons who have the necessary competence, training and authority, as well as
+      the necessary support. A log cannot see competence. Time to decision is the closest
+      thing in a log to a signal about it, and the lesson labels it a proxy in section 5 rather
+      than presenting it as a measurement of the duty.
+    where: "lesson.py section 1 (DUTIES, art26_2_competence) and section 5"
+    source_url: https://www.euaiact.com/article/26
+    source_title: "Article 26: Obligations of Deployers of High-Risk AI Systems — Regulation (EU) 2024/1689"
+    quote: >-
+      Deployers shall assign human oversight to natural persons who have the necessary
+      competence, training and authority, as well as the necessary support.
+    corroborating_url: https://ai-act-law.eu/article/26/
+    accessed: 2026-09-22
+
+  - id: article-14-unchanged-by-the-2026-omnibus
+    claim: >-
+      Article 14 was not amended by Regulation (EU) 2026/1744. This matters because the same
+      regulation DID amend Article 10, which the sibling lesson P01-L04 records, so a reader
+      who has done that lesson is right to ask. The publisher states the article is unchanged
+      since adoption, and the independent reproduction carries no amendment annotation on
+      Article 14 while carrying the omnibus elsewhere — it lists the new Article 4a and a
+      separate set of omnibus recitals.
+    where: "lesson.py section 1; recorded here rather than asserted in the notebook"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      This is the text of Article 14 of Regulation (EU) 2024/1689, unchanged since it was
+      adopted.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    authoritative_text_url: https://eur-lex.europa.eu/eli/reg/2026/1744/oj/eng
+    accessed: 2026-09-22
+    retrieval_note: >-
+      This is a publisher's statement about the text, not the text itself, and it is recorded
+      as such. The consolidated text on EUR-Lex was not retrieved on the access date. What WAS
+      independently checked is that two reproductions of Article 14 agree word for word on all
+      five paragraphs and on every point of 14(4), and that neither carries an amendment
+      marker on any of them.
+
+  - id: self-verification-is-this-lessons-reading
+    claim: >-
+      UNVERIFIED, AND LABELLED AS SUCH IN THE NOTEBOOK. The lesson's POLICY forbids the person
+      who submitted a case from being one of its verifiers. Article 14(5) says the
+      identification must be "separately verified and confirmed by at least two natural
+      persons"; it does not say in terms that the submitter may not be one of them. No
+      guidance, harmonised standard or decision settling the point was found on the access
+      date. The lesson therefore implements it as a deployer policy FLAG that can be switched
+      off, labels it "deployer policy, not the Act" in the POLICY dict, and says so again in
+      section 8. It is a reading of a sentence, not a ruling.
+    where: "lesson.py POLICY (forbid_self_verification) and section 8"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      unless that identification has been separately verified and confirmed by at least two
+      natural persons with the necessary competence, training and authority.
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+
+  - id: no-metric-for-effective-oversight-was-found
+    claim: >-
+      UNVERIFIED, AND THE LESSON MAKES NO CLAIM ABOUT IT. Whether any harmonised standard
+      adopted under Article 40, or any common specification under Article 41, has fixed a
+      metric or a threshold for what makes oversight "effective" under Article 14(1) could not
+      be established from a primary source on the access date. Every threshold this lesson
+      applies — the 30-decision support floor, the 10-second plausibility floor, the 5 %
+      high-confidence override floor, the 95 %/80 % detectable-difference convention — is
+      therefore labelled the lesson's own modelling choice, in the opening disclaimer and
+      again where each is defined. None of them is presented as a figure any authority would
+      accept.
+    where: "lesson.py opening disclaimer and the threshold block in the setup cell"
+    source_url: https://www.euaiact.com/article/14
+    source_title: "Article 14: Human Oversight — Regulation (EU) 2024/1689"
+    quote: >-
+      The oversight measures shall be commensurate with the risks, level of autonomy and
+      context of use of the high-risk AI system
+    corroborating_url: https://ai-act-law.eu/article/14/
+    accessed: 2026-09-22
+    retrieval_note: >-
+      The quote is Article 14(3)'s opening, which is the only thing the Act itself says about
+      how much oversight is enough: commensurate with risk, autonomy and context. It fixes no
+      number, which is exactly why this lesson's numbers are the lesson's.

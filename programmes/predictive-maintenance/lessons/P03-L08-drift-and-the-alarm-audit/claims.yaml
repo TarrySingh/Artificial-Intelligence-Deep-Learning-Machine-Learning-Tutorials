@@ -1,0 +1,146 @@
+# Every factual claim this lesson makes about the world, with a primary source URL and the
+# date the source was read. Numbers a student sees in the notebook's output are computed by
+# the code they run — the measured alert level, the three drift statistics for every window,
+# all sixteen cells of the cost matrix, the audited prices and the jobs behind each one, the
+# re-derived threshold and every ratio in the prose — and are therefore not claims. They do
+# not appear here.
+#
+# Four things this lesson deliberately does NOT claim are recorded at the foot of this file,
+# because a reviewer should be able to see that each omission was a decision.
+#
+# HOW THE QUOTES WERE VERIFIED, because the method differs between the sources and a reviewer
+# should not have to guess. The two NIST pages and the NASA repository page were fetched and
+# their HTML stripped to text, and the quoted sentences were matched character for character
+# in that text. The two Federal Reserve documents are PDFs with no HTML equivalent; their
+# text was extracted from the PDF content streams, where each word arrives with kerning
+# spaces between its letters, and reconstructed by treating a double space as a word boundary
+# and a single space as kerning. For SR 26-2 the reconstructed supersession sentence was
+# cross-checked against an independent rendering of the letter's HTML landing page, and the
+# two agreed. A reviewer re-checking the SR 11-7 quotation should expect to do the same
+# extraction rather than a plain text search.
+claims:
+  - id: check-standard-baseline
+    claim: >-
+      The NIST/SEMATECH e-Handbook of Statistical Methods describes a check standard as a tool
+      for controlling the bias and long-term variability of a measurement process against a
+      baseline established from the check standard's own history. Section 7 of the lesson
+      takes that literally: `baseline.check_level` is the kick-off median of the instrument
+      self-test readings, and the `rebaseline` fix re-zeros each channel against it. The
+      lesson's claim that a sensor drift cannot be told from a machine drift by the feature
+      distribution alone, and needs an independent reference, rests on this idea and is
+      stated as an argument in section 5 rather than attributed to the source.
+    where: "lesson.py section 5 (why the check reading is in the signature), section 7 (adjust_feature, the rebaseline branch)"
+    source_url: https://www.itl.nist.gov/div898/handbook/mpc/section1/mpc12.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 2.1.2 What is a check standard?"
+    quote: >-
+      It is a device for controlling the bias and long-term variability of the process once a
+      baseline for these quantities has been established from historical data on the check
+      standard.
+    quote_context: >-
+      Opening paragraph, under the heading "A check standard is useful for gathering data on
+      the process". The same paragraph adds that check standard methodology is "a tool for
+      collecting data on the measurement process to expose errors that afflict the process
+      over time".
+    accessed: 2026-09-22
+
+  - id: ongoing-monitoring-is-part-of-validation
+    claim: >-
+      The US Federal Reserve and OCC supervisory guidance on model risk management names
+      ongoing monitoring as one of three core elements of model validation, alongside the
+      evaluation of conceptual soundness and outcomes analysis, and states that its purpose
+      includes deciding whether changed conditions require the model to be adjusted, rebuilt
+      or replaced. The lesson's framing — that the monitoring loop is part of the model's
+      deliverable and not an optional extra, and that the decision it feeds is "adjust,
+      rebuild or replace" rather than "alarm" — is this idea applied to a plant rather than
+      a bank. The lesson does not claim that this guidance applies to industrial condition
+      monitoring; it is cited as the place the argument is made explicitly.
+    where: "lesson.py section 8 (the audit that closes the loop), section 12 (closing the loop)"
+    source_url: https://www.federalreserve.gov/boarddocs/srletters/2011/sr1107a1.pdf
+    source_title: "Supervisory Guidance on Model Risk Management, attachment to SR letter 11-7, Board of Governors of the Federal Reserve System and Office of the Comptroller of the Currency, 4 April 2011, section V.2 Ongoing Monitoring"
+    quote: >-
+      Ongoing monitoring is essential to evaluate whether changes in products, exposures,
+      activities, clients, or market conditions necessitate adjustment, redevelopment, or
+      replacement of the model and to verify that any extension of the model beyond its
+      original scope is valid.
+    quote_context: >-
+      Second paragraph of "2. Ongoing Monitoring" under "Key Elements of Comprehensive
+      Validation", which lists the three core elements as "Evaluation of conceptual
+      soundness, including developmental evidence", "Ongoing monitoring, including process
+      verification and benchmarking" and "Outcomes analysis, including back-testing".
+    accessed: 2026-09-22
+
+  - id: sr-11-7-superseded
+    claim: >-
+      SR letter 11-7 was superseded on 17 April 2026 by SR letter 26-2, Revised Guidance on
+      Model Risk Management. This is recorded because the quotation above is taken from the
+      2011 text and a reader should not be left to assume it is the current supervisory
+      guidance. The lesson quotes the 2011 wording because that is the wording the author
+      verified against the primary document; the 2026 revision was read and its supersession
+      statement verified, but no sentence from it is quoted.
+    where: "claims.yaml only; the lesson does not mention either letter by number"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "Supervisory Letter SR 26-2 on Revised Guidance on Model Risk Management, 17 April 2026"
+    quote: >-
+      supersedes and replaces SR letter 11-7
+    quote_context: >-
+      From the letter's opening paragraph, which states that the attached Revised Guidance on
+      Model Risk Management supersedes and replaces SR letter 11-7 (issued April 4, 2011) and
+      SR letter 21-8 (issued April 9, 2021).
+    accessed: 2026-09-22
+
+  - id: cmapss-optional-extension
+    claim: >-
+      NASA's Prognostics Center of Excellence data repository publishes the Turbofan Engine
+      Degradation Simulation (C-MAPSS) sets as a direct download with no registration form,
+      asks that publications acknowledge the repository and the donors, and states that users
+      employ the data at their own risk. This is recorded because the lesson names those sets
+      as an OPTIONAL, OFF-PATH extension a student can run the same code against afterwards.
+      Nothing the grader touches downloads anything, and the lesson runs with the machine
+      offline. C-MAPSS carries an operating-condition column per row, which is what the
+      regime-conditional half of this lesson needs from a real corpus.
+    where: "meta.yaml datasets note; not on any required path in lesson.py"
+    source_url: https://www.nasa.gov/intelligent-systems-division/discovery-and-systems-health/pcoe/pcoe-data-set-repository/
+    source_title: "NASA Prognostics Center of Excellence Data Set Repository, entry 6, Turbofan Engine Degradation Simulation"
+    quote: >-
+      Users employ the data at their own risk. Neither NASA nor the donators of the data sets
+      assume any liability for the use of the data, or any system developed using the data.
+    quote_context: >-
+      Repository-wide terms, immediately above the data set list. The same paragraph asks
+      that "Publications making use of databases obtained from this repository ... acknowledge
+      both the assistance received by using this repository and the donators of the data."
+      Entry 6 links directly to
+      https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip
+    accessed: 2026-09-22
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. NO PSI RULE OF THUMB IS QUOTED. The widely repeated "0.1 means a small shift, 0.2 means
+#    a large one" could not be traced to a primary source the author was willing to cite, and
+#    a lesson whose argument is that a threshold must be derived rather than inherited cannot
+#    open by inheriting one. Section 3 therefore MEASURES the alert level: it splits the
+#    reference window's units in half at random, scores one half against the other on both
+#    the feature and the instrument self-test, and takes the largest value over the draws.
+#    The self-check's second question is about exactly this, and is phrased so that it does
+#    not have to name a number either.
+#
+# 2. THE PLANT IS SYNTHETIC AND SAYS SO IN ITS FIRST SCREEN. `generate_fleet` is in the
+#    notebook, is seeded, and is read by the student before it is run. meta.yaml declares it
+#    under `datasets:` with kind `synthetic` and `downloads: false`. Nothing in the lesson
+#    claims that this fleet's base rate, duty mix, calibration-error size, P-F intervals,
+#    instrument self-test noise or audit booking rate describes any real population of
+#    machines, any real transmitter or any real maintenance department. The reason the data
+#    is synthetic is specific to this module: it grades a DIAGNOSIS, and to mark a diagnosis
+#    right or wrong you have to know which drift was injected.
+#
+# 3. THE PRICES ARE A SCENARIO. The kick-off numbers are a whiteboard guess and the lesson
+#    says so; the "true" invoice levels the audit recovers are generator parameters, not a
+#    survey of maintenance costs. The argument the lesson makes — that the threshold is a
+#    function of three prices and moves when they are measured — does not depend on their
+#    level, and the notebook prints the ratio rather than defending the absolute numbers.
+#
+# 4. NO CLAIM IS MADE ABOUT HOW OFTEN REAL TRANSMITTERS DRIFT, HOW OFTEN A DUTY POINT MOVES,
+#    OR WHICH OF THE THREE DRIFTS IS COMMONEST IN INDUSTRY. The author could not verify a
+#    primary source that quantifies any of the three, and the lesson's claim is about how to
+#    TELL them apart, which does not need their frequencies. Where the notebook says a
+#    no-fault-found call-out is rarely written up, it is describing its own generator's
+#    booking rate, which is printed, and not reporting a fact about maintenance departments.

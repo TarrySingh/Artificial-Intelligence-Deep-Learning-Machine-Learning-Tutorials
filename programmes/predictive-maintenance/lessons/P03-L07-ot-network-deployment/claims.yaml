@@ -1,0 +1,134 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run —
+# the arena high-water mark, the hours of outage the buffer holds, both gaps between the two
+# inference paths and the ratio between them, the effective threshold, the counts of changed
+# alarm decisions, every store-and-forward total and both population stability indices — and
+# are therefore not claims; they do not appear here.
+#
+# Three claims, two of them about a protocol and one about a network appliance. Everything
+# else in this lesson is either arithmetic the student measures or a scenario the lesson
+# stipulates out loud; the stipulations are listed at the foot of this file.
+claims:
+  - id: modbus-rtu-frame-and-crc
+    claim: >-
+      The frame the student's decoder parses is a Modbus RTU frame and not an invention of
+      this lesson: a one-byte unit address, a one-byte function code, up to 252 bytes of
+      data and a two-byte CRC, with a maximum frame size of 256 bytes. The CRC register is
+      pre-loaded to all ones and the polynomial applied on a set least significant bit is
+      0xA001; the field is appended to the message last, low-order byte first; and the
+      receiver recalculates it and treats a mismatch as an error. The lesson uses this for
+      the frame layout in lesson.c, for the crc16 helper it gives the student, for the
+      order in which frame_decode reads the two checksum bytes, and for the fourteen
+      deliberately corrupted frames the decoder has to reject.
+    where: "lesson.c (the frame layout comment above EXERCISE 2, and crc16); lesson.py section 2 (the capture) and section 4 (exercise 2)"
+    source_url: https://www.modbus.org/file/secure/modbusoverserial.pdf
+    source_title: "MODBUS over serial line specification and implementation guide V1.02, Modbus Organization, 20 December 2006"
+    quote: >-
+      The CRC value is calculated by the sending device, which appends the CRC to the
+      message. The receiving device recalculates a CRC during receipt of the message, and
+      compares the calculated value to the actual value it received in the CRC field. If the
+      two values are not equal, an error results.
+    quote_context: >-
+      Section 2.5.1.2, CRC Checking, page 13. The same section states that the CRC field
+      "is appended to the message as the last field in the message. When this is done, the
+      low-order byte of the field is appended first, followed by the high-order byte", that
+      the calculation "is started by first pre-loading a 16-bit register to all 1's", and, in
+      the step list on page 39, "Exclusive OR the CRC register with the polynomial value
+      0xA001 (1010 0000 0000 0001)". Figure 12 on page 13 gives the RTU message frame as
+      SlaveAddress (1 byte), FunctionCode (1 byte), Data (0 up to 252 bytes) and CRC
+      (2 bytes), followed by "The maximum size of a MODBUS RTU frame is 256 bytes."
+      TRANSCRIPTION NOTE, so a re-checker is not surprised: this PDF's embedded font maps the
+      hyphen in "low-order", "high-order", "16-bit" and "error-checking" to byte 0x96, and the
+      apostrophe in "1's" to 0x92, so a raw text extraction shows those characters as an
+      en-dash and a right single quote. They are transcribed above as an ordinary hyphen and
+      apostrophe; no other character was changed.
+    accessed: 2026-09-22
+
+  - id: modbus-registers-are-big-endian
+    claim: >-
+      Function code 0x04 is Read Input Registers, its response carries a byte count of two
+      times the number of registers, and each register is sent high-order byte first. This is
+      the single fact exercise 2 is built around: a decoder that assembles the two payload
+      bytes the other way round returns 0x3412 where the register holds 0x1234, and every
+      health index downstream of it is wrong without any error being raised.
+    where: "lesson.c (EXERCISE 2 requirements and the FUNC_READ_INPUT constant); lesson.py section 4; tests/test_lesson.py::test_frame_decode_reads_the_register_map"
+    source_url: https://www.modbus.org/file/secure/modbusprotocolspecification.pdf
+    source_title: "MODBUS Application Protocol Specification V1.1b3, Modbus Organization, 26 April 2012"
+    quote: >-
+      The register data in the response message are packed as two bytes per register, with
+      the binary contents right justified within each byte. For each register, the first byte
+      contains the high order bits and the second contains the low order bits.
+    quote_context: >-
+      Section 6.4, "04 (0x04) Read Input Registers", page 16. The same section opens "This
+      function code is used to read from 1 to 125 contiguous input registers in a remote
+      device" — the lesson's frames carry 32, inside that range — and its response table
+      gives Function code 1 Byte 0x04, Byte count 1 Byte 2 x N, Input Registers N x 2 Bytes,
+      where N is the quantity of input registers.
+    accessed: 2026-09-22
+
+  - id: data-diode-is-one-way-in-hardware
+    claim: >-
+      A one-way data diode is not a firewall rule that could be relaxed: it allows data to
+      travel in one direction only, and it cannot be configured otherwise because the
+      hardware is incapable of it. A common placement is on the boundary of the operational
+      network, letting traffic leave and not enter. That is why section 10 of this lesson
+      treats the absence of returning labels as a permanent property of the deployment rather
+      than a backlog item, and why module 8's drift detection has to be unsupervised.
+    where: "lesson.py section 1 (the constraint), section 10 (exercise 7) and section 11 (the priced comparison)"
+    source_url: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-82r3.pdf
+    source_title: "NIST SP 800-82r3, Guide to Operational Technology (OT) Security, National Institute of Standards and Technology, September 2023"
+    quote: >-
+      Unidirectional gateways, also referred to as data diodes, are designed to only allow
+      data transmission in a single direction. Unlike a firewall, data diodes cannot be
+      programmed to allow data to flow in both directions because the hardware is incapable.
+    quote_context: >-
+      Appendix E.1.2, Unidirectional Gateways, page 207. The paragraph continues: "A common
+      use case is placing a data diode at the boundary between the operational network and
+      the enterprise network. The data diode would allow network traffic to leave the
+      operational network but not enter". The glossary entry the lesson quotes in section 10
+      reads: "data diode A network appliance or device that allows data to travel only in one
+      direction. Also referred to as a unidirectional gateway, deterministic one-way boundary
+      device, or unidirectional network."
+    accessed: 2026-09-22
+
+# --- deliberate non-claims -------------------------------------------------------------
+#
+# 1. THE GATEWAY AND THE PLANT. The 40 KiB arena, the 3072-record buffer, the 80 machines,
+#    the one-week capture, the 36-hour and 100-hour outages, the four hours of lost
+#    acknowledgements and the fourteen corrupted frames are a STIPULATED scenario, generated
+#    at run time from seed 20260922 and declared as such in meta.yaml and in the notebook's
+#    own DATA_NOTE. No real device, plant or capture is described anywhere, and the lesson
+#    makes no claim about what is typical. What it does claim is what it measures on its own
+#    scenario, and every one of those numbers is printed by code the student runs.
+#
+# 2. THE Q8.8 REGISTER MAP. That a health index is published as a 16-bit fixed-point register
+#    is a design decision this lesson makes, in order to have something whose resolution can
+#    be measured against a float64 reference. Modbus registers are 16 bits (claim 2), but the
+#    interpretation of those 16 bits is a per-device matter and the lesson asserts nothing
+#    about what any real device does. The whole point of sections 7 and 8 is that the number
+#    the plant ends up comparing against depends on a choice somebody made, so presenting
+#    that choice as an industry fact would contradict the lesson.
+#
+# 3. THE THRESHOLD OF 1.4732. It arrives from the programme's own module 6 as a scenario
+#    input, exactly as module 1's three prices are scenario inputs there. It is not a
+#    recommended threshold for anything, and the lesson's argument is unchanged by its value:
+#    what matters is whether it lands on the wire's grid, which is printed.
+#
+# 4. THE POPULATION STABILITY INDEX. Exercise 7 states the recipe in the stub and grades
+#    against that statement, so the definition is the lesson's own and needs no source. The
+#    lesson deliberately quotes NO threshold for it — no "above 0.25 means a material shift"
+#    — because the commonly repeated cut-offs are folklore this author could not trace to a
+#    primary source. Section 11 therefore reports PSI against a quiet window and against a
+#    stipulated recalibration and lets the reader see the ratio, rather than asserting a line.
+#
+# 5. THE ARGUMENT THAT DEPLOYMENT KILLS MODELS. MODULES.md opens module 7 with the claim that
+#    models die in industry for reasons other than accuracy. It is a good argument and this
+#    author has no source that would make it a measured fact, so the notebook does not repeat
+#    it as one: section 1 says only that a model which will not fit the network does not get
+#    deployed, which is a statement about this lesson's own constraints and not a statistic
+#    about industry.
+#
+# 6. THE 1% RECALIBRATION in section 11 is stipulated — the raw counts are rescaled by
+#    101/100 — and the notebook says so in the sentence that introduces it. It is chosen
+#    because it is small enough to be invisible in a health index and large enough for PSI to
+#    see, not because it is a typical calibration error.

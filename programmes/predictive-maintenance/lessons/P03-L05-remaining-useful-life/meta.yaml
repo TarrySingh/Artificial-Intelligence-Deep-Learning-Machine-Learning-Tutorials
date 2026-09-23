@@ -1,0 +1,261 @@
+id: P03-L05-remaining-useful-life
+title: Fit an exponential degradation model to run-to-failure trajectories, produce a remaining-useful-life distribution whose interval narrows towards failure, and measure the RMSE benchmark preferring a model that arrives late
+track: P03
+programme: predictive-maintenance
+flagship:               # none: this module feeds the programme's capstone, not a flagship
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P03-L01-alarm-economics
+  - P03-L04-labelling-run-to-failure
+objectives:
+  - "Implement log_signal and fit_posterior so an exponential degradation model becomes a Gaussian posterior over an intercept and a slope, and measure that posterior tightening as readings arrive"
+  - "Implement rul_samples and rul_track to turn that posterior into a predictive RUL distribution re-computed at every checkpoint, and measure how far its interval narrows between a third of life and the last fifth"
+  - "Implement rul_rmse, phm_score and cone_breakdown, and explain why two of those three cannot tell an early error from a late one"
+  - "Implement warning_lead and measure, in units rather than in hours, how often each model gives less warning than the maintenance contract requires"
+  - "Implement best_quantile and measure which quantile of one predictive distribution each metric selects when all four are run on the same rows"
+  - "Demonstrate from the notebook's own numbers that a later model can score a lower RMSE than a cautious one while being late an order of magnitude more often"
+datasets:
+  - name: synthetic-run-to-failure-fleet
+    kind: synthetic
+    description: "180 units x 1100 hourly health-index readings, exponential degradation with lognormal observation noise, split into a 100-unit archive and an 80-unit fleet in service, each unit ending in a failure, a suspension or right-censoring, generated in lesson.py by generate_fleet(seed=20260922)"
+    generator: "lesson.py :: generate_fleet"
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    downloads: false
+points: 122        # = sum of RUBRIC points in tests/test_lesson.py
+#
+# WHAT MODULES.md ASKED FOR, AND WHAT THIS LESSON DOES DIFFERENTLY
+#
+# MODULES.md module 5 specifies: fit a degradation model to run-to-failure trajectories and
+# produce an RUL distribution rather than a point; an exponential degradation fit with
+# parameter uncertainty, updated as evidence arrives, giving a predictive interval that
+# narrows towards failure; evaluation with prognostic metrics that respect asymmetry; the
+# alpha-lambda accuracy cone plotted; and a demonstration that the common RMSE-on-RUL
+# benchmark rewards a model that is dangerously late. All of that is here, in that order.
+#
+# ONE DELIBERATE DEVIATION, and it is a data deviation, not a pedagogy one. MODULES.md names
+# NASA's Prognostics Data Repository Turbofan Engine Degradation Simulation (C-MAPSS) sets as
+# this module's corpus. That archive is reached through a repository landing page, so it
+# cannot sit on a path the grader needs under gate 11, and gate 9 requires the lesson to run
+# with the machine offline. The fleet is therefore generated in the notebook from a fixed
+# seed, exactly as modules 1, 3 and 4 generate theirs, and C-MAPSS is cited in claims.yaml
+# (id cmapss-turbofan-corpus) with its real terms line, its requested citation and the direct
+# download URL, as an optional off-path extension a student can point the same nine functions
+# at afterwards. Section 0 of the notebook says this to the student in the same words.
+#
+# A SECOND, SMALLER DEVIATION, stated because a reader of the C-MAPSS literature will notice
+# it: the 2008 challenge SUMMED its asymmetric score over units. `phm_score` returns the
+# per-row scores and the given `mean_phm_score` averages them, so that tables computed over
+# different numbers of rows stay comparable — the sweep in section 11 scores 698 rows under
+# nineteen models and a sum would make the number depend on the evaluation window's size
+# rather than on the model. Section 8 says so in the prose.
+#
+# Design notes for a reviewer:
+#
+# * Every number in the prose is printed by the notebook. On this fleet: 180 units, of which
+#   56 in-service units reach a failure inside the window and 698 of their 1,490 predictions
+#   fall within the 300-hour evaluation horizon. The 90% predictive interval goes from 208 h
+#   wide at a fifth-to-two-fifths of life to 29 h wide in the last fifth, a factor of 7.2,
+#   and its measured coverage is 90.5% against a nominal 90%. RMSE picks the 45% quantile,
+#   alpha-lambda accuracy picks 55%, and the asymmetric C-MAPSS score picks 30%.
+# * THE DEMONSTRATION the module exists for is computed, not staged. The notebook searches
+#   the nineteen swept quantiles for the LATEST one whose RMSE is still no worse than the
+#   most cautious model's, and finds the 85% quantile at 21.11 h against the 5% quantile's
+#   24.05 h. Ranked on RMSE the late model wins. It is late beyond the accuracy cone on 20.8%
+#   of its predictions against 0.1% — 145x — its asymmetric score is 596x worse, and it gives
+#   less than the contracted 48 h of warning on 18 of 56 units against 0 of 56. Nothing about
+#   that pairing is hand-picked: `max(i for i in range(...) if rmse[i] <= rmse[0])` is the
+#   whole selection rule, and it works because the RMSE-versus-quantile curve is a bowl.
+# * The lesson deliberately shows TWO symmetric metrics failing, not one. RMSE is the obvious
+#   villain; alpha-lambda accuracy is the surprise, because it is the prognostics
+#   literature's own accuracy metric and its cone is symmetric, so it picks an even later
+#   quantile than RMSE does. `cone_breakdown` therefore returns all three rates rather than
+#   just the accuracy, and the rubric grades the direction of the two outer ones.
+# * `fit_posterior` is graded for behaviour, not for one algebraic route: a student who
+#   assembles the normal equations differently, or who uses np.linalg.solve instead of two
+#   inversions, scores full marks. `rul_samples` likewise accepts rng.multivariate_normal or
+#   a Cholesky factor — the cases test the plug-in limit, the seeding, the non-degrading
+#   branch and the clipping, never one call.
+# * Every demonstration sits inside `_try`, and `prior()`, `fleet_predictions()` and
+#   `metric_sweep()` cache lazily rather than running at import. A completely unfilled
+#   lesson.py imports cleanly, prints a hint per exercise, and scores 0/122 with a TODO row
+#   for every one of the 31 rubric entries.
+# * The prior is fitted to every archived unit including the 22 suspensions and 9 censored
+#   ones, which is module 4's argument one layer up: censoring destroys the failure time and
+#   leaves the degradation rate intact. Evaluation uses only the units that failed, and the
+#   notebook prints both counts so the asymmetry is visible rather than asserted.
+#
+# MUTATION TESTING OF THE RUBRIC, 2026-09-23. Thirty-eight plausible wrong implementations
+# were built from the reference in a throwaway temporary directory, one break each, and
+# graded. Thirty-seven were caught, and every one of those kept partial credit rather than
+# collapsing to zero — the scores span 78% to 98%:
+#
+#   cone_breakdown returning counts rather than rates 78% · phm_score with one time constant
+#   on both branches 84% · phm_score with the two constants swapped 84% · fit_posterior with
+#   a [t, 1] design matrix 86% · rul_samples forgetting t_now 88% · best_quantile returning
+#   the column index 89% · rul_track returning the transpose 90% · rul_samples ignoring the
+#   seed 91% · phm_score linear-asymmetric rather than exponential 92% · cone_breakdown with
+#   early and late swapped 92% · log_signal keeping the healthy baseline 93% · fit_posterior
+#   ignoring the prior 93% · rul_track fitting the whole row 93% · rul_track never advancing
+#   t_now 93% · rul_samples with no spread 93% · rul_rmse dividing by n-1 93% · rul_rmse as a
+#   mean absolute error 93% · rul_rmse taking the root before the mean 93% · warning_lead
+#   taking the last crossing 93% · best_quantile always minimising 93% · fit_posterior
+#   dropping noise_sd 94% · rul_track stopping one sample short 95% · rul_samples relying on
+#   the clip instead of the non-degrading branch 95% · log_signal flooring after the log 96%
+#   · log_signal with no floor 96% · cone_breakdown excluding the bounds 97% · cone_breakdown
+#   with a fixed tolerance in hours 97% · cone_breakdown reading the module ALPHA 97% ·
+#   warning_lead returning 0.0 for no warning 97% · warning_lead clamping a short lead to -1
+#   97% · best_quantile breaking ties towards the later quantile 97% · best_quantile scoring
+#   rows instead of columns 97% · rul_samples never clipping at zero 98% · fit_posterior
+#   skipping validation 98% · warning_lead excluding the action level 98% · best_quantile
+#   skipping validation 98%.
+#
+# THREE SURVIVED the first pass at 122/122. Two were defects in this rubric and are fixed:
+#
+#   1. rul_track's reading window. `np.arange(0, t_k, sample_every)` — one sample short of
+#      the checkpoint — scored 122/122, because the only case that could separate it merely
+#      asserted the answer was finite. With sample_every equal to the checkpoint hour the
+#      inclusive rule reads hours 0 and 200 and fits the test ramp exactly (a median of 200
+#      hours left) while the exclusive rule reads hour 0 alone and leaves the slope at a
+#      vague prior. The case now grades that median; the mutant scores 116/122.
+#   2. best_quantile's axis. Every prediction matrix in the rubric had identical rows, so
+#      judging a column by one of its rows was invisible: 122/122. A four-row matrix was
+#      added whose first column is perfect on its first row and terrible on the other three
+#      and whose second column is the reverse; the mutant now scores 118/122.
+#   Both fixes were mirrored into the notebook's own _check_ helpers, so a student running
+#   the cell gets the same feedback the grader gives.
+#
+# THE THIRD SURVIVOR IS EQUIVALENT, not a defect: rul_samples testing `slope < 0` where the
+# docstring says `slope <= 0`. Under any posterior fit_posterior can return — prior precision
+# plus a positive semi-definite data precision is positive definite — the probability of
+# drawing a slope of exactly 0.0 is zero, and where the slope is exactly zero the division
+# gives an infinity that the clip maps to the same RUL_CAP the branch would have produced.
+# Measured rather than argued: over the 2,235,000 posterior draws this lesson actually makes
+# (56 units, every checkpoint, 1,500 draws each) there were ZERO slopes of exactly 0.0 and
+# ZERO draws on which the two implementations disagreed, largest difference 0.0. The
+# docstring keeps `<= 0` because it is the correct statement of the rule; the rubric does not
+# pretend to grade a distinction that no input can expose.
+#
+# FOUR DIFFERENTLY-SHAPED RIGHT ANSWERS were run as controls and all score 122/122:
+# fit_posterior assembled with np.linalg.solve and np.vstack instead of two np.linalg.inv
+# calls and column_stack; rul_samples drawing through a Cholesky factor and standard_normal
+# instead of rng.multivariate_normal; cone_breakdown counting the inside rate directly and
+# deriving the late rate; and best_quantile written as an explicit loop instead of np.argmin.
+# The rubric grades the behaviour the docstrings promise, not one way of writing it.
+#
+# GATE 3 RE-MEASURED BY THE REVIEWER: the longest run of consecutive prose before the next
+# runnable cell is 40 raw / 33 non-blank lines — the SELF-CHECK, which is two markdown cells
+# back to back with no runnable cell between them, not the 36-line title block the author's
+# note named. That is at the ~40 the gate allows, not inside it with room to spare, so the
+# self-check is where this lesson will break gate 3 the next time a line is added to it. Nine stubs, each with a docstring, a worked example, `# YOUR CODE HERE` and
+# `raise NotImplementedError`; no blank cells; 47 notebook cells after jupytext. No check
+# message bottoms out at "assertion failed". No path under solutions/ appears anywhere in
+# lesson.py.
+#
+#
+# INDEPENDENT REVIEW, 2026-09-23. Everything above was re-measured rather than trusted. The
+# four gates were re-run from the repo root; 26 fresh mutants and 7 purpose-built controls
+# were written against the reference and graded, 33 variants in all. 18 of the 26 mutants
+# were caught, spanning 83% to 98%, every one keeping partial credit rather than collapsing
+# to zero. The 8 survivors are adjudicated below: 6 are proved equivalent and 2 are
+# conforming variants. Counting those 2 with the 7 controls, 9 differently-shaped RIGHT
+# answers all score 122/122, so the rubric accepts more than one implementation.
+#
+# TWO RUBRIC DEFECTS the author's own 38-mutant pass did not cover were found and fixed:
+#
+#   1. `fit_posterior` dividing by `noise_sd` where the conjugate update needs
+#      `noise_sd ** 2`. It scored 122/122. Section 4's prose states the formula with
+#      `/ s**2` and calls s^2 the noise VARIANCE, so this is simply wrong, and it is not
+#      cosmetic: on this fleet noise_sd is 0.219, so the data is weighed against the prior
+#      4.56x too weakly, and one unit's 90% predictive interval at hour 300 goes from 40.8 h
+#      wide to 86.0 h — the interval narrowing that objective 2 is about. Nothing caught it
+#      because the vague-prior case recovers least squares whatever the denominator is, and
+#      the two tightening comparisons move the same way under both. A case with an exactly
+#      computable answer was added to `test_fit_posterior_tightens_and_validates`: one
+#      reading of 5.0 at t=0 against a unit prior with noise_sd 0.5 gives an intercept of
+#      exactly 4.0 and cov[0, 0] of exactly 0.2, against 3.333 and 0.333 for the mutant,
+#      which now scores 119/122.
+#   2. `rul_samples` computing `np.where(slope <= 0, RUL_CAP, crossing) - t_now`, shifting
+#      the cap as well as the crossing time. It scored 122/122 because every rubric case
+#      that reaches the non-degrading branch sits at `t_now = 0.0`, where RUL_CAP and
+#      RUL_CAP - t_now agree. The fleet re-predicts from hour 96 to hour 1100, so on real
+#      data the mutant reports 1100 where the docstring promises 1500. A case at
+#      `t_now = 400` was added to `test_rul_samples_caps_non_degrading_draws`; the mutant
+#      now scores 118/122. Both fixes were mirrored into the notebook's own `_check_`
+#      helpers, so a student gets the same feedback the grader gives.
+#
+# ONE GATE 12 VIOLATION was found and fixed. Self-check question 2 asserted that "section 11
+# measured exactly this pair on this fleet" for an RMSE pair of 22.8 h and 23.0 h. Section 11
+# computes 21.11 h and 24.05 h. The typed numbers were hand-written and the claim about the
+# lesson's own output was false; the question now describes the SHAPE of the pair and points
+# at the three numbers section 11 actually prints.
+#
+# SIX SURVIVORS WERE PROVED EQUIVALENT, not patched around. Running the whole lesson under
+# each and diffing the complete stdout against the reference gives ZERO differing lines for
+# all six: no `np.isfinite` guard on noise_sd (all 1,490 fit_posterior calls on any path pass
+# a finite 0.219428); `best_quantile` without the ndim check (every call site passes the 2-D
+# prediction matrix); `rul_rmse` without `.ravel()` (both arguments are 1-D at all 19 call
+# sites); `warning_lead` returning int -1 (numpy stores the leads array as float64 either
+# way); and two phm_score rewrites — `d <= 0` on the early branch and the `-1` factored out
+# of the `np.where` — which a 2,000,007-point scan spanning -500..500, plus both signed zeros
+# and the subnormals, shows agree with the reference to a maximum absolute difference of 0.0
+# at every point. At d = 0 both branches evaluate to exactly 0.0, so no input can separate
+# them.
+#
+# TWO MORE SURVIVORS ARE CONFORMING VARIANTS rather than equivalents, and they are recorded
+# as controls: seeding each checkpoint with `seed * (k + 1)` instead of `seed + k`, and
+# taking `np.quantile(..., method="lower")`. Both change the numbers in the second decimal
+# and neither touches the lesson's argument — the swept late model still beats the cautious
+# one on RMSE (21.01 vs 24.13, and 21.10 vs 24.11, against the reference's 21.11 vs 24.05)
+# while being late 147x and 145x more often. That the demonstration survives a different RNG
+# stream and a different quantile estimator is evidence it is structural, not an artefact of
+# one seed.
+#
+# SOURCES RE-VERIFIED 2026-09-23, all six claims, by re-fetching each URL. The NASA PCOE
+# repository page still carries the C-MAPSS description, the liability sentence, the direct
+# download URL and the requested citation exactly as quoted. Both PDFs still return HTTP 200
+# and all five quotes appear verbatim; the misses reported by a naive text search are the
+# two-column layout interleaving figure-axis labels into the text stream, not drift. The
+# author's NOT-CLAIMED note about equation (9) is correct and was confirmed on the page: the
+# equation is typeset with a1 against the d < 0 branch and a2 against d >= 0, and the figure
+# legend gives a1 = 10 and a2 = 13, which would make the EARLY branch the harsher one and
+# contradicts the same page's own prose. Declining to quote it as authority was the right
+# call.
+#
+# WHAT THE REVIEW CHECKED AND FOUND CLEAN: nine stubs, each with a docstring, a worked
+# example, `# YOUR CODE HERE` and `raise NotImplementedError`, and no bare `pass`; no check
+# message that bottoms out at "assertion failed"; no objective containing "understand"; all
+# three declared prerequisites resolve to directories that exist; self-check answers are
+# c, a, b, c, b, not all one letter; no path under solutions/ anywhere in lesson.py; 47
+# cells after jupytext; points: 122 equals the sum of the RUBRIC.
+# OPEN FOR THE OWNER — this lesson changed nothing outside its own directory:
+#   * MODULES.md's status table for module 5 still reads "specified" with an em dash for the
+#     measured cost and the rubric size. The row should become BUILT with
+#     the measured cost and rubric size this directory's own tools report — `1.0 s` and the
+#     peak MiB in the write-back below, with `122 pts / 31 cases` — rather than typed. MODULES.md was not edited: several agents run at once and the table is central.
+#   * MODULES.md's module 5 "Data" paragraph promises NASA's C-MAPSS sets on the required
+#     path. The deviation recorded at the top of this file means that paragraph is now wrong
+#     about this lesson, and should say that the fleet is generated in-lesson and C-MAPSS is
+#     an optional off-path extension, as modules 1, 3 and 4 already do.
+#   * MODULES.md's module 6 says its data is "carried forward from module 5". It is:
+#     `generate_fleet` and `fleet_prior` in this lesson.py are written to be lifted unchanged,
+#     and the run table they return is module 4's `Run(unit, end_hour, kind)`.
+#   * Gate 13: this directory has no committed `lesson.ipynb`. That is not specific to this
+#     lesson — every `executed` lesson in this programme (L05-L08) lacks one and every
+#     `reviewed` one (L02-L04) has it — so generating it is the owner's executed->reviewed
+#     step, with `tools/notebooks.py`, which the reviewer must not run against tools/.
+#   * Gate 14: this lesson has no progress board and no `<details>` hint blocks. Neither
+#     reviewed exemplar (P03-L04, P01-L04) has them either, so gate 14 is unapplied across
+#     the repository's Python lessons rather than missed here. It is an owner decision.
+#   * INDEPENDENTLY REVIEWED 2026-09-23. Two rubric defects were found and fixed in this
+#     directory (see reviewed_by). The author's own mutation report stands except that it
+#     did not cover either of them.
+#
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23, reviewer re-measured everything rather than trusting the author - 4 gates re-run green from the repo root (execute PASS, 1.0 s and a peak of 91 MiB against a 90 s / 8 GiB cpu8 budget, solution 122/122, stub file 0/122 with a TODO row for all 31 rubric entries); 26 fresh mutants and 7 controls graded, 18 mutants caught at 83-98% with partial credit intact and all 8 survivors adjudicated; TWO RUBRIC DEFECTS FOUND AND FIXED that the author's 38-mutant pass missed - fit_posterior dividing by noise_sd instead of noise_sd**2 scored 122/122 and more than doubles a real unit's 90% interval (40.8 h to 86.0 h), now 119/122; rul_samples subtracting t_now from RUL_CAP scored 122/122 because every non-degrading rubric case sat at t_now=0, now 118/122; both fixes mirrored into the notebook _check_ helpers; ONE GATE 12 VIOLATION fixed - self-check Q2 claimed section 11 measured an RMSE pair of 22.8/23.0 h when it computes 21.11/24.05 h; 6 survivors proved equivalent by byte-identical whole-lesson output plus a 2,000,007-point exhaustive scan of phm_score, 2 more are conforming variants that leave the argument intact; 9 differently-shaped right answers all score 122/122; all six claims.yaml quotes re-fetched and re-verified verbatim on 2026-09-23"
+
+measured_seconds: 0.9
+measured_peak_mib: 89

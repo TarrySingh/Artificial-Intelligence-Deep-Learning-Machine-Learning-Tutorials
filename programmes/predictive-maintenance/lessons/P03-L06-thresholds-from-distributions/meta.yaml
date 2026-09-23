@@ -1,0 +1,254 @@
+id: P03-L06-thresholds-from-distributions
+title: Price an intervention time against a predictive RUL distribution, show it is neither the mean nor a fixed percentile, and measure what a workshop that takes one machine per slot costs on top
+track: P03
+programme: predictive-maintenance
+flagship:               # none: this module feeds the programme's capstone, not a flagship
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P03-L01-alarm-economics
+objectives:
+  - "Implement expected_cost_at so a plan prices a failure at or before the booked hour separately from the remaining useful life thrown away when the intervention gets there first"
+  - "Implement survival_and_hazard, and explain why the optimal intervention time is where the hazard reaches life_per_hour / (unplanned - planned), by checking that route against an independent cost sweep"
+  - "Implement best_intervention_time and measure, on the notebook's own fleet, how much more it costs to plan at the mean RUL or at a fixed percentile"
+  - "Measure how the optimal intervention time moves when the width of an RUL distribution changes and its centre does not, and price a confident wrong forecast against an uncertain roughly-right one on the same machine"
+  - "Implement greedy_schedule and best_schedule under a finite workshop capacity, and report the calendar price, the capacity price and the planner's error as three separate measured numbers"
+datasets:
+  - name: synthetic-rul-forecast-fleet
+    kind: synthetic
+    description: "6 machines, each with a 900-bin hourly predictive RUL distribution and a true failure hour drawn from its own forecast, plus a 20-slot weekday maintenance calendar, generated in lesson.py by generate_fleet(seed=20260922) on top of make_forecast"
+    generator: "lesson.py :: make_forecast, generate_fleet, maintenance_calendar"
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    downloads: false
+  - name: nasa-pcoe-turbofan-c-mapss
+    kind: external-optional
+    description: "NAMED IN THE LESSON AS AN OPTIONAL OFF-PATH EXTENSION AND NOTHING MORE. No cell fetches it, no check reads it, no rubric case touches it, and every gate runs with the machine offline. A student who wants the same code pointed at a real corpus after module 5 ships can fit the degradation model to a turbofan trajectory and hand make_forecast's output shape to every function below it."
+    generator: ""
+    licence: "NASA PCoE repository disclaimer: 'Users employ the data at their own risk. Neither NASA nor the donators of the data sets assume any liability for the use of the data, or any system developed using the data.' Verified verbatim 2026-09-22; recorded in claims.yaml as nasa-pcoe-optional-corpus."
+    url: "https://phm-datasets.s3.amazonaws.com/NASA/6.+Turbofan+Engine+Degradation+Simulation+Data+Set.zip"
+    downloads: false
+points: 122        # = sum of RUBRIC points in tests/test_lesson.py, 30 cases
+#
+# WHAT MODULES.md ASKED FOR, and what was built.
+#
+# Module 6 of the predictive-maintenance map: "Threshold setting from an RUL distribution."
+# The spec asks for the expected cost of intervening at time t given a predictive RUL
+# distribution and a maintenance calendar with real slots in it; the optimal INTERVENTION TIME
+# rather than the optimal threshold; a demonstration that the answer is not the mean RUL and
+# that it moves with the WIDTH as well as the centre; and then finite workshop capacity, with
+# what it costs against the unconstrained optimum. All of that is here, and all of it is
+# measured by the student's own code rather than asserted in prose:
+#
+#   * expected_cost_at / best_intervention_time are exercises 3 and 4;
+#   * section 6 prints, per machine, t*, the mean RUL, and cost(mean)/cost(t*) — on this fleet
+#     the worst is 3.25x and not one machine is best served at its mean;
+#   * section 7 holds the mean at 300 h and moves only the sd, and t* goes 237, 195, 161, 132,
+#     108 hours for sd 30 to 150; then holds sd at 90 and moves the mean, and t* goes 71, 161,
+#     257. Both tables come out of the student's own best_intervention_time, and the rubric's
+#     test_the_plan_moves_with_the_width grades the direction and the size of the movement;
+#   * section 8 is the spec's "a confident wrong answer and an uncertain right one are priced
+#     differently", made concrete: three forecasts of ONE machine that will stop in 190 h. The
+#     tight-and-wrong one quotes the cheapest plan on the page (22,696) and costs 180,000; the
+#     wide one quotes 46,858 and costs 27,480, 6.6x less;
+#   * sections 9 to 12 are the calendar and the capacity. Weekday 08:00 slots, one machine per
+#     slot, six machines. The notebook separates three numbers that are usually reported as
+#     one: the calendar costs 6,988, the capacity limit costs 30,026 on top, and first come,
+#     first served costs a further 10,036 — the only one of the three that is free to fix.
+#
+# DELIBERATE DIFFERENCES FROM THE SPEC, and why.
+#
+# 1. P03-L05-remaining-useful-life IS NOT IN `prerequisites`. The brief named it as the third
+#    prerequisite; when this lesson was authored no such directory existed, and QUALITY.md
+#    gate 2 requires prerequisites a student can actually have done. REVIEWER CORRECTION,
+#    2026-09-23: it exists now — programmes/predictive-maintenance/lessons/
+#    P03-L05-remaining-useful-life is on disk with `status: draft`, built in parallel with
+#    this module. The list above was left alone deliberately: nothing in this lesson needs
+#    module 5 (it generates its own forecasts), and making a shippable lesson depend on a
+#    draft one would gate this module on another agent's unfinished work. OWNER ACTION, now
+#    unblocked: once module 5 reaches `reviewed`, add `- P03-L05-remaining-useful-life` to
+#    the list above and replace this module's make_forecast with module 5's output port.
+#    Nothing else has to move, because every function below that cell consumes RULForecast
+#    and nothing else. The lesson's own text already tells the student where module 5 fits,
+#    in section 1 and in the header.
+# 2. THE FORECAST FORMAT IS DEFINED HERE, since there was nothing to read it from. It is
+#    `RULForecast(unit, made_at, hours, pmf)`: an integer hour grid of RUL values and a pmf
+#    over it that sums to 1, with the tail beyond the grid folded into the last bin. That is
+#    the minimal shape that supports everything module 6 needs — survival, hazard, quantiles,
+#    expected cost — and it is what module 5's exponential-fit posterior reduces to once the
+#    rate uncertainty has been pushed through the crossing time. If module 5 lands on a
+#    different vocabulary, this file is the one that has to change, and it is one function.
+# 3. MODULE 1's THIRD PRICE IS REPLACED, not carried. Module 1 priced a false alarm as an
+#    event. Against a distribution there is no such event: every intervention is early by some
+#    amount, so the third price is `life_per_hour`, charged on the remaining life you discard.
+#    The setup cell says this in the Prices docstring, because a student who expects module
+#    1's `false_alarm` field and does not find it should be told why in the same screen.
+# 4. THE DEMONSTRATION FORECASTS ARE BUILT FROM MOMENTS, not from a degradation fit. Section
+#    7's experiment needs the mean held EXACTLY fixed while the width moves, which a rate
+#    posterior does not give you: widening the rate uncertainty moves the mean RUL as well.
+#    make_forecast therefore renders a right-skewed (log-normal) predictive from a mean and an
+#    sd. The skew is the part that matters and it is the part a rate posterior produces; the
+#    parameterisation is a convenience and claims.yaml records it as a non-claim.
+#
+# Design notes for a reviewer:
+#
+# * Every number in the prose above and in the notebook is printed by the code the student
+#   runs. Nothing in any markdown cell quotes a figure the notebook does not compute.
+# * The lesson's central claim is checked two ways that can disagree. `best_intervention_time`
+#   sweeps the cost curve; `hazard_crossing` reads the answer off the student's own hazard
+#   curve and the balance ratio. On all six machines they land within one hour of each other,
+#   and both the notebook check and the rubric require agreement within two. A student whose
+#   hazard denominator is `survival[k]` instead of `survival[k] + pmf[k]`, or whose cost
+#   function counts a failure at exactly t as a catch, sees the two numbers separate on
+#   screen. That is the module's "make a wrong answer visibly wrong" mechanism.
+# * `realised_cost` exists to catch a bug no single-function test can see: two cost functions
+#   using different conventions about failing at exactly the booked hour. The rubric averages
+#   the per-outcome cost over a pmf and demands the expected cost back to 1e-9.
+# * greedy_schedule is graded as FIRST COME, FIRST SERVED in row order, not as any greedy. A
+#   regret-ordered greedy is a better heuristic and would shrink the gap the module measures,
+#   so the rubric has a matrix on which row order and urgency order disagree and the docstring
+#   states the rule. This is a lesson about measuring a planner's loss, not about writing the
+#   best heuristic.
+# * best_schedule's reference is a depth-first search over machines with a capacity counter,
+#   pruning on partial cost. The docstring states the BEHAVIOUR — feasible, minimal,
+#   lexicographic on a tie — and says the entries are non-negative so the prune is legal;
+#   itertools.product with a filter scores the same. On the lesson's 6x8 instance the search
+#   finishes in about 5 ms.
+# * The instance is sized so every command finishes fast: 6 machines, 900-bin forecasts, a
+#   601-point sweep. The whole notebook runs in well under a second.
+# * Every demonstration that depends on student code sits inside `_try`, so a completely
+#   unfilled lesson.py imports cleanly, prints a hint per exercise, and scores 0/122 with a
+#   TODO row for every one of the 30 rubric entries rather than crashing at import.
+# * Gate 3 measured, not assumed: the longest run of consecutive prose before the next
+#   runnable cell is 37 raw / 30 non-blank lines (the self-check quiz), inside the ~40 the
+#   gate allows. The self-check's answers are c, a, b, a, c — deliberately not one letter.
+# * Gate 11: the required path is entirely synthetic and generated in the notebook. The NASA
+#   PCoE turbofan corpus is NAMED once, in section 1, as an optional extension for afterwards,
+#   with its disclaimer and direct URL in claims.yaml. No cell fetches it and no rubric case
+#   reads it.
+#
+# WHAT COULD NOT BE VERIFIED, recorded rather than guessed:
+#
+# * That the balance condition here reproduces any particular published age-replacement
+#   policy. It is derived from this module's own cost function and verified numerically
+#   against the sweep; the author found no freely accessible primary source to quote for the
+#   classical result and so cites none. claims.yaml records this as a deliberate non-claim.
+# * That a log-normal is the right predictive RUL shape for any real machine. It is the right
+#   shape for this module's EXPERIMENT, and the lesson says so rather than implying otherwise.
+# * That module 5 will emit this exact interface. It cannot be checked until module 5 exists;
+#   difference 1 above is the owner action that closes it.
+#
+# Open for the owner: the programme-level MODULES.md status table still lists module 6 as
+# `specified` with no measured cost or rubric size. It should read BUILT,
+# `P03-L06-thresholds-from-distributions`, with the measured figures written back below and
+# `122 pts / 30 cases` — the rubric in tests/test_lesson.py sums to 122 points over 30 cases,
+# and `points:` above says so. (The figure here read `120 pts / 29 cases` until the
+# independent review of 2026-09-23: stale, left over from before the author's own quantile
+# survivor was fixed by adding a thirtieth case.) That file has NOT been touched here:
+# several agents are building modules at once and the table is the owner's to update.
+#
+# Mutation testing of the rubric, 2026-09-22, in a throwaway directory now deleted.
+# THIRTY-TWO plausible wrong implementations were built from the reference, one break each,
+# and graded. All thirty-two are caught, and every one keeps partial credit rather than
+# collapsing to zero; the scores span 57% to 98%:
+#
+#   wasted life never charged 57% · the two prices swapped 61% · planned price charged once
+#   instead of per survivor 62% · failure at exactly t counted as a catch 73% · sweep
+#   maximising 84% · best_schedule ignoring the capacity limit 84% · capacity off by one 84% ·
+#   greedy ignoring the remaining capacity 86% · survival and hazard returned the other way
+#   round 86% · cost matrix transposed 87% · best_schedule optimising each row in turn 87% ·
+#   plan reporting the last candidate's cost 88% · greedy totalling each row's minimum 89% ·
+#   slot hour used as hours ahead 90% · every matrix row built from the first forecast 90% ·
+#   survival as P(RUL >= hours[k]) 90% · realised cost calling a failure at t a catch 93% ·
+#   hazard divided by survival[k] 93% · a slot in the past costing nothing 94% · a slot in the
+#   past clamped to now 94% · quantile using a strict `>` 95% · sd divided by the number of
+#   bins 96% · greedy serving the most urgent machine first 96% · quantile returning the bin
+#   index 97% · negative hours_ahead clamped instead of raising 97% · sweep keeping the last
+#   equal candidate 97% · sweep sorting the candidates first 97% · a pmf that misses 1
+#   renormalised 98% · hazard left as nan where nobody is at risk 98% · machines with no
+#   feasible slot dropped 98% · greedy breaking a tie towards the last slot 98% ·
+#   greedy never checking that the fleet fits 98% · best_schedule keeping the last equal
+#   schedule 98% · quantile compared without floating-point slack 98%.
+#
+# ONE SURVIVOR was found and FIXED rather than waved through. `np.flatnonzero(cdf >= q)[0]` —
+# the quantile rule written without the slack the docstring asks for — scored 122/122, because
+# every cdf in the rubric landed on a boundary float64 represents exactly. It is NOT
+# equivalent: measured over 99,515 random quantile lookups it disagrees with the reference 794
+# times, always by one bin, always with the reference on the correct side, and never by more
+# than 3e-16 of cumulative probability. `test_forecast_summary_quantile_float_slack` now hands
+# it [1, 1, 3, 1, 6]/12, whose median boundary is exactly 0.5 in arithmetic and 0.5 - 5.6e-17
+# after np.cumsum; the mutant answers hour 4 where the median is hour 3 and now scores 120/122.
+# The same case was added to the notebook's own `_check_forecast_summary`, so a student sees
+# the reason rather than a bare number.
+#
+# Three runs were deliberate CONTROLS: correct answers of a completely different shape, which
+# must and do still score 122/122 —
+#   1. best_schedule rewritten as itertools.product over every assignment with a
+#      collections.Counter capacity filter, in place of the reference's pruned depth-first
+#      search;
+#   2. forecast_summary's moments and quantiles, and expected_cost_at, rewritten as plain
+#      Python loops over the bins with no numpy masking at all;
+#   3. survival_and_hazard derived from a reversed cumulative sum with np.divide's `where=`,
+#      and greedy_schedule's inner search replaced by a masked np.argmin.
+# The rubric therefore grades the behaviour the docstrings ask for and not one way of writing
+# it.
+#
+# Three of the thirty-two are caught by exactly ONE case each and by nothing else, which is
+# why those cases exist and are documented as deliberate in the rubric's module docstring:
+# test_greedy_is_first_come_first_served (the urgency-sorted greedy is otherwise perfect, and
+# it is the heuristic whose measured loss the module is named for),
+# test_forecast_summary_quantile_float_slack (above), and test_best_schedule_lexicographic_tie
+# (nothing else in the rubric presents two schedules of equal cost).
+#
+# INDEPENDENT REVIEW, 2026-09-23. Four gates re-run from the repo root: execute.py PASS at
+# 0.8 s / 77 MiB against 90 s / 8 GiB, solution 122/122, stub file 0/122 with a TODO row for
+# all 30 cases. FORTY-FOUR breaking mutants were built and graded — the author's thirty-four
+# rebuilt independently, plus ten aimed at the thinnest-looking corners. Forty were caught
+# with partial credit, 57% to 98%. FOUR SURVIVORS scored 122/122 and were RUBRIC DEFECTS, not
+# equivalences; all four are fixed above and each now loses only its own row:
+#   * survival left unclipped -> 118/122. The docstring demands the clip; nothing graded it.
+#     Measured: over 20,000 random normalised pmfs, 4,570 make `1 - cumsum(pmf)` end
+#     negative (worst -8.9e-16), but none of the lesson's own fourteen forecasts do, which is
+#     why it hid. test_survival_values now ends on nine equal bins, where cumsum overshoots 1
+#     by 2.2e-16.
+#   * the negative-probability guard deleted -> 119/122. The rubric's only negative-bin pmf,
+#     [1.4, -0.4], has a NEGATIVE variance, so math.sqrt raised anyway and the guard was
+#     never graded on its own terms; a numpy sqrt would have returned nan and passed nothing.
+#     test_forecast_summary_validates now also carries [0.6, -0.2, 0.6], which sums to 1 and
+#     has variance 1.2.
+#   * fleet_cost_matrix raising on ANY infinite entry rather than on a wholly dead row ->
+#     119/122. Every matrix the rubric built was either all-finite or had a completely dead
+#     row. It now also builds one whose second row is [inf, 20.5, 91.1] and must be ACCEPTED.
+#   * greedy_schedule's all-slots-infinite fallback deleted -> 118/122 (it crashed with a
+#     TypeError). No case starved a machine. test_greedy_respects_capacity now hands it
+#     [[1, inf], [inf, inf]] at capacity 1, where the answer is ((0, 1), inf).
+# The same four student-facing checks were added to the notebook, so a student sees the
+# reason rather than a grader row. The three differently-shaped correct controls were
+# rebuilt too — itertools.product + Counter for best_schedule; pure-Python loops for
+# forecast_summary and expected_cost_at; a reversed-cumsum survival with np.divide(where=)
+# and a masked-argmin greedy — and all three score 122/122 before AND after the change, as do
+# the other forty mutants at exactly the scores they had before it.
+# Sources re-fetched 2026-09-23 and matched verbatim: both NIST/SEMATECH quotes
+# ("Survival is the complementary event to failure"; the non-repairable failure-rate
+# definition, with h(t) = f(t)/[1 - F(t)] = f(t)/R(t) and the "falling over the cliff" line
+# still on the page) and the NASA PCoE disclaimer, with the turbofan zip still a direct
+# no-registration download and the repository still noting that some OTHER sets are
+# "currently unavailable for download directly".
+# Also corrected: four wrong section cross-references in the notebook prose (the sweep
+# comment pointed at section 7 for the slots, which are section 9; CAPACITY pointed at
+# section 9 for a constraint that is sections 11 and 12; section 1 and section 13 both
+# pointed at section 6 for the width experiment, which is section 7), and one typed count in
+# section 12's prose that was both a hand-typed number and wrong — eight slots taken six at a
+# time is 20,160 arrangements, not "a few thousand"; the sentence no longer quotes a count.
+# Gate 3 re-measured: 47 cells, longest prose run 37 raw / 30 non-blank lines, no two
+# markdown cells adjacent. Gate 12 re-measured: every digit in every markdown cell is a
+# scenario parameter the code then uses, not a result; no measured figure is typed anywhere.
+# Self-check answers remain c, a, b, a, c and no prose names a path under solutions/.
+#
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23 — 4 gates re-run green (execute PASS 0.8 s / 77 MiB vs 90 s / 8 GiB, solution 122/122, stub 0/122 across all 30 rubric rows); 44 mutants graded, 40 caught at 57-98% with partial credit and 4 survivors found to be RUBRIC DEFECTS and fixed (unclipped survival, the never-graded negative-probability guard, fleet_cost_matrix raising on any inf rather than a dead row, greedy's deleted all-infinite fallback), each now losing only its own row; 3 differently-shaped correct controls at 122/122 before and after; all 3 claims.yaml sources re-fetched and matched verbatim; 4 wrong section cross-references and 1 wrong typed count corrected in prose; P03-L05 has since appeared on disk as a draft, see difference 1 — owner to add the prerequisite when it reaches reviewed; prior: Author self-review 2026-09-22 — 4 gates green (execute PASS, 0.8-0.9 s and peak RSS 77 MiB across four runs against a 90 s / 8 GiB budget, the write-back below being the last, solution 122/122, stub file 0/122 with a TODO row for all 30 rubric entries, jupytext converts to 47 cells); 32 breaking mutants all caught at 57-98% with partial credit, 1 survivor found and fixed (a slackless quantile comparison, measured to disagree 794 times in 99,515 lookups and never by more than 3e-16) and 3 differently-shaped correct controls still at 122/122; both NIST quotes and the NASA PCoE disclaimer fetched and matched verbatim; prerequisite on P03-L05 deferred because that lesson is not on disk, see difference 1 above; needs an independent reviewer before status: reviewed"
+
+measured_seconds: 0.8
+measured_peak_mib: 77

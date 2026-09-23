@@ -1,0 +1,278 @@
+id: P01-L07-post-market-monitoring
+title: Build the Article 72 monitoring feed and the Article 73 incident clock, and price both ways of getting the alert threshold wrong
+track: P01
+programme: ai-act-conformity
+flagship: F09           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T10-L01-ai-act-conformity-pack
+  - P01-L01-article-12-logging
+objectives:
+  - "Implement p-chart control limits from a declared baseline window, and measure what the same limits become when they are refitted over the period that contains the breach"
+  - "Implement a tumbling-window monitor that cuts its windows on the log's sequence number rather than its timestamps, drops the incomplete tail, and confirms an excursion over a run before it pages"
+  - "Measure both costs of a mis-tuned monitor on one feed — the pages raised for nothing, which mute it, and the degraded windows nobody saw — and find the limit width that minimises their sum"
+  - "Implement a deployer-ingest path that estimates the clock offset by median rather than mean, reports its residual spread, and merges without counting the overlap twice"
+  - "Implement the Article 73 classifier and its clock, starting every deadline at awareness rather than occurrence, and explain why a point 3(49)(c) infringement does not get the two-day deadline"
+datasets:
+  - name: loan-copilot synthetic provider log and partner deployer feed
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      1717 provider rows and 160 deployer rows, built in section 2 from a single numpy
+      Generator seed (20270302) and an explicit per-window error count. Nothing is read from
+      disk and nothing is downloaded, so the lesson runs offline and two runs agree to the
+      last digit. Every defect it contains - the three rising wobbles that are not faults,
+      the five-window degradation, the thirty decisions a broken exporter flushed ten days
+      late, the deployer clock two hours and seven minutes ahead, the four rows re-exported a
+      day out, the sixty decisions the provider never logged and the seventeen-row incomplete
+      tail - is planted deliberately and documented in the authoring notes below. The eight
+      incident candidates in section 8 are fictional and none of them describes any real
+      event, system, provider or deployer.
+points: 109             # = sum of RUBRIC points in tests/test_lesson.py
+status: reviewed        # draft | executed | reviewed | shipped
+# Authoring notes, 2026-09-23.
+#
+# STATUS was `executed` with `reviewed_by` EMPTY when this lesson was authored. Both were
+# promoted together on 2026-09-23 by the independent reviewer, whose own findings are in the
+# REVIEW block at the foot of these notes.
+#
+# The measured figures at the foot of this file were written back by tools/execute.py and
+# were not typed.
+#
+# WHAT MODULES.md MODULE 7 ASKED FOR. A windowed monitor computing "the module 6 metrics"
+# over rolling windows and raising on a control-limit breach; a deployer ingest path that
+# merges an external feed and reconciles the two clocks, with the module 1 clock-skew entry
+# returning at scale; an incident classifier with the Article 73 clock starting at awareness;
+# and, as the graded subtlety, the difference between a drifting metric and an incident plus
+# the cost of getting it wrong in each direction. The artefact was to be a monitoring plan
+# with computed control limits and an incident log with clocks. All of that is built.
+#
+# WHAT WAS DONE DIFFERENTLY, AND WHY.
+#
+#  1. Module 6 is SPECIFIED - NOT BUILT, so there are no "module 6 metrics" to window. The
+#     lesson monitors one metric it defines itself - the share of decisions later found
+#     wrong - and says so. Nothing here depends on module 6 existing; when it is built, its
+#     accuracy metric drops into the same windowing machinery unchanged, which is why
+#     `windowed_monitor()` reads only `row["wrong"]` and `row["seq"]`.
+#  2. TUMBLING windows, not rolling ones. MODULES.md says "rolling windows". Overlapping
+#     windows make one excursion arrive `window_size` times, turn the run rule into a
+#     different exercise about autocorrelation, and make the cost model incoherent, because
+#     a single degradation is then counted once per overlapping window. Non-overlapping
+#     windows teach the same thing - a window size is a decision with a cost - and keep the
+#     cost arithmetic honest. This is a deliberate deviation, stated in the notebook's own
+#     prose rather than hidden.
+#  3. The module 1 clock callback is a BUFFERED FLUSH rather than a clock that stepped
+#     backwards. P01-L01 already taught the backwards clock on fourteen events; repeating it
+#     would have been a re-run rather than a return "at scale". Thirty decisions written ten
+#     days late is the same lesson - sequence numbers are the authority, timestamps are not -
+#     in the shape a monitoring feed actually meets it, and it moves two whole windows rather
+#     than reordering one decision.
+#  4. The cost model has a THIRD term MODULES.md did not ask for: after SWITCH_OFF_AFTER
+#     false pages the monitor is muted, and everything after that is missed. Without it a
+#     linear cost makes an over-sensitive monitor merely noisy, and the brief's own sentence
+#     - "switched off within a month" - is not modelled at all. With it, the tightest setting
+#     in the k sweep is the most expensive row in the table, which is the point.
+#  5. Seven stubs rather than the three parts the spec names, because the clock estimate and
+#     the merge fail in different ways: grading them as one function would let a correct
+#     median hide a double count.
+#  6. The ground-truth set of degraded windows is a property of a FIXTURE and the notebook
+#     says so in the same sentence that introduces it. A live monitor has no such set, which
+#     is why the cost model is presented as a design-time exercise against a fixture or a
+#     replay, not as something to run in production.
+#
+# THE READING THE LESSON FLAGS AS A READING. Article 113 as amended lists the provisions that
+# do not apply from 2 August 2026, and Chapter IX - Articles 72 and 73 - is not among them.
+# Section 1 reads that silence as meaning the monitoring and incident duties run from the
+# general date while the Chapter III requirements they reference run from 2 December 2027 and
+# 2 August 2028. That is an argument from a list's silence, not a ruling; the notebook says
+# so in those words and claims.yaml labels it. No transitional provision in Article 111, no
+# guidance and no case law was consulted on the point.
+#
+# THE MODELLING CHOICE THE REGULATION DOES NOT MAKE. Article 73(3) and 73(4) each say
+# "notwithstanding paragraph 2", and neither says what happens to an incident that is both a
+# death and an Article 3(49)(b) critical-infrastructure disruption. The lesson takes the
+# SHORTER deadline, and candidate I-06 is built to force the student to meet the question.
+# The notebook and claims.yaml both say this is the lesson's reading rather than the
+# Regulation's.
+#
+# WHAT COULD NOT BE VERIFIED. EUR-Lex refuses automated retrieval, so no article quotation in
+# claims.yaml was taken from the Official Journal directly. Every one was retrieved from
+# euaiact.com - which states, per article, whether that article is as adopted or as amended
+# by Regulation (EU) 2026/1744, and that it has been checked against the consolidated text on
+# EUR-Lex - and compared word for word against an independent reproduction at ai-act-law.eu
+# or artificialintelligenceact.eu. Both were retrieved on 2026-09-22 and agree. TWO
+# exceptions, both recorded in the claim entries themselves: the SUPERSEDED wording of
+# Article 72(3) rests on one source, artificialintelligenceact.eu, which prints the
+# pre-amendment sentence beside the current one and marks it "amended"; and no source was
+# found stating whether any authority has construed Chapter IX's application date, so the
+# lesson infers it and labels the inference.
+#
+# DEPENDENCIES. Standard library plus numpy. numpy is used only to place the planted errors
+# deterministically inside each window; every graded function is plain Python, `statistics`
+# and `datetime`, so a student can read the arithmetic without a vendor's toolkit between
+# them and the evidence. No pyyaml, no assets directory, no network, no disk reads.
+#
+# SYNC BETWEEN lesson.py AND solutions/lesson_solution.py is mechanical, not manual: the
+# solution is GENERATED from the notebook by substituting the seven stub bodies, so the two
+# cannot drift in the prose, the public checks or the fixture. The solution additionally
+# carries a banner cell and section 12a, the self-check answers. The self-check key in
+# lesson.py is salted SHA-256 digests, so no answer is readable off the student's own page,
+# and the five answers are c, b, d, c, a - not all the same letter.
+#
+# GATE 12. Every figure in the notebook's prose is printed by code: the 7.5x spread between
+# the shortest and the longest Article 73 deadline, the refit's effect on both the upper limit
+# and the alert list, the dropped tail's rate as a multiple of the limit, the number of
+# windows that timestamp ordering moves, the whole k sweep and its cheapest row, the
+# mean-versus-median clock error in minutes, the understatement a double count causes, the
+# number of verdicts each wrong clock flips, and the gap in hours between the monitor's
+# confirmation and the recorded awareness, and - added at review - the SIZE of the batch a
+# broken exporter flushed late and how late it was, both measured against the feed's own
+# nominal cadence rather than read off the constant that planted them. The only integers
+# typed into prose are the deadlines themselves - 15, 2 and 10 days - which are quoted law
+# and are in claims.yaml with their sources.
+#
+# GATE 3. The generated notebook is 54 cells. The longest prose run before the next runnable
+# cell is the section 12 self-check question list; every expository cell is well under 40.
+# The author's figure of 45 was counted on the .py SOURCE, which counts a blank line inside a
+# markdown cell as the comment marker `#`. Measured on the notebook jupytext actually emits -
+# which is what a student reads - the worst run is 39 lines, so the gate is met outright and
+# the P01-L04 exception is not needed after all. Re-measured at review, 2026-09-23.
+#
+# RUBRIC MUTATION TESTING. 33 plausible-wrong variants of the reference solution were built
+# in a temporary directory outside the lesson tree and graded through tools/grade.py, plus
+# THREE controls that are differently-shaped RIGHT answers and must still score 100%: one
+# windowing with an index loop and a numpy sum instead of slicing and a generator; one
+# computing the median and the MAD by hand-rolled sorting instead of through `statistics`;
+# and one rewriting `classify_incident` as a ladder of guards with the widespread test and
+# the point-(b) test in the other order.
+#
+# The FIRST run caught 30 of 33 and found three real rubric defects, each of which scored a
+# full 109/109 because the fixture and the hand-built cases were one-sided:
+#
+#   * `missed_windows` could IGNORE the mute entirely. Every muting case in the rubric muted
+#     the monitor before any true alert, so `first_detection` was None and every degraded
+#     window was missed for the other reason. A case where the monitor detects at window 2,
+#     is then muted at window 6 by three false pages, and degrades again at 8 and 9 now
+#     separates them - and it is the case that carries the lesson's whole argument, because
+#     it is the one where a muted monitor's later blindness is the entire bill.
+#   * The merge could sort by TIMESTAMP ALONE. No two rows in the feed share a timestamp, so
+#     the documented `(ts, decision_id)` tie-break was never exercised and Python's stable
+#     sort made the two agree. Three rows built on one timestamp now pin the order.
+#   * `hours_remaining` could use `int()` instead of `math.floor()`. Every deadline in the
+#     fixture falls on a whole hour, so truncation towards zero and towards minus infinity
+#     agreed everywhere. A deadline that fell THIRTY MINUTES ago now separates them: `int()`
+#     reports 0, which an inspector reads as "due now" rather than "already missed".
+#
+# After the three fixes: 33 mutants, all 33 lost points (scores 72% to 98%), every one
+# keeping partial credit on the exercises it had not broken, so no test collapsed into
+# all-or-nothing; and all three controls still score 100%. Points are unchanged at 109 across
+# 30 tests; no test was added, only three existing ones given another hidden case.
+#
+# ONE FURTHER VARIANT was measured separately and is reported here rather than counted above,
+# because it is not a defect: in `monitor_costs`, `if false_seen == switch_off_after` in
+# place of `>=`. The loop breaks on the alert at which the counter reaches the threshold, so
+# the counter can never pass it, and the two conditions were measured identical over 50,000
+# random (alerts, degraded, switch_off_after) triples with switch_off_after >= 1, and on the
+# lesson's own feed at all seven k values crossed with switch_off_after 1, 2, 3 and 99. They
+# DIFFER only at switch_off_after = 0 - "mute after no false alerts at all" - where the
+# reference mutes on the first false page and the variant never mutes. No rubric test was
+# added for that, because the right behaviour at 0 is undefined rather than known, and
+# grading an undefined case would be grading the author's accident.
+#
+# OPEN FOR THE OWNER, no change made by this author: MODULES.md still marks module 7
+# "SPECIFIED - NOT BUILT" and its status table still says four modules are built. Both are
+# now out of date and are the owner's to update, along with the module 7 row's
+# "Measured · rubric" cell, which should read 0.1 s · 37 MiB · 109 pts / 30 cases. The module
+# 7 section's own prose should also drop "rolling" in favour of "tumbling" windows, for the
+# reason given above, and may want to record that the lesson adds the mute term to the cost
+# model. flagship F09 matches the rest of the programme; flagships/ still holds no F09
+# directory. Nothing outside this lesson directory was created or edited.
+#
+# --- INDEPENDENT REVIEW, 2026-09-23 -----------------------------------------------------
+#
+# All four gates re-run from the repo root on .venv/bin/python, nothing taken on trust:
+# execute.py PASS (0.1 s, 37 MiB, budget 90 s), grade.py --solution 109/109, grade.py 0/109
+# with all 30 rows TODO, and jupytext --to ipynb clean at 54 cells.
+#
+# MUTATION TESTING, done again from scratch: 33 plausible-wrong variants written by the
+# reviewer (not the author's set) plus 3 differently-shaped RIGHT answers as controls, all
+# graded through tools/grade.py in a uniquely-named scratch copy of this directory. The first
+# pass caught 31 of 33. TWO survivors scored a full 109/109, and BOTH turned out to be rubric
+# holes rather than equivalences - each was proved wrong by measurement over this lesson's
+# own input domain before any test was touched:
+#
+#   * `estimate_clock_offset` could test `abs(delta - median) >= tolerance` instead of `>`.
+#     The rubric probed only tolerance 300 (the default), 10**9 and 0.0. The feed's distinct
+#     deviations are 0, 1, 2, 3, 4, 86398 and 86399 seconds, so no pair sits exactly on 300
+#     or on 10**9 and the two forms agree there; at 0.0 the assertion was a loose `>`, which
+#     both forms satisfy. At tolerance 4.0 - a deviation the feed DOES contain - `>` reports
+#     4 suspect pairs and `>=` reports 26. The docstring says "exceeds", so `>=` is wrong and
+#     visibly so. A hidden case at that tolerance now separates them.
+#   * `merge_deployer_feed` could compute `out_of_seq_rows` by comparing each `src_seq`
+#     against its POSITION in the merged list rather than against the same rows sorted by
+#     `src_seq`. Every provider feed in the rubric - the fixture and both hand-built ones -
+#     starts at seq 0, where the two are identical. On a quarter's slice of a continuing log
+#     starting at seq 500 and already in clock order, the documented comparison gives 0 and
+#     the positional one gives 4: every row reported out of sequence on a feed in perfect
+#     order. That is the exact failure the author's own assertion ("a count that is never
+#     zero is not a measurement") was written to catch, defeated by a 0-based feed. Two
+#     hidden cases on a seq-500 slice now pin it.
+#
+# After the two fixes: all 33 mutants lose points, scores 72% to 98%, every one keeping
+# partial credit on the exercises it did not break - no test collapsed into all-or-nothing -
+# and all 3 controls still score 100%, before AND after the change. Points unchanged at 109
+# across 30 tests; no test added, two existing ones given further hidden cases.
+#
+# GATE 12, one real finding and fixed: the prose in section 4 and in section 11 said the feed
+# has "thirty decisions a broken exporter flushed ten days late". Both figures were TYPED -
+# nothing in the lesson printed either, which also made the author's own gate-12 note above
+# inaccurate. The chart cell now measures the batch against the feed's own 3-hour cadence and
+# prints "30 rows ... seq 1150..1179, the latest by 10.0 days", and the prose points at that
+# cell instead of naming the numbers. lesson.py and solutions/lesson_solution.py were edited
+# identically; they still differ only in the banner cell, the seven stub bodies and 12a.
+#
+# ONE PROSE CLAIM CORRECTED. Section 2 said "you are being told they exist but not where",
+# which `_build_feeds()` - which the student reads - contradicts on the next screen: it names
+# the buffered flush, the offset and the re-export in its own comments, and its docstring
+# says so ("You are meant to measure them, not read them off a constant"). The sentence now
+# says what the design actually does. Not an answer leak: the same magnitudes are already
+# visible in lesson.py's fixture builder, the grader tests the measurement rather than any
+# secret, and the shipped meta.student.yaml was checked by running the stripper's own logic
+# over this file - reviewed_by, status and both measured figures are dropped and every
+# maintainer comment with them, so nothing in this block reaches a student.
+#
+# CLAIMS. Every URL in claims.yaml re-fetched on 2026-09-23 and every quote checked word for
+# word against the live page: Articles 72(1)(2)(3), 73(1)-(5), 3(49)(a)-(d), 26(5) and 113,
+# on euaiact.com and on each entry's independent corroborating reproduction, plus the NIST
+# p-chart page and the MAD article. All verbatim, all still current. euaiact.com still states
+# Article 72 and Article 3 are "as amended by Regulation (EU) 2026/1744" and Articles 26 and
+# 73 "unchanged since adopted", exactly as the entries record. Article 113 still does not
+# mention Chapter IX anywhere, so the lesson's labelled READING of that silence stands as a
+# reading; artificialintelligenceact.eu still prints the superseded Article 72(3) sentence
+# beside the current one and still marks it "amended", so `quote_2` is still supported. No
+# drift, no moved page, no amended provision. Nothing in claims.yaml was changed.
+#
+# CHECKED AND CLEAN, nothing to report: prerequisites both resolve on disk
+# (lessons/T10-L01-ai-act-conformity-pack, programmes/ai-act-conformity/lessons/
+# P01-L01-article-12-logging); no objective says "understand"; all seven stubs carry a
+# docstring, a worked example, a Returns line, `# YOUR CODE HERE` and
+# `raise NotImplementedError`, none is a bare `pass`; every public `_check_*` message names a
+# likely mistake rather than saying "assertion failed"; no prose anywhere points a student at
+# a path under solutions/; the self-check key hashes to c, b, d, c, a - five questions, four
+# distinct letters, not all the same; every docstring doctest was hand-evaluated and each is
+# correct; and the deliberate deviations the author flagged (tumbling rather than rolling
+# windows, the mute term in the cost model, the shorter deadline on a 73(3)/73(4) overlap,
+# the Chapter IX reading) are each argued for in the notebook's own prose and labelled as the
+# lesson's choice rather than the Regulation's, which is the right way to carry them.
+#
+# STILL OPEN FOR THE OWNER, unchanged by this review and NOT edited here: everything in the
+# author's OPEN FOR THE OWNER paragraph above still stands - MODULES.md's module 7 row and
+# status table, the "rolling" wording, and the missing flagships/F09 directory. The module 7
+# "Measured - rubric" cell should read 0.1 s - 37 MiB - 109 pts / 30 cases, which this review
+# re-measured and confirms.
+reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-23: all four gates re-run from the repo root - execute PASS 0.1s/37MiB, solution 109/109, stubs 0/109 with all 30 rows TODO, jupytext --to ipynb clean at 54 cells; 33 reviewer-written mutants + 3 differently-shaped right-answer controls graded through tools/grade.py; 2 survivors scored 109/109 and both were proved rubric holes rather than equivalences by measurement, then closed in tests/test_lesson.py (outlier test admitted `>=` where the contract says `exceeds`, separated at a tolerance the feed actually contains; out_of_seq_rows admitted a comparison against row position instead of src_seq order, which reports every row out of sequence on a log slice not starting at seq 0); 1 gate-12 defect fixed - the 30-row late batch and its 10-day lateness are now measured and printed by the chart cell in both lesson.py and the solution instead of typed into prose; after the fixes all 33 mutants lose points (72%-98%, partial credit intact on untouched exercises) and all 3 controls still score 100%; every claims.yaml URL re-fetched and every quote verified verbatim on the live page with no drift; points unchanged at 109 across 30 tests." 
+measured_seconds: 0.1
+measured_peak_mib: 37

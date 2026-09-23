@@ -1,0 +1,307 @@
+id: P01-L09-capstone-pack-under-inspection
+title: Inspect a complete, already-attested conformity pack with the tools of modules 1 to 8, repair it, and measure whether any of the repairs merely silenced a check
+track: P01
+programme: ai-act-conformity
+flagship: F09           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T10-L01-ai-act-conformity-pack
+  - P01-L01-article-12-logging
+  - P01-L02-risk-classification
+  - P01-L03-annex-iv-documentation
+  - P01-L04-data-governance
+  - P01-L05-human-oversight
+  - P01-L06-accuracy-robustness-security
+  - P01-L07-post-market-monitoring
+  - P01-L08-conformity-assessment-route
+objectives:
+  - "Implement a suite runner with three statuses, and explain why a check nobody ran is reported as unverified rather than as passed"
+  - "Implement findings ranked by the share of the evidence each defect puts in doubt, and measure why a check that did not run ranks above four hundred bad reviews"
+  - "Measure what a repair did to the evidence, to the checks and to the numbers, as three independent diffs, two of which never read the repairer's own account of the repair"
+  - "Implement the audit that separates repaired from silenced from unfixed, and run it against five repairs that turn a red check green and change nothing about the system"
+  - "Plan the honest repair as operations against the pack, and measure that every check goes green with no evidence removed, no threshold moved and no number that fails to reproduce"
+datasets:
+  - name: loan-copilot synthetic conformity pack
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      One evidence pack of 4962 indexed items - 427 chained log entries and a 14-entry cold
+      store, 9 Annex IV sections over 9 typed artefacts, 3 declared metrics over a retained
+      1200-row evaluation split, 1400 oversight decisions with 1400 verifications, 1700
+      monitored decisions in 34 windows, 7 logged changes and a 3-entry hash-chained ledger
+      - all built in section 3 of lesson.py from a single numpy Generator seed (20260923)
+      and explicit per-window counts. Nothing is read from disk and nothing is downloaded,
+      so the lesson runs offline and two runs agree to the last hash. Every defect it
+      contains is planted deliberately and listed in the authoring notes below. No real
+      provider, system, reviewer, notified body or applicant is involved, and none of the
+      figures the lesson prints is a claim about any real credit portfolio or any real
+      conformity assessment.
+points: 138             # = sum of RUBRIC points in tests/test_lesson.py
+status: executed        # draft | executed | reviewed | shipped
+reviewed_by: "independent review 2026-09-23: 4 gates re-run from the repo root (execute PASS 2.6s/62MiB, solution 138/138, stubs 0/138 all 34 rows TODO); 30 reviewer-written mutants + 3 differently-shaped right-answer controls; 7 rubric holes closed (conserved folded in additions, ucl-only limits comparison, reason-order across the four silencing categories, collateral that went not_run rather than red, honest ignoring collateral, the finding_id tie-break, population-0 share); 8 survivors proved equivalent over the lesson's input domain, not defects; 2 prose defects fixed (the evidence-index rationale contradicted its own measurement, and the TEMPTING_PLANS bullet called a not_run check green); 14 bare asserts in the student-facing _check_ helpers given messages (gate 5); all 10 claims.yaml sources re-fetched and every quote verbatim; points unchanged at 138 over 34 cases; gates 13 and 14 remain open (no lesson.ipynb, no hint blocks, no progress board), so status stays executed."
+# Authoring notes, 2026-09-23.
+#
+# All four gates were run from the repo root on the venv interpreter. The measured figures at
+# the foot of this file were written back by tools/execute.py and were not typed.
+#
+# WHAT MODULES.md ASKED FOR (module 9, the capstone). "A complete evidence pack for a
+# fictional system is handed to the student - already assembled, already green - along with
+# an inspector's question list. Six of the artefacts are wrong in ways the earlier modules
+# taught them to detect: a log with a purged window, a document section generated from an
+# empty source, an accuracy figure with no interval, an oversight record where one reviewer
+# approved 400 cases in an hour, a declaration emitted after a substantial modification, and
+# a monitoring feed whose control limits were recomputed after the breach. The student's job
+# is to find all six with the tools they built, write the findings, and then fix the pack so
+# that every check they wrote comes back green for the right reason. The rubric grades the
+# findings, the fixes, and - the part that matters - whether any of their 'fixes' merely
+# silenced a check. Artefact: an inspection report and a repaired pack."
+#
+# All six defects are built, in that order of reading:
+#   1. log            seqs 181-194 removed by a retention job; the 14 entries survive in the
+#                     cold-store export-2026-05-14, and the published anchor still belongs to
+#                     the whole log, so a re-chain around the hole is caught by it.
+#   2. document       the metrics artefact carries primary_metric "accuracy" and
+#                     primary_metric_value "", and Annex IV section 4 was emitted anyway.
+#   3. accuracy       the accuracy declaration is {"point": 0.9025} with no lo, hi, level, n,
+#                     n_boot or method, so P01-L06's declare() refuses it.
+#   4. oversight      u:pieter's 400 verifications, 9 seconds apart inside one clock hour,
+#                     each 8 seconds long - so the per-review floor AND the throughput
+#                     ceiling both fire, and neither alone is the finding.
+#   5. declaration    C-0031 modifies the intended purpose on 2026-07-02; the assessment on
+#                     file is dated 2026-05-20 and the declaration was issued 2026-08-14.
+#   6. monitoring     the limits in the pack were fitted over windows 0-33, which contain the
+#                     five-window excursion at 26-30; the baseline sealed in the ledger is
+#                     windows 0-15. The refit hides exactly those five windows.
+#
+# THE PART THAT MATTERS, and where the effort went. "Whether any of their fixes merely
+# silenced a check" is graded three ways, none of which trusts the repairer:
+#   * evidence_delta (exercise 3) - what the repair removed. Deleting the failing records.
+#   * suite_delta (exercise 4) - what the repair did to the checks. Widening a tolerance,
+#     switching a check off, dropping a parameter, deleting a check from the suite. The
+#     graded subtlety here is the OTHER error: tightening is not silencing, and an audit
+#     that flags it is ignored within a month.
+#   * unsupported_values (exercise 5) - which numbers no longer reproduce from the evidence
+#     they cite. It recomputes the bootstrap interval, the document section against its
+#     artefact, the control limits against the sealed baseline and the ledger chain, and it
+#     never reads pack["repair_ledger"], because the repair ledger is the repairer's own
+#     account of the repair and this is the function that tests it.
+#   * silencing_audit (exercise 6) joins the three, plus a fourth signal the three deltas
+#     make possible: evidence the repair changed that the finding never named. That is what
+#     catches the re-chained log, which removes nothing, renumbers the 246 entries after
+#     the hole and republishes the anchor over them.
+# Section 12 prints five repairs that each turn a red check green and fix nothing, with the
+# audit's verdict beside each; section 15 prints two packs that are both 6/6 green, one
+# accepted and one rejected. A student who deletes the failing record, widens a tolerance or
+# stops calling a check reaches both tables and sees the word "silenced" against their own
+# work, and the rubric's exercise-7 tests fail them on removals, on suite edits and on
+# numbers that do not reproduce - separately from whether the checks went green.
+#
+# DELIBERATE DEVIATIONS FROM THE SKETCH, and why.
+#   * The toolkit of modules 1 to 8 is GIVEN BACK in section 2 rather than re-derived. A
+#     capstone that makes the student write verify_chain again is module 1 again. The names
+#     and the record shapes are the earlier modules' own: verify_chain, missing_seq (which is
+#     retention_status()["missing_seq"]), field_value, is_sourced, check_section, declare,
+#     DECLARATION_KEYS, UndeclarableMetricError, bootstrap_ci, control_limits,
+#     windowed_monitor, is_substantial_modification and its five REASON_ constants.
+#   * Two shape changes, both forced by the same requirement: this lesson copies, hashes and
+#     diffs whole packs, so the pack has to be JSON all the way down. P01-L03's Artefact
+#     NamedTuple is a plain dict here, and P01-L01's ChainVerdict NamedTuple is a plain dict.
+#     Behaviour and field names are unchanged.
+#   * P01-L05's time_to_decision() is not reused as a function. Its idea - a floor below
+#     which nobody read the case - is applied to throughput as well, because "400 cases in an
+#     hour" is a rate and not a duration. CHECK_META names it as "time_to_decision, applied
+#     to throughput" rather than pretending it is the same call.
+#   * MODULES.md says "the tools they built in modules 1 to 8" would be used to FIND the six.
+#     They are: every one of the six checks in section 4 is a call into that toolkit, and the
+#     student's own work starts at reading what the checks say. The alternative - eight more
+#     re-implementations - would have made the capstone the longest and least novel lesson in
+#     the programme.
+#   * The repair is expressed as a list of OPERATIONS applied by a given apply_repairs()
+#     rather than as free-hand edits to the pack. That is what makes silencing measurable at
+#     all: seven of the seventeen operations change the check rather than the world, they are
+#     in the vocabulary on purpose, and the student is free to reach for them.
+#   * The two-step repairs (void then withhold; refit then file) are deliberate. Each has a
+#     halfway point where the check goes red with a DIFFERENT reason code, which the audit
+#     calls "unfixed" - and the lesson says in the open that unfixed is a better place to be
+#     than green.
+#
+# ANTI-HARDCODING. tests/test_lesson.py builds a variant pack with the same six defects in
+# different places: the purge is at seqs 301-312 and exported on a different night, thirty
+# more reviews are implausible, a second change becomes substantial, and the document section
+# is about recall rather than accuracy. A plan_repairs that reads its findings passes it; one
+# that remembers this notebook does not. Exercises 6 and 8 are graded almost entirely on
+# hand-built inputs for the same reason.
+#
+# WHAT I COULD NOT VERIFY.
+#   * EUR-Lex refuses automated retrieval, as it did for P01-L01 and P01-L07. Every article
+#     quotation in claims.yaml was taken from euaiact.com and compared word for word against
+#     the independent reproduction at ai-act-law.eu; both state they are checked against the
+#     consolidated EUR-Lex text, and the authoritative URL is recorded beside each claim. I
+#     did not read the Official Journal PDF.
+#   * Nothing in this lesson depends on the Regulation (EU) 2026/1744 amendments that
+#     P01-L07 records. The six duties it checks are quoted from the articles as they stand on
+#     the access date, and no claim is made about text that has not yet been adopted.
+#   * The thresholds - a 10-second plausibility floor, 60 reviews an hour, a 0.95 minimum
+#     declared level, k = 3.0, the precedence of "silenced" over "unfixed" and the whole
+#     repaired/silenced/unfixed ladder - are this lesson's modelling choices. They are
+#     labelled as such in the lesson and in CHECK_META, and no authority is claimed for them.
+#
+# MUTATION TESTING, run before this was declared done. 22 plausible-but-wrong
+# implementations of my own solution were graded against this rubric; all 22 lost points,
+# and the two that ESCAPED on the first pass were defects in the LESSON and were fixed:
+#   * "conserved also demands nothing changed" scored 100%. No test distinguished a repair
+#     that removed nothing from one that also changed nothing, so an implementation that
+#     calls every honest recomputation an evidence loss passed. Fixed by adding the
+#     re-chained-log case to test_delta_totals_and_conserved_on_the_real_pack: 246 mutations,
+#     no removals, conserved True.
+#   * "the document section always cites accuracy" scored 100%. The traceability rule in
+#     unsupported_values only asked whether the value's stamp matched SOME declaration in
+#     the pack, so a real number filed under the wrong metric passed. Fixed in the lesson,
+#     not in the rubric: the stamp must now match the declaration of the metric the artefact
+#     itself names in "primary_metric", and the variant pack (whose section is about recall)
+#     catches it.
+# The 20 caught first time span every exercise: a disabled check reported green; a verdict
+# that ignores unverified checks; findings that skip the not_run ones; findings ranked by
+# count rather than share; findings with no evidence keys; a delta that walks only the
+# before-families; a delta that skips a parameter which vanished; a suite delta that calls
+# every change a loosening; an interval compared on the point alone; a declaration taken on
+# trust because it carries a seed; an unverified ledger chain; a not_run check filed as
+# unfixed; an audit that flags every mutation; one that flags none; one that lets another
+# check's loosened parameter silence this one; a plan that restores the first cold-store
+# segment; one that voids without withholding; one that refits without filing; one that
+# deletes the records instead of voiding them; and a report whose verdict precedence is
+# the wrong way round.
+# Two differently-shaped RIGHT answers were also graded and both scored 138/138: one that
+# rewrites run_suite and evidence_delta with explicit loops, dict() calls and a local
+# bucket() helper, and one that rewrites inspect_pack and silencing_audit as a comprehension
+# plus two stable sorts and an explicit ladder with %-formatting. The rubric accepts them.
+#
+# PARTIAL CREDIT, measured by re-stubbing the solution:
+#   exercises 1-4 only (the four analysis functions)      50/138   36%
+#   everything except the repair plan                    100/138   72%
+#   everything except the audit                          114/138   83%
+#   the repair planned but none of the three deltas       62/138   45%
+# The later exercises carry more weight on purpose: the repair (38 points) and the audit
+# (24) are what the capstone is for, so four of the eight exercises is 36% rather than 50%.
+#
+# FOR THE OWNER, who updates these centrally (I did not touch them):
+#   * programmes/ai-act-conformity/MODULES.md still says "Four are built" in its header and
+#     carries "specified" in the status column for modules 5 to 9. Module 9 is now built;
+#     its row should read BUILT with the measured figures at the foot of this file and
+#     "138 pts / 34 cases".
+#   * There is no lesson.ipynb here and no <details> hint blocks or progress board, which is
+#     the shape P01-L05, L06, L07 and L08 also ship in. Gates 13 and 14 are therefore open
+#     for the whole back half of this programme, not for this lesson alone, and they want
+#     fixing in one pass rather than lesson by lesson.
+#   * status is `executed` and `reviewed_by` is empty on purpose: I wrote it, so I cannot
+#     be the independent reviewer who promotes it.
+#
+# ---------------------------------------------------------------------------------------
+# INDEPENDENT REVIEW, 2026-09-23. Everything below was re-measured, not taken on trust.
+#
+# GATES, re-run from the repo root on .venv/bin/python:
+#   tools/execute.py --write-back  PASS  exit=0  wall 2.6s (budget 90s)  peak 62MiB (cpu8)
+#   tools/grade.py --solution      138/138 (100%)
+#   tools/grade.py                 0/138, all 34 rows TODO
+#   jupytext --to ipynb            clean, 38 cells (written to a scratch path, not here)
+#
+# MUTATION TESTING. 30 mutants written fresh against this rubric, none copied from the
+# author's list. 22 lose points; each loses only the points of the test it broke, so
+# partial credit survives. SEVEN survivors scored 138/138 and were rubric holes, now
+# closed in tests/test_lesson.py without changing the point total:
+#   * evidence_delta "conserved" folded additions into the flag. The re-chained-log case
+#     pins mutations; nothing pinned ADDITIONS, and the honest repair to this pack adds 20
+#     keys and removes none — so an implementation that calls the honest repair an evidence
+#     loss scored full marks. Closed with the restore_log_segment case: +14, -0, conserved.
+#   * unsupported_values compared the control limits on "ucl" alone. The limits case only
+#     edited monitoring.limits.ucl, so a one-field comparison passed. Closed by refitting to
+#     the sealed baseline and then typing over "centre": ucl still matches, centre does not.
+#   * silencing_audit collected its reasons in any order. The docstring numbers four steps;
+#     nothing pinned them. Closed with one check carrying all four kinds of reason at once.
+#   * silencing_audit "collateral" as green-before-and-RED-after. A check that was green and
+#     has simply stopped running is the one collateral loss that leaves no red row to see.
+#     Closed with a green -> not_run case.
+#   * silencing_audit "honest" ignoring collateral. Every existing honest=False case also had
+#     a silenced verdict. Closed in the same case: one repaired finding, one check broken.
+#   * inspect_pack's finding_id tie-break was never exercised apart from the order the
+#     results arrived in; the shipped run's ties already agree with it. Closed with a
+#     hand-built run whose insertion order disagrees with the documented key.
+#   * inspect_pack's population-0 guard was never exercised. It is reachable in this
+#     lesson's own vocabulary (withdraw_declaration plus delete_records over every change
+#     leaves a red check with 0/0), and an unguarded division is a ZeroDivisionError in the
+#     student's notebook. Closed in the same hand-built run.
+#
+# EIGHT survivors were proved EQUIVALENT over this lesson's input domain and were NOT
+# "fixed" — inventing a test for each would have rejected correct work:
+#   * run_suite iterating `suite` instead of `sorted(suite)`: changes only the insertion
+#     order of the `results` dict. Nothing reads it — inspect_pack re-sorts on a total key,
+#     the rubric compares results by dict equality, and the buckets are sorted separately.
+#   * run_suite testing `cid not in checks` before `enabled`: differs only for a check that
+#     is BOTH disabled and unimplemented. No suite in the domain has one: every SUITE row is
+#     in CHECKS, disable_check only flips a flag, and no operation adds a suite entry.
+#   * inspect_pack returning detail["keys"] unsorted: every branch of every check emits keys
+#     already sorted — [], a one-element literal, sorted(set(...)), or a comprehension over
+#     `for name in sorted(declarations)`. True by construction, not just on these two packs.
+#   * suite_delta using `<=` / `>=` instead of `<` / `>`: the equality case is filtered by
+#     the preceding `continue`, so the branch is only ever reached with after != before.
+#   * plan_repairs demanding the cold-store segment CONTAIN the hole rather than overlap it:
+#     each export's "covers" range either holds the whole purged window or misses it
+#     entirely, in the shipped pack and in the rubric's variant.
+#   * plan_repairs dating the reassessment AS_OF instead of max(AS_OF, latest_substantial):
+#     every substantial modification in both packs precedes the inspection date, and the
+#     contract asks only for a date no earlier than the modification.
+#   * plan_repairs re-sourcing only detail_rows["empty"] and not ["missing"]: no unsourced
+#     section in either pack reports a missing path — the path resolves and is empty, which
+#     is what the docstring itself describes.
+#   * inspection_report counting len(after_run["results"]) for "checks": no operation adds
+#     or removes a suite entry, so the two runs always cover the same checks.
+#
+# THREE differently-shaped right answers were written as controls and all three score
+# 138/138 against BOTH the rubric as I found it and the rubric as I left it: one
+# comprehension-first with two-pass stable sorts, one built on itertools/functools/
+# defaultdict with a (1 - share) sort key, and one verbose imperative with index loops, a
+# while-search for the cold-store segment and an accumulator object.
+#
+# DEFECTS FIXED IN THE LESSON ITSELF:
+#   * Section 5 said a seq-keyed index "would report that as one enormous change instead of
+#     as fourteen deletions". Measured: the event-keyed index reports the re-chain as 247
+#     mutations and ZERO removals (which is what section 12 prints), and it is the SEQ-keyed
+#     index that would invent fourteen deletions and fourteen additions. The sentence had
+#     the two keyings the wrong way round and typed a number the lesson contradicts. Now
+#     stated qualitatively, with section 12 left to do the counting.
+#   * Section 16 said "Every repair in TEMPTING_PLANS is green." One of the five switches
+#     the check off, so it comes back not_run — the table three sections earlier prints it,
+#     and the lesson's own commentary says "Four of the five". The bullet asserted exactly
+#     the conflation the lesson exists to break.
+#   * Fourteen asserts inside the student-facing _check_* helpers carried no message, so a
+#     wrong answer to any of them raised a bare AssertionError. All fourteen now name the
+#     likely mistake (gate 5).
+#
+# CHECKED AND CLEAN: all nine prerequisites resolve to directories on disk; no objective
+# says "understand"; no prose run exceeds ~43 lines before a runnable cell (the reviewed
+# P01-L04 carries 45); every stub has a docstring, a worked example, a Returns line,
+# # YOUR CODE HERE and raise NotImplementedError; no prose points at a path under
+# solutions/; the self-check answers are b, c, a, d, b and each key resolves to exactly one
+# letter; every number typed in prose (14/441, 1/3, 400/1400, twelve of twelve, 17
+# operations, ten and seven, four of five, five of six) is printed by the lesson and agrees
+# with what it prints; claims.yaml verified below.
+#
+# SOURCES, all ten re-fetched on 2026-09-23 and compared word for word against the live
+# pages. Articles 12(1), 19(1), 11(1), 15(3), 14(1), 14(4)(b), 3(23), 43(4) first and second
+# sentences, 72(1), 72(2), 73(1) and 73(2) are verbatim on euaiact.com; Articles 43, 11 and
+# 3 were additionally confirmed on ai-act-law.eu. The amendment banners are as claims.yaml
+# records them: 3, 11, 43 and 72 are presented as amended by Regulation (EU) 2026/1744;
+# 12, 14, 15, 19 and 73 as unchanged since adoption. No quote has drifted and no page has
+# moved. EUR-Lex was not retrieved, as the author recorded.
+#
+# WHAT I DID NOT CHANGE, FOR THE OWNER: status stays `executed`. Gates 13 and 14 are open —
+# there is no lesson.ipynb, no <details> hint blocks and no progress board — which is the
+# shape P01-L05 through L08 also ship in, and they want fixing in one pass across the back
+# half of the programme rather than lesson by lesson. programmes/ai-act-conformity/MODULES.md
+# still says "Four are built" and carries "specified" for modules 5 to 9; module 9's row
+# should read BUILT, 138 pts / 34 cases, with the measured figures below.
+measured_seconds: 2.6
+measured_peak_mib: 62

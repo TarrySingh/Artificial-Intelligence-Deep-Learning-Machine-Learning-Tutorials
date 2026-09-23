@@ -1,0 +1,335 @@
+id: P01-L06-accuracy-robustness-security
+title: Build the Article 15 accuracy, robustness and cybersecurity evidence in which every measured number carries its uncertainty and every threshold carries the sequence number that proves when it was chosen
+track: P01
+programme: ai-act-conformity
+flagship: F09           # flagship id this lesson feeds, or empty
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 90
+language: python        # python | c | cpp
+prerequisites:
+  - T10-L01-ai-act-conformity-pack
+  - P01-L01-article-12-logging
+objectives:
+  - "Implement a paired percentile bootstrap and measure what resampling predictions independently of labels does to the interval of a model that is right about every row"
+  - "Implement a declaration that refuses a bare point estimate, and declare the defensible end of the interval — the lower bound where higher is better, the upper bound where lower is better"
+  - "Implement a sealed accuracy floor whose ordering the ledger enforces, and explain why a floor sealed after the metric it governs was measured is a refusal rather than a judgement call"
+  - "Measure a four-family degradation curve and report the severity at which the declared lower bound crosses the floor, which on this fixture is a full grid step before the point estimate does"
+  - "Implement a neighbourhood poisoning scan with a minimum-support rule and a measured model-extraction budget, and emit only the residual-risk statements the evidence actually bounds"
+datasets:
+  - name: loan-copilot synthetic applicant table, evaluation and training splits
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      3200 applicants (2000 training, 1200 held out) plus a 1200-row evaluation population and
+      up to 600 attacker queries, all drawn in section 3 from a single numpy Generator seed
+      (20281115) and a fixed linear scoring model. Nothing is read from disk and nothing is
+      downloaded, so the lesson runs offline and two runs agree to the last digit. Every defect
+      it contains is planted deliberately and documented in the authoring notes below: three
+      per-batch label flips in the training set (b06 at 0.55, b08 at 0.12, b09 at 0.50) on top
+      of 3% ordinary label noise, and four perturbation families applied to the held-out split.
+      No real applicant data is involved, and none of the figures the lesson prints is a claim
+      about any real credit portfolio. An optional off-path extension a student can run the same
+      code against afterwards is named in claims.yaml with its real licence and direct URL; it
+      is not on any path the grader needs.
+points: 132             # = sum of RUBRIC points in tests/test_lesson.py
+status: executed        # draft | executed | reviewed | shipped
+# Authoring notes, 2026-09-22/23.
+#
+# All four gates run from the repo root on the venv interpreter. The measured figures at the
+# foot of this file were written back by tools/execute.py and were not typed.
+#
+# WHAT MODULES.md ASKED FOR. Module 6, "Accuracy, robustness and cybersecurity evidence":
+# three parts, all numpy. Accuracy as a metric WITH a bootstrap confidence interval, declaring
+# the interval rather than the point. Robustness as a perturbation sweep over missing fields,
+# unit changes, plausible noise and a stale feature, reporting the degradation curve and the
+# perturbation at which performance crosses the declared floor. Cybersecurity as a
+# data-poisoning detector over a training set plus a rate-limiting analysis for model
+# extraction, then the residual-risk statement the evidence honestly supports. The rubric was
+# required to fail any implementation that reports a metric without its interval, and any
+# robustness report whose declared floor was chosen after seeing the results. The artefact is
+# an Article 15 evidence report whose every number carries its uncertainty. All of that is
+# built here.
+#
+# WHAT WAS DONE DIFFERENTLY, AND WHY.
+#
+# 1. The ordering rule is ENFORCED BY CODE, not asserted in prose. MODULES.md says the rubric
+#    must fail a floor chosen after the results; a rubric cannot see an author's intentions, so
+#    the lesson gives the floor a home. `EvidenceLedger` is an append-only, sequence-numbered,
+#    hash-chained log — deliberately the same shape as the one P01-L01 builds, minus everything
+#    that lesson grades. `seal_floor()` refuses to seal a floor for a metric the ledger has
+#    already measured, AND refuses a second floor for a metric that already has one, because
+#    re-sealing is the same cheat one entry later. `crossing_severity()` then refuses to report
+#    at all unless the floor's seq is strictly below the minimum seq in the curve and the floor
+#    still matches its own digest. Five rubric tests grade that ordering, including a floor
+#    planted in the MIDDLE of a curve — which passes a naive "floor before the last point"
+#    check and is exactly the shape a real after-the-fact floor takes.
+#
+# 2. A ninth exercise the spec did not name: `unbounded_numbers()`, an audit that walks the
+#    finished report and names every numeric leaf that carries neither an interval nor a
+#    documented licence to be bare. The spec's artefact requirement — "every number carries its
+#    uncertainty" — is otherwise a property nobody checks. Making it executable also forces the
+#    lesson to be explicit about the three kinds of number that legitimately have no interval
+#    (counted on data we hold, declared as policy, or derived from intervals already reported),
+#    which is the distinction the module is really about. `EXACT_QUANTITIES` is that list, with
+#    its three reasons written above it.
+#
+# 3. The extraction analysis MEASURES the query budget rather than assuming one. MODULES.md
+#    asked for "a rate-limiting analysis for model extraction". A rate limit is only a control
+#    once you know what the model is worth, so the lesson fits label-only least-squares
+#    surrogates at ten query budgets and reports the budget at which surrogate agreement
+#    reaches 0.95 — as an interval, with the direction of the bound FLIPPED relative to a
+#    performance claim: for your own metric you declare the bound you can defend, for somebody
+#    else's attack you plan against the bound that favours them. This is the sharpest graded
+#    subtlety in the cybersecurity third and the rubric separates the two readings explicitly.
+#
+# 4. The honest finding the measurement produces is that rate limiting is the WRONG control
+#    here. A four-feature linear scorer is worth about 130 queries on the attacker-favourable
+#    reading; buying 90 days would need a limit of one query a day, which is not a service. The
+#    lesson prints that conclusion, computed, and says in the same breath that a real model with
+#    hundreds of features would move the number by orders of magnitude — which is why it is
+#    measured per system rather than quoted from a paper. Self-check question 3 is about exactly
+#    this, because the tempting wrong answers are to obey the arithmetic or to discard the
+#    measurement.
+#
+# 5. `MIN_SUPPORT` is 30 rows, the same floor P01-L04 used for its subgroup bias probe, and the
+#    poisoning scan meets the same trap on purpose: batch b09 is 20 rows with half its labels
+#    flipped, the loudest rate in the table and the least examinable. It is reported as
+#    `insufficient_support` and still NAMED. Reusing the prerequisite's rule and vocabulary
+#    rather than inventing a second one was a deliberate choice; a programme whose modules
+#    disagree with each other teaches nobody.
+#
+# 6. Two simplifications against the spec, declared rather than hidden. The severity grids are
+#    per family and are NOT comparable across families — one is a share of rows, another a
+#    multiple of a standard deviation — so every curve carries its own unit and the report
+#    prints it, instead of the single comparable severity axis the spec's phrasing implies.
+#    And the bootstrap DRAW is part of the contract: the docstring requires the whole
+#    (n_boot, n) index matrix in one `rng.integers` call from `default_rng(seed)`, so two
+#    machines produce identical intervals. That rules out a statistically equivalent
+#    loop-per-replicate implementation, which is a real restriction; it is taken because an
+#    evidence pack whose intervals move between machines is not evidence, and because the
+#    crossing severities on this fixture sit within 0.004 of the floor, close enough that
+#    Monte Carlo noise between two draws could move a reported crossing by a whole grid step.
+#
+# DEPENDENCIES. Standard library plus numpy. No pyyaml, no assets directory, no network, no
+# disk reads. The declared data set is generated inside lesson.py section 3 from one seed.
+#
+# BUDGET. Declared cpu8 / 90 s. The bootstrap is vectorised: one (n_boot, n) gather per
+# measurement, never a Python loop over replicates. B is 2000 for the three headline metrics,
+# 500 for the 24 sweep points (the sweep needs the shape of a curve, not a headline) and 1500
+# for the poisoning and extraction work. The k-nearest-neighbour scan uses the expanded squared
+# distance rather than a 3-D broadcast, which keeps the 2000-row matrix at about 32 MiB rather
+# than 128. Measured figures at the foot of this file.
+#
+# SYNC between lesson.py and solutions/lesson_solution.py is mechanical, not manual: both are
+# GENERATED from one master by substituting the nine stub bodies, so the two cannot drift in
+# their prose, their public checks or their fixture. The solution additionally carries a banner
+# cell and section 16a, the self-check answers. The self-check key in lesson.py is salted
+# SHA-256 digests, so no answer is readable off the student's own page. Answers are 1c, 2b, 3d,
+# 4a, 5c — five questions, four distinct letters, not all the same.
+#
+# RUBRIC MUTATION TESTING. 21 plausible-wrong variants of the reference solution were built in
+# a temporary directory outside the lesson tree and graded through tools/grade.py, plus THREE
+# controls that are differently-shaped RIGHT answers and must still score 100%. Results and the
+# defects they found are recorded in the mutation notes below.
+#
+# WHAT COULD NOT BE VERIFIED. The extraction interval is a percentile bootstrap over the pooled
+# (attack draw x evaluation point) match indicators. That treats the six attacker draws at each
+# budget and the 1200 evaluation points as one exchangeable population, which understates the
+# attacker-draw component of the uncertainty: matches within one attack are correlated and a
+# cluster bootstrap over attacks would be the stricter treatment. Six clusters is too few for a
+# percentile bootstrap over clusters, so the lesson takes the pooled reading and names the
+# limitation in section 11 and in the residual-risk catalogue rather than hiding it. Nothing in
+# the lesson claims the interval covers the attacker's luck in choosing query points.
+#
+# OPEN FOR THE OWNER, no action taken here:
+#   * MODULES.md still marks module 6 "SPECIFIED - NOT BUILT" and its status table row 6 reads
+#     "specified". It should become BUILT, cpu8, with the measured figures at the foot of this
+#     file and "132 pts / 32 cases". The MODULES.md prose section 6 describes this lesson
+#     accurately and needs no change beyond the four deliberate differences noted above.
+#   * The evidence id this module fills, accuracy_robustness_cybersecurity_report, is already
+#     declared in lessons/T10-L01-ai-act-conformity-pack (HIGH_RISK_CORE_EVIDENCE, Article 15).
+#     Nothing needed there.
+#   * flagship F09 matches the rest of the programme; flagships/ still holds no F09 directory.
+#   * P01-L05 (human oversight) and P01-L07/L08 were being built concurrently by other agents
+#     while this lesson was written; their directories appeared during the run and nothing here
+#     was read from them. This lesson declares only T10-L01 and P01-L01 as prerequisites and
+#     depends on neither P01-L04 nor P01-L05 in code — the two places it reuses P01-L04's
+#     vocabulary (the 30-row support floor, the "name it rather than drop it" rule) are
+#     self-contained and explained where they appear. If the owner wants the programme's
+#     prerequisite graph to read in module order, P01-L04 is the natural third prerequisite to
+#     add here, and that is the owner's call, not this lesson's.
+#
+# ---------------------------------------------------------------------------------------
+# MUTATION NOTES, 2026-09-22/23. 31 mutants and 3 right-answer controls were built in a temporary
+# directory outside the lesson tree — each a whole copy of the lesson with one textual edit to
+# the reference solution — and graded through tools/grade.py --solution.
+#
+# The FIRST wave caught 31 of 31 and found ONE real rubric defect, which scored a full 132/132
+# against the rubric as it stood:
+#
+#   * AN ORDER-DEPENDENT FIXTURE. `test_curve_perturbs_the_inputs_and_leaves_the_fixture_alone`
+#     snapshotted `lesson.TEST_FEATURES` inside itself and compared afterwards. By the time it
+#     ran, an earlier rubric case had already called `perturbation_curve`, so an implementation
+#     that writes the damage back into the features it was handed had corrupted the fixture
+#     BEFORE the test that hunts for exactly that started looking — and its snapshot matched.
+#     The mutant was caught only by two collateral tests. The snapshots are now taken at module
+#     import, before any case has run, and every expectation drawn from the held-out split is
+#     derived from them; that mutant now loses the test written for it, and any fixture
+#     corruption from any source is visible wherever it happens.
+#
+# Two further hidden cases were strengthened where the wave showed a distinction resting on a
+# single test: the defensible-end choice in `declare` (a second interval, 10%-to-70%, in
+# `test_declare_carries_the_provenance_and_leaves_the_input_alone`) and the floor-ordering rule
+# (a floor sealed mid-sweep on the REAL curve, in `test_crossing_on_the_real_sweep`). Both
+# mutants now lose two tests rather than one.
+#
+# AFTER the fixes, re-run in full: 31 of 31 mutants lost points, scoring 76% to 97%, and every
+# one of them kept full credit on the exercises it had not broken, so no test collapsed into
+# all-or-nothing. Nothing survived, and nothing had to be proved equivalent. By exercise:
+#
+#   bootstrap: unpaired index draws (79%); point as the replicate mean (86%); percentiles
+#     hard-coded at 2.5/97.5 (98%); resampling without replacement, i.e. a per-row permutation
+#     (76%); a zero-width interval on no rows (98%).
+#   declare: always publishing the lower bound (95%); testing the interval for truthiness
+#     rather than for its keys (96%); allowing a point outside its own interval (96%).
+#   seal_floor: allowing a second floor for the same metric (96%); blocking on any measurement
+#     whatever its metric (96%); accepting any rationale (97%); digesting the ledger entry
+#     rather than the payload (90%).
+#   perturbation_curve: writing the damage back into the caller's features (91%); measuring
+#     with bootstrap_ci directly instead of through the ledger (90%).
+#   crossing_severity: crossing on the point rather than the lower bound (86%); comparing the
+#     floor against the LAST measurement instead of the first (93%); skipping the digest check
+#     (97%); failing only strictly inside the operating point (97%); reporting the severity
+#     difference instead of grid steps (97%).
+#   poison_scan: a baseline that includes the batch under test (96%); judging the gap before
+#     applying the support floor (96%); comparing point estimates rather than intervals (93%);
+#     listing findings least serious first (97%).
+#   extraction_risk: reading the two budget bounds the wrong way round (90%); sizing the
+#     recommendation off the confident budget rather than the lucky one (94%); listing clients
+#     at the limit as over it (96%).
+#   residual_risk: dropping the statements it cannot support (92%); accepting evidence with no
+#     interval (97%).
+#   unbounded_numbers: treating booleans as numbers (94%); descending into intervals (94%);
+#     never walking lists (97%).
+#
+# The three controls are differently-shaped RIGHT answers and all score 100%: (1) np.quantile
+# in place of np.percentile, a tuple-index form of the declared-end choice, and an iterative
+# stack-based audit in place of the recursive one; (2) explicit loops in crossing_severity in
+# place of next(), and a sorted-comprehension ranking in poison_scan; (3) seal_floor validating
+# the floor before the rationale, and a while-loop path walk in residual_risk.
+#
+# WHAT THIS WAVE DOES NOT ESTABLISH. One author wrote both the rubric and the mutants, so the
+# mutants inherit the author's idea of what a wrong answer looks like. Eleven of the thirty-one
+# still lose exactly one test (96-97%), which means a single hidden case is carrying the whole
+# distinction in each of those places — the defect found above was of exactly that shape, and
+# it was invisible until a collateral test happened to catch its mutant. A second, independent
+# wave should aim there first: seal_floor's two refusals, the digest check, the strict-versus-
+# inclusive operating-point comparison, the findings order, the client-limit boundary, the
+# non-interval evidence refusal and the list walk.
+#
+# WORKED EXAMPLES. All 34 doctests in the nine stub docstrings were run against the reference
+# solution under doctest.testmod and pass. No gate runs them, so a wrong worked example would
+# otherwise ship silently and teach the wrong contract to every student who reads it before
+# writing anything.
+#
+# ONE PEDAGOGY GATE READING. Gate 3 asks for no more than about 40 lines of prose before the
+# next runnable cell. The longest markdown cell here is 42 lines and is the section 16
+# self-check question list, which is a list of five questions rather than an expository run;
+# every expository cell is under 25. P01-L04 carries the same shape at 45 lines.
+# ---------------------------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# INDEPENDENT REVIEW, 2026-09-23. A second author re-ran all four gates, built a fresh wave of
+# 33 mutants and 4 differently-shaped right-answer controls, re-fetched every URL in
+# claims.yaml, and audited the things the gates cannot see. The wave was aimed deliberately at
+# the thin spots the first wave named: the strict-versus-inclusive boundaries, the two
+# seal_floor refusals, the findings order, the client-limit boundary and the list walk.
+#
+# WHAT THE FIRST WAVE MISSED. 14 of the 33 mutants scored a full 132/132 against the rubric as
+# it stood. Ten of them were real rubric defects, every one a BOUNDARY the fixture never
+# reaches, and every one now graded:
+#
+#   declare      `lo < point < hi` and `hi <= lo` both refused a ZERO-WIDTH interval — which is
+#                what this lesson's own bootstrap returns for a model right about every row,
+#                and what section 4's pairing demo prints. Two refusals of a measurement the
+#                lesson itself makes, scoring full marks.
+#   seal_floor   the length check run on the UNSTRIPPED rationale, so padding a short reason
+#                out to MIN_RATIONALE_CHARS with whitespace bought a floor with no reason.
+#   curve        the measurement handed (y_pred, y_true). accuracy is symmetric and cannot see
+#                it; `metric_name` is a parameter and two of METRICS are not.
+#   crossing     `lo <= floor` counted a bound sitting exactly ON the floor as a breach.
+#   poison       `n <= min_support` made a batch of exactly min_support rows unexaminable while
+#                `supported` still said True — the two were decided by separate expressions and
+#                only one was pinned at the boundary; and `lo >= baseline_hi` accused every
+#                batch in a set with nothing flagged, where both intervals are exactly [0, 0].
+#   extraction   `hi > target` gave the attacker a free grid step; `days_lo <= target_days`
+#                failed a system that met its target exactly; `round` in place of `floor` gave
+#                the recommended limit back the queries the floor had just taken away.
+#
+# The fixes are eight tightened hidden cases and one new helper, `_separable_population` — two
+# far-apart clusters labelled by cluster, the only way to put a batch's `lo` exactly level with
+# its baseline's `hi` on a real scan. Re-run in full afterwards: 30 of 33 mutants lose points,
+# scoring 88% to 98%, each losing only the test written for it plus its genuine collateral, so
+# partial credit survives everywhere. All four controls still score 100%.
+#
+# THREE SURVIVORS, PROVED EQUIVALENT rather than patched:
+#   * `[k for k in DECLARATION_KEYS if ci.get(k) is None]` in place of `if k not in ci`.
+#     Measured over every shape the contract names — complete, key absent, point/lo/hi None or
+#     nan, zero-width, empty — the two agree on the returned dict and on the exception type in
+#     every case. They diverge only where a non-interval key is PRESENT and None (`level`,
+#     `n`), which the docstring does not cover and where the reference raises an uncaught
+#     TypeError and the variant raises UndeclarableMetricError. The variant is the more
+#     graceful of the two on undocumented input; it is not a wrong answer.
+#   * seal_floor storing the raw rationale in the payload instead of the stripped one. The
+#     docstring specifies stripping for the LENGTH CHECK only, and nothing downstream compares
+#     the stored text — crossing_severity recomputes the digest from the payload it is handed,
+#     so a consistently unstripped payload verifies. No divergence exists inside the contract.
+#   * poison_scan ranking findings by `-rate` without the `(-rate, id)` tie-break. `out` is
+#     built by `for batch_id in sorted(set(batches))`, so the sequence handed to `sorted` is
+#     already in ascending id order and Python's sort is stable: ties break by id either way.
+#     Measured on a four-batch fixture with three tied rates, the two orders are identical.
+#
+# THREE DEFECTS THE GATES CANNOT SEE, all fixed here:
+#   1. THE SELF-CHECK ANSWER KEY WAS DEAD. No letter reproduced any stored digest under the
+#      scheme `check_self_check` actually uses — brute-forced over a-h, six salts and seven
+#      formats, zero matches. A student answering all five correctly was told all five were
+#      wrong. Nothing executes `check_self_check` with real answers (the call is commented
+#      out), so execute.py and grade.py were both blind to it. The key is regenerated from
+#      1c 2b 3d 4a 5c, the letters solutions section 16a argues for, and both files now mark
+#      five right for the right answers and one right for all-'a'.
+#   2. GATE 3, measured per RUN rather than per cell. Sections 15 and 16 were two markdown
+#      cells back to back: 65 lines of prose with nothing to run between them. The note above
+#      reads "the longest markdown cell here is 42 lines", which is true and is not what the
+#      gate asks. A runnable cell now sits between them and the longest run is 44, the same as
+#      reviewed P01-L04.
+#   3. GATE 12, four places. `accuracy: 0.89` in the opening and in the common-mistakes list,
+#      and self-check questions 1 and 3, which stated "You measure accuracy at 0.89 on 1200
+#      held-out rows" and "Extraction is measured at 130 queries ... a limit of 500 a day".
+#      0.89, 1200 and 130 are this run's own measured outputs, typed by hand, and would have
+#      gone stale in silence if the seed or the query grid ever moved. The cell added for
+#      gate 3 prints all of them and both stems now point at it. (Question 2's 0.83 is a
+#      hypothetical and is not this lesson's worst family, which bottoms out at 0.7525; it is
+#      left alone, as P01-L04 leaves its own scenario numbers.)
+#
+# SOURCES RE-VERIFIED on 2026-09-23, every URL re-fetched and every quote compared to the live
+# page: Article 15(1), 15(3), 15(4) and 15(5) verbatim on euaiact.com and corroborated word for
+# word on ai-act-law.eu, neither carrying any deletion or amendment marker; Annex IV 2(g)
+# verbatim; the Hunton note carrying "December 2, 2027 ... including systems used in employment
+# and education", the 27 July 2026 entry into force three days after Official Journal
+# publication, Regulation (EU) 2026/1744 by number, and the 2 August 2028 Annex I date; the
+# UCI Statlog licence line verbatim, 1000 instances, 20 features, and its direct .zip answering
+# 200 with no form. Nothing had drifted. The Efron entry carries no quote and needs none.
+#
+# CHECKED AND CLEAN: both prerequisites resolve to directories that exist; no objective says
+# "understand"; all nine stubs carry a docstring, a worked example, a Returns line, # YOUR CODE
+# HERE and raise NotImplementedError, never a bare pass; no rubric hint says "assertion
+# failed"; no prose anywhere points at a path under solutions/; the self-check answers are four
+# distinct letters.
+#
+# STILL OPEN FOR THE OWNER: this lesson has no lesson.ipynb, and every other lesson in the
+# repository — including P01-L01, which is also `executed` — has one committed. Gates 13 and 14
+# are not in this review's four gates and the notebook was not generated here.
+# ---------------------------------------------------------------------------------------
+reviewed_by: "independent review 2026-09-23: 4 gates re-run green; 33 mutants + 4 controls; 10 rubric boundary defects fixed, 3 survivors proved equivalent; dead self-check key, one gate-3 prose run and four gate-12 typed numbers fixed; all claims.yaml sources re-fetched and verbatim."
+measured_seconds: 3.1
+measured_peak_mib: 796
