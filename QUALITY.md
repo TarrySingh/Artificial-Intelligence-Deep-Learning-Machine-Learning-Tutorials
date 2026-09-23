@@ -52,8 +52,10 @@ directory, in a Python it chose. These two gates are about that moment.
     `--completed`, the finished lesson must print the same results in both.
     A measurement of the student's machine — a time, a memory peak, a throughput — prints
     WITH ITS UNIT on the value itself (`0.134 s`, `1.45 MiB`, `418 MB/s`), never only in a
-    column header. It tells a student which numbers will differ on their machine, and it is how
-    the comparison tells a measurement from a result: inputs and results are compared exactly,
+    column header. A number DERIVED from such a measurement — how many samples fit a control
+    tick at the speed this machine ran — is itself a measurement and prints with `≈` in front of
+    it. Both tell a student which numbers will differ on their machine, and they are how the
+    comparison tells a measurement from a result: inputs and results are compared exactly,
     measurements are not.
 14. **Run all is a good experience** — a student who opens the notebook and presses Run all
     before writing a line must reach the last cell with no unhandled exception:

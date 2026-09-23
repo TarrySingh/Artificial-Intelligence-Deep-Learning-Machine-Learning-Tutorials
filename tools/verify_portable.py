@@ -106,6 +106,9 @@ BANNER = re.compile(r"\b(python|numpy|matplotlib|mujoco|tokenizers|torch|pyyaml|
 # Masking whole lines by pattern would hide results that share a line with a timing; relying
 # only on two same-environment runs misses coarse readings like "0.9 s" that happen to repeat.
 MEASURE = re.compile(
+    # "≈N" is a number DERIVED from this machine's speed (how many samples fit a tick): the
+    # lesson marks it so a student knows theirs will differ, and it is masked like a timing.
+    r"≈\s*\d[\d,]*(?:\.\d+)?|"
     r"(?<![\w.])\d[\d,]*(?:\.\d+)?\s*"
     r"(?:s|ms|us|µs|ns|secs?|seconds?|milliseconds?|microseconds?|nanoseconds?"
     r"|KiB|MiB|GiB|kB|MB|GB|Hz|kHz|MHz|x|×"

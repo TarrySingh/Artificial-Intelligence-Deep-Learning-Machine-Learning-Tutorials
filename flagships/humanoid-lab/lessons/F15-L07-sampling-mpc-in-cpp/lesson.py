@@ -827,7 +827,7 @@ def report() -> None:
         print(f"  {name:6s} {b['plan_seconds_per_tick'] * 1e3:7.2f} ms per "
               f"{b['tick_seconds'] * 1e3:.0f} ms tick -> "
               f"{'real-time' if b['realtime'] else 'TOO SLOW':9s} "
-              f"(affords {b['max_samples']:,} samples at this horizon)")
+              f"(affords ≈{b['max_samples']:,} samples at this horizon)")
 
     print(f"\nthe trade-off, at the C++ rate of {cpp['steps_per_second']:,.0f} steps/s")
     print(f"  {'samples':>8} {'horizon':>8} {'predict':>9} {'plan/tick':>10}  verdict")
