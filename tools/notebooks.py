@@ -16,7 +16,7 @@ The block is a no-op wherever everything is already present, which is why the ex
 does not slow down and why `no network on a required path` still holds: nothing is installed
 and nothing is fetched unless it is genuinely absent.
 """
-import argparse, ast, hashlib, json, re, subprocess, sys
+import argparse, ast, hashlib, json, os, re, subprocess, sys, tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -211,34 +211,54 @@ def strip(src: str) -> str:
     return src
 
 
-def build(d: Path) -> str:
-    nb_path = d / "lesson.ipynb"
-    r = subprocess.run([JUPYTEXT, "--to", "ipynb", str(d / "lesson.py"),
-                        "-o", str(nb_path)], capture_output=True, text=True)
-    if r.returncode != 0:
-        return f"FAILED {r.stderr.strip()[:120]}"
-    # nbformat gives every cell a RANDOM id on every conversion. That made --check fail on
-    # notebooks whose content was identical, and would have churned all of them in git on every
-    # rebuild. Derive each id from the cell's position and content instead: stable while the
-    # cell is unchanged, unique within the notebook because the index is part of the hash.
-    nb = json.loads(nb_path.read_text())
+def render(d: Path):
+    """lesson.py -> notebook text, rendered in a temporary directory. Touches nothing in the repo.
+
+    Returns (text, "") or (None, error). Cell ids are derived, not random: nbformat gives every
+    cell a RANDOM id on every conversion, which made identical notebooks compare unequal and
+    would churn every one of them in git on every rebuild. Each id is a hash of the cell's
+    index, type and source -- stable while the cell is unchanged, unique within the notebook.
+    """
+    with tempfile.TemporaryDirectory(prefix="atlas-nb-") as tmp:
+        out = Path(tmp) / "lesson.ipynb"
+        r = subprocess.run([JUPYTEXT, "--to", "ipynb", str(d / "lesson.py"), "-o", str(out)],
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            return None, r.stderr.strip()[:160]
+        nb = json.loads(out.read_text())
     for i, cell in enumerate(nb.get("cells", [])):
         src = cell.get("source", "")
         src = "".join(src) if isinstance(src, list) else src
         cell["id"] = hashlib.sha1(f"{i}\x00{cell.get('cell_type')}\x00{src}".encode()).hexdigest()[:12]
     # nbformat's own on-disk style, so a file written here is byte-identical to one it writes.
-    nb_path.write_text(json.dumps(nb, indent=1, sort_keys=True, ensure_ascii=False) + "\n")
+    return json.dumps(nb, indent=1, sort_keys=True, ensure_ascii=False) + "\n", ""
+
+
+def build(d: Path) -> str:
+    text, err = render(d)
+    if text is None:
+        return f"FAILED {err}"
+    tmp = d / ".lesson.ipynb.tmp"
+    tmp.write_text(text)
+    os.replace(tmp, d / "lesson.ipynb")   # atomic: a reader never sees half a notebook
     return "built"
 
 
 def check(d: Path) -> str:
-    """A committed .ipynb that no longer matches its source is worse than none at all."""
+    """Compare the committed notebook with a fresh render. Writes NOTHING.
+
+    An earlier version regenerated the notebook in place and then compared it, so a check run
+    with no arguments silently rewrote every stale notebook in the repository -- one reviewer
+    did exactly that and changed a lesson it had not been asked to touch. A check must not
+    mutate what it checks.
+    """
     nb = d / "lesson.ipynb"
     if not nb.exists():
         return "MISSING lesson.ipynb"
-    before = nb.read_bytes()
-    build(d)
-    return "ok" if nb.read_bytes() == before else "STALE (regenerated; commit it)"
+    text, err = render(d)
+    if text is None:
+        return f"FAILED {err}"
+    return "ok" if nb.read_text() == text else "STALE (run --build, then commit)"
 
 
 def lessons(args) -> list:
