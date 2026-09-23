@@ -2,15 +2,11 @@
 # run. The full gates, which need the worked solutions and rubrics, run in the private source
 # before a lesson is released; this repository never holds either.
 #
-# The lessons sit at the repository root; the 2017-2025 tutorials in archive/ are not built
-# or tested, so a change that touches only archive/ does not trigger this workflow.
 name: lessons
 
 on:
   push:
-    paths-ignore: ["archive/**"]
   pull_request:
-    paths-ignore: ["archive/**"]
   schedule:
     - cron: "17 5 * * 1"   # weekly: catch upstream drift (a new mujoco, a Colab image change)
 
@@ -36,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+        with:
           filter: blob:none
           sparse-checkout: |
             lessons

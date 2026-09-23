@@ -1,7 +1,7 @@
 Synapsa Commons
 Copyright 2026 RealAI. All rights not granted by the licence below are reserved.
 
-Everything in this repository outside archive/ is licensed under the Creative Commons
+Everything in this repository is licensed under the Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International licence (CC BY-NC-SA 4.0). The full
 legal code is in LICENSE and at https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
 
@@ -20,8 +20,3 @@ Commercial licences are available from RealAI: https://www.realai.eu/contact
 Third-party material inside a lesson keeps its own licence, named in that lesson's
 assets/SOURCE.md or claims.yaml. The Synapsa name and logo belong to RealAI and are not
 licensed.
-
-The tutorials in archive/ were published in this repository from 2017 to 2025 by Tarry Singh
-under the Apache License, Version 2.0, which continues to apply to them. The original grant is
-kept, unchanged, in archive/LICENSE-2017. Third-party content in archive/ is distributed under
-the licences its owners provided.

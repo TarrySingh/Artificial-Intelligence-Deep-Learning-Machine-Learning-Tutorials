@@ -8,8 +8,6 @@
 **Free, hands-on AI courses that run anywhere, from the team building Synapsa, an AI-native
 learning platform.**
 
-Looking for the tutorials this repository carried from 2017 to 2025? They are in
-[`archive/`](archive/), unchanged.
 
 [![lessons](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml/badge.svg?branch=master)](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml)
 
@@ -106,17 +104,17 @@ grading plausible wrong answers against its rubric.
   rubrics; this repository receives the student version of each lesson once it passes.
 - `tools/notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift),
   and `tools/verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and
-  3.12. `.github/workflows/lessons.yml` runs both on Linux on every change outside `archive/`, and
-  fails if a solution or rubric file is ever committed here.
+  3.12. `.github/workflows/lessons.yml` runs both on Linux on every change, and fails if a
+  solution or rubric file is ever committed here.
 - `brand/` holds the Synapsa Commons lockups used here and at the top of every notebook.
 
 ## The 2017-2025 tutorials
 
-The tutorials that first made this repository popular are in [`archive/`](archive/), unchanged
-and with their history. GitHub does not redirect moved files, so an old link of the form
-`.../blob/master/<path>` no longer resolves; replace `master` with
-[`legacy-tutorials`](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/legacy-tutorials), the tag that keeps the old
-layout, and it will.
+From 2017 to 2025 this repository carried a curated collection of machine-learning and
+deep-learning tutorials, much of it gathered from other people's work. It helped a great many
+learners, and we are grateful to everyone who starred it, forked it and contributed to it. That
+collection has now been retired from public view, so that everything published here is original
+work we can stand behind and license. Synapsa Commons replaces it.
 
 ## Licence
 
@@ -130,6 +128,4 @@ Synapsa Commons is © 2026 RealAI, free to learn from and share, and licensed un
 
 Commercial licences are available from [RealAI](https://www.realai.eu/contact). Third-party
 material inside a lesson keeps its own licence, named in that lesson's `assets/SOURCE.md` or
-`claims.yaml`. The Synapsa name and logo belong to RealAI and are not licensed. The tutorials in
-`archive/` keep the Apache 2.0 grant they were published under, in
-[`archive/LICENSE-2017`](archive/LICENSE-2017).
+`claims.yaml`. The Synapsa name and logo belong to RealAI and are not licensed.

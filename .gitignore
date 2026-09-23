@@ -27,8 +27,7 @@ assets [0-9]*
 build [0-9]*/
 *.o [0-9]*
 # ...and duplicates of source files ("lesson 2.py", "README 2.md"), which `git add -A` would
-# otherwise commit. Scoped to the curriculum, because archive/ tracks real names like
-# "ex4data1 2.mat".
+# otherwise commit. Scoped to the curriculum directories.
 /lessons/**/* [0-9].*
 /programmes/**/* [0-9].*
 /flagships/**/* [0-9].*
