@@ -7,7 +7,7 @@ switched off (gates 9 and 11).
 | | |
 |---|---|
 | Origin | Authored for this lesson. Not derived from, or copied out of, any third-party model. |
-| Licence | CC0-1.0 — dedicated to the public domain by the AI Atlas project |
+| Licence | CC0-1.0 — dedicated to the public domain by the Synapsa Commons project |
 | Download | None. Both files ship in this directory and are the only assets the lesson reads. |
 | Format | MJCF, the MuJoCo XML schema documented at <https://mujoco.readthedocs.io/en/stable/XMLreference.html> |
 | Engine licence | MuJoCo itself is Apache License, Version 2.0 — <https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE> |

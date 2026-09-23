@@ -112,11 +112,15 @@ def readme_region() -> str:
         b = sum(x[2] == "**built**" for x in r)
         total += sum(x[3] != "—" for x in r)
         rows.append(f"| `programmes/{prog.name}` | {b} of {len(r)} | {len(r) - b} |")
-    compiled = sum(meta(p).get("language") in ("c", "cpp")
-                   for p in ROOT.glob("**/lessons/*/") if (p / "meta.yaml").exists())
+    every = [p for pat in ("lessons/*/", "flagships/*/lessons/*/", "programmes/*/lessons/*/")
+             for p in ROOT.glob(pat) if (p / "meta.yaml").exists()]
+    compiled = sum(meta(p).get("language") in ("c", "cpp") for p in every)
+    reviewed = sum(meta(p).get("status") == "reviewed" for p in every)
+    headline = (f"**{total} lessons, every one passing all 14 gates in `QUALITY.md` and independently "
+                "reviewed.**" if reviewed == total == len(every) else
+                f"**{len(every)} lessons, {reviewed} of them passed and independently reviewed.**")
     return "\n".join([BEGIN, "",
-        f"**{total} lessons, every one passing all 14 gates in `QUALITY.md` and independently "
-        f"reviewed.** {compiled} are compiled C or C++ exercises. Every notebook opens in Colab, "
+        f"{headline} {compiled} are compiled C or C++ exercises. Every notebook opens in Colab, "
         "Kaggle, Binder, Codespaces or local Jupyter. Every `MODULES.md` marks a module built only "
         "when its lesson exists and has passed; everything else says `specified`, and means it.", "",
         "| Area | Built | Specified, not built |", "|---|---|---|", *rows, "", END])

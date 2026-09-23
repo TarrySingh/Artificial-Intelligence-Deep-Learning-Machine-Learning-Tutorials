@@ -96,7 +96,7 @@ points: 94              # = sum of RUBRIC points in tests/test_lesson.py
 # interpreter: execute PASS (0.2 s against a 90 s budget; peak RSS is the written-back
 # measured_peak_mib at the foot of this file, and it jitters by a MiB between runs), grade
 # --solution 94/94, grade (student stubs) 0/94, jupytext converts. Prerequisites resolve
-# (atlas/lessons/T00-L01-the-8gb-track, programmes/document-intelligence/lessons/
+# (lessons/T00-L01-the-8gb-track, programmes/document-intelligence/lessons/
 # P02-L01-extraction-evaluation). The section 8 sweep printed by the reference matches the
 # table above row for row, and the corpus figures (48 / 59 / 2017) match the prose.
 #

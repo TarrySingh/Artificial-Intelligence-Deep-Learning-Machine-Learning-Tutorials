@@ -16,11 +16,11 @@ So this gate does exactly that. For each lesson and each environment it:
 
 The launcher cell at the top of the notebook must install what is missing and fetch the
 sibling files. Until the repository is published there is nothing at the GitHub raw URL, so
-by default the fetch is pointed at the lesson's own directory through ATLAS_RAW_OVERRIDE --
+by default the fetch is pointed at the lesson's own directory through COMMONS_RAW_OVERRIDE --
 the identical urllib code path, reading file:// instead of https://. Pass --live once the
 repository is public to test the real URLs.
 
-Environments live in ~/.cache/atlas-portable, outside the repo and outside iCloud:
+Environments live in ~/.cache/synapsa-commons/portable, outside the repo and outside iCloud:
   py311  ~ Kaggle (Python 3.11)        py312  ~ Colab (Python 3.12)
 --reset uninstalls the optional packages first, so the first lesson that needs each one
 exercises the real install path instead of finding it left over from a previous run.
@@ -37,7 +37,7 @@ import argparse, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CACHE = Path.home() / ".cache" / "atlas-portable"
+CACHE = Path.home() / ".cache" / "synapsa-commons" / "portable"
 OPTIONAL = ["mujoco", "tokenizers"]
 
 RUNNER = r'''
@@ -47,7 +47,7 @@ path, cwd, timeout, expect = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.arg
 nb = nbformat.read(path, as_version=4)
 # Prove which interpreter the kernel really is. A stray user-level "python3" kernelspec
 # would otherwise run every notebook against the wrong Python and report a pass it never earned.
-nb.cells.insert(0, nbformat.v4.new_code_cell("import sys; print('__ATLAS_EXE__' + sys.executable)"))
+nb.cells.insert(0, nbformat.v4.new_code_cell("import sys; print('__COMMONS_EXE__' + sys.executable)"))
 # allow_errors: keep going past a failing cell, so ONE run reports EVERY failing cell, the way
 # a student pressing "Run all" would experience it cell by cell.
 client = NotebookClient(nb, timeout=timeout, kernel_name="python3", allow_errors=True,
@@ -64,8 +64,8 @@ for i, cell in enumerate(nb.cells):
             errors.append({"cell": i - 1, "ename": out["ename"], "evalue": out["evalue"][:160]})
         text = out.get("text", "") if out.get("output_type") == "stream" else ""
         for line in text.splitlines():
-            if line.startswith("__ATLAS_EXE__"):
-                exe = line[len("__ATLAS_EXE__"):]
+            if line.startswith("__COMMONS_EXE__"):
+                exe = line[len("__COMMONS_EXE__"):]
             elif line.startswith(("ready on", "installing")):
                 launcher += line + " "
 wrong_env = bool(exe) and not exe.startswith(expect)
@@ -131,7 +131,7 @@ def pins() -> dict:
 
 def required(d: Path) -> list:
     """The (import, pip) pairs the lesson's own launcher declares."""
-    m = re.search(r"^ATLAS_PIP = \[(.*?)\]", (d / "lesson.py").read_text(), re.M)
+    m = re.search(r"^COMMONS_PIP = \[(.*?)\]", (d / "lesson.py").read_text(), re.M)
     return re.findall(r'\("([^"]+)", "([^"]+)"\)', m.group(1)) if m else []
 
 
@@ -145,7 +145,7 @@ def completed(d: Path, env: str, timeout: int) -> dict:
                         *[f"{m}=={pin[m.lower()]}" if m.lower() in pin else m for m in missing]],
                        capture_output=True, check=False)
     idents = env_identity(py)
-    with tempfile.TemporaryDirectory(prefix="atlas-done-") as tmp:
+    with tempfile.TemporaryDirectory(prefix="commons-done-") as tmp:
         work = Path(tmp) / d.name
         shutil.copytree(d, work, ignore=BUILD_JUNK)
         environ = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
@@ -275,12 +275,12 @@ def main() -> int:
     for d in lessons(a.lesson):
         for env in a.env:
             py = CACHE / env / "bin" / "python"
-            with tempfile.TemporaryDirectory(prefix="atlas-alone-") as tmp:
+            with tempfile.TemporaryDirectory(prefix="commons-alone-") as tmp:
                 shutil.copy2(d / "lesson.ipynb", Path(tmp) / "lesson.ipynb")
                 environ = {k: v for k, v in os.environ.items() if k != "VIRTUAL_ENV"}
                 environ["MPLBACKEND"] = "Agg"
                 if not a.live:
-                    environ["ATLAS_RAW_OVERRIDE"] = d.as_uri() + "/"
+                    environ["COMMONS_RAW_OVERRIDE"] = d.as_uri() + "/"
                 try:
                     r = subprocess.run([str(py), "-c", RUNNER, str(Path(tmp) / "lesson.ipynb"),
                                         tmp, str(a.timeout), str(CACHE / env)],
@@ -300,7 +300,7 @@ def main() -> int:
     total = len(lessons(a.lesson)) * len(a.env)
     print("\n  " + "   ".join(f"{k}: {v}" for k, v in sorted(counts.items())))
     print(f"  {total - fails}/{total} notebook runs pass"
-          f"{'' if a.live else '  (siblings served via ATLAS_RAW_OVERRIDE, not GitHub)'}")
+          f"{'' if a.live else '  (siblings served via COMMONS_RAW_OVERRIDE, not GitHub)'}")
     return 1 if fails else 0
 
 

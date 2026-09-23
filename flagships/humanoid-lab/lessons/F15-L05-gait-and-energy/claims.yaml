@@ -209,7 +209,7 @@ claims:
 
   - id: walker-model-licence
     claim: >-
-      assets/planar_walker.xml was authored for this lesson by the AI Atlas project and is
+      assets/planar_walker.xml was authored for this lesson by the Synapsa Commons project and is
       dedicated to the public domain under CC0-1.0. It is not a download: there is nothing to
       register for and no network access is required on any path through the lesson.
     where: "meta.yaml datasets; assets/SOURCE.md; lesson.py walker_xml_path(), which has no download branch"

@@ -62,7 +62,7 @@ static const uint64_t kGamma = 0x9E3779B97F4A7C15ULL;
 
 #define SF_REFUSED       0u     // sf_push returns this when the buffer is full
 
-#define ATLAS_MAYBE_UNUSED __attribute__((unused))
+#define COMMONS_MAYBE_UNUSED __attribute__((unused))
 
 typedef struct {
   uint8_t addr;
@@ -103,7 +103,7 @@ static jmp_buf g_jmp;
 static int g_jmp_active = 0;
 static char g_msg[1024];
 
-static ATLAS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
+static COMMONS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
   snprintf(g_msg, sizeof g_msg, "%s() is still a stub — %s", what, hint);
   if (g_jmp_active) longjmp(g_jmp, 1);
   fprintf(stderr, "NOT IMPLEMENTED: %s\n", g_msg);
@@ -214,7 +214,7 @@ static uint16_t crc16(const uint8_t* p, size_t n) {
 // should not: the answer would then depend on the chip. This truncates — isqrt64(8) is 2 —
 // and that truncation is one of the two places the gateway's answer drifts below the
 // notebook's, which is a thing you will measure rather than be told.
-static ATLAS_MAYBE_UNUSED uint64_t isqrt64(uint64_t v) {
+static COMMONS_MAYBE_UNUSED uint64_t isqrt64(uint64_t v) {
   uint64_t rem = 0, root = 0;
   for (int i = 0; i < 32; i++) {
     root <<= 1;

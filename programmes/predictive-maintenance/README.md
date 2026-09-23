@@ -94,7 +94,7 @@ later waves and do not exist as code. `MODULES.md` marks every one of them.
 | `lessons/T00-L01-the-8gb-track` | **Required.** You build `measure()` and `tier_check()`, the profiler and the compute gate this whole repository is held to. Every module below declares a tier and is measured against it by `tools/execute.py`; T00-L01 is where you learn what those numbers mean and why a lesson that busts its budget gets rewritten rather than re-declared. |
 | `lessons/T10-L01-ai-act-conformity-pack` | Recommended before module 8. Deployment on an OT network is where the documentation obligations stop being somebody else's problem. |
 
-Nothing else in the Atlas is assumed. No lesson here trains a neural network, and no lesson
+Nothing else in Synapsa Commons is assumed. No lesson here trains a neural network, and no lesson
 here needs a GPU.
 
 ## Compute tier
@@ -118,8 +118,7 @@ is noticeably slow and small enough that the whole notebook runs in under a seco
 ## Running any module
 
 ```bash
-ATLAS=/path/to/atlas
-cd "$ATLAS"
+# from the repository root
 
 # the execution gate: runs the reference solution, measures wall time and peak RSS
 .venv/bin/python tools/execute.py programmes/predictive-maintenance/lessons/<id> --write-back

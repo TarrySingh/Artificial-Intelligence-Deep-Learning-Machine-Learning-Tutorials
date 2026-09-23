@@ -1,8 +1,8 @@
 <!--
-  balancer.xml — a planar ankle-and-hip balancer, written for AI Atlas lesson F15-L08
+  balancer.xml — a planar ankle-and-hip balancer, written for Synapsa Commons lesson F15-L08
   (sim-to-real, and what a free tier cannot teach you).
 
-  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  Authored for this lesson by the Synapsa Commons project and released under CC0-1.0
   (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
   ships inside the lesson directory and the lesson never touches the network.
 
@@ -48,7 +48,7 @@
   Masses are stated explicitly rather than derived from a density, so that every number in
   the lesson's output traces back to something legible in this file.
 -->
-<mujoco model="atlas_f15l08_balancer">
+<mujoco model="f15l08_balancer">
   <compiler angle="radian" autolimits="true"/>
 
   <option timestep="0.004" integrator="implicitfast" gravity="0 0 -9.81">

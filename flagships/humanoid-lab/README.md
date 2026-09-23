@@ -83,8 +83,7 @@ could be verified on the day.
 ## Running any lesson
 
 ```bash
-ATLAS=/path/to/this/repository
-cd "$ATLAS"
+# from the repository root
 
 # the execution gate: runs the reference solution, measures wall time and peak RSS
 .venv/bin/python tools/execute.py flagships/humanoid-lab/lessons/<lesson-id> --write-back

@@ -103,7 +103,7 @@ figures deliberately excluded from this README, and why, are recorded there too.
   cumulative obligation set, the per-system dates, and the rule that a "planned" row is not
   evidence. Every module here writes into an evidence id that lesson defines.
 - **`lessons/T00-L01-the-8gb-track`** — recommended, not required. It builds the profiler and
-  the tier gate that decide whether any lesson in this Atlas may ship, so it explains what the
+  the tier gate that decide whether any lesson in Synapsa Commons may ship, so it explains what the
   compute tier below actually promises you.
 
 ## Compute tier
@@ -120,6 +120,7 @@ finish.
 
 ## Status
 
-Wave 1 ships **one** built module: `lessons/P01-L01-article-12-logging`, passing all four of
-the repository's gates. The remaining modules are **specified, not built** — see `MODULES.md`,
-which marks each one. Nothing in this directory pretends an unbuilt module exists.
+[`MODULES.md`](MODULES.md) is this programme's map. Its status table is generated from the
+lessons themselves by `tools/status.py`: a module reads **built** only when its lesson exists,
+passes all 14 gates in `QUALITY.md` and has been independently reviewed, and every other row
+says `specified`. No count is typed here, so none can go stale.

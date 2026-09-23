@@ -5,7 +5,7 @@ flagship: F13           # flagship id this lesson feeds, or empty
 tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
 budget_seconds: 90
 language: python        # python | c | cpp
-prerequisites: []       # none: this is the first lesson of the Atlas and assumes only Python
+prerequisites: []       # none: this is the first lesson of Synapsa Commons and assumes only Python
 objectives:
   - "Implement measure(fn) so it reports wall time, Python-allocator peak and process RSS high-water for any callable"
   - "Measure the gap between what tracemalloc sees and what the operating system charges, using memory Python never allocated"

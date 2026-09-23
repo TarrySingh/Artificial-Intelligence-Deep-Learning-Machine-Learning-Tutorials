@@ -31,7 +31,7 @@ def main() -> int:
     lesson = Path(args[0]).resolve()
     if "--solution" in sys.argv:
         # grade the reference implementation instead of the student stub file
-        os.environ["ATLAS_LESSON_SRC"] = "solutions/lesson_solution.py"
+        os.environ["COMMONS_LESSON_SRC"] = "solutions/lesson_solution.py"
     tests = lesson / "tests" / "test_lesson.py"
     if not tests.exists():
         print(f"no tests at {tests}")

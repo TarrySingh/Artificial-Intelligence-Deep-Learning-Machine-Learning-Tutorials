@@ -68,13 +68,13 @@ def main() -> int:
         "finally:\n"
         "    _s = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss\n"
         "    _c = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss\n"
-        "    sys.stderr.write('__ATLAS_PEAK__%d\\n' % max(_s, _c))\n"
+        "    sys.stderr.write('__COMMONS_PEAK__%d\\n' % max(_s, _c))\n"
     )
     t0 = time.monotonic()
     proc = subprocess.run([sys.executable, "-c", wrapper, target.name], cwd=target.parent,
                           capture_output=True, text=True, timeout=budget * 3)
     wall = time.monotonic() - t0
-    m = re.search(r"__ATLAS_PEAK__(\d+)", proc.stderr)
+    m = re.search(r"__COMMONS_PEAK__(\d+)", proc.stderr)
     raw = int(m.group(1)) if m else 0
     # ru_maxrss: bytes on macOS, kibibytes on Linux
     peak_mib = raw / (1024 * 1024) if sys.platform == "darwin" else raw / 1024
@@ -90,7 +90,7 @@ def main() -> int:
           f"(budget {budget:.0f}s) peak={peak_mib:.0f}MiB (tier {tier}) ")
     if not ok:
         print("--- stderr tail ---")
-        tail = [l for l in proc.stderr.strip().splitlines() if "__ATLAS_PEAK__" not in l]
+        tail = [l for l in proc.stderr.strip().splitlines() if "__COMMONS_PEAK__" not in l]
         print("\n".join(tail[-15:]))
     if a.write_back and ok:
         text = meta_path.read_text() if meta_path.exists() else ""

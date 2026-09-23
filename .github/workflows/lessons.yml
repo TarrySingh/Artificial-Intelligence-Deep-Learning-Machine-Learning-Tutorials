@@ -2,14 +2,15 @@
 # The lessons are developed on macOS; this workflow is the only thing that proves they work
 # where students actually open them.
 #
-# Assumes this directory (atlas/) is the repository root. If it is published as a subfolder
-# of a larger repository instead, move this file to that repository's .github/workflows/ and
-# set `defaults.run.working-directory: atlas`.
+# The lessons sit at the repository root; the 2017-2025 tutorials in archive/ are not built
+# or tested, so a change that touches only archive/ does not trigger this workflow.
 name: lessons
 
 on:
   push:
+    paths-ignore: ["archive/**"]
   pull_request:
+    paths-ignore: ["archive/**"]
   schedule:
     - cron: "17 5 * * 1"   # weekly: catch upstream drift (a new mujoco, a Colab image change)
 
@@ -47,8 +48,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: a deliberately minimal notebook environment -- no mujoco, no tokenizers
         run: |
-          uv venv --seed --python ${{ matrix.python }} ~/.cache/atlas-portable/${{ matrix.env }}
-          uv pip install --python ~/.cache/atlas-portable/${{ matrix.env }}/bin/python \
+          uv venv --seed --python ${{ matrix.python }} ~/.cache/synapsa-commons/portable/${{ matrix.env }}
+          uv pip install --python ~/.cache/synapsa-commons/portable/${{ matrix.env }}/bin/python \
             numpy matplotlib ipykernel nbclient nbformat
       - name: every notebook, alone in an empty directory, in a real kernel
         run: python3 tools/verify_portable.py --env ${{ matrix.env }} --reset
@@ -64,7 +65,7 @@ jobs:
       - name: both minimal environments
         run: |
           for v in 3.11 3.12; do
-            e=~/.cache/atlas-portable/py${v/./}
+            e=~/.cache/synapsa-commons/portable/py${v/./}
             uv venv --seed --python $v $e
             uv pip install --python $e/bin/python numpy matplotlib ipykernel nbclient nbformat
           done
@@ -80,7 +81,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: |
-          uv venv --seed --python 3.12 ~/.cache/atlas-portable/py312
-          uv pip install --python ~/.cache/atlas-portable/py312/bin/python \
+          uv venv --seed --python 3.12 ~/.cache/synapsa-commons/portable/py312
+          uv pip install --python ~/.cache/synapsa-commons/portable/py312/bin/python \
             numpy matplotlib ipykernel nbclient nbformat
       - run: python3 tools/verify_portable.py --env py312 --reset --live

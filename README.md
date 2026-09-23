@@ -1,48 +1,35 @@
-# The AI Atlas (pre-alpha, unpublished)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="brand/synapsa-commons-dark.png">
+  <img src="brand/synapsa-commons-light.png" alt="Synapsa Commons" height="48">
+</picture>
 
-Hands-on AI lessons you *do* rather than read: every lesson is a notebook with exercises to fill
-in, instant feedback as you go, hints when you are stuck, an autograded rubric with partial
-credit, and a worked solution. Some lessons are C or C++ exercises, built and graded the same way.
+**Free, hands-on AI courses that run anywhere, from the team building Synapsa.**
 
-Local build only. Nothing here has been pushed to any GitHub repository, and the repository
-strategy and history purge are still open decisions. Until it is published,
-the "Open in" badges at the top of each notebook point at addresses that do not exist yet.
+[![lessons](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml/badge.svg?branch=master)](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml)
 
-## Start a lesson
+Every lesson here is a notebook you *do*, not one you read. You fill in the exercises and get instant
+feedback as you go. Hints stay hidden until you ask for them, an autograded rubric gives partial
+credit, and a worked solution waits at the end. Some lessons are C or C++ exercises, built and graded
+the same way. Open any of them in Google Colab, Kaggle, Binder, GitHub Codespaces or your own Jupyter:
+the first cell installs whatever is missing and does nothing where it is already there.
 
-Open any `lesson.ipynb` — in Google Colab, Kaggle, Binder, GitHub Codespaces, or local Jupyter.
-Its first code cell installs anything the lesson needs that your environment lacks and fetches any file
-it needs beside it; where everything is already present, that cell does nothing.
+The courses are aimed at the work people are actually paid for: evidence a regulator accepts, a model
+a risk committee can sign off, an alarm a plant manager will trust. Every number a lesson prints is
+computed by code you run, and every claim it makes about the world cites a primary source.
 
-Then press **Run all**. Before you have written a line, every cell still runs: each unfinished
-exercise says it is not implemented yet, and the notebook ends with a progress board. Fill in an
-exercise, re-run its cell, and its check tells you whether you are right — and if not, what the
-likely mistake is. Each exercise has two hints, hidden until you open them.
+## Where to start
 
-To work locally instead:
+| If you want to… | Course | First lesson |
+|---|---|---|
+| Show that an AI system meets the EU AI Act, with evidence an inspector can re-run | [`programmes/ai-act-conformity/`](programmes/ai-act-conformity/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/ai-act-conformity/lessons/P01-L01-article-12-logging/lesson.ipynb) |
+| Validate a model well enough to sign it off: calibration, challengers, explainability, the committee pack | [`programmes/model-risk/`](programmes/model-risk/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/model-risk/lessons/P04-L01-validation-suite/lesson.ipynb) |
+| Take predictive maintenance from sensor physics to an alarm threshold priced in money | [`programmes/predictive-maintenance/`](programmes/predictive-maintenance/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/predictive-maintenance/lessons/P03-L01-alarm-economics/lesson.ipynb) |
+| Pull fields out of invoices and contracts, and prove how often you are wrong | [`programmes/document-intelligence/`](programmes/document-intelligence/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/document-intelligence/lessons/P02-L01-extraction-evaluation/lesson.ipynb) |
+| Make a simulated humanoid stand and walk, then measure how far that is from a robot | [`flagships/humanoid-lab/`](flagships/humanoid-lab/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/flagships/humanoid-lab/lessons/F15-L01-first-contact/lesson.ipynb) |
+| Start from nothing: the 8 GB machine, tokenisers from scratch, a language model on a CPU | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L01-the-8gb-track/lesson.ipynb) |
 
-    python -m venv .venv && .venv/bin/pip install -r requirements.txt
-    .venv/bin/jupyter lab
-
-Anything a lesson measures on your machine — a time, a memory peak — is printed with its unit
-and will differ from ours. Every other number a finished lesson prints is identical on Python
-3.11 and 3.12 — measured on macOS; the Linux CI proves the same once the repository is public.
-
-## For maintainers
-
-- `QUALITY.md` — the 14 gates every lesson passes, and the language policy.
-- `lessons/`, `flagships/`, `programmes/` — track lessons, flagship subtrees, industry programmes.
-  Each programme's `MODULES.md` is its map: what is built and what is only specified.
-- `tools/`:
-  - `execute.py` runs a lesson's solution within its declared budget and writes back what it measured;
-  - `grade.py` runs the autograder (`--solution` grades the reference);
-  - `notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift);
-  - `verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and 3.12;
-  - `build_student_bundle.py` builds what a student receives and fails on any solution leak;
-  - `status.py` generates the status tables below and in each `MODULES.md`;
-  - `verify_all.py` runs gates 1-12 on every lesson.
-
-`.github/workflows/lessons.yml` runs all of it on Linux once the repository is on GitHub.
+Each course's `MODULES.md` is its map, and shows which lessons exist and which are still only
+specified.
 
 ## What exists today
 
@@ -60,3 +47,62 @@ and will differ from ours. Every other number a finished lesson prints is identi
 | `programmes/predictive-maintenance` | 9 of 9 | 0 |
 
 <!-- STATUS:END -->
+
+## How a lesson works
+
+Press **Run all** before you have written a line. Every cell still runs: each unfinished exercise
+says it is not implemented yet, and the notebook ends with a progress board, one line per exercise,
+marked ✅ passed, ❌ failed or ⏳ not started. Fill in an exercise and re-run its cell, and its check
+tells you whether you are right, and if not, what the likely mistake is. Each exercise has two
+hints: the first says what to think about, the second the approach in words. Neither gives you the
+answer.
+
+Anything a lesson measures on your machine, like a time or a memory peak, prints with its unit and
+will differ from ours. Every other number a finished lesson prints is identical on Python 3.11 and
+3.12, and the workflow above re-checks that on Linux, which is what Colab, Kaggle, Binder and
+Codespaces run.
+
+To work locally instead:
+
+    python -m venv .venv && .venv/bin/pip install -r requirements.txt
+    .venv/bin/jupyter lab
+
+## The bar every lesson clears
+
+[`QUALITY.md`](QUALITY.md) sets out 14 gates. The short version:
+- measurable objectives, and prerequisites that are real lessons;
+- scaffolded exercises with instant feedback, an autograded rubric, a worked solution and a
+  self-check;
+- runs top to bottom in a fresh interpreter, inside a declared compute tier and time budget;
+- data that is free and needs no registration, named with its licence;
+- every claim about the world cites a primary source, and no number in the prose is typed by hand;
+- the notebook opens and runs alone on Python 3.11 and 3.12, and Run all is a good experience.
+
+A lesson is marked built only after an independent reviewer has tried to break it, including by
+grading plausible wrong answers against its rubric.
+
+## For maintainers
+
+- `lessons/`, `flagships/`, `programmes/`: track lessons, flagship subtrees, industry programmes.
+- `tools/`:
+  - `execute.py` runs a lesson's solution within its declared budget and writes back what it measured;
+  - `grade.py` runs the autograder (`--solution` grades the reference);
+  - `notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift);
+  - `verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and 3.12;
+  - `build_student_bundle.py` builds what a student receives and fails on any solution leak;
+  - `status.py` generates the status tables above and in each `MODULES.md`;
+  - `verify_all.py` runs gates 1-12 on every lesson.
+- `.github/workflows/lessons.yml` runs all of it on Linux on every change outside `archive/`.
+- `brand/` holds the Synapsa Commons lockups used here and at the top of every notebook.
+
+## The 2017-2025 tutorials
+
+The tutorials that first made this repository popular are in [`archive/`](archive/), unchanged,
+with their history. Links into the old layout keep working at the
+[`legacy-tutorials`](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/legacy-tutorials) tag.
+
+## Licence
+
+Code and lessons are under the Apache License 2.0; see [`LICENSE`](LICENSE). Assets authored for
+a lesson say their own terms in that lesson's `assets/SOURCE.md`, and third-party material keeps
+its own licence. The Synapsa name and logo are not covered by the licence.

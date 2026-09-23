@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Source | Authored for this lesson by the AI Atlas project. Not a download. |
+| Source | Authored for this lesson by the Synapsa Commons project. Not a download. |
 | Licence | CC0-1.0 — <https://creativecommons.org/publicdomain/zero/1.0/> |
 | Retrieved | 2026-09-16 (written, not fetched) |
 | Gated? | No. Nothing to register for, nothing to agree to, no network access required. |

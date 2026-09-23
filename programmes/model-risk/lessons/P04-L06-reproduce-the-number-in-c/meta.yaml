@@ -211,7 +211,7 @@ points: 75         # = sum of RUBRIC points in tests/test_lesson.py
 #      salted SHA-256 digest per question, so the instant feedback and the section pointer
 #      survive and the letters do not appear in the student bundle. The worked reasoning stays
 #      where it was, in the solution file.
-#   3. THE LIBM PROBE WROTE TO A FIXED /tmp PATH. atlas_p04l06_libm_probe is owned by whoever
+#   3. THE LIBM PROBE WROTE TO A FIXED /tmp PATH. the probe's output file is owned by whoever
 #      built first; the second user on a shared machine cannot write it, the probe fails, -lm
 #      is silently dropped, and on Linux the link then fails for a reason unrelated to the
 #      student's code. The probe now uses mktemp and removes its own artefact. Re-verified:

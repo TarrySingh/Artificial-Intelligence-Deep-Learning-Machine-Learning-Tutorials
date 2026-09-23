@@ -1,4 +1,4 @@
-# The AI Atlas -- one environment for every lesson.
+# Synapsa Commons -- one environment for every lesson.
 #
 # Pinned to the exact versions every gate in this repository was measured against. A lesson
 # that prints a number it measured (a humanoid falling at step 978, a 383 MiB peak) prints it

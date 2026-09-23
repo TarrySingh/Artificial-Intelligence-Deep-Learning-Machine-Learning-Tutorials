@@ -29,7 +29,7 @@
 // once you have finished all three exercises, and clamp()/stats_tick() are unreferenced until
 // you start calling them. Marking them keeps -Wunused-function meaningful for YOUR code
 // instead of drowning it in warnings about the scaffolding.
-#define ATLAS_MAYBE_UNUSED __attribute__((unused))
+#define COMMONS_MAYBE_UNUSED __attribute__((unused))
 
 static const double kDefaultKp = 40.0;
 static const double kDefaultKd = 3.0;
@@ -54,7 +54,7 @@ static jmp_buf g_jmp;
 static int g_jmp_active = 0;
 static char g_msg[1024];
 
-static ATLAS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
+static COMMONS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
   snprintf(g_msg, sizeof g_msg, "%s() is still a stub — %s", what, hint);
   if (g_jmp_active) longjmp(g_jmp, 1);
   fprintf(stderr, "NOT IMPLEMENTED: %s\n", g_msg);
@@ -72,7 +72,7 @@ static void require(int ok, const char* fmt, ...) {
   exit(1);
 }
 
-static ATLAS_MAYBE_UNUSED double clamp(double v, double lo, double hi) {
+static COMMONS_MAYBE_UNUSED double clamp(double v, double lo, double hi) {
   return v < lo ? lo : (v > hi ? hi : v);
 }
 
@@ -189,7 +189,7 @@ static int at_limit(const mjModel* m, const double* ctrl) {
 
 // Everything that happens after a step: the counters, the settle clock and the trace.
 // Call it once per tick, AFTER mj_step, with the ctrl you actually applied.
-static ATLAS_MAYBE_UNUSED void stats_tick(const mjModel* m, const mjData* d, const double* ctrl,
+static COMMONS_MAYBE_UNUSED void stats_tick(const mjModel* m, const mjData* d, const double* ctrl,
                                           const double* target, int k, LoopStats* s) {
   s->ticks_done += 1;
   s->saturated_ticks += at_limit(m, ctrl);

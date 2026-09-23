@@ -155,22 +155,20 @@ root.
 
 ## Status
 
-**One module of ten is built.** Module 1, the opening lesson, is complete and passes all four
-gates. Modules 2 to 10 are *specified* — title, lab, language, budget and rationale — and not
-yet written.
-[`MODULES.md`](MODULES.md) marks which is which on every row. Nothing in this directory
-pretends an unbuilt module exists.
+[`MODULES.md`](MODULES.md) is this programme's map. Its status table is generated from the
+lessons themselves by `tools/status.py`: a module reads **built** only when its lesson exists,
+passes all 14 gates in `QUALITY.md` and has been independently reviewed, and every other row
+says `specified`. No count is typed here, so none can go stale.
 
 ```
 programmes/model-risk/
-├── README.md                              this file
-├── MODULES.md                             the full module map, built and unbuilt marked
-├── claims.yaml                            every claim above, with a primary source
-└── lessons/
-    └── P04-L01-validation-suite/          MODULE 1 — built, 4/4 gates green
+├── README.md        this file
+├── MODULES.md       the module map, with its generated status table
+├── claims.yaml      every claim above, with a primary source
+└── lessons/         one directory per built module
 ```
 
-Run the opening lesson's gates from the repository root:
+Run a lesson's gates from the repository root, for example the opening one:
 
 ```
 python tools/execute.py programmes/model-risk/lessons/P04-L01-validation-suite --write-back

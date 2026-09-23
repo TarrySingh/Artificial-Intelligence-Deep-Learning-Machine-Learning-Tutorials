@@ -1,7 +1,7 @@
 # Document and contract intelligence for regulated operations
 
 **Programme id:** `P02` · **Compute tier:** `cpu8` throughout (8 GiB, 2 vCPU, no GPU, no
-network on any required path) · **Wave 1 status:** 1 module built, 10 specified.
+network on any required path) · **Status:** generated in [`MODULES.md`](./MODULES.md).
 
 This is the programme most enterprises actually buy. Not a chatbot, not a demo: a pipeline that
 reads invoices, contracts, claims, KYC packs and remittance advices, pulls structured fields out
@@ -123,10 +123,9 @@ behind the harness at work.
 
 ## What is built
 
-| | |
-|---|---|
-| **Module 1** | `lessons/P02-L01-extraction-evaluation/` — built, all four gates green |
-| Modules 2-11 | specified in [`MODULES.md`](./MODULES.md), not yet built |
+[`MODULES.md`](./MODULES.md) is this programme's map. Its status table is generated from the
+lessons themselves by `tools/status.py`: a module reads **built** only when its lesson exists,
+passes all 14 gates in `QUALITY.md` and has been independently reviewed, and every other row
+says `specified`. No count is typed here, so none can go stale.
 
-See [`MODULES.md`](./MODULES.md) for the full map: every module, the lab a student does in it,
-and its compute tier. Unbuilt modules are marked as such and no directory pretends otherwise.
+It is also the full map: every module, the lab a student does in it, and its compute tier.

@@ -1,8 +1,8 @@
 <!--
-  stander.xml — a planar ankle-balancer standing on a flat foot, written for AI Atlas
+  stander.xml — a planar ankle-balancer standing on a flat foot, written for Synapsa Commons
   lesson F15-L04 (standing balance: the centre of mass and the support polygon).
 
-  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  Authored for this lesson by the Synapsa Commons project and released under CC0-1.0
   (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
   ships inside the lesson directory and the lesson never touches the network.
 
@@ -71,7 +71,7 @@
   derived from a density, so every number in the lesson's output traces back to something
   legible in this file.
 -->
-<mujoco model="atlas_f15l04_stander">
+<mujoco model="f15l04_stander">
   <compiler angle="radian" autolimits="true"/>
 
   <option timestep="0.002" integrator="implicitfast" gravity="0 0 -9.81"/>

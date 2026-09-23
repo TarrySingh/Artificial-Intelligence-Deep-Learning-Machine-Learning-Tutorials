@@ -18,7 +18,7 @@ datasets:
     licence: "CC0-1.0"
     url: "https://creativecommons.org/publicdomain/zero/1.0/"
     licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the AI Atlas project; dedicated to the public domain"
+    copyright: "Authored for this lesson by the Synapsa Commons project; dedicated to the public domain"
     cached_at: "assets/arm.xml"
     retrieved: 2026-09-16
     gated: false

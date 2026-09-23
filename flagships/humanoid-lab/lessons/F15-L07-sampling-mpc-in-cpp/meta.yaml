@@ -17,7 +17,7 @@ objectives:
   - "Show that scoring a candidate plan leaves the live simulation state untouched, and explain what breaks when it does not"
 datasets:
   - name: "cartpole.xml — cart-pole MJCF authored for this lesson"
-    licence: "Authored for The AI Atlas; no third-party rights attach to it. Written against the MJCF schema."
+    licence: "Authored for Synapsa Commons; no third-party rights attach to it. Written against the MJCF schema."
     url: ""               # none: the file is authored here, ships in assets/, and is never fetched
     licence_url: "https://mujoco.readthedocs.io/en/stable/XMLreference.html"
     engine_licence: "MuJoCo itself is Apache-2.0 — https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"

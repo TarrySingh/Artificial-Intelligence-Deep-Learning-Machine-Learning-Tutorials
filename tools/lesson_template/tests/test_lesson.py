@@ -7,7 +7,7 @@ import importlib.util, os
 from pathlib import Path
 
 # CI grades solutions/lesson_solution.py; a student grades lesson.py. Same rubric, one file.
-_src = Path(__file__).resolve().parents[1] / os.environ.get("ATLAS_LESSON_SRC", "lesson.py")
+_src = Path(__file__).resolve().parents[1] / os.environ.get("COMMONS_LESSON_SRC", "lesson.py")
 _spec = importlib.util.spec_from_file_location("lesson", _src)
 lesson = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(lesson)

@@ -1,8 +1,8 @@
 <!--
-  arm.xml — a humanoid upper body, welded to the world, written for AI Atlas lesson
+  arm.xml — a humanoid upper body, welded to the world, written for Synapsa Commons lesson
   F15-L02 (kinematics, frames and Jacobians).
 
-  Authored for this lesson by the AI Atlas project and released under CC0-1.0
+  Authored for this lesson by the Synapsa Commons project and released under CC0-1.0
   (https://creativecommons.org/publicdomain/zero/1.0/). Nothing is downloaded: the file
   ships inside the lesson directory and the lesson never touches the network.
 
@@ -69,7 +69,7 @@
   the same computation at three different points, and the notebook measures the gap between
   them rather than describing it.
 -->
-<mujoco model="atlas_f15l02_upper_body">
+<mujoco model="f15l02_upper_body">
   <compiler angle="radian" autolimits="true"/>
 
   <option timestep="0.002" gravity="0 0 -9.81">

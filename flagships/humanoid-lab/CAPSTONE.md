@@ -105,8 +105,7 @@ Fixed by the harness, not by you:
 ### Run it yourself, before you submit
 
 ```bash
-ATLAS=/path/to/this/repository
-cd "$ATLAS"
+# from the repository root
 .venv/bin/python flagships/humanoid-lab/capstone/measure_walk.py \
     --policy capstone/policy.py --seed dev --episodes 24
 ```

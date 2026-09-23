@@ -36,7 +36,7 @@ static const long kDefaultDump = 2000;
 static const int kExpSpan = 41;    // exponent codes 0..40 ...
 static const int kExpShift = 20;   // ... mapped onto 2^-20 .. 2^+20
 
-#define ATLAS_MAYBE_UNUSED __attribute__((unused))
+#define COMMONS_MAYBE_UNUSED __attribute__((unused))
 
 // =======================================================================================
 // Plumbing for the self-test. Read it once, then ignore it.
@@ -51,7 +51,7 @@ static jmp_buf g_jmp;
 static int g_jmp_active = 0;
 static char g_msg[1024];
 
-static ATLAS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
+static COMMONS_MAYBE_UNUSED void todo(const char* what, const char* hint) {
   snprintf(g_msg, sizeof g_msg, "%s() is still a stub — %s", what, hint);
   if (g_jmp_active) longjmp(g_jmp, 1);
   fprintf(stderr, "NOT IMPLEMENTED: %s\n", g_msg);
