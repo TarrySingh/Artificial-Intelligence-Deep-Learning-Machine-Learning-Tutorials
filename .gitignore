@@ -12,6 +12,10 @@ __pycache__/
 *.dSYM/
 lesson_bin
 solutions/lesson_bin
+# per-lesson build directories: binaries and generated test data. tools/execute.py deletes
+# them before every run because a stale binary can point at a dead library path. 8.5 MiB of
+# them (two Mach-O executables, six generated CSVs) were once committed by a `git add -A`.
+build/
 # environment
 .venv/
 .DS_Store
