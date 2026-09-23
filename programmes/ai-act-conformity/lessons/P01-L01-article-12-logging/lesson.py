@@ -256,9 +256,11 @@ print(f"\nretention floor modelled as {RETENTION_MINIMUM_DAYS} days, so the wind
 # %% [markdown]
 # ### Which timetable this sits on
 #
-# The Digital Omnibus on AI moved the Chapter III high-risk duties — Article 12 among them —
-# but it moved neither Article 50 nor the articles already binding. The rungs below are the
-# same ladder T10-L01 printed, narrowed to the three that decide when *this* log must exist.
+# The Digital Omnibus on AI moved the Chapter III high-risk duties — Article 12 among them.
+# It left Article 50's application date where it was; its one change there is the transitional
+# rule T10-L01 graded, which gives generative systems already on the market until 2 December
+# 2026 to meet Article 50(2). The rungs below are the same ladder T10-L01 printed, narrowed to
+# the three that decide when *this* log must exist.
 
 # %%
 ARTICLE_12_TIMETABLE = {
@@ -596,8 +598,10 @@ def _check_verify_chain() -> None:
         f"editing the event at seq 4 must be caught AT seq 4, got {verdict!r} — recompute each "
         "entry's digest from its own contents rather than trusting the stored value"
     )
-    assert "entry_hash" in verdict.reason, (
-        f"the reason for an edited event must name entry_hash, got {verdict.reason!r}"
+    assert ("entry_hash" in verdict.reason and "prev_hash" not in verdict.reason
+            and "sequence" not in verdict.reason), (
+        "the reason for an edited event must name entry_hash and neither of the other two "
+        f"words, got {verdict.reason!r} — the numbering and the links are intact here"
     )
 
     deleted = build_log(EVENT_STREAM)
@@ -617,6 +621,10 @@ def _check_verify_chain() -> None:
     verdict = verify_chain(relinked)
     assert not verdict.intact and verdict.first_bad_seq == 3 and "prev_hash" in verdict.reason, (
         f"re-pointing an entry at genesis must break the link check at seq 3, got {verdict!r}"
+    )
+    assert "entry_hash" not in verdict.reason and "sequence" not in verdict.reason, (
+        f"the reason was {verdict.reason!r} — a broken link names prev_hash and only prev_hash, "
+        "or an inspector filtering on 'entry_hash' files it as an edited event"
     )
 
     head = clean[-1]["entry_hash"]
@@ -662,7 +670,8 @@ def _show_anchor() -> None:
     print(f"the forged log's head is   {forged[-1]['entry_hash'][:16]}…")
     print(f"\nwithout the anchor: {verify_chain(forged)}")
     print(f"with the anchor:    {verify_chain(forged, expected_head=published_head)}")
-    print("\nthe forgery rewrote one outcome and re-hashed the nine entries after it, so the")
+    print(f"\nthe forgery rewrote one outcome and re-hashed the {len(EVENT_STREAM[5:])} entries "
+          "after it, so the")
     print("log is internally flawless. Only a hash the forger could not reach says otherwise —")
     print("which is why a head hash belongs in a place the system's operators do not own.")
 
@@ -760,8 +769,8 @@ def _check_retention() -> None:
         "oldest_ts is the minimum timestamp in the log, not the timestamp of the first entry"
     )
     assert report["newest_ts"] == max(e["ts"] for e in EVENT_STREAM), (
-        "newest_ts is the maximum timestamp — one entry's clock stepped backwards, so the last "
-        "entry in sequence order is not the latest in time"
+        "newest_ts is the maximum timestamp over the whole log — the log is in sequence order, "
+        "not time order, so nothing guarantees its last entry is the latest"
     )
     assert report["missing_seq"] == [] and report["compliant"], (
         f"the shipped stream is contiguous, so nothing is missing: got {report['missing_seq']}"
@@ -897,7 +906,7 @@ _try("exercise 4", _check_reconstruct)
 
 # %%
 FIELD_SOURCES = {
-    "system_id": "Article 12(1) — the log covers a system's lifetime, so name the system",
+    "system_id": "modelling choice, via Article 12(1) — a lifetime log has to name its system",
     "model_version": "modelling choice — a decision you cannot tie to an artefact is not traced",
     "use_start": "Article 12(3)(a) — start date and time of each use",
     "use_end": "Article 12(3)(a) — end date and time of each use",
@@ -910,7 +919,8 @@ REQUIRED_FIELDS = tuple(FIELD_SOURCES)
 
 print(f"{len(REQUIRED_FIELDS)} required fields: "
       f"{sum('Article 12(3)' in v for v in FIELD_SOURCES.values())} come from the four-item "
-      "Article 12(3) minimum, whose point (a) supplies two of them; "
+      "Article 12(3) minimum, whose point (a) supplies "
+      f"{sum('12(3)(a)' in v for v in FIELD_SOURCES.values())} of them; "
       f"{sum('modelling choice' in v for v in FIELD_SOURCES.values())} are this lesson's own "
       "choice")
 for _field, _why in FIELD_SOURCES.items():

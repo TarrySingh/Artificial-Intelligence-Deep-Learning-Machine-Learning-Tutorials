@@ -16,7 +16,7 @@ objectives:
   - "Implement completeness_report() so it names the required fields a reconstructed decision is missing, and justify why that field list is a modelling choice"
 datasets: []            # none: the event stream is constructed inside lesson.py, nothing is read from disk or downloaded
 points: 58              # = sum of RUBRIC points in tests/test_lesson.py
-status: executed        # draft | executed | reviewed | shipped
+status: reviewed        # draft | executed | reviewed | shipped
 # Authoring notes, 2026-09-16.
 #
 # All four gates run from the repo root on the venv interpreter. The measured figures below
@@ -85,6 +85,23 @@ status: executed        # draft | executed | reviewed | shipped
 # tools/build_student_bundle.py has not been run against a lesson under programmes/ — the
 # bundle builder was written when every lesson lived in lessons/, and its path handling has not
 # been checked for this depth. That is a tools/ question and out of scope for this lesson.
-reviewed_by: ""
+#
+# Independent review, 2026-09-23 — corrections to the notes above, re-measured, not assumed:
+#
+#   * "22 of 22 behaved as intended" did not survive re-measurement. 73 mutants were rebuilt
+#     outside the tree; 32 scored 58/58 against the rubric as shipped. 11 are proven
+#     equivalent over the lesson's own input domain. The other 21 were rubric gaps, now closed
+#     (tests/test_lesson.py docstring lists the added cases). The author's "digest without
+#     seq" variant only lost points because it was applied to append_event alone; written
+#     consistently in both functions, as a student would, it scored full marks.
+#   * The completeness tests fed completeness_report the student's OWN reconstruct_decision
+#     output, so an exercise-4 mistake also cost up to 9 points on exercise 5. They now grade
+#     on the rubric's independent re-derivation of each trace.
+#   * "differ only inside the six stub bodies" is not true of the current files: the gate-14
+#     hint blocks exist in lesson.py only. That is harmless and was left alone.
+#   * claims.yaml carried five quotes that are not verbatim on the live pages, and the prose
+#     said the Omnibus "moved neither Article 50", which its own prerequisite contradicts.
+#     Both are corrected; see the claims.yaml footer.
+reviewed_by: "independent review 2026-09-23: all 6 gates re-run (100%/0%, py311+py312 portable, completed output identical); 73 rubric mutants, 32 scored 58/58 as shipped, 11 proven equivalent by measurement over the lesson's domain, 21 real gaps closed across 14 rubric defects (documented canonical bytes and SHA-256 digest recipe, relink at index 0, replayed entry, anchor checked before the walk, one-entry anchor, floor+1 day, as_of and minimum_days arguments ignored, purge of the oldest seqs, seqs vs list positions, rollback deployment and version from any entry, coverage over the required argument, reason words not exclusive) plus exercise-5 tests decoupled from the student's reconstruct; 3 differently-shaped right answers 58/58 before and after; rubric hint that was the literal canonical_bytes solution rewritten in words; every claims URL re-fetched: 5 non-verbatim quotes fixed (Art 12(2), 19, 26(6), both Omnibus explorer dates), EUR-Lex text now retrieved and quoted, unsourced 'Omnibus moved neither Article 50' prose corrected with a new Art 50(2) transitional claim; typed 'nine' and 'two' now computed, a false newest_ts check message fixed, system_id relabelled as the modelling choice section 6 says it is"
 measured_seconds: 0.1
-measured_peak_mib: 33
+measured_peak_mib: 34

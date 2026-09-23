@@ -11,8 +11,10 @@ claims:
       The UK Health and Safety Executive's information sheet on alarm handling, written after
       the 1994 explosion and fires at the Texaco Milford Haven refinery, records that in the
       last eleven minutes before the explosion two operators had to recognise, acknowledge and
-      act on 275 alarms, and names "too many alarms, poorly prioritised" as a key factor from
-      HSE's own investigation. The lesson uses this as the reason a false alarm is not merely
+      act on 275 alarms, and lists "There were too many alarms and they were poorly
+      prioritised" first among the key factors that emerged from HSE's investigation (the
+      quotation is verbatim; an earlier wording paraphrased it inside quotation marks). The
+      lesson uses this as the reason a false alarm is not merely
       a small recurring cost: an alarm system that raises more alarms than a human can act on
       stops being an alarm system.
     where: "lesson.py section 7 (put a price on every cell of the matrix)"
@@ -21,7 +23,7 @@ claims:
     quote: >-
       In the last 11 minutes before the explosion the two operators had to recognise,
       acknowledge and act on 275 alarms.
-    accessed: 2026-09-16
+    accessed: 2026-09-23
 
   - id: alarm-rate-target
     claim: >-
@@ -39,7 +41,7 @@ claims:
       every ten minutes; and no more than ten displayed in the first ten minutes following a
       major plant upset
     quote_context: "Step 1: find out if you have a problem — 'Alarm rate targets' box, citing page 37 of the EEMUA guide"
-    accessed: 2026-09-16
+    accessed: 2026-09-23
 
 # --- deliberate non-claims -----------------------------------------------------------------
 #

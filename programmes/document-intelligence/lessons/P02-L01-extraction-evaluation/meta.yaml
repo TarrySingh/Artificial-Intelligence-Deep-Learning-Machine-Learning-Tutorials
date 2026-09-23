@@ -16,7 +16,7 @@ objectives:
   - "Explain why the harness is built before the extractor rather than after it"
 datasets: []            # none: the corpus is generated deterministically inside the lesson, and
                         # every number a student sees is computed by code they run
-points: 84              # = sum of RUBRIC points in tests/test_lesson.py
+points: 90              # = sum of RUBRIC points in tests/test_lesson.py
 # Authored 2026-09-16. All four gates run from the repo root on the venv interpreter; the
 # measured figures below were written back by tools/execute.py and never typed.
 #
@@ -27,38 +27,61 @@ points: 84              # = sum of RUBRIC points in tests/test_lesson.py
 # are given code with fixed seeds; every student sees the same 180 documents, the same 1080
 # cells, the same error mix and therefore the same numbers.
 #
-# MUTATION TESTING. 14 plausible-wrong variants of the reference solution were built in a
-# scratch directory and graded, plus 2 controls. Measured scores, not predicted ones. Each
-# mutant loses the points for the behaviour it breaks and keeps the rest, so partial credit
-# survives every one of them:
-#   1. wrong value counted as a false positive only          -> 79/84
-#   2. wrong value counted as a false negative only          -> 79/84
-#   3. fuzzy matching applied to every field type            -> 79/84
-#   4. review_queue sorted highest-confidence first          -> 77/84
-#   5. apply_reviews mutating its input in place             -> 71/84
-#   6. macro_f1 pooling the counts (micro average)           -> 80/84
-#   7. slashed dates read month-first                        -> 75/84
-#   8. score_field ignoring its mode argument                -> 75/84
-#   9. classify_cell returning "wrong_value" for a miss      -> 75/84
-#  10. normalise_value returning "" for unparseable input    -> 81/84
-#  11. confusion table omitting labels with a zero count     -> 79/84
-#  12. review_queue filtering out empty predictions          -> 70/84
-#  13. money normaliser treating every comma as a separator  -> 79/84
-#  14. text normaliser popping every trailing short token    -> 80/84
-# Mutant 5 is the instructive one: it loses four more points than its own case is worth,
-# because the notebook's quality/cost sweep runs at import and an in-place apply_reviews
-# corrupts the shared RECORDS list, which the two corpus-level cases then notice. That is the
-# bug's real blast radius, not a grading accident.
-# Two further variants are deliberate CONTROLS — differently shaped and equally correct:
-# score_field rewritten to collect per-cell verdicts first and count them afterwards, and
-# normalise_value collapsing whitespace with a regex rather than split/join. Both score 84/84,
-# so the rubric rejects wrong answers without rejecting right ones it did not expect.
+# MUTATION TESTING — independent review, 2026-09-23. 69 plausible-wrong variants of the
+# reference solution were graded in a private scratch directory (the author's 14 re-measured,
+# plus 55 new ones, 24 of them a sweep that loosened every validation guard and boundary
+# comparison by one step), with 4 differently shaped right answers as controls. Scores are
+# measured, not predicted.
+#   Author's 14, re-measured on the current notebook: all still caught, but mutant 5
+#   (apply_reviews mutating its input) now scores 80/84, not 71/84. The `needs=` gating added
+#   to _try skips the section 8 sweep whenever exercise 5's own check fails, so RECORDS is no
+#   longer corrupted at import and the two corpus-level cases no longer notice. The blast-radius
+#   paragraph that used to sit here described a notebook that no longer exists.
+#   29 of the 69 scored full marks under the old rubric. 14 were defects, now caught (score
+#   under the 90-point rubric):
+#     precision/recall formulas swapped            -> 85/90   (every ratio case had fp == fn)
+#     F1 as the arithmetic mean of P and R          -> 85/90   (same cause)
+#     slashed dates required to be zero-padded      -> 85/90   (the extractor's own house style;
+#                                                               27 corpus cells, macro F1 0.842
+#                                                               -> 0.816, inside the corpus band)
+#     lone comma: always thousands / always decimal / unanchored / {2,3} digits -> 88/90 each
+#     integer: every digit concatenated / last run  -> 87/90 each
+#     text: pop one trailing suffix only / drop suffix words anywhere -> 86/90 each
+#     fuzzy threshold compared with > not >=        -> 88/90
+#     confusion_by_field_type ignoring its mode     -> 88/90
+#     review_queue tie-break on (field, doc_id)     -> 87/90
+#   Every caught mutant loses only the case for the behaviour it breaks; partial credit
+#   survives all of them. The 4 controls — a verdict-first scorer with F1 from counts, a
+#   Decimal/datetime normaliser, a dispatch-table matcher with a heap queue and deepcopy
+#   reviews, and an elif-chain scorer with a sorted() queue — score 84/84 before and 90/90
+#   after the rubric change, and each runs clean as a script.
+#   The other 15 remain, each measured over the lesson's own 180 documents (2160 values):
+#     IDENTICAL on every observable (normalised values, matches, per-field scores, macro F1 in
+#     all three modes, confusion tables, queues and post-review F1 at every budget):
+#     date range guard removed or loosened (month 13, day 32, day 0) — 0 out-of-range dates in
+#     the corpus; money separator index `> 0` — 0 bodies start with a separator; money '-'
+#     dropped — 0 values contain one; id punctuation-only -> '' — 0 such ids; normalised-empty
+#     guard in match_value removed — 0 non-blank values normalise to ''; whitespace-only
+#     pred/gold treated as a value in score_field or classify_cell's gold — 0 whitespace-only
+#     values. Algebraically equivalent: `last_comma >= last_dot` (two different characters
+#     cannot share an index), precision guarded on tp, F1 guarded on P*R.
+#     Not pinned on purpose: mode validated AFTER the empty-side check (the docstring does not
+#     order its two rules, and every call site in the lesson guards emptiness first), and a
+#     lone comma read as decimal before ONE digit (the docstring's literal answer, 1234,5 ->
+#     12345.00, is a worse policy than the mutant's; see the owner note in the review).
 #
-# TWO NUMBERS THAT ARE NOT CLAIMS. SECONDS_PER_REVIEWED_CELL and REVIEWER_COST_PER_HOUR in
-# section 8 are labelled in the notebook as placeholders for the reader's own rates. Nothing
-# in the lesson asserts they are typical of any organisation, so they are not entries in
-# claims.yaml; everything computed from them is computed, in front of the student.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: ""
+# THREE NUMBERS THAT ARE NOT CLAIMS. SECONDS_PER_REVIEWED_CELL, REVIEWER_COST_PER_HOUR and
+# MACHINE_COST_PER_DOCUMENT in section 8 are labelled in the notebook as placeholders for the
+# reader's own rates. Nothing in the lesson asserts they are typical of any organisation, so
+# they are not entries in claims.yaml; everything computed from them is computed, in front of
+# the student.
+status: reviewed        # draft | executed | reviewed | shipped
+# OWNER DECISION 2026-09-23, on the reviewer's open question about the lone-comma rule. The
+# docstring said a lone comma is decimal only with EXACTLY two digits after it, so '1234,5'
+# became '12345.00'. That teaches a wrong rule: a thousands group always has three digits, so
+# one digit after a lone comma can only be a decimal. The rule is now 'one or two digits that
+# end the number', in the docstring, Hint 2, the solution and a new graded case; the old rule
+# is a mutant that scores 88/90. The corpus contains no such value, so no printed result moves.
+reviewed_by: "independent review 2026-09-23: gates re-run (100%/0%, py311+py312 green); 69 mutants + 4 controls; 14 rubric survivors closed (P/R swap, arithmetic F1, unpadded dates, lone comma, first digit run, suffix popping, inclusive fuzzy threshold, confusion mode, full tie-break), rubric 84->90; 13 prose/claim/check defects fixed incl. arXiv 2605.05532 quote not on cited page and AI Act Art. 14 deferred to 2 Dec 2027"
 measured_seconds: 0.2
-measured_peak_mib: 29
+measured_peak_mib: 30

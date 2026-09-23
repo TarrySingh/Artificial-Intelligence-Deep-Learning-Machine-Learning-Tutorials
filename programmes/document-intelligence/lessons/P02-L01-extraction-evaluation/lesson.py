@@ -358,7 +358,8 @@ print(f"\n{_absent} of {len(CORPUS)} documents state no payment terms at all —
 # field. It is deliberately mediocre in the ways real systems are mediocre: it reformats dates
 # and amounts into its own house style, it drops fields, it invents payment terms that were
 # never on the page, it mangles a supplier name the way an OCR pass does, and now and then it
-# transposes two digits in an amount. Run it and read one prediction.
+# gets a digit wrong in an amount, an invoice number or a payment term. Run it and read one
+# prediction.
 
 # %%
 def _reformat(value: str, field_type: str) -> str:
@@ -483,11 +484,12 @@ print("output tells you which is which — that is the instrument you are about 
 # Normalisation is where you write down, per field type, what "the same value" means. It is a
 # policy decision, so it belongs in code your reviewers can read and argue with.
 #
-# It is also where the published evidence puts the difficulty. A May 2026 comparison of
-# frontier LLMs against domain-trained models on structured contract extraction found
-# performance strongest on short-text identifiers and weakest on currency fields requiring
-# normalisation or aggregation (arXiv 2605.05532). Normalisation is not a tidying step you
-# bolt on at the end; it is where a third of your reported defects come from.
+# It is also where the published evidence puts the difficulty. In a May 2026 study of
+# structured contract extraction, the domain-trained model the authors built scored best on
+# short-text identifiers and worst on currency fields requiring normalisation or aggregation —
+# and the authors' own scorer did no currency parsing at all (arXiv 2605.05532). Normalisation
+# is not a tidying step you bolt on at the end: the cell after this exercise counts how many of
+# the defects an exact-match scorer reports on this corpus are formatting and nothing else.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -503,7 +505,7 @@ print("output tells you which is which — that is the instrument you are about 
 #
 # Deal with blank input and an unknown field type first, then branch on the type. Money: keep
 # the digits and separators only; when both separators appear the later one is the decimal
-# point; a lone comma is decimal only with exactly two digits after it; then format to two
+# point; a lone comma is decimal when one or two digits follow it and end the number; then format to two
 # places. Date: try ISO, then the slashed form read day first, then day, month name, year.
 # Text: lower case, delete full stops and commas outright, turn any other punctuation into a
 # space, then pop trailing tokens while they are in COMPANY_SUFFIXES. Any branch that fails to
@@ -521,9 +523,12 @@ def normalise_value(value: str, field_type: str) -> str:
                      ``"EUR 1.234,50"`` all become ``"1234.50"``. When both a comma and a dot
                      appear, the LAST of the two is the decimal separator and the other is a
                      thousands separator. When only a comma appears it is a decimal comma if
-                     exactly two digits follow it, and a thousands separator otherwise.
+                     one or two digits follow it and end the number (``"1234,5"`` is
+                     ``"1234.50"``), and a thousands separator otherwise -- a thousands
+                     group always has three digits, so a single digit cannot be one.
     * ``date``     → ISO ``YYYY-MM-DD``. The corpus is European: ``"04/03/2026"`` is the
-                     fourth of March, not the third of April. ``"4 March 2026"`` parses too.
+                     fourth of March, not the third of April, and so is the extractor's
+                     unpadded ``"4/3/2026"``. ``"4 March 2026"`` parses too.
     * ``integer``  → the first run of digits, as a plain int: ``"net 30 days"`` → ``"30"``.
     * ``id``       → upper case, every non-alphanumeric character dropped.
     * ``text``     → lower case, punctuation to spaces, whitespace collapsed, then trailing
@@ -557,16 +562,19 @@ def normalise_value(value: str, field_type: str) -> str:
 # Public checks — run these as often as you like.
 def _check_normalise() -> None:
     money = {"€1,234.50": "1234.50", "1234.5": "1234.50", "EUR 1,234.50": "1234.50",
-             "1.234,50": "1234.50", "1234.50 USD": "1234.50"}
+             "1.234,50": "1234.50", "1234.50 USD": "1234.50", "1234,50": "1234.50",
+             "€1,234": "1234.00"}
     for raw, want in money.items():
         got = normalise_value(raw, "money")
         assert got == want, (f"normalise_value({raw!r}, 'money') gave {got!r}, expected {want!r}"
                              " — strip the symbol, decide what a comma means, then format to 2dp")
-    dates = {"2026-03-04": "2026-03-04", "04/03/2026": "2026-03-04", "4 March 2026": "2026-03-04"}
+    dates = {"2026-03-04": "2026-03-04", "04/03/2026": "2026-03-04", "4/3/2026": "2026-03-04",
+             "4 March 2026": "2026-03-04"}
     for raw, want in dates.items():
         got = normalise_value(raw, "date")
         assert got == want, (f"normalise_value({raw!r}, 'date') gave {got!r}, expected {want!r}"
-                             " — this corpus is day-first, so 04/03 is 4 March")
+                             " — this corpus is day-first, so 04/03 is 4 March, and the "
+                             "extractor writes the same date unpadded, as 4/3")
     assert normalise_value("Inv 2026 0042", "id") == "INV20260042", "id: upper case, alnum only"
     assert normalise_value("Nordwind Logistik GmbH", "text") == "nordwind logistik", \
         "text: drop the trailing legal form, it identifies nobody"
@@ -597,7 +605,11 @@ def _show_surface_gap() -> None:
     print(f"of {both} cells where both sides said something:")
     print(f"  identical as raw strings : {raw_equal:4d}  ({100 * raw_equal / both:.1f}%)")
     print(f"  identical once normalised: {norm_equal:4d}  ({100 * norm_equal / both:.1f}%)")
-    print(f"\n{norm_equal - raw_equal} cells are the same value in a different costume.")
+    tn = sum(1 for r in RECORDS for f in SCHEMA if not r["pred"][f] and not r["gold"][f])
+    exact_defects = len(RECORDS) * len(SCHEMA) - tn - raw_equal
+    print(f"\n{norm_equal - raw_equal} cells are the same value in a different costume — "
+          f"{100 * (norm_equal - raw_equal) / exact_defects:.0f}% of the {exact_defects} cells "
+          "an exact-match scorer would call defects.")
     print("Report the first number as accuracy and you will send an engineer to fix a")
     print("model that was already right.")
 
@@ -609,7 +621,8 @@ _try("surface gap", _show_surface_gap, needs=("exercise 1",))
 #
 # Three modes, one function. `exact` is raw string equality. `normalised` compares canonical
 # forms. `fuzzy` additionally accepts near-identical **text**, and nothing else: an amount that
-# is one digit out looks 86% similar to the right answer and is a payment incident.
+# is one digit out can clear the fuzzy threshold, and it is a payment incident. Section 9
+# measures it.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -762,13 +775,19 @@ def _check_score() -> None:
         {"doc_id": "D3", "gold": {"currency": ""}, "pred": {"currency": "GBP"}},      # fp
         {"doc_id": "D4", "gold": {"currency": "EUR"}, "pred": {"currency": "USD"}},   # fp + fn
         {"doc_id": "D5", "gold": {"currency": ""}, "pred": {"currency": ""}},         # nothing
+        {"doc_id": "D6", "gold": {"currency": "GBP"}, "pred": {"currency": ""}},      # fn
     ]
     s = score_field(rows, "currency", "normalised")
-    assert (s.tp, s.fp, s.fn) == (1, 2, 2), (
-        f"expected tp=1 fp=2 fn=2, got tp={s.tp} fp={s.fp} fn={s.fn} — a wrong value (D4) is "
+    assert (s.tp, s.fp, s.fn) == (1, 2, 3), (
+        f"expected tp=1 fp=2 fn=3, got tp={s.tp} fp={s.fp} fn={s.fn} — a wrong value (D4) is "
         "BOTH a false positive and a false negative, and D5 is neither")
-    assert abs(s.precision - 1 / 3) < 1e-9, f"precision should be tp/(tp+fp), got {s.precision}"
-    assert abs(s.recall - 1 / 3) < 1e-9, f"recall should be tp/(tp+fn), got {s.recall}"
+    assert abs(s.precision - 1 / 3) < 1e-9, (
+        f"precision should be tp/(tp+fp) = 1/3, got {s.precision:.4f} — if it is 1/4 you have "
+        "precision and recall the wrong way round")
+    assert abs(s.recall - 1 / 4) < 1e-9, f"recall should be tp/(tp+fn) = 1/4, got {s.recall:.4f}"
+    assert abs(s.f1 - 2 / 7) < 1e-9, (
+        f"f1 should be the harmonic mean 2PR/(P+R) = 2/7, got {s.f1:.4f} — the arithmetic mean "
+        "(P+R)/2 would be 7/24")
     empty = score_field([{"doc_id": "D", "gold": {"currency": ""}, "pred": {"currency": ""}}],
                         "currency", "exact")
     assert empty.precision == 0.0 and empty.f1 == 0.0, \
@@ -804,8 +823,8 @@ _try("mode table", _show_mode_table, needs=("exercise 1", "exercise 2", "exercis
 # %% [markdown]
 # ## 6. Exercise 4 — the confusion analysis
 #
-# An F1 of 0.84 does not tell you what to fix. Four hundred defects split as *mostly misses*
-# and *mostly wrong values* demand opposite responses: the first is a recall problem you solve
+# A macro F1 does not tell you what to fix. The same number of defects, split *mostly misses*
+# or *mostly wrong values*, demands opposite responses: the first is a recall problem you solve
 # with a better reader, the second is a precision problem you solve by making the model abstain.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
@@ -903,7 +922,7 @@ def _show_confusion() -> None:
     worst = max(table, key=lambda ft: table[ft]["wrong_value"])
     leaky = max(table, key=lambda ft: table[ft]["spurious"])
     print(f"\nmost wrong values: {worst!r} ({table[worst]['wrong_value']}) — a silent-defect")
-    print("problem; the extractor is confidently producing a value that is not on the page.")
+    print("problem; the extractor produced a value, and it is not the one on the page.")
     print(f"most spurious: {leaky!r} ({table[leaky]['spurious']}) — an abstention problem;")
     print("the field is often absent and the extractor answers anyway.")
 
@@ -919,9 +938,11 @@ _try("confusion table", _show_confusion, needs=("exercise 1", "exercise 2", "exe
 #
 # Where a document pipeline falls inside one of the EU AI Act's high-risk classes, this queue
 # is also the mechanism the law asks for: Article 14(1) requires a high-risk system to be
-# designed so that it can be effectively overseen by natural persons while it is in use.
-# Whether your particular pipeline is high risk depends on what it decides. Whether your
-# oversight is real depends on whether you measured it, which is the next section.
+# designed so that it can be effectively overseen by natural persons while it is in use. Since
+# the 2026 amendment of the Act, that obligation applies to the Annex III high-risk classes from
+# 2 December 2027 — so a pipeline built today will still be running when it does. Whether your
+# particular pipeline is high risk depends on what it decides. Whether your oversight is real
+# depends on whether you measured it, which is the next section.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -1024,10 +1045,10 @@ _try("exercise 5", _check_queue)
 # Two numbers you will be asked for in every review of this kind of system: what does it score,
 # and what does a document cost. Both are standard axes: a March 2026 benchmark of multi-agent
 # document pipelines scores systems on field-level F1, document-level accuracy, end-to-end
-# latency, cost per document and token efficiency (arXiv 2603.22651). The two constants below
-# are the only figures in this lesson
-# you should replace with your own — they are placeholders for your organisation's rates, and
-# nothing here claims they are typical of anything.
+# latency, cost per document and token efficiency (arXiv 2603.22651). The three constants
+# below are the only figures in this lesson you should replace with your own — they are
+# placeholders for your organisation's rates, and nothing here claims they are typical of
+# anything.
 
 # %%
 SECONDS_PER_REVIEWED_CELL = 40.0      # placeholder: time your own reviewers, do not guess
@@ -1103,8 +1124,8 @@ _try("quality/cost curve", _show_quality_cost_curve,
 #   gap. You will file bugs against a model that was already right.
 # - **Counting a wrong value once.** It is a false positive and a false negative. Counting it
 #   as one or the other inflates whichever of precision and recall you are being judged on.
-# - **Letting fuzzy matching near an amount, a date or an identifier.** `1284.50` scores 0.86
-#   against `1234.50`. A threshold of 0.85 turns a payment error into a green dashboard.
+# - **Letting fuzzy matching near an amount, a date or an identifier.** `1284.50` clears
+#   `FUZZY_THRESHOLD` against `1234.50`, and a payment error becomes a green dashboard.
 # - **Ignoring the empty-gold cells.** Fields that are legitimately absent are where spurious
 #   extractions live, and a harness that skips them cannot see precision collapse.
 # - **Reporting micro-averaged F1 only.** Pooling counts lets the fields that appear on every
@@ -1162,8 +1183,8 @@ _try("fuzzy on money", _show_what_fuzzy_money_would_cost, needs=("exercise 1",))
 #    - (b) spurious extractions, and they hurt precision
 #    - (c) true negatives, and they hurt nothing
 #
-# 4. In the quality/cost table, the F1 bought per unit of cost falls as the budget grows. The
-#    right reading is:
+# 4. In the quality/cost table, once past its best step, the F1 bought per unit of cost falls
+#    with every larger budget. The right reading is:
 #    - (a) human review stops working past a certain volume
 #    - (b) confidence routing puts the cells most likely to be wrong at the front, so later
 #          budget is spent re-checking cells that were already right

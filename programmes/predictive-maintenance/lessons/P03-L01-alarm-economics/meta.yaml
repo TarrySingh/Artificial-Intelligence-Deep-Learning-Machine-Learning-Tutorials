@@ -69,8 +69,9 @@ points: 79         # = sum of RUBRIC points in tests/test_lesson.py
 # Two of the fourteen were caught only because a case exists for them and for nothing else:
 # `test_causal_median_is_causal` (which changes the tail of the input and re-reads the head)
 # is the only case that a centred window fails on values a growing window happens to match,
-# and `test_health_index_baseline_is_raw` is the only case where a smoothed baseline and a
-# raw one differ. Both are documented as deliberate in the rubric's module docstring.
+# and `test_health_index_baseline` (named `..._baseline_is_raw` until the independent review
+# below) is the only case where a smoothed baseline and a raw one differ. Both are documented
+# as deliberate in the rubric's module docstring.
 #
 # Gate 3 measured, not assumed: the longest run of consecutive prose before the next runnable
 # cell is 32 non-blank lines (the self-check quiz plus the handover preamble), inside the ~40
@@ -83,8 +84,52 @@ points: 79         # = sum of RUBRIC points in tests/test_lesson.py
 # precedent for a programme-level claims.yaml. One is written at the programme root and the
 # README cites it by relative path; if a different convention lands later, that file moves
 # without touching the lesson.
-status: executed        # draft | executed | reviewed | shipped
-reviewed_by: "Author self-review 2026-09-16 — 4 gates green, 14 breaking mutants all caught with partial credit plus 1 passing control, gate-3 prose run measured at 32 lines; needs an independent reviewer before status: reviewed"
+#
+# Independent review, 2026-09-23. All six gate commands re-run before and after: reference
+# 79/79, stub 0/79 with every row TODO, py311 + py312 notebook runs green, completed output
+# identical across both, notebook in sync, 0.6 s. Rubric mutation-tested with 91 plausible
+# wrong implementations built outside the lesson tree from the reference, including a sweep
+# that moved every validation guard and boundary comparison one step each way. As shipped,
+# 14 scored 79/79. Nine of them exposed eight rubric holes, now closed; each of the nine now
+# loses only its own row (75-77 of 79):
+#   * health_index baseline taken as a MEAN (moved the counts at 32 of 61 thresholds on the
+#     lesson's own fleet) and over hours [0, baseline_hours] inclusive (6 of 61) — new cases
+#     in test_health_index_baseline (a shock inside the window; a level change one hour after);
+#   * health_index rejecting baseline_hours=1, the smallest valid value;
+#   * causal_rolling_median accepting window=2.5 silently, which the docstring forbids;
+#   * classify_outcomes treating a failure at hour 0 as a survivor (fail_hour > 0, and the
+#     same bug written fail_hour >= 1);
+#   * pr_points reporting recall 1.0 for a fleet with no failures, against its docstring;
+#   * sweep_thresholds returning float64 counts (np.zeros pre-allocation) or plain lists,
+#     against "integer arrays" and its own docstring example's .tolist().
+#   A ninth was the other way round: a CORRECT solution whose SCENARIO had been edited, as
+#   section 7 invites ("here to be edited"), lost the 5 points of test_the_gap_is_real with a
+#   hint about a bug it did not have. The integration test now pins the fleet, feature
+#   settings, grid and prices from the rubric's own constants.
+#   Five survivors are equivalent over the lesson's input domain, each proved by measurement:
+#   the health_index guard without its int() clause (identical for every baseline_hours 1..360;
+#   the docstring promises ValueError only for "not positive"); sweep_thresholds sorting its
+#   grid (every grid the lesson, its checks and the rubric pass is strictly ascending); ties
+#   broken by lowest threshold VALUE rather than index (the docstring equates the two on an
+#   ascending grid; identical on 3 scenarios x 2 objectives); the length check applied to tp
+#   alone (every Counts that reaches best_operating_point has four equal-length fields); and
+#   OperatingPoint.index as np.int64 (compares, indexes and formats identically).
+#   Three right answers of different shapes (vectorised with sliding_window_view and a
+#   normalise-then-smooth health index; plain Python loops throughout; masked-min and lexsort
+#   idioms) score 79/79 before and after, and print output identical to the reference.
+# Also fixed: "section 6 puts a price on it" (pricing is section 7) and "section 7 is about
+# why" (sections 8 and 10); the claim that the four prices are "not within an order of
+# magnitude of each other" (planned 9,000 and false alarm 6,000 are); "twenty planned
+# interventions", a ratio of the prices the student is told to edit, now printed by the gap
+# cell; the typed 94% / 96% / 6% in section 10 and self-check 2 (the accuracy-optimal point
+# measures 96.7%, not 96%); self-check answer 5 claimed section 9 runs "exactly" a ten-fold
+# rise (it runs 6.7x); the closing paragraph gave module 6's lesson to module 5; one pseudo-
+# quotation in claims.yaml made verbatim. Both HSE CHIS6 quotes re-fetched and confirmed
+# verbatim. Rubric and check messages that stated only expected-vs-got now name the likely
+# mistake; the burst_rms and pr_points rubric hints no longer contain the solving code.
+# Owner: points and case count are unchanged (79 / 22), so MODULES.md stays accurate.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23: 91 rubric mutants graded (incl. a one-step sweep of every guard and boundary); 14 scored 100% as shipped, 9 of them exposing 8 rubric holes now closed, 5 proved equivalent by measurement; a correct solution that edited SCENARIO as invited lost 5 pts, fixed by pinning the integration test; 3 differently-shaped right answers 79/79 before and after; 2 HSE quotes re-fetched verbatim; 3 wrong cross-references and 5 typed or wrong numbers in prose fixed; all six gate commands green, 79/79 and 0/79"
 
 measured_seconds: 0.6
-measured_peak_mib: 189
+measured_peak_mib: 190
