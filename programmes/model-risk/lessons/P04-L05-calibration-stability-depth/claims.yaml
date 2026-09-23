@@ -1,0 +1,245 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here. The published chi-square critical values
+# the notebook's check and the rubric compare against ARE claims, and are the first entry.
+#
+# Every quote below was read on 2026-09-23 from the page at source_url and appears there
+# verbatim, except where quote_context says how a typeset symbol was transcribed. Deliberate
+# non-claims are recorded at the foot of the file.
+claims:
+  - id: nist-chi-square-critical-values
+    claim: >-
+      The NIST/SEMATECH e-Handbook of Statistical Methods publishes upper-tail and lower-tail
+      critical values of the chi-square distribution to three decimals. Among the upper-tail
+      values the lesson and its rubric test against: 3.841 (1 dof, probability 0.95 below),
+      5.991 (2 dof), 11.070 (5 dof), 15.507 (8 dof), 16.919 (9 dof), 18.307 (10 dof), 31.410
+      (20 dof), 43.773 (30 dof) and 124.342 (100 dof) at 0.95; 2.706 (1 dof) at 0.90; 6.635
+      (1 dof) and 20.090 (8 dof) at 0.99; 10.828 (1 dof), 13.816 (2 dof), 29.588 (10 dof) and
+      149.449 (100 dof) at 0.999. Lower-tail values used: 0.103 (2 dof), 0.711 (4 dof), 2.733
+      (8 dof) and 3.940 (10 dof) at 0.05, and 4.865 (10 dof) at 0.10.
+    where: "lesson.py section 5 (_check_chi2_sf); tests/test_lesson.py::_NIST_UPPER and ::_NIST_LOWER"
+    source_url: https://www.itl.nist.gov/div898/handbook/eda/section3/eda3674.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 1.3.6.7.4 Critical Values of the Chi-Square Distribution"
+    quote: >-
+      This table contains the critical values of the chi-square distribution. Because of the
+      lack of symmetry of the chi-square distribution, separate tables are provided for the
+      upper and lower tails of the distribution.
+    quote_context: >-
+      Every value listed in the claim was read off the page's two tables row by row on
+      2026-09-23 (upper table rows 1, 2, 5, 8, 9, 10, 20, 30, 100; lower table rows 2, 4, 8,
+      10). The tables are headed "Probability less than the critical value". The rubric
+      requires the student's tail to bracket each tabled probability over the table's own
+      rounding interval of plus or minus 0.0005, not to match three decimals.
+    accessed: 2026-09-23
+
+  - id: chi-square-cdf-is-the-incomplete-gamma
+    claim: >-
+      The chi-square cumulative distribution function with nu degrees of freedom is the
+      incomplete gamma function at (nu/2, x/2), divided by the gamma function at nu/2. Its
+      complement is therefore the normalised upper incomplete gamma function Q(nu/2, x/2),
+      which is what chi2_sf computes.
+    where: "lesson.py section 5 (exercise 4 prose)"
+    source_url: https://www.itl.nist.gov/div898/handbook/eda/section3/eda3666.htm
+    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 1.3.6.6.6 Chi-Square Distribution"
+    quote: "F(x) = gamma(nu/2,x/2)/GAMMA(nu/2)   for x >= 0"
+    quote_context: >-
+      The page typesets the formula as an image; the quote is that image's own alt text,
+      verbatim. The sentence introducing it reads "The formula for the cumulative
+      distribution function of the chi-square distribution is".
+    accessed: 2026-09-23
+
+  - id: dlmf-incomplete-gamma-recurrence-and-special-values
+    claim: >-
+      The upper incomplete gamma function satisfies Gamma(a+1, z) = a Gamma(a, z) + z^a e^-z
+      (DLMF 8.8.2); Gamma(1, z) = e^-z (DLMF 8.4.5); Gamma(1/2, z^2) = sqrt(pi) erfc(z) (DLMF
+      8.4.6); and the normalised function is Q(a, z) = Gamma(a, z) / Gamma(a) (DLMF 8.2.4).
+      Dividing 8.8.2 by Gamma(a+1) gives the two-degree-of-freedom recurrence the lesson
+      teaches, and 8.4.5 and 8.4.6 give its two starting values, Q(x; 2) = exp(-x/2) and
+      Q(x; 1) = erfc(sqrt(x/2)).
+    where: "lesson.py section 5 (exercise 4 prose and the chi2_sf docstring)"
+    source_url: https://dlmf.nist.gov/8.8
+    source_title: "NIST Digital Library of Mathematical Functions, section 8.8 Recurrence Relations and Derivatives (incomplete gamma functions)"
+    quote: "Γ(a+1,z)=aΓ(a,z)+z^a e^{-z}."
+    quote_context: >-
+      Transcribed from the TeX alt text of equation 8.8.2, whose markup reads
+      "\Gamma\left(a+1,z\right)=a\Gamma\left(a,z\right)+z^{a}e^{-z}.". Equations 8.4.5
+      ("\Gamma\left(1,z\right)=e^{-z},") and 8.4.6 (ending "=\sqrt{\pi}\operatorname{erfc}
+      \left(z\right).") were read at https://dlmf.nist.gov/8.4, and 8.2.4 at
+      https://dlmf.nist.gov/8.2, all on 2026-09-23. The recurrence is also checked by the
+      notebook itself, against the NIST table above.
+    accessed: 2026-09-23
+
+  - id: hosmer-lemeshow-1980-dof-depend-on-assumptions
+    claim: >-
+      Hosmer and Lemeshow introduced goodness-of-fit statistics for the multiple logistic
+      regression model built by applying a chi-square test to a contingency table whose
+      expected frequencies come from a grouping of the fitted probabilities, and showed that
+      the degrees of freedom depend on the particular statistic and on the distributional
+      assumptions.
+    where: "lesson.py section 6 (exercise 5 prose)"
+    source_url: https://ohiostate.elsevierpure.com/en/publications/goodness-of-fit-tests-for-the-multiple-logistic-regression-model/
+    source_title: >-
+      Hosmer and Lemeshow — Goodness of fit tests for the multiple logistic regression model,
+      Communications in Statistics - Theory and Methods 9(10):1043-1069, 1980 (abstract, as
+      recorded by The Ohio State University's research portal)
+    quote: >-
+      The degrees of freedom are shown to depend on the particular statistic and the
+      distributional assumptions.
+    quote_context: >-
+      The journal of record is https://doi.org/10.1080/03610928008827941, which is paywalled;
+      the abstract was read from the portal of Lemeshow's university. The same abstract opens
+      "The test statistics are obtained by applying a chi-square test for a contingency table
+      in which the expected frequencies are determined using two different grouping
+      strategies".
+    accessed: 2026-09-23
+
+  - id: hosmer-dof-g-minus-two-on-the-fitting-sample
+    claim: >-
+      For the grouped Pearson statistic formed by sorting on the estimated probabilities,
+      splitting into g equal-sized groups and comparing observed with model-expected counts in
+      a g x c table, Fagerland, Hosmer and Bofin report a null distribution well approximated
+      by chi-square on (g - 2) x (c - 1) degrees of freedom when the model was fitted on the
+      sample. With a binary outcome, c = 2, that is g - 2 — the Hosmer-Lemeshow rule for the
+      fitting sample, which exercise 5 applies when fitted_here is True.
+    where: "lesson.py section 6 (exercise 5 prose); tests/test_lesson.py::test_hl_dof_fitting_sample"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/18203120/
+    source_title: >-
+      Fagerland, Hosmer and Bofin — Multinomial goodness-of-fit tests for logistic regression
+      models, Statistics in Medicine 27(21):4238-4253, 2008 (PubMed abstract, PMID 18203120)
+    quote: >-
+      The null distribution of Cg is well approximated by the chi2 distribution with (g-2) x
+      (c-1) degrees of freedom.
+    quote_context: >-
+      Read from the PubMed abstract via the NCBI E-utilities efetch endpoint for PMID
+      18203120 on 2026-09-23; the full text at doi:10.1002/sim.3202 is paywalled. That c = 2
+      reduces the statistic to the binary Hosmer-Lemeshow form is this lesson's reading of the
+      abstract's construction (sort, group into g equal-sized groups, Pearson chi-square on the
+      g x c table with model-based expected frequencies), not a sentence of the paper.
+    accessed: 2026-09-23
+
+  - id: hosmer-lemeshow-dof-g-outside-the-estimation-sample
+    claim: >-
+      The Hosmer-Lemeshow statistic has approximately G - 2 degrees of freedom for the
+      estimation sample, and G degrees of freedom for a sample outside the estimation sample.
+      Its groups are formed on quantiles of the predicted probabilities, sorted, with each
+      group's upper boundary the prediction at which the cumulative count first reaches the
+      group's share, and the groups closed on the right — the rule exercise 1 implements.
+    where: "lesson.py sections 2 and 6 (exercise 1 and exercise 5 prose); tests/test_lesson.py::test_hl_dof_independent_sample and ::_ef_reference"
+    source_url: https://www.stata.com/manuals/restatgof.pdf
+    source_title: "Stata Base Reference Manual — estat gof: Pearson or Hosmer-Lemeshow goodness-of-fit test (Methods and formulas)"
+    quote: >-
+      For a sample outside the estimation sample, the statistic has G degrees of freedom.
+    quote_context: >-
+      The preceding sentence of the same paragraph reads "The resulting chi2 statistic has
+      approximately G - 2 degrees of freedom for the estimation sample." The PDF typesets G
+      and chi in mathematical italics; they are transcribed here as plain letters. Both
+      sentences sit in the manual's "Methods and formulas" with no citation of their own; the
+      manual cites Hosmer, Lemeshow and Sturdivant (2013, 157-160) only for the suggestion to
+      regroup on ordered predicted probabilities into about ten equal-sized groups. The
+      lesson therefore attributes the g rule to the manual alone. Two readings are the
+      lesson's, not the manual's: (1) the manual's typeset condition for the i-th boundary
+      reads "W_q(i) = sum m_j >= N / G", with no i in the numerator (checked in the PDF's word
+      positions on 2026-09-23); the lesson reads it as the i-th share, i N / G, the only
+      reading under which the G boundaries differ. (2) The manual defines G as the number of
+      quantiles REQUESTED; when tied predictions make two boundaries coincide, the interval
+      between them holds no observations. The lesson counts only the groups formed, on the
+      argument given in section 6 (each formed group adds one standardised squared gap, a
+      group never formed adds none); that is the lesson's derivation, not a sourced claim.
+      Section 6's degrees-of-freedom study measures the g and g - 2 rules directly, with the
+      false-rejection rate each reference distribution delivers printed beside the rate
+      chi-square algebra predicts. Re-read by independent review on 2026-09-23 from the PDF
+      fetched with curl (a browser user-agent was served the PDF).
+    accessed: 2026-09-23
+
+  - id: psi-rule-of-thumb-has-no-error-rate
+    claim: >-
+      The conventional PSI bands — below 0.10 little change, 0.10 to 0.25 moderate, 0.25 and
+      above a significant change requiring action — are used in practice without reference to
+      type I or type II error rates. The lesson therefore calls 0.10 and 0.25 industry
+      convention and attributes them to nobody.
+    where: "lesson.py setup cell (PSI_THRESHOLDS) and section 10 (exercise 8 prose)"
+    source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
+    source_title: >-
+      Yurdakul and Naranjo — Statistical properties of the population stability index,
+      Journal of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227 (copy
+      hosted by the Department of Statistics, Western Michigan University)
+    quote: >-
+      These benchmarks are used without reference to statistical type I or type II error
+      rates.
+    quote_context: >-
+      The abstract, verbatim from the hosted PDF read on 2026-09-23. The same authors' 2018
+      Western Michigan University dissertation, https://scholarworks.wmich.edu/dissertations/3208/,
+      makes the same point in its abstract ("these benchmarks are being used without reference
+      to Type I or Type II error rates"). Their paper attributes the bands to a 1994 credit
+      scoring textbook the lesson has not read, so the lesson makes no attribution.
+    accessed: 2026-09-23
+
+  - id: psi-null-is-approximately-scaled-chi-square
+    claim: >-
+      Under no population shift, PSI computed between a base sample of n and a target sample of
+      m over B bins has a distribution approximated by (1/n + 1/m) times a chi-square variable
+      with B - 1 degrees of freedom, so a benchmark with a chosen type I error rate depends on
+      B, n and m. Section 9 prints this approximation beside the bootstrap null, and section
+      10's table prints the false-alarm rate it predicts beside the one the bootstrap measures.
+    where: "lesson.py sections 9 and 10 (exercise 7 prose; the null-at-your-size and false-alarm-table demos)"
+    source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
+    source_title: >-
+      Yurdakul and Naranjo — Statistical properties of the population stability index,
+      Journal of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227
+    quote: >-
+      Users may calculate benchmarks depending on the desired level of significance
+    quote_context: >-
+      The distributional result is the paper's Theorem 3.3, stated in typeset mathematics
+      that does not survive text extraction; the sentence after it reads, in extracted form,
+      "Theorems 3.1-3.3 (from Yurdakul (2018)) suggest that PSI has a distribution that is
+      approximated by (1/n + 1/m) times a chi2 random variable with B - 1 degrees of freedom",
+      with the scale factor and the chi-square symbol rendered as math. The quoted sentence is
+      from the paper's conclusion. The paper's own simulation uses two independent samples;
+      the lesson's bootstrap draws both from the development sample, and its section 9 output
+      shows the approximation and the bootstrap agreeing at the lesson's sizes.
+    accessed: 2026-09-23
+
+  - id: ece-definition-equal-width-bins
+    claim: >-
+      The widely cited definition of expected calibration error partitions the predictions
+      into M equally spaced bins and takes a weighted average of each bin's gap between
+      accuracy and confidence, weighted by the bin's share of the samples; M is a parameter of
+      the definition, and the paper's own reported tables use M = 15. Module 1 fixed M = 10;
+      this lesson measures what choosing M, and choosing equal-width at all, does to the
+      answer.
+    where: "lesson.py section 1 (the phenomenon) and section 3 (exercise 2)"
+    source_url: https://arxiv.org/abs/1706.04599
+    source_title: "Guo, Pleiss, Sun and Weinberger — On Calibration of Modern Neural Networks (ICML 2017)"
+    quote: >-
+      approximates (2) by partitioning predictions into M equally-spaced bins (similar to the
+      reliability diagrams) and taking a weighted average of the bins' accuracy/confidence
+      difference.
+    quote_context: >-
+      Read from the arXiv PDF on 2026-09-23. In the extracted text a figure caption sits
+      between "and" and "taking"; the sentence is continuous on the page, and the PDF sets the
+      apostrophe in "bins'" as a typographic one. The sentence opens "Expected Calibration
+      Error (Naeini et al., 2015) – or ECE –": Guo and colleagues credit the measure to Naeini,
+      Cooper and Hauskrecht, so the lesson calls theirs the widely cited STATEMENT of ECE, not
+      its origin. The bin count the paper reports with appears as "Table 1 displays model
+      calibration, as measured by ECE (with M = 15 bins)".
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * The PSI bands 0.10 and 0.25 are called "the industry's conventional amber and red bands"
+#   and are attributed to no one. The lesson's whole treatment of them is to MEASURE what they
+#   cost at a given sample size, which needs no source.
+#
+# * ALPHA = 0.05 for the goodness-of-fit test and ECE_CEILING = 0.04 are policy inputs. The
+#   ceiling is module 1's promotion-policy figure, carried forward as an argument; neither is
+#   presented as a regulatory or academic standard.
+#
+# * "Characteristic stability index" is described as the industry's name for PSI computed on
+#   one input at a time. The lesson attributes the term to no source and makes no claim about
+#   who coined it; the computation it names is exactly module 1's PSI applied per driver.
+#
+# * The master scale, the model's coefficients, the planted shifts and every sample are
+#   synthetic, generated by numpy.random.default_rng(20260925) inside the notebook and
+#   declared synthetic in DATA_NOTE, in the notebook's output and in section A.1 of the
+#   appendix it generates. They describe no real portfolio or rating system.

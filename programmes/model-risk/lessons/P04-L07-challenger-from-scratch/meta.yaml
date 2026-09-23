@@ -1,0 +1,202 @@
+id: P04-L07-challenger-from-scratch
+title: Build two challengers from scratch — logistic regression by IRLS that reports separation instead of a runaway coefficient, and a monotonic weight-of-evidence scorecard — then audit whether the comparison with the champion was fair before letting it return a verdict
+track: P04
+flagship: ""            # programme module 7; feeds no flagship yet
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 240
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track           # declared budgets, stubs, public checks, the rubric shape
+  - P04-L01-validation-suite        # challenger_decision and the ECE, carried here
+  - P04-L04-discrimination-testing  # auc_by_ranks and paired_bootstrap_difference, carried here
+objectives:
+  - "Implement logistic regression by iteratively reweighted least squares, solving the weighted normal equations without an explicit inverse and stopping on a stated convergence criterion"
+  - "Detect complete and quasi-complete separation and report it as a finding that names the runaway variable, never as a coefficient"
+  - "Verify a fit by its score equations and by the closed-form log odds ratio of a 2x2 table"
+  - "Implement a binned weight-of-evidence scorecard whose documented monotonic directions are enforced by pooling adjacent violators"
+  - "Audit a champion-challenger comparison for the same records, period and missing-value treatment, and explain why a comparison that fails the audit must report no metrics and no promotion decision"
+datasets:
+  - name: synthetic-credit-book-dev-and-validation
+    kind: synthetic
+    description: "4,000-record development book (2024-01 to 2024-12) and 3,000-record validation book (2025-01 to 2025-06) of retail credit accounts, with a thin-file missing income, a post-default collections flag, a vendor score and a documented champion, generated in lesson.py by synthetic_book(numpy.random.default_rng(20260923))"
+    generator: "lesson.py :: synthetic_book, champion_model"
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    downloads: false
+points: 166        # = sum of RUBRIC points in tests/test_lesson.py (158 as authored; see INDEPENDENT REVIEW)
+# Build notes, 2026-09-23. Every gate run from the repository root on the venv interpreter;
+# the measured figures at the foot were written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md MODULE 7 ASKED FOR, AND WHERE IT IS.
+#   * logistic regression by IRLS in numpy — design matrix with its intercept (exercise 1),
+#     the weighted normal equations solved, never inverted (exercise 2; the rubric replaces
+#     np.linalg.inv and pinv with failing stubs while a fit runs), a convergence test on a
+#     stated criterion with an iteration limit (TOL on the largest coefficient step,
+#     MAX_ITER updates), and separation detected and reported as a finding with coef None
+#     and the runaway column named (exercise 2, rules 1 and 3).
+#   * the fit verified without sklearn or statsmodels: by the score equations at convergence
+#     and by the closed-form 2x2 case (exercise 3), shown agreeing on the development book in
+#     section 4, and shown returning None for collections_flag's zero cell.
+#   * a monotonic scorecard as a second, more conservative challenger: quantile bins, weight
+#     of evidence with a missing bin of its own (exercise 4), monotonicity enforced by
+#     pooling adjacent violators to each input's documented direction (exercise 5), then a
+#     logistic fit on the weights with the student's own IRLS.
+#   * the comparison of all three challengers against the champion with module 4's PAIRED
+#     bootstrap and module 1's decision rule, both carried in faithfully under their own
+#     names (exercise 7), after a comparability audit of records, period and missing values
+#     (exercise 6).
+#   * ONE planted asymmetry: the first line's champion extract was scored after its pipeline
+#     filled every missing income, so champion-v3's documented missing-income term never
+#     fired, while every challenger was given the gaps. The naive leaderboard (section 7)
+#     promotes both challengers the student built; the student's audit finds the fill (one
+#     repeated value where every other frame has a gap); the comparison refuses; re-scored
+#     from the documented rule, the champion's AUC recovers and both challengers are held.
+#     The rubric plants each of the three asymmetries in turn and a comparison that crowns
+#     a non-comparable challenger, or computes its metrics at all, fails its centre case.
+#   * the artefact: render_comparison prints, per challenger, what was held equal with the
+#     counts that prove it, then the metrics, the paired interval, every decision reason
+#     and the verdict — generated from the comparison and from nothing else.
+#
+# DELIBERATE DEPARTURES, each recorded because a reader of MODULES.md will notice it.
+#   * "all three" is read as the three challengers — the vendor's (module 1's handed-over
+#     challenger, here a finished score file), the IRLS model and the scorecard — each
+#     against the champion. The vendor ranks best and is rejected on module 1's ECE gate.
+#   * promotion needs BOTH module 1's rule and a paired interval whose lower end is above
+#     zero. MODULES.md names both instruments without saying how they combine; this lesson
+#     states the composition in the exercise 7 docstring and grades it.
+#   * the convergence criterion is the coefficient step, NOT R's deviance criterion. Section
+#     3 runs R's rule (claims.yaml) over the student's own separated fit and shows it
+#     declaring convergence at update 16 with collections_flag near 19 while that
+#     coefficient gains a constant step every update — the reason for the choice, measured.
+#   * the quasi-complete rule is simpler than SAS's (which tests the dispersion matrix of the
+#     standardised variables against 5000): when MAX_ITER updates run out without
+#     convergence, a probability of a record's OWN outcome within SEPARATION_EPS of 1 is
+#     declared separation. SAS's own documentation calls quasi-complete checking "less
+#     foolproof"; claims.yaml quotes it.
+#   * the audit's "records" check also compares each shared record's outcome: a record with
+#     a different outcome is not the same record.
+#   * N_BOOT is 1,000, half module 4's 2,000: the comparison runs three challengers, and
+#     neither built challenger's verdict turns on the interval (both miss the policy margin).
+#
+# DATA. Synthetic, generated by numpy.random.default_rng(20260923) in lesson.py; DATA_NOTE
+# says so, the notebook prints it, and the generated comparison carries it at its head.
+# collections_flag is set only after default, so the development fit meets a genuine
+# quasi-complete separation, and the finding tells a story a validator can act on: a
+# post-outcome field sitting in the candidate list.
+#
+# MUTATION TESTING, 2026-09-23. 36 plausible-wrong variants of the reference, written in a
+# scratch directory outside the repository and graded by this rubric. 35 are caught, each
+# keeping partial credit (80% to 99%, never 0 and never 100). Nine controls score 158/158:
+# the reference with the demos' bootstrap shortened (N_BOOT 50, which decides no rubric case),
+# IRLS by least squares on the square-root-weighted working response, IRLS started from the
+# log odds of the sample, the separation test run on the OLD coefficients at the top of the
+# next update, pooling by restarting from the leftmost violator, WoE bins by np.digitize,
+# the audit aligned with Python dicts, the comparison aligned with a dict, and the 2x2 slope
+# as a difference of two log odds. The rubric rejects wrong answers without rejecting
+# differently shaped right ones.
+#   1. intercept stacked last 97% · NaN columns let through 97% · constant column allowed 98%.
+#   2. np.linalg.inv 97% · R's deviance rule with no separation test 91% · the last iterate
+#      returned as coef under separation 94% · runaway named by raw |b| 98% · gradient sign
+#      flipped 80% · no quasi-complete rule 97% · separation on a non-strict ordering (every
+#      intercept-only fit declared separated) 97% · no complete-separation rule, leaning on
+#      the quasi-complete fallback at the iteration limit 97%.
+#   3. Haldane's +0.5 correction instead of None 97% · risk ratio instead of odds ratio 97% ·
+#      score sign flipped 97% · numpy floats instead of Python floats 97%.
+#   4. denominators without a*m 95% · empty bins counted in m 98% · side='left' 98% · NaN
+#      binned as a value 97%.
+#   5. one merge per push, never re-checked 94% · equal rates pooled 99% · the missing bin's
+#      WoE left stale 98% · an empty value bin accepted 99%.
+#   6. records matched by position 93% · raw-array equality, so NaN != NaN 88% · period by
+#      range 97% · records by count 98% · gaps checked in one direction only 96% · outcomes
+#      ignored 99%.
+#   7. crowns a same-length non-comparable challenger 96% · computes metrics on a refused
+#      challenger 96% · one generator shared across challengers 98% · pairs by position 96% ·
+#      champion first in the paired difference 91% · promotes on the rule alone 97%.
+#   A partial student with exercises 4 and 6 left as stubs scores 111/158 (70%) for five of
+#   seven exercises: the rubric swaps in its own reference for an earlier exercise while it
+#   grades a later one, so an unfinished exercise costs only its own marks.
+#
+# THE ONE THAT GOT AWAY. A quasi-complete rule that tests ANY probability within
+# SEPARATION_EPS of 0 or 1, instead of the probability of the record's own outcome, scores
+# 158/158. The two differ only when a fit has exhausted MAX_ITER without converging and
+# predicts some record's WRONG outcome with near certainty; under genuine separation the
+# perfectly predicted records are predicted correctly and both rules agree. No test of that
+# shape could be built without contriving a pathological fit, so it is recorded here rather
+# than graded, and the docstring states the rule exactly.
+#
+# DEFECTS FOUND AND FIXED while building, rather than merely confirmed:
+#   * the pooling worked example (0.10, 0.30, 0.20, 0.15) never needed a merged block to be
+#     compared BACKWARDS, so a one-merge-per-push implementation passed both it and the
+#     notebook check. The docstring example, the notebook check and the rubric's hand case
+#     now all need a second, backward pool (0.10, 0.26, 0.30, 0.12 in the docstring).
+#   * nothing graded rule 1 on its own: a fitter with no complete-separation test still
+#     reached "separation" through the quasi-complete fallback at MAX_ITER and scored 100%.
+#     The rubric and the notebook check now require complete separation to be declared
+#     before the iteration budget is spent.
+#   * a period case in the rubric swapped two records that fell in the same month, so the
+#     count it asserted was wrong; caught by the reference failing it, and fixed.
+#   * the missing-values evidence read backwards when the fill sat in the REFERENCE frame
+#     (the lab's case); it now names the side that holds values where the other has gaps.
+#
+# KNOWN LIMITS, for the owner.
+#   * the notebook checks for exercises 5 and 7 call exercises 4 and 6 through the student's
+#     own code, so a student stuck on 4 sees 5 reported as waiting for 4. The rubric isolates
+#     them; the notebook cannot without shipping a reference implementation to the student.
+#   * the SAS page cited is the SAS/STAT 9.3 User's Guide; newer editions were not checked.
+#   * verify_portable ran against the local py311 and py312 environments with siblings served
+#     from disk; --live was not run, because the repository is not yet published.
+#   * worst run of prose before a runnable cell: 33 non-blank lines (section 11, the
+#     self-check); the rest are 28 or fewer.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repository root, before and after
+# the changes below: inject/build/check ok; execute PASS; solution 100%; stubs 0% with every
+# row TODO; verify_portable py311 and py312 PASS; --completed PASS, output identical.
+#   Mutation. 41 fresh mutants graded in a scratch directory, including a one-step boundary
+#   sweep of every graded threshold (step <= tol, strict class ordering, own-outcome >= 1 - eps,
+#   max_iter +-1, the woe edge side, occupied > 0, smoothing > 0, at least two edges, the
+#   zero-cell rule, pooling on a strict move, paired.lo > 0, duplicate ids). First pass: 26
+#   caught with partial credit (84%-99%), 15 at full marks. TEN of the fifteen exposed nine
+#   rubric gaps, now caught at 97%-99%, each losing only the test for what it broke:
+#     - a zero-cell rule of "<= 1" (no case had a cell of exactly one) -> test_closed_form_zero_cell_is_none;
+#     - woe_table refusing two edges (one value bin) -> test_woe_table_validation;
+#     - paired.lo >= 0 promoting (a lower end of exactly 0 is reachable on a twenty-record
+#       book) -> new test_comparison_holds_when_interval_touches_zero (2);
+#     - a loose quasi-complete threshold (0.99) -> a strong, overlapping two-update fit added
+#       to test_irls_not_converged;
+#     - the `tol` argument ignored in favour of the module's TOL -> new test_irls_honours_tol (2);
+#     - `smoothing` not passed through by woe_table / by enforce_monotonic (both docstrings
+#       promise it) -> new test_woe_table_honours_smoothing (2), test_monotonic_honours_smoothing (2);
+#     - pooling compared by event ODDS, which divides by zero on a bin whose records are all
+#       events (in contract: only EMPTY bins are refused) -> a pure-event bin added to
+#       test_monotonic_matches_reference_on_random_tables;
+#     - duplicate ids ignored, or one allowed (the old case also dropped an id, so the set test
+#       caught it for them) -> a fanned-out frame, every id present and one twice, added to
+#       test_audit_duplicate_id_same_length.
+#   FIVE are equivalent over the lesson's input domain, proved by measurement: step < tol vs
+#   <= tol (126 logged updates, none equal to tol, closest 15% away); own-outcome > vs >= 1 -
+#   eps (no probability equal to the threshold); std with ddof=1 for the runaway ranking (a
+#   common positive factor on every column; 6 of 6 rankings identical); a constant-column
+#   test by np.ptp < 1e-12 (48 columns reach it, the smallest non-zero spread is 0.5); and
+#   the author's own survivor, "any probability within eps of 0 or 1": all 6 budget-exhausted
+#   fits in lesson and rubric agree under both rules, and a high-leverage wrong-outcome outlier
+#   did not produce a disagreement either — recorded, not graded. Final: 36 caught, 5 equivalent.
+#   Four differently shaped right answers (IRLS by lstsq with an AUC == 1 rule and ddof=1;
+#   a filled design matrix with a row-vector score and the 2x2 slope as a log-odds
+#   difference; Python-loop WoE, np.digitize binning and leftmost-restart pooling; audit and
+#   comparison by dict) score 166/166. A partial student with exercises 4 and 6 left as
+#   stubs scores 117/166 with 5 and 7 fully credited.
+#   Board wiring proved in a scratch copy: exercise 6 filled -> its notebook board shows it
+#   ✅, the rest ⏳, and the audit demo runs; exercise 6 made to match by position -> ❌ with
+#   the check's hint, the notebook still ends cleanly, and the copy's lesson.py exits 1.
+#   Sources: all four claims.yaml quotes re-fetched 2026-09-23 and matched verbatim (the SR
+#   26-2 attachment PDF via pdftotext, the R glm.control page, the SAS 9.3 page).
+#   Also fixed: self-check 3 now says the four bins are equal-sized (its answer, 0.20, needs
+#   it); exercise 6's second hint had a broken line; enforce_monotonic's docstring now names
+#   `smoothing`, challenger_comparison's says lo > 0 is strict; render_comparison took its
+#   interval's coverage from the global ALPHA and now takes the `alpha` the comparison ran with.
+#   Not done, for the owner: the scorecard's development bins are already monotone, so
+#   section 5 prints "pooled to 5" for every input and pooling is only ever seen in checks.
+status: reviewed       # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23 — all gates re-run green; 41 mutants (incl. one-step boundary sweep), 36 caught at 84-99% after closing 9 rubric gaps (158 -> 166 points), 5 survivors proved equivalent by measurement, 4 alternative right answers at 100%; board wiring proved; 4 claims re-fetched and verbatim"
+measured_seconds: 3.1
+measured_peak_mib: 41

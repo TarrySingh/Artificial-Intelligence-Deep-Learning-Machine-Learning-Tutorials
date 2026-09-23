@@ -1,0 +1,167 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date the
+# source was read. Numbers a student sees in output — record counts, bin counts, the PSI and its
+# running values, the breach bin and checkpoint, the size of the tail, every peak-memory figure,
+# every time — are computed by the code the student runs and are therefore not claims; they do
+# not appear here.
+#
+# Every quote below was checked verbatim against the live page on the access date, and each is
+# kept short on purpose: the lesson leans on one sentence of each source, not on its text.
+claims:
+  - id: occ-bulletin-2026-13-names-monitoring
+    claim: >-
+      The OCC carries the 17 April 2026 interagency model risk management guidance as Bulletin
+      2026-13, and the bulletin describes the guidance as covering model validation and
+      monitoring. The lesson cites it for one sentence of context in section 1, and for the
+      observation that it says nothing about how much memory a monitoring job gets. The same
+      source is already in this programme's own claims.yaml for module 1.
+    where: "lesson.py section 1 (the one sentence of regulatory context)"
+    source_url: https://www.occ.gov/news-issuances/bulletins/2026/bulletin-2026-13.html
+    source_title: "OCC Bulletin 2026-13, Model Risk Management: Revised Guidance"
+    quote: >-
+      model validation and monitoring, including validating conceptual soundness and outcomes
+      analyses
+    accessed: 2026-09-23
+
+  - id: linux-ru-maxrss-is-kib
+    claim: >-
+      On Linux, getrusage's ru_maxrss is the maximum resident set size in KiB. This is the
+      Linux half of maxrss_mib() (exercise 1), and the Linux half of the unit conversion the
+      rubric uses for the memory gate.
+    where: "lesson.py section 4 (exercise 1); tests/test_lesson.py::_mib"
+    source_url: https://man7.org/linux/man-pages/man2/getrusage.2.html
+    source_title: "getrusage(2) — Linux manual page"
+    quote: "This is the maximum resident set size used (in KiB)."
+    quote_context: >-
+      The kernel source agrees: kernel/sys.c ends getrusage() with
+      "r->ru_maxrss = maxrss * (PAGE_SIZE / 1024); /* convert pages to KBs */", read at
+      https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/kernel/sys.c on
+      the same date.
+    accessed: 2026-09-23
+
+  - id: macos-ru-maxrss-is-bytes
+    claim: >-
+      On macOS, getrusage's ru_maxrss is in bytes, according to the manual page in Apple's
+      published xnu source and to the page installed with the macOS the lesson was authored on.
+      This is the macOS half of maxrss_mib(), and the notebook's calibration in section 4
+      measures it rather than trusting it: a worker that touches 32 MiB raises the raw reading
+      by about 32 x 2^20 on the authoring machine.
+    where: "lesson.py section 4 (exercise 1 and the unit calibration); tests/test_lesson.py::_mib"
+    source_url: https://github.com/apple-oss-distributions/xnu/blob/main/bsd/man/man2/getrusage.2
+    source_title: "xnu, bsd/man/man2/getrusage.2 — Apple open-source distribution"
+    quote: "the maximum resident set size utilized (in bytes)."
+    quote_context: >-
+      Read through raw.githubusercontent.com on the access date. `man 2 getrusage` on the
+      authoring machine (Darwin 25.6.0, arm64) prints the same sentence.
+    accessed: 2026-09-23
+
+  - id: apple-archived-page-says-kilobytes
+    claim: >-
+      Apple's older archived copy of the same manual page says kilobytes, not bytes. The lesson
+      cites the disagreement, not either page, as the reason it measures the unit (section 4),
+      and as the reason maxrss_mib() refuses a system it has no unit for rather than guessing.
+      The prerequisite lesson T00-L01 records the same disagreement.
+    where: "lesson.py section 4 (exercise 1 introduction)"
+    source_url: https://developer.apple.com/library/archive/documentation/System/Conceptual/ManPages_iPhoneOS/man2/getrusage.2.html
+    source_title: "getrusage(2), Mac OS X / iOS Manual Page archive — Apple Developer"
+    quote: "the maximum resident set size utilized (in kilobytes)."
+    accessed: 2026-09-23
+
+  - id: linux-exec-folds-old-mm-into-maxrss
+    claim: >-
+      On Linux, when a process calls exec, the kernel folds the high-water resident set of the
+      address space being replaced into the process's maxrss, and getrusage(RUSAGE_SELF) reports
+      that maxrss. A program started from a large Python process therefore reports a
+      high-water mark at least the size of what it replaced, before it has allocated anything.
+      A process forked after exec gets a zeroed signal structure and a copy of the small C
+      image. This is why lesson.c measures every command in a forked worker and reports the
+      worker's ru_maxrss as wait4() returns it (section 12, and the comment above
+      run_in_worker in lesson.c).
+    where: "lesson.c run_in_worker() comment; lesson.py section 12 (the launcher-versus-worker line); self-check question 4"
+    source_url: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/plain/fs/exec.c
+    source_title: "linux/fs/exec.c — torvalds/linux.git, master, git.kernel.org"
+    quote: "setmax_mm_hiwater_rss(&current->signal->maxrss, old_mm);"
+    quote_context: >-
+      In exec_mm_put_old(), described in the source as releasing "the address space replaced
+      by exec". kernel/sys.c's getrusage() raises RUSAGE_SELF's figure to sig->maxrss
+      ("if (maxrss < sig->maxrss)"), and kernel/fork.c allocates a new process's signal
+      structure with kmem_cache_zalloc, so a forked child starts from zero. All three files
+      were read at git.kernel.org on the access date. The source was read; the behaviour was
+      NOT measured on a Linux machine by the author, whose machine is macOS — see meta.yaml.
+      Older kernels made the same call from exec_mmap(); the lesson names no kernel version.
+    accessed: 2026-09-23
+
+  - id: posix-fread-short-only-at-end
+    claim: >-
+      POSIX fread returns fewer elements than asked for only on an error or at end-of-file.
+      The exercise 6 stub relies on this: with an element size of one byte, a short read means
+      the stream has ended, and the bytes after the last whole record are a truncated record.
+      It is also why a record-sized element swallows a partial record silently.
+    where: "lesson.c EXERCISE 6 comment; lesson.py section 10 hints"
+    source_url: https://pubs.opengroup.org/onlinepubs/9799919799/functions/fread.html
+    source_title: "fread — The Open Group Base Specifications Issue 8 (POSIX.1-2024)"
+    quote: "less than nitems only if an error or end-of-file is encountered"
+    accessed: 2026-09-23
+
+  - id: posix-fseek-fails-on-a-pipe
+    claim: >-
+      fseek fails with ESPIPE when the stream's file descriptor is a pipe. This is what makes
+      "one pass" structural rather than a promise: the monitor is fed through a pipe, which can
+      be read once and cannot seek, and lesson.c refuses to run the monitor on a stdin that is
+      not a pipe.
+    where: "lesson.c EXERCISE 6 comment and refuse_seekable_stdin(); lesson.py sections 1 and 13"
+    source_url: https://pubs.opengroup.org/onlinepubs/9799919799/functions/fseek.html
+    source_title: "fseek, fseeko — The Open Group Base Specifications Issue 8 (POSIX.1-2024)"
+    quote: "The file descriptor underlying stream is associated with a pipe, FIFO, or socket."
+    quote_context: "the [ESPIPE] entry in the ERRORS section"
+    accessed: 2026-09-23
+
+  - id: splitmix64-vigna
+    claim: >-
+      splitmix64 is Sebastiano Vigna's public-domain 64-bit generator, a fixed-increment version
+      of Java 8's SplittableRandom. The four lines of splitmix64_next() in lesson.c, and the
+      same four lines in the notebook's Python, are the body of his next() with the same
+      increment and multipliers — which is what lets C and Python draw the same sequence and
+      the tail sample be compared bit for bit.
+    where: "lesson.c splitmix64_next(); lesson.py section 9"
+    source_url: https://prng.di.unimi.it/splitmix64.c
+    source_title: "splitmix64.c — Sebastiano Vigna, xoshiro / xoroshiro generators page"
+    quote: "It is a very fast generator passing BigCrush"
+    quote_context: >-
+      The file dedicates the code to the public domain. Its next() adds 0x9e3779b97f4a7c15 to
+      the state and mixes with 0xbf58476d1ce4e5b9 and 0x94d049bb133111eb, the constants in
+      lesson.c. The lesson makes no claim about the generator's statistical quality beyond
+      needing the same sequence on both sides.
+    accessed: 2026-09-23
+
+  - id: vitter-1985-algorithm-r
+    claim: >-
+      The reservoir sample follows Algorithm R as discussed by J. S. Vitter, "Random sampling
+      with a reservoir", ACM Transactions on Mathematical Software 11(1):37-57, March 1985,
+      which credits the algorithm to Alan Waterman. The lesson takes the algorithm's name and
+      that attribution from the paper and claims nothing about its results; the replacement
+      rule the student implements is stated in full in lesson.c.
+    where: "lesson.c EXERCISE 5 comment; lesson.py section 9"
+    source_url: https://api.crossref.org/works/10.1145/3147.3165
+    source_title: "Crossref metadata record for DOI 10.1145/3147.3165 — J. S. Vitter, ACM TOMS 11(1):37-57, 1985"
+    quote: "Random sampling with a reservoir"
+    quote_context: >-
+      The Crossref record gives the title, author Jeffrey S. Vitter (Brown University), the
+      journal, volume 11, issue 1, pages 37-57, March 1985. The text of the paper, read in the
+      copy at https://www.cs.umd.edu/~samir/498/vitter.pdf, says in its introduction that it
+      will "discuss Algorithm R", and in section 2 calls Algorithm R "a reservoir algorithm
+      due to Alan Waterman" — re-read in that copy by the independent reviewer on the access
+      date; it is the source of the attribution in lesson.py section 9.
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. NaN. The lesson says every ordered comparison with NaN is false and then DEMONSTRATES it
+#    in section 13 on the student's own interpreter, and the C self-test demonstrates it on
+#    their compiler; it is not cited, because it is measured.
+#
+# 2. THE MONTH. The new origination channel and the feed defect are planted by the lesson's own
+#    generator. No firm, product or incident is described, and DATA_NOTE says so.
+#
+# 3. HOW BIG A REAL MONITORING RUN IS. The lesson asserts nothing about the size of any real
+#    book or extract. The only evidence it offers about scale is the table in section 12, which
+#    the student runs.

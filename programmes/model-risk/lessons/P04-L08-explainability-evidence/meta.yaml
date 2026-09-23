@@ -1,0 +1,173 @@
+id: P04-L08-explainability-evidence
+title: Build permutation importance with a spread and the grouped version correlated features need, partial dependence and a measure of how much of it is extrapolation, exact Shapley attributions by enumeration, and a reproducibility check that regenerates the explanation pack in fresh processes byte for byte
+track: P04
+flagship: ""            # programme module 8; feeds no flagship yet
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 240
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P04-L01-validation-suite
+objectives:
+  - "Implement permutation importance on held-out data with a repeat count and a reported spread, and measure why two strongly correlated features each receive little of the importance their pair carries until they are permuted together"
+  - "Implement one- and two-dimensional partial dependence, and measure the share of its evaluation points that fall outside the region the data occupies"
+  - "Implement exact Shapley attributions by enumerating every coalition under a stated baseline value function, verify that they sum to the prediction minus the baseline value, and measure how the cost grows with the number of features"
+  - "Implement a canonical serialisation and a reproducibility check that regenerates the explanation pack in fresh processes and asserts byte equality"
+  - "Explain why a check that regenerates in the same process certifies a pack whose figures depend on the process hash seed"
+datasets:
+  - name: synthetic credit applicants
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: "numpy.random.default_rng(20260923) inside make_book(); declared in DATA_NOTE, printed by the notebook and written into the explanation pack as pack.data_note"
+points: 134        # = sum of RUBRIC points in tests/test_lesson.py
+# Build notes, 2026-09-23. Every gate run from the repo root on the venv interpreter; the
+# measured figures at the foot were written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md MODULE 8 ASKED FOR, and where it is.
+#   * permutation importance with a repeat count and a reported spread -> exercise 1
+#     (`permutation_importance`, mean and ddof=1 std over N_REPEATS shuffles, on held-out rows).
+#   * "demonstrate, by building two correlated features, why it attributes almost nothing to
+#     either" -> make_book() reads one latent income twice (declared, bureau; population
+#     correlation RHO_INCOME); section 3 MEASURES each reading alone, the sum of the two, and
+#     the pair shuffled together, and prints both rankings. Grouped permutation is exercise 2.
+#   * one- and two-dimensional partial dependence -> exercises 3 and 4.
+#   * where partial dependence leaves the data -> exercise 5 (`off_manifold_share`, the share
+#     of evaluation points outside the data's 2-D Mahalanobis ellipse), and section 6 prints it
+#     per grid value beside an uncorrelated control, for the permuted column of exercise 1, and
+#     for the cells of the 2-D grid.
+#   * local additive attribution by exact enumeration, efficiency checked, cost timed ->
+#     exercises 6 (`coalition_value`, the stated interventional value function) and 7
+#     (`shapley_values`); section 8 checks efficiency on three applicants, times 2..14
+#     features with units and extrapolates with the ≈ mark.
+#   * reproducibility_check() regenerating the whole pack from the seed with byte equality,
+#     with ONE planted non-determinism -> exercises 8 (`canonical_bytes`) and 9
+#     (`reproducibility_check`). The plant: `first_line_pack` de-duplicates the committee's
+#     request with set(), so the single-feature importances, which share one generator, are
+#     scored in an order that depends on PYTHONHASHSEED. It is invisible inside one process,
+#     so the check regenerates in fresh subprocesses (offline, ~0.1-0.3 s each).
+#
+# DELIBERATE DIFFERENCES FROM THE MODULE MAP, and why.
+#   * "why it attributes almost nothing to either": measured, each reading's single importance
+#     is roughly a quarter of the pair's and the pair carries about twice the sum of its parts
+#     (numbers printed, never typed). That is "little", not "almost nothing": with a FIXED
+#     fitted model the surviving reading stands in for the shuffled one but the injected noise
+#     still costs something. Getting "almost nothing" needs refitting without the feature
+#     (drop-column importance), which is a different method. The prose says "little" and cites
+#     Hooker, Mentch and Zhou for the opposite failure (over-emphasis through extrapolation),
+#     rather than overstate a direction the lesson does not measure.
+#   * added beyond the map: `off_manifold_share` as a graded exercise, a two-model
+#     demonstration (a bureau-only refit that ranks as well as the champion and has a flat
+#     partial dependence on declared income), and a given ordering-sampling estimator that
+#     shows efficiency holding exactly while every coordinate is off.
+#   * the model is a frozen logistic regression (given `fit_logistic`, Newton with a unit ridge,
+#     coefficients rounded to 6 d.p.), not a black box. Module 7 builds the fitting properly;
+#     here the fit only has to exist. The model's score is computed column by column, with no
+#     BLAS call, so the pack's bytes do not depend on a BLAS kernel's summation order.
+#   * the fresh-process helper `regenerate_in_fresh_process` is given, not graded. It ships the
+#     builder's compiled code objects (marshal) and simple constants to `sys.executable -c`,
+#     because a notebook cell has no importable module. It refuses a builder that reads a
+#     global it cannot rebuild (an array, a DataFrame), which is itself a reproducibility rule.
+#   * exercise 9's rubric hands the student's check tiny builders defined in the test file and
+#     the rubric's own serialiser, so exercise 9 is graded independently of exercises 1-8.
+#
+# DATA: synthetic, generated by make_book(seed); DATA_NOTE says so, the notebook prints it and
+# the pack carries it. Nothing is downloaded and nothing is written to disk.
+#
+# DETERMINISM, measured: the completed lesson's output (224 lines, the certificate's SHA-256
+# included) is identical on Python 3.11 + numpy 2.4.6 and Python 3.12 + numpy 2.5.3
+# (verify_portable --completed), and the completed NOTEBOOK was also executed in a real
+# ipykernel on both environments from an empty temp directory (not part of the gates, done by
+# hand because the shipped notebook's stubs never reach the fresh-process path): no errors,
+# same certificate digest. Set orders under PYTHONHASHSEED 1, 2 and 3 were checked identical on
+# 3.11 and 3.12 for every set the lesson and the rubric build; sets are built from tuples at
+# run time, because a set LITERAL of 3+ strings compiles to a frozenset constant whose element
+# order is fixed by the compiling process and did differ between 3.11 and 3.12.
+#
+# MUTATION TESTING, 2026-09-23. 37 plausible-wrong variants of the reference were graded in a
+# scratch directory outside the repo, with the non-graded demo cells disabled so each grades in
+# ~3 s; the control (reference with the demos disabled) scores 134/134, so disabling them
+# decided nothing. On the first pass 36 were caught; the 37th is described below and is now
+# caught too. Final scores on the 134-point rubric, every one keeping partial credit (87% to
+# 99%, never 0, never 100):
+#   1. in-place shuffle without a copy 88% · std at ddof=0 97% · one permutation reused
+#      across repeats 98% · an unseeded generator 98% · `columns` order ignored 98% · drop
+#      sign flipped 97%.
+#   2. a fresh permutation per column of a group 96% · empty group accepted 98%.
+#   3. prediction at the mean row 96% · writes into the caller's X 99%.
+#   4. transposed output 95% · sum of two 1-D curves 95%.
+#   5. Euclidean distance, no covariance 93% · threshold missing its factor 2 90% ·
+#      partner_values ignored 98% · covariance at ddof=0 99%.
+#   6. absent features at the background mean row 95% · absent features set to zero 95% ·
+#      writes into the stored background 96%.
+#   7. Banzhaf weights 96% · weight off by one factorial 91% · contribution to the empty set
+#      only 93% · value function called per marginal, no cache 97%.
+#   8. keys in insertion order 98% · floats rounded to 10 places 96% · compact single line
+#      98% · NaN allowed 99% · numpy floats cast through float32 96%.
+#   9. regenerated in this process only 87% · compared within a 1e-9 tolerance 98% · fresh
+#      runs compared only with each other 95% · failed regeneration skipped 99% · sha256 of the
+#      raw pack 97% · line numbers from zero 97% · one hash seed accepted 99% · pickled packs
+#      compared (false alarm on insertion order) 99% · serialise argument ignored 94%.
+# ONE SURVIVOR, now closed: exercise 5 with the covariance at ddof=0 scored 132/132, because at
+# the rubric's 300 rows n/(n-1) moves no point across the ellipse. The docstring said n - 1 and
+# said it was graded, so it had to be. `test_manifold_sample_covariance` (2 points) places a
+# grid point at 0.95 x threshold under the n - 1 divisor on SIX rows, where the n divisor lifts
+# it to 1.14 x threshold. The mutant now scores 132/134; the reference 134/134.
+# SEVEN CONTROLS, correct answers written differently, all 134/134: exercise 1 through
+# exercise 2's singleton groups with rng.permutation of an arange; Shapley as the average over
+# all p! orderings with a coalition cache; canonical JSON written by a hand-rolled recursive
+# writer; the reproducibility check comparing SHA-256 digests and locating the line with
+# zip_longest; the manifold via np.cov and np.linalg.inv; the value function via a boolean mask
+# and np.where. Partial credit is proportional and independent: exercises 6-9 left as stubs
+# score 68/134 (51% for 5 of 9 exercises); exercise 8 alone a stub 120/134, and the exercise-9
+# cases still pass because they bring their own serialiser.
+#
+# NOT GRADEABLE, stated rather than hidden: whether a point exactly ON the ellipse counts as
+# off (> versus >=) has probability zero with continuous data and is not graded; the demo
+# timings are measurements and are never compared.
+#
+# COULD NOT VERIFY: EUR-Lex refused an automated fetch on 2026-09-23 (HTTP 202, empty body),
+# so the Omnibus application date was verified against the Commission's own page and the
+# explorer's reproduction of the amending text, not the Official Journal page itself. The
+# Shapley typescript (RAND P-295) has no text layer; its two quotes were transcribed from page
+# images, not string-matched. Both are recorded in claims.yaml.
+#
+# Prose runs: the longest run of markdown before the next runnable cell is the self-check
+# (5 questions), inside gate 3's ~40 lines; the wall-time cell was moved between it and the
+# closing section to keep it so.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root; figures below measured.
+#   FIXED. (1) Two worked examples were wrong and would have failed a student's correct code:
+#   coalition_value's v(()) is 0.5, not 1.0 (the two background rows predict 1 and 0), and
+#   off_manifold_share's centre share is 0.006, not 0.0 (3 of 500 rows have an extreme
+#   partner). All 18 docstring examples now pass against the reference. (2) Rubric: five
+#   one-step boundary mutants scored 134/134 because no case sat on the legal side of a
+#   rejection rule: n_repeats=2 refused (exercises 1 and 2; exercise 2's own example uses 2), a
+#   one-value grid refused (3), a one-row background refused (6), two distinct hash seeds
+#   refused (9). Each of those rows now also requires the smallest legal input to be accepted,
+#   through a helper that turns the ValueError into a message naming the over-wide guard;
+#   points unchanged at 134. (3) Section 1 said "the Chapter III obligations"; the amended
+#   Article 113 applies Sections 1, 2 and 3 of Chapter III from 2 December 2027, so the prose,
+#   the claim and its quote now say so. (4) An all-orderings Shapley passes every rubric row but
+#   never finishes the cost and sampling cells (p! at p = 12..14); the docstring now warns,
+#   ungraded. (5) A broken line in exercise 5's first hint.
+#   MUTANTS: 44 plausible-wrong variants graded; 38 lose points, each only in the rows it broke
+#   (90% to 99%). SIX are equivalent, proven rather than assumed: `>=` for `>` on the ellipse
+#   (over the 4,057,825 squared distances the lesson and the rubric evaluate, the closest to
+#   the threshold is 5.4e-7 of it, and the complete lesson prints identically); level <= 1
+#   admitted (math.log(0.0) raises the ValueError itself); the subset-exclusion filter dropped
+#   in Shapley (each extra term is w * (v - v) = 0.0 exactly; identical output); x not copied
+#   in coalition_value (nothing mutates x afterwards; identical output); ensure_ascii off (the
+#   pack is pure ASCII; identical certificate digest); no final newline (only the digest and
+#   n_bytes move, as they would for any other free indent width).
+#   CONTROLS: three differently-shaped right answers, 134/134 before and after the changes:
+#   np.cov + einsum, batched PD, combinations-by-size Shapley, json default hook, digest
+#   compare; Cholesky whitening, hand-rolled writer, all-orderings Shapley; digest compare
+#   with a crash counted as a mismatch.
+#   KNOWN, NOT FIXED: `any()` in place of `all()` for `reproduced` loses 3 points always and 5
+#   more in about 1 grader run in 400 (when the grader's own hash seed happens to give one of
+#   the three fresh set orders). Correct code is graded deterministically.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "independent review 2026-09-23: gates re-run, 44 mutants + 3 controls, 11 sources re-fetched, 5 defects fixed"
+measured_seconds: 3.6
+measured_peak_mib: 43

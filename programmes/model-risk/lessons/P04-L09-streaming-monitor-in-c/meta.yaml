@@ -1,0 +1,187 @@
+id: P04-L09-streaming-monitor-in-c
+title: Monitor a month's scores in C in one pass and fixed memory — module 1's bins and floored PSI over a pipe, a reproducible reservoir of the tail, a breach that names its bin, and a peak-memory ceiling the harness measures
+track: P04
+flagship: ""            # programme module 9; feeds no flagship yet
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 180
+language: c             # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track      # the tier gate, ru_maxrss as a high-water mark, stubs and the rubric shape
+  - P04-L01-validation-suite   # quantile_edges, population_stability_index, PSI_FLOOR, PSI_THRESHOLD
+objectives:
+  - "Implement module 1's binning and floored PSI in C over bin counts, and reproduce an in-memory numpy reference: the counts exactly and the PSI within a stated tolerance"
+  - "Implement a single-pass monitor that reads a pipe once through a fixed 64 KiB buffer, rejects every score that is not a probability including NaN, and reports a truncated final record"
+  - "Implement Algorithm R over the tail with a splitmix64 generator shared by C and Python, and reproduce the sample bit for bit"
+  - "Measure the monitor's peak resident memory from outside it, normalise ru_maxrss for the platform that produced it, and hold the monitor under a ceiling set over its own measured baseline"
+  - "Explain why the harness measures a forked worker rather than the launcher's own high-water mark, and why a breach must name its bin and its checkpoint"
+datasets:
+  - name: synthetic development sample and monthly score extract
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      A 200,000-record development sample and a 4,194,304-record month of (account id, score)
+      pairs, generated in section 2 and 3 of lesson.py from a counter-based splitmix64 stream
+      seeded 20260909, using only exact IEEE operations (a 53-bit integer to a double, a
+      scaling by a power of two, one product, square roots), so every machine and every numpy
+      produces the same bits. The month is written as raw 16-byte records under
+      tempfile.gettempdir() and deleted at the end of the run and at interpreter exit; nothing
+      is downloaded and nothing large is written into the lesson directory.
+points: 86              # = sum of RUBRIC points in tests/test_lesson.py
+# Authored 2026-09-23. All gates run from the repository root on the venv interpreter; the
+# measured figures at the foot are written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md ASKED FOR (module 9, "Monitoring a portfolio that does not fit in memory").
+# In C, a single-pass streaming monitor over a generated score file far larger than its
+# buffer: fixed-bin counting against baseline edges loaded from a file, a running PSI, a
+# reservoir sample for the tail, a breach flag with its triggering bin; graded on producing
+# the same PSI as an in-memory reference within tolerance WHILE holding peak RSS under a
+# declared ceiling the harness measures; make clean guidance as in module 6; tier cpu8,
+# budget 180 s, clang and make. All of it is here:
+#   * the file: 4,194,304 records, 67,108,864 bytes = 1,024 x the 65,536-byte buffer, fed to
+#     the binary through a PIPE on stdin, which cannot seek; lesson.c refuses a stdin that is
+#     not a FIFO (exit 4), so a second pass is impossible rather than discouraged;
+#   * the edges: module 1's quantile_edges on the development sample, written with the bin
+#     counts to a profile file in the temp directory and loaded (and validated) by lesson.c;
+#   * the PSI: module 1's floor (PSI_FLOOR both sides, before the log), computed from counts
+#     every CHECKPOINT_EVERY = 262,144 records read, so the breach is dated as well as named;
+#   * the reservoir: Algorithm R with splitmix64 written identically in C and Python, compared
+#     bit for bit, slot by slot, including the generator's final state;
+#   * the gate: peak RSS of a forked worker, from wait4(), normalised per platform, against the
+#     worker's own measured baseline plus MEMORY_HEADROOM_MIB = 4.
+#
+# DELIBERATE DEPARTURES, each for a stated reason:
+#   1. THE MEASUREMENT IS A FORKED WORKER, NOT THE LAUNCHED BINARY. Reading the Linux source
+#      (claims.yaml) shows exec folds the replaced address space's high-water mark into the
+#      process's maxrss, and getrusage(RUSAGE_SELF) reports it. The binary is launched by a
+#      Python process holding the month in numpy (hundreds of MiB), so on Linux — where CI
+#      runs — its own ru_maxrss would start above any sensible ceiling and a monitor that
+#      held the whole file would still read BELOW the inherited figure: the gate would be
+#      blind exactly where it is graded. A worker forked after exec starts with a zeroed
+#      signal structure and a copy of the ~1 MiB C image. The launcher's own figure is still
+#      printed beside the worker's in section 12, so a student on Linux sees the difference.
+#   2. ONE OF THE SIX EXERCISES IS PYTHON: maxrss_mib(raw, system), the per-platform unit
+#      conversion the task names as an engineering point (bytes on macOS, KiB on Linux). It is
+#      graded on both platforms' values from any machine, because it takes the system name as
+#      an argument. The rubric never trusts it for the gate: tests/test_lesson.py converts
+#      with its own function and its own headroom constant.
+#   3. "WITHIN A STATED TOLERANCE" IS SPLIT IN TWO. The bin counts are integers and are
+#      compared EXACTLY; the PSI is compared within psi_tolerance() = 64 ulps per bin scaled by
+#      max(1, sum of contributions), because C's log() and numpy's log() are different
+#      implementations and the two sums run in different orders. Measured disagreement on the
+#      shipped month: at most 1 ulp over the 17 PSI figures (16 checkpoints and the total).
+#   4. HARNESS MODES. `monitor --counts-only`, `--no-psi` and `--no-tail` switch the tail
+#      sample and/or the running PSI off, so each rubric row runs the narrowest mode that can
+#      grade it and an unfinished exercise costs only its own rows. The monthly run in the
+#      notebook uses no switch.
+#   5. SIZE. "Far larger than the buffer" is 1,024 x, not gigabytes: every command must finish
+#      in under 60 s and verify_portable --completed runs the finished lesson three times in one
+#      command. The flatness of the peak across an 8x growth (section 12's table) is the
+#      evidence; the holder's column grows with the input beside it.
+#
+# DATA. Synthetic, see datasets above. Planted: from record 1,500,000 a share (0.6) of records
+# come from a riskier channel (score = sqrt(sqrt(u1 * u2)) instead of u1 * u2), and the low 16
+# bits of each record's control draw plant a feed defect about once in 65,536 records per kind
+# (NaN, negative, 1 + 2^-52 rejected; exactly 0.0, -0.0 and 1.0 kept).
+#
+# THE MEASURED RESULT, on the shipped seed (printed by the lesson, reproduced here so a future
+# editor can tell at a glance whether a change moved it): 4,194,124 valid and 180 rejected
+# records (52 NaN); PSI 0.347181 against a threshold of 0.25; breach triggered by bin 9, whose
+# share went from 0.1000 to 0.3029; the running PSI first breaches at the checkpoint after
+# record 3,407,872 (13th of 16); 1,867,835 tail records (44.5% of valid), sample of 1,000. On
+# the authoring Mac the worker's baseline is about 1.0 MiB, the monitor peaks about 1.2 MiB at
+# every input size, and the holder reaches about 67 MiB on the full month.
+#
+# GATE 3. Longest markdown cell: 30 non-blank lines, 37 with blanks (section 10, hints
+# included; re-counted at review); every markdown cell is
+# followed immediately by code. GATE 7: no student-facing string contains the solutions path —
+# the generator that cuts lesson.py from the solution asserts it. lesson.c is GENERATED from
+# solutions/lesson.c by replacing the five exercise bodies with todo() stubs, and lesson.py
+# from solutions/lesson_solution.py by replacing one body, the build paths, SELF_CHECK and the
+# answer key, so the two cannot drift outside those places.
+#
+# MUTATION TESTING, 2026-09-23. 37 plausible-wrong mutants, 6 differently-shaped controls and
+# 4 partial-completion scenarios, each built in a mktemp directory outside the repository and
+# graded through tools/grade.py --solution. 36 of 37 mutants caught, scoring 71% to 97% —
+# never 0 and never 100 — and all 6 controls score 100%: a linear-scan bin_index, a PSI with
+# fmax and two loops, a breach_bin scanning backwards with >=, a reservoir that counts the
+# offer first and reduces modulo the new count, a monitor that carries partial records to the
+# front of the buffer and tests isnan explicitly, and a maxrss_mib built on a divisor table.
+# Partial completion: exercises 1-4 only 53%, 1-3+6 58%, 2+3+5+6 67%, 1+2+5+6 67% — the
+# monitor is the lesson's centre and its month rows need the helpers it calls, which is why a
+# student missing exercise 6 lands a little under four-sixths.
+#
+# ONE SURVIVOR, MEASURED AND EQUIVALENT: psi_from_counts without the n <= 0 guard scores 100%.
+# With non-negative counts a zero total makes every share 0.0 / 0.0 = NaN, the floor test
+# (NaN < floor) is false so the NaN survives, and every contribution and the total are NaN —
+# the guarded output exactly, under -fno-fast-math. No rubric case can separate them.
+#
+# THREE RUBRIC DEFECTS FOUND BY MUTATION AND FIXED BEFORE THIS FILE WAS WRITTEN:
+#   * A MONITOR THAT HOARDED THE TAIL SCORED 100%. The memory gate ran only in counts-only
+#     mode, where no record reaches the tail, so appending every tail record to a growing
+#     array and sampling it at the end was invisible — the exact "quietly reads everything"
+#     shape the gate exists for, moved one step sideways. Now a separate row measures the
+#     monitor with its tail on (--no-psi), and the notebook's exercise-6 check and section 12
+#     measure it too once exercise 5 passes. That mutant peaks about 31 MiB over its baseline.
+#   * reservoir_offer WITH j <= k SCORED 100%. Slot k is outside the printed sample, so the
+#     phantom write changed nothing visible for k < RESERVOIR_MAX and was a silent out-of-
+#     bounds write at k == RESERVOIR_MAX. The reservoir command now reports writes outside
+#     slots 0..k-1, the rubric and the notebook assert there are none, and the C self-test
+#     makes 204 offers to a k = 3 reservoir and checks every slot above k is untouched.
+#   * A read(2) LOOP WITHOUT CARRY-OVER PASSED OR FAILED BY TIMING. The first small-stream
+#     test fed 7-byte writes, and whether a pipe read then ended mid-record depended on the
+#     scheduler; under load the mutant scored 100%. The stream is now fed in 4099-byte pieces
+#     with a 20 ms pause after each, so every read ends mid-record; caught on every run since.
+# One weakness found in the C self-test and fixed: flooring only the actual side passed
+# `make test`, because its only emptied bin was on the actual side; a bin that appears from
+# nothing (expected side empty) is now a self-test case too.
+#
+# WHAT COULD NOT BE VERIFIED, stated rather than hidden:
+#   * NOTHING HERE HAS RUN ON LINUX. The authoring machine is macOS arm64 with Apple clang;
+#     there is no gcc, no Linux container and no network CI run behind any claim in this file.
+#     The C is written to POSIX with _DEFAULT_SOURCE for glibc and compiles warning-free under
+#     clang -Wall -Wextra -Wpedantic -Wshadow -Wconversion, but a gcc build on Linux, the KiB
+#     unit of ru_maxrss there, and the exec-inherited high-water mark the fork exists to avoid
+#     are verified from the man page and the kernel source only, not measured.
+#   * The notebook has not been opened on the live Colab, Kaggle, Binder or Codespaces
+#     services; verify_portable ran it alone in an empty directory in py311 and py312 here.
+#   * The Apple archived man page (kilobytes) and the current one (bytes) disagree; the
+#     lesson measures the unit rather than choosing between them, and says so.
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repository root; all nine claim
+# sources re-fetched and every quote found verbatim on the live page (OCC 2026-13, man7,
+# xnu, Apple archive, fs/exec.c + kernel/sys.c + kernel/fork.c, POSIX fread and fseek,
+# splitmix64.c, Crossref, and the Vitter PDF). 55 mutants of my own, each in a mktemp copy
+# graded with tools/grade.py --solution, including a one-step sweep of every graded boundary
+# (<= edge, both clips, floor <, threshold >, tie >, j < k, t < k, s >= 0, s <= 1,
+# b >= tail_bin, the checkpoint count, raw < 0). 7 differently-shaped controls, 100% before
+# and after every change. Four defects found and fixed:
+#   * psi_from_counts THAT FLOORS AT kPsiFloor INSTEAD OF ITS floor ARGUMENT SCORED 100%.
+#     Every rubric and notebook case passed floor = 1e-6, so the body could ignore it; section
+#     8 then printed a floored index as "unfloored" and the lesson's point was silently
+#     false. The rubric now has two cases at floor 0.05 and 1e-3, and the notebook's check
+#     one; the mutant now loses exactly that row (12 points).
+#   * THE MEMORY ROWS REQUIRED EXACT BIN COUNTS, so a NaN, 0.0, 1.0 or counter bug also lost
+#     the 11 memory points it had not broken (NaN mutant 61 -> 72/86). The precondition is now
+#     that the monitor read the whole month, plus, for the tail row, that at least half the
+#     month's tail reached the reservoir; the second also stops a monitor that never offers
+#     to the tail from collecting the tail-memory points for work it did not do (now 78/86).
+#   * floor division in maxrss_mib was told "compare the system name without regard to
+#     case". A fractional-MiB check now precedes the case check, in the rubric and notebook.
+#   * section 9 cited Algorithm R as "(Vitter, 1985)"; the paper itself credits Alan Waterman,
+#     and the prose and claims.yaml now say so. Also: a typed "64 MiB" in work_dir's
+#     docstring, and this file's gate 3 figure (26 lines; it is 30), corrected.
+# Survivors, each settled by measurement: EQUIVALENT — bin_index searching without the last
+# edge or without the first (the clip makes the outer edges irrelevant; identical output on
+# 47 edge sets and 18,310 probes including the lesson's own edges and month scores);
+# psi_from_counts without the empty guard, with it on one side only, and with the floor test
+# written <= (identical output on 300 count pairs, 137 with an empty side, five floors); and
+# monitor_stream ignoring ferror (identical output on the whole month in all four modes: a
+# harness pipe never errors). NOT GRADED BY DESIGN — a monitor reading through its own fixed
+# 1 MiB buffer instead of g_buffer scores 100%: it keeps nothing that grows, which is what the
+# ceiling measures, but the 4 MiB headroom cannot see a fixed buffer under about 3.8 MiB. The
+# 64 KiB allowance is stated in lesson.c, not enforced; see the owner's note in the review.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent reviewer (Claude), 2026-09-23: gates re-run, 9 sources re-verified, 55 mutants + 7 controls, 4 defects fixed"
+measured_seconds: 2.6
+measured_peak_mib: 461

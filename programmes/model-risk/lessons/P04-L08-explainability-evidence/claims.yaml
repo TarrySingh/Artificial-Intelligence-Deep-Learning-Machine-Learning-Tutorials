@@ -1,0 +1,239 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# Every quote below was checked verbatim on 2026-09-23 against the page named in source_url,
+# fetched by script and searched for the exact string after stripping HTML tags (and, on the
+# artificialintelligenceact.eu pages, the glossary tooltips that the site interleaves with the
+# legal text). The two exceptions are recorded in their own entries: EUR-Lex refused an
+# automated fetch, and the Shapley typescript is a scan with no text layer.
+claims:
+  - id: annex-iii-5b-creditworthiness
+    claim: >-
+      Under the EU AI Act, AI systems intended to be used to evaluate the creditworthiness of
+      natural persons or establish their credit score are high-risk systems listed in Annex III
+      (point 5(b)), with the exception of AI systems used to detect financial fraud. The
+      lesson's model — a credit scorecard for natural persons — is of that kind, which is why
+      its explanations are evidence rather than decoration.
+    where: "lesson.py section 1 (first paragraph)"
+    source_url: https://artificialintelligenceact.eu/annex/3/
+    source_title: "Annex III: High-Risk AI Systems Referred to in Article 6(2) — EU Artificial Intelligence Act (reproduction of Regulation (EU) 2024/1689)"
+    quote: >-
+      AI systems intended to be used to evaluate the creditworthiness of natural persons or
+      establish their credit score, with the exception of AI systems used for the purpose of
+      detecting financial fraud
+    quote_context: >-
+      Point (b) under the heading "5. Access to and enjoyment of essential private services and
+      essential public services and benefits". The same site is the source the programme's
+      AI Act lessons use for Annex III (P01-L02, claim annex-iii-eight-areas). The Official
+      Journal text is Regulation (EU) 2024/1689 on EUR-Lex; see the next entry for why the
+      verification here was made against the reproduction.
+    accessed: 2026-09-23
+
+  - id: chapter-iii-annex-iii-applies-2027-12-02
+    claim: >-
+      After the Digital Omnibus amendment (Regulation (EU) 2026/1744, in force since 27 July
+      2026), Sections 1, 2 and 3 of Chapter III — the high-risk requirements and the
+      obligations of providers and deployers — apply from 2 December 2027 to AI systems
+      classified as high-risk under Article 6(2) and Annex III, which includes creditworthiness
+      assessment. This is the same claim, with the same id, as
+      programmes/ai-act-conformity/lessons/P01-L01-article-12-logging/claims.yaml, re-verified
+      for this lesson against the live pages on the access date.
+    where: "lesson.py section 1 (first paragraph)"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "European Commission, Shaping Europe's digital future — AI Act"
+    quote: >-
+      the rules for high-risk use cases in certain sensitive areas (Annex III) have been
+      extended to 2 December 2027
+    second_quote: >-
+      Starting on 2 December 2027, high-risk AI systems will be subject to strict obligations
+      before they can be put on the market
+    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
+    corroborating_quote: >-
+      Chapter III, Sections 1, 2, and 3, with the exception of Article 6(5), shall apply from:
+      (i) 2 December 2027 as regards AI systems classified as high-risk pursuant to Article
+      6(2) and Annex III
+    corroborating_quote_context: >-
+      Article 1, point 40(b) of the Omnibus, replacing Article 113, third paragraph, point (c)
+      of the AI Act. Re-checked by the independent review on 2026-09-23: the explorer page
+      states the Regulation of 8 July 2026 "entered into force on 27 July 2026", and the
+      Commission page says the Omnibus "entered into force on 27 July 2026".
+    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+    retrieval_note: >-
+      On 2026-09-23 EUR-Lex answered an automated fetch of the Omnibus (Regulation (EU)
+      2026/1744) with HTTP 202 and an empty body, both by curl and by a second fetching tool,
+      so the amending text's wording was verified against the explorer's reproduction, whose
+      quote matches the authoritative_quote recorded for the same id in P01-L01. The
+      Commission's own page, an official EU source, carries both quotes above verbatim.
+    accessed: 2026-09-23
+
+  - id: article-86-right-to-explanation
+    claim: >-
+      Article 86 of the AI Act gives a person subject to a decision taken by a deployer on the
+      basis of the output of a high-risk AI system listed in Annex III (point 2 excepted),
+      where the decision produces legal effects or similarly significantly affects them, the
+      right to obtain clear and meaningful explanations of the role of the AI system in the
+      decision-making procedure and the main elements of the decision. The lesson uses it only
+      to say that an explanation handed over under such a right is evidence; it makes no claim
+      about the date from which Article 86 bites on any particular system.
+    where: "lesson.py section 1 (first paragraph)"
+    source_url: https://artificialintelligenceact.eu/article/86/
+    source_title: "Article 86: Right to Explanation of Individual Decision-Making — EU Artificial Intelligence Act (reproduction of Regulation (EU) 2024/1689)"
+    quote: >-
+      shall have the right to obtain from the deployer clear and meaningful explanations of the
+      role of the AI system in the decision-making procedure and the main elements of the
+      decision taken
+    second_quote: >-
+      Any affected person subject to a decision which is taken by the deployer on the basis of
+      the output from a high-risk AI system listed in Annex III, with the exception of systems
+      listed under point 2 thereof
+    accessed: 2026-09-23
+
+  - id: breiman-permutation-importance
+    claim: >-
+      Permutation importance originates with Breiman's random forests: after each tree is
+      built, the values of one variable in the out-of-bag examples are randomly permuted, the
+      permuted data is run down the tree, and the rise in error measures the variable's
+      importance. Exercise 1 is that procedure, on a held-out sample and for a fixed model.
+    where: "lesson.py section 2 (exercise 1 prose)"
+    source_url: https://www.stat.berkeley.edu/~breiman/randomforest2001.pdf
+    source_title: "Breiman — Random Forests, Statistics Department, University of California, Berkeley, January 2001"
+    quote: >-
+      After each tree is constructed, the values of the mth variable in the out-of-bag
+      examples are randomly permuted and the out-of-bag data is run down the corresponding
+      tree.
+    quote_context: >-
+      Section 10, "Exploring the Random Forest Mechanism", of the version hosted by the
+      author's department, read with pdftotext. The journal of record is Machine Learning
+      45(1):5-32, 2001, DOI 10.1023/A:1010933404324, which is paywalled; the lesson cites the
+      idea, not a page of the journal version.
+    accessed: 2026-09-23
+
+  - id: hooker-permutation-forces-extrapolation
+    claim: >-
+      Hooker, Mentch and Zhou argue that permute-and-predict methods — permutation importance
+      and partial dependence among them — break the dependence between features and force the
+      model to extrapolate into regions with little or no data, and that such measures can
+      over-emphasise correlated features. The lesson cites them for the opposite direction of
+      failure to the one it measures, and measures the extrapolation itself in section 6.
+    where: "lesson.py section 3 (the paragraph after the grouped-versus-single demo)"
+    source_url: https://arxiv.org/abs/1905.03151
+    source_title: "Hooker, Mentch and Zhou — Unrestricted Permutation forces Extrapolation: Variable Importance Requires at least One More Model, or There Is No Free Variable Importance (arXiv:1905.03151)"
+    quote: >-
+      breaking dependencies between features in hold-out data places undue emphasis on sparse
+      regions of the feature space by forcing the original model to extrapolate to regions
+      where there is little to no data
+    second_quote: >-
+      PaP metrics can vastly over-emphasize correlated features in both variable importance
+      measures and partial dependence plots
+    quote_context: >-
+      Both from the abstract on the arXiv record. The paper was later published in Statistics
+      and Computing (2021); the lesson cites the arXiv record, which is the open primary text.
+    accessed: 2026-09-23
+
+  - id: friedman-partial-dependence
+    claim: >-
+      Partial dependence is Friedman's: the dependence of a fitted function on a chosen subset
+      of its inputs, averaged over the others, estimated by averaging the function over the
+      data with the chosen inputs held fixed, and usable with any black-box prediction method.
+      Exercises 3 and 4 implement that estimate.
+    where: "lesson.py section 4 (exercise 3 prose)"
+    source_url: https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boosting-machine/10.1214/aos/1013203451.full
+    source_title: "Friedman — Greedy function approximation: A gradient boosting machine, The Annals of Statistics 29(5):1189-1232, October 2001"
+    quote: >-
+      Partial dependence functions (51) can be used to help interpret models produced by any
+      “black box” prediction method, such as neural networks, support vector machines,
+      nearest neighbors, radial basis functions, etc.
+    quote_context: >-
+      Section 8.2, "Partial dependence plots", pages 1220-1221, read with pdftotext from the
+      open PDF linked from the landing page
+      (https://projecteuclid.org/journals/annals-of-statistics/volume-29/issue-5/Greedy-function-approximation-A-gradient-boosting-machine/10.1214/aos/1013203451.pdf).
+      Equation (53) on the same page is the average over the data that the exercises compute;
+      it is typeset mathematics and is not quoted. DOI 10.1214/aos/1013203451.
+    accessed: 2026-09-23
+
+  - id: shapley-value-three-axioms
+    claim: >-
+      The Shapley value assigns each player of a cooperative game a share of its worth, and is
+      derived from three axioms which determine it uniquely. One of them (Axiom 2) requires the
+      players' values to add up to the worth of the whole coalition — the efficiency property
+      the lesson checks, in the normalised form "attributions sum to v(all) - v(())" because
+      the lesson's value function does not start at zero.
+    where: "lesson.py section 7 (exercise 6 prose) and section 8 (exercise 7 prose)"
+    source_url: https://www.rand.org/pubs/papers/P295.html
+    source_title: "Shapley — A Value for N-Person Games, RAND Corporation paper P-295, 1952"
+    quote: >-
+      We proceed from a set of three axioms, having simple intuitive interpretations, which
+      suffice to determine the value uniquely.
+    quote_context: >-
+      Page 1 of the typescript PDF linked from the record page
+      (https://www.rand.org/content/dam/rand/pubs/papers/2021/P295.pdf). The PDF is a scan with
+      no text layer, so this quote and the axiom below were TRANSCRIBED by reading page images
+      rendered with pdftoppm on 2026-09-23, not matched by string search. Axiom 2, on page 3,
+      reads "For each carrier N of v, sum over N of phi_i[v] = v(N)", written here in plain
+      text; the typescript's games satisfy v(empty set) = 0, which is why the lesson states
+      efficiency as v(all) - v(()). The paper was published in Contributions to the Theory of
+      Games II (1953).
+    accessed: 2026-09-23
+
+  - id: strumbelj-kononenko-sampling
+    claim: >-
+      Štrumbelj and Kononenko explain individual predictions with feature contributions based
+      on coalitional game theory, and overcome the method's exponential time complexity with a
+      sampling-based approximation. Section 8's sampled estimate is the simplest version of
+      that idea, and is given to the student rather than attributed line by line.
+    where: "lesson.py section 8 (the paragraph before the sampling demo)"
+    source_url: https://www.jmlr.org/papers/v11/strumbelj10a.html
+    source_title: "Štrumbelj and Kononenko — An Efficient Explanation of Individual Classifications using Game Theory, Journal of Machine Learning Research 11(1):1-18, 2010"
+    quote: >-
+      We overcome the method's initial exponential time complexity with a sampling-based
+      approximation.
+    accessed: 2026-09-23
+
+  - id: python-hash-salted-per-process
+    claim: >-
+      By default the hashes of str and bytes objects are salted with an unpredictable random
+      value that is constant within one Python process and not predictable between
+      invocations, and changing hash values changes the iteration order of sets. That is the
+      mechanism of the planted defect: a set of feature names iterates in the same order every
+      time within a kernel and in a different order in a fresh process.
+    where: "lesson.py section 11 (exercise 9 prose) and section 12"
+    source_url: https://docs.python.org/3/reference/datamodel.html
+    source_title: "The Python Language Reference — 3. Data model, object.__hash__"
+    quote: >-
+      Although they remain constant within an individual Python process, they are not
+      predictable between repeated invocations of Python.
+    second_quote: "Changing hash values affects the iteration order of sets."
+    accessed: 2026-09-23
+
+  - id: pythonhashseed-fixed-seed
+    claim: >-
+      Setting PYTHONHASHSEED to an integer fixes the seed used to hash str and bytes objects.
+      regenerate_in_fresh_process sets it per fresh process, which is how the check makes each
+      regeneration hash differently from this process and from the others, deliberately and
+      repeatably.
+    where: "lesson.py section 10 (the regenerate_in_fresh_process prose and docstring)"
+    source_url: https://docs.python.org/3/using/cmdline.html
+    source_title: "Python documentation — Command line and environment, PYTHONHASHSEED"
+    quote: >-
+      If PYTHONHASHSEED is set to an integer value, it is used as a fixed seed for generating
+      the hash() of the types covered by the hash randomization.
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -------------------------------------------------------------------
+#
+#   * The data generator's coefficients, RHO_INCOME = 0.95, the ridge penalty and the rounding
+#     of the frozen coefficients to 6 decimal places are modelling choices made so the lesson's
+#     phenomena are visible. None is a claim about any real portfolio or any real scorecard;
+#     DATA_NOTE says the book is synthetic and the pack carries the note.
+#   * MANIFOLD_LEVEL = 0.99 and the Mahalanobis ellipse are a DEFINITION of "off the data's
+#     manifold" that is exact for the bivariate normal pair this generator draws. The lesson
+#     does not claim it is the right definition for real, non-normal data, and says in the
+#     exercise that the data's own share outside the ellipse is the yardstick.
+#   * HASH_SEEDS = (1, 2, 3) are arbitrary distinct values. That they give three different set
+#     orders for the lesson's names was checked by running the notebook, on Python 3.11 and
+#     3.12, and is what the printed output shows; nothing in the prose depends on the values.
+#   * The interventional value function over the first N_BACKGROUND development rows is a
+#     choice the pack states rather than a recommendation; the lesson's point is that it must
+#     be stated.

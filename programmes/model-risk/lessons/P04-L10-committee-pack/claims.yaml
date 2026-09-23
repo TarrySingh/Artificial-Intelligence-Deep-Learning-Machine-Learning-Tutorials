@@ -1,0 +1,77 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# Both quotes below were checked character for character on 2026-09-23: the attachment PDF was
+# fetched from the Federal Reserve's site, its text extracted with pdftotext, whitespace
+# collapsed to single spaces (the PDF breaks lines mid-sentence), and each quoted string
+# searched for in the result. Both were found verbatim. Deliberate NON-claims are recorded at
+# the foot of this file.
+#
+# Independent review, 2026-09-23: the PDF and the letter page SR2602.htm were re-fetched; both
+# quotes, and both quote_context opening sentences, were found verbatim (the context sentence
+# "model's" uses a typographic apostrophe on the page). The letter page confirms SR 26-2 is
+# dated April 17, 2026 and issued by the Board, the OCC and the FDIC. One quote_context placed
+# its subsection under the wrong section heading; it is corrected below.
+claims:
+  - id: interagency-guidance-validation-identifies-limitations
+    claim: >-
+      The supervisory guidance on model risk management issued jointly by the Federal Reserve,
+      the FDIC and the OCC on 17 April 2026 (SR 26-2 at the Federal Reserve) states that sound
+      validation identifies model limitations and errors. Section 7 cites it in one sentence as
+      the reason a committee pack carries a limitations section at all — and the lesson then
+      builds that section from what the suite could not measure.
+    where: "lesson.py section 7 (exercise 4, limitations), first sentence"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: >-
+      SR Letter 26-2 Attachment — Supervisory Guidance on Model Risk Management, Board of
+      Governors of the Federal Reserve System, Federal Deposit Insurance Corporation, Office of
+      the Comptroller of the Currency, April 17, 2026
+    quote: >-
+      Sound validation identifies model limitations and errors and clarifies appropriate use
+      and whether corrective actions may be warranted.
+    quote_context: >-
+      From section "V. MODEL VALIDATION AND MONITORING", first paragraph, which opens "Model
+      validation evaluates whether models perform as expected and includes an assessment of a
+      model's reliability and its limitations." The attachment is linked from
+      https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm.
+    accessed: 2026-09-23
+
+  - id: interagency-guidance-documentation-tracks-remediation
+    claim: >-
+      The same guidance notes that documentation can support the tracking of recommendations,
+      responses and exceptions, and can help manage model remediation efforts. Section 4 cites
+      it as the reason the findings register exists — it is where that tracking lives — and
+      the lesson says "can support", as the guidance does, not "requires".
+    where: "lesson.py section 4 (exercise 1, build_register), second paragraph"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: >-
+      SR Letter 26-2 Attachment — Supervisory Guidance on Model Risk Management, Board of
+      Governors of the Federal Reserve System, Federal Deposit Insurance Corporation, Office of
+      the Comptroller of the Currency, April 17, 2026
+    quote: >-
+      documentation can help maximize the likelihood of continuity of operations, including
+      supporting the tracking of recommendations, responses, and exceptions; it can also be
+      used to more effectively help manage any model remediation efforts.
+    quote_context: >-
+      From the subsection "Documentation" of section "VI. GOVERNANCE AND CONTROLS" (it follows
+      the subsection "Model Inventory"), whose first sentence reads "Adequate documentation
+      helps to support effective model risk management." The quoted clause follows "For
+      example,". (Corrected on independent review, 2026-09-23: the subsection sits in section
+      VI, not under "Components of Model Validation" in section V.)
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# * The severity scale, the rating codes S1-S4, the remediation periods (30/90/180/365 days),
+#   the escalation ladder and its thresholds, the owners, and the opinion rule (a live critical
+#   finding makes the model not fit for use) are POLICY INPUTS written into PACK_POLICY and
+#   into executive_summary's docstring. The lesson nowhere says any regulator or standard sets
+#   them, because no source this lesson could find does; a bank sets its own.
+# * "Half a unit in the last printed place" is this course's DEFINITION of the precision a
+#   printed figure claims, stated as a definition in section 8. It is the ordinary rounding
+#   convention; the lesson does not attribute it to a metrology standard, and cites none.
+# * The evidence from modules 2, 3 and 6 to 9 is FIXTURE data in each module's record format,
+#   labelled as such in section 3 and in DATA_NOTE. None of those figures is a claim about the
+#   world, and none is presented as a measurement.
+# * The PRA's SS1/23 is not cited here, although the programme README cites it elsewhere; this
+#   lesson makes no claim about UK expectations for committee reporting.

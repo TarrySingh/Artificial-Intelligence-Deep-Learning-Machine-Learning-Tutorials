@@ -1,0 +1,123 @@
+# Every factual claim this lesson makes about the world, with a primary source and the date
+# the source was read. Numbers a student sees in output are computed by the code they run and
+# are therefore not claims; they do not appear here.
+#
+# Every quote below was checked character for character against the live page on the access
+# date, by fetching the page and searching its text for the quoted string, not by reading a
+# summary of it. Deliberate NON-claims are recorded at the foot of this file.
+claims:
+  - id: interagency-guidance-names-benchmarking
+    claim: >-
+      The supervisory guidance on model risk management issued jointly by the Federal Reserve,
+      the FDIC and the OCC on 17 April 2026 (SR 26-2 at the Federal Reserve) names
+      benchmarking to other models among the assessments that may be more practical than
+      evaluating theoretical construction when validating a model's conceptual soundness.
+      Section 7 cites it in one sentence, as the reason a benchmark comparison is evidence at
+      all — and then shows that it is evidence only when the comparison was fair.
+    where: "lesson.py section 7 (the leaderboard), first sentence"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: >-
+      SR Letter 26-2 Attachment — Supervisory Guidance on Model Risk Management, Board of
+      Governors of the Federal Reserve System, Federal Deposit Insurance Corporation, Office of
+      the Comptroller of the Currency, April 17, 2026
+    quote: >-
+      other assessments—such as interpretability measures or benchmarking to other
+      models—may be more practical for other models
+    quote_context: >-
+      From the subsection "Conceptual Soundness" under "Components of Model Validation", whose
+      first sentence reads "Validating conceptual soundness involves assessing and documenting
+      model design". The quoted clause follows "While evaluating theoretical construction may
+      be important for some models,". Text extracted from the PDF with pdftotext; the two
+      dashes are em dashes in the source. The attachment is linked from
+      https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm.
+    accessed: 2026-09-23
+
+  - id: r-glm-default-iteration-limit-and-deviance-criterion
+    claim: >-
+      R's glm fits by iteratively reweighted least squares with, by default, at most 25
+      iterations and a convergence tolerance of 1e-8, and it declares convergence when the
+      relative change in the deviance, |dev - dev_old| / (|dev| + 0.1), falls below that
+      tolerance. The lesson uses the same iteration limit, states a different criterion —
+      no coefficient moving by more than 1e-8 — and in section 3 runs R's deviance rule over
+      the student's own separated fit to show it declaring convergence while a coefficient is
+      still growing by a constant step.
+    where: "lesson.py section 3 (the IRLS prose, and the markdown before the deviance-rule demonstration)"
+    source_url: https://stat.ethz.ch/R-manual/R-devel/library/stats/html/glm.control.html
+    source_title: "glm.control {stats} — Auxiliary for Controlling GLM Fitting, R documentation (package stats version 4.6.0)"
+    quote: "glm.control(epsilon = 1e-8, maxit = 25, trace = FALSE)"
+    quote_context: >-
+      The same page describes epsilon as a "positive convergence tolerance" such that "the
+      iterations converge when |dev - dev_{old}|/(|dev| + 0.1) < \epsilon" (the formula is
+      typeset from the LaTeX shown, with "<" as an HTML entity in the page source), and maxit
+      as "integer giving the maximal number of IWLS iterations." Both strings were matched in
+      the fetched page source.
+    accessed: 2026-09-23
+
+  - id: any-likelihood-maximiser-reaches-a-separating-solution
+    claim: >-
+      If the data admit a complete separation, any method that maximises the logistic
+      log-likelihood must arrive at a solution that separates them; SAS's LOGISTIC procedure
+      builds its separation check on that fact, stopping when the predicted response equals
+      the observed response for every observation. Exercise 2's first separation rule is the
+      threshold-free form of the same test — the current linear predictor ranking every event
+      above every non-event — and section 3 cites the SAS documentation for the fact it rests
+      on.
+    where: "lesson.py section 3 (the separation prose before exercise 2's hints); fit_logistic_irls docstring, rule 1"
+    source_url: https://support.sas.com/documentation/cdl/en/statug/63962/HTML/default/statug_logistic_sect035.htm
+    source_title: "PROC LOGISTIC: Existence of Maximum Likelihood Estimates — SAS/STAT 9.3 User's Guide"
+    quote: >-
+      The basis of this approach is that any convergence method of maximizing the log
+      likelihood must yield a solution giving complete separation, if such a solution exists.
+    quote_context: >-
+      The same page continues: "If the predicted response equals the observed response for
+      every observation, there is a complete separation of data points and the iteration
+      process is stopped." Both sentences were matched verbatim in the fetched page.
+    accessed: 2026-09-23
+
+  - id: quasi-complete-separation-behaviour-and-detection
+    claim: >-
+      Under quasi-complete separation the maximum-likelihood estimates are infinite, the
+      dispersion matrix becomes unbounded and the log likelihood falls to a nonzero constant
+      rather than to zero — which is why the lesson describes it as one subset predicted
+      perfectly while its coefficient runs away, and why the deviance settles in section 3's
+      demonstration while collections_flag keeps growing. The same source says checking for
+      it is less foolproof than checking for complete separation, which is why exercise 2
+      states its quasi-complete rule as a fallback and meta.yaml records it as a simplification.
+    where: "lesson.py section 3 (separation prose and the deviance-rule demonstration); fit_logistic_irls docstring, rule 3"
+    source_url: https://support.sas.com/documentation/cdl/en/statug/63962/HTML/default/statug_logistic_sect035.htm
+    source_title: "PROC LOGISTIC: Existence of Maximum Likelihood Estimates — SAS/STAT 9.3 User's Guide"
+    quote: >-
+      the dispersion matrix becomes unbounded and the log likelihood diminishes to a nonzero
+      constant
+    quote_context: >-
+      From the paragraph headed "Quasi-complete Separation". The page also states, verbatim:
+      "Checking for quasi-complete separation is less foolproof than checking for complete
+      separation." Its own quasi-complete rule (a diagonal element of the dispersion matrix
+      for standardised variables exceeding 5000) is NOT the one this lesson uses; see
+      meta.yaml.
+    accessed: 2026-09-23
+
+# --- deliberate non-claims -----------------------------------------------------------------
+# Recorded here so that a later reader can see they were considered rather than overlooked.
+#
+# * Weight of evidence. The lesson DEFINES its weight of evidence — ln(share of non-events /
+#   share of events), smoothed by 0.5 in every occupied bin — and says the sign is a
+#   convention a scorecard's documentation must state. It does not claim that any textbook,
+#   regulator or vendor uses this exact form or this smoothing, because it has no primary
+#   public source to cite for either.
+#
+# * Pool adjacent violators. The lesson names the merging rule it enforces and demonstrates,
+#   in its own rubric, that the result does not depend on the order in which violating pairs
+#   are pooled. It makes no historical claim about who introduced the rule or when.
+#
+# * The promotion policy (min_auc 0.65, max_ece 0.04, min_auc_gain 0.02) is module 1's,
+#   carried forward as an argument. It is a policy input, not a claim about any institution.
+#
+# * SEPARATION_EPS = 1e-6 and TOL = 1e-8 are this lesson's stated choices. TOL coincides with
+#   R's default epsilon, but the lesson applies it to the coefficient step, not the deviance,
+#   and says so; it does not claim either choice is a standard.
+#
+# * Synthetic data. Every record, the vendor's scores and the champion's "documented"
+#   coefficients are generated by numpy.random.default_rng(20260923) or written in
+#   lesson.py. DATA_NOTE says so, the notebook prints it, and the generated comparison
+#   carries it at its head. No claim about any real portfolio, vendor or champion is made.

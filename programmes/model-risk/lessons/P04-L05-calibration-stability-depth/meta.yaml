@@ -1,0 +1,195 @@
+id: P04-L05-calibration-stability-depth
+title: Measure how far one model's calibration error moves with the binning, test its fit on the degrees of freedom its setting demands, attribute a population shift to the input that moved, and price every stability threshold with the false-alarm rate it carries at your sample size
+track: P04
+flagship: ""            # programme module 5; feeds no flagship yet
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 180
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track
+  - P04-L01-validation-suite
+objectives:
+  - "Implement equal-frequency calibration bins with a documented rule for tied scores, and measure how far one fixed model's ECE moves across binning scheme and bin count"
+  - "Implement the chi-square survival function and the Hosmer-Lemeshow statistic, and explain why its degrees of freedom are g - 2 on the fitting sample and g on an independent one"
+  - "Implement a per-driver characteristic stability index that attributes a population shift to the input that moved, with each driver's share of the model's log-odds movement"
+  - "Measure by bootstrap the null distribution of PSI at a given pair of sample sizes, and the false-alarm rate a conventional threshold carries there"
+  - "Generate a calibration-and-stability appendix from the results, in which every threshold is reported with its false-alarm rate"
+datasets:
+  - name: synthetic retail credit book with a twenty-grade master scale
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      Development, holdout and two monitoring samples drawn by numpy.random.default_rng(20260925)
+      in the setup cell from five drivers, a stated true log-odds model and a fixed model under
+      validation whose probability is published as the PD of its master-scale grade. Month A
+      moves the online-channel share; month B moves utilisation. Declared synthetic in
+      DATA_NOTE, in the printed output and in section A.1 of the generated appendix.
+points: 141        # = sum of RUBRIC points in tests/test_lesson.py
+# Build notes, 2026-09-23. Every gate run from the repo root on .venv/bin/python; the measured
+# figures at the foot were written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md ASKED FOR (module 5, "Calibration and stability, at depth", cpu8, 180 s) and
+# where each piece is:
+#   * equal-frequency binning beside module 1's equal-width, with a decided rule for tied
+#     scores — exercise 1, equal_frequency_edges(). Rule: candidate edges are the scores of the
+#     records that close each 1/n_bins share (1-based rank ceil(k n / n_bins)); coincident
+#     edges MERGE and the bins used are reported; no tie is ever split and no bin is empty.
+#     This is the grouping the Stata manual documents for its Hosmer-Lemeshow test.
+#   * the ECE sensitivity table for ONE fixed model over scheme x bin count, produced by the
+#     student — exercises 2 (ece_on_edges) and 3 (ece_sensitivity); section 4 prints the table
+#     and how far the same model's ECE moves (min, max, ratio and spread, all computed).
+#   * a grouping goodness-of-fit statistic with its degrees of freedom and tail probability —
+#     exercises 4 (chi2_sf, built from the DLMF incomplete-gamma recurrence, tested against the
+#     NIST/SEMATECH table) and 5 (hosmer_lemeshow). The wrong-dof mistake is graded twice: g - 2
+#     on an independent sample, and dof from groups requested rather than formed.
+#   * a per-driver characteristic stability index with a planted shift that barely moves the
+#     score's PSI (month A, the online-channel share) and one that moves it a lot (month B,
+#     utilisation) — exercise 6.
+#   * a bootstrap of PSI's null at the student's own sample size and the false-alarm rate of
+#     the conventional bands — exercises 7 and 8; section 10's table shows the same threshold
+#     at six monitoring sizes. The bands are called industry convention and attributed to no
+#     one; claims.yaml records why.
+#   * artefact: the calibration-and-stability appendix, every threshold with its false-alarm
+#     rate — exercise 9 renders it; section 12 generates it.
+#
+# DELIBERATE DIFFERENCES FROM THE MODULE MAP, and why:
+#   1. The PSI null is TWO-sample: each replicate draws a development sample AND a month, and
+#      cuts the edges on the replicate's development sample, as production does. Holding the
+#      baseline fixed understates the null (Yurdakul and Naranjo's (1/n + 1/m) scale); section
+#      13 measures a threshold set on the frozen null delivering more than twice the false-alarm
+#      rate it promised at the lesson's sizes.
+#   2. CSI does not use module 1's quantile_edges. Section 7 shows why before the exercise: on a
+#      yes/no input it returns [-inf, inf], ONE bin, and a CSI of 0.0000 whatever happens.
+#      characteristic_edges applies exercise 1's tie rule to module 1's left-closed stability
+#      convention. Module 1's conventions themselves (edges cut once on the baseline, floored on
+#      both sides, empty calibration bins read nan, bins over [0, 1]) are carried forward
+#      exactly, in faithful copies of its functions under their original names.
+#   3. CSI rows also carry each driver's log-odds shift, coefficient x change in mean, which
+#      sums exactly to the model's change in mean log-odds. That is what attributes the shift;
+#      CSI alone says an input moved, not how much of the score's movement it caused.
+#   4. The ECE ceiling in the appendix also carries a false-alarm rate, from an exact-
+#      calibration simulation (outcomes drawn from the model's own predictions); section 4
+#      prints that noise floor for every scheme. The module map did not ask for it; the
+#      artefact's rule ("every threshold carries its rate") needed it.
+#   5. hosmer_lemeshow takes fitted_here as a keyword with NO default, and the rubric checks the
+#      signature: the degrees of freedom cannot be chosen without saying where the model was
+#      fitted. Section 6 measures both rules on simulated samples, against the rates chi-square
+#      algebra predicts from the student's own chi2_sf.
+#
+# DATA: synthetic, generated in the setup cell; see datasets above. The seed and the model's
+# two tilted coefficients were chosen so that the one holdout shows all three lessons at once:
+# an ECE that moves several-fold with the scheme, a Hosmer-Lemeshow verdict that flips between
+# g and g - 2, and month B's score PSI crossing the red band. Every figure is printed from the
+# run; none is typed in prose, and self-check scenarios use numbers the run does not produce.
+#
+# MUTATION TESTING, 2026-09-23, in a scratch copy outside the repo with demo cells stripped (a
+# stripped reference scores 141/141, so stripping decides nothing). 49 plausible-wrong variants,
+# at least three per exercise. 47 caught, every one keeping partial credit: 125/141 to 140/141
+# (89%-99%), never 0 and never 100. By exercise:
+#   1. linear np.quantile edges; zero-based rank k n // n_bins; coincident edges kept; the last
+#      edge left at the largest score instead of 1.0.
+#   2. side='right' membership; bins weighted equally; a numpy scalar returned.
+#   3. bins_used reported as requested; min_support over empty bins (0); bin-count-major rows.
+#   4. lgamma(e) for lgamma(e + 1); the CDF returned; direct powers and gammas (overflow at
+#      large dof); an odd dof started from exp(-x/2); x not halved.
+#   5. g - 2 always; dof from groups requested; (1 - mean) dropped from the denominator;
+#      equal-width groups; fitted_here defaulted to False; p-value taken as 1 - tail; the
+#      degenerate-group guard removed.
+#   6. module 1's quantile_edges for the edges; an edge kept at the minimum; the last value of
+#      each share instead of the first; CSI edges cut on the current sample; CSI via module 1's
+#      edges; the shift's sign reversed; rows left in name order.
+#   7. a frozen baseline; one index draw for both samples; the month drawn at the baseline's
+#      size; edges cut on the month; edges cut on both samples pooled; module 1's quantile
+#      edges; draws from the global numpy state; draws without replacement.
+#   8. >= for an alarm; floor without tolerance; a linear-quantile threshold; se over n - 1.
+#   9. >= for BREACH; the HL line unpriced; p <= alpha rejects; drivers re-sorted by name;
+#      month keys unchecked; rates printed to whole percent.
+# The two survivors are equivalent, not missed: chi2_sf without its min(..., 1.0) cap (the sum
+# can exceed 1 only by rounding), and ece_sensitivity calling module 1's ECE for equal-width
+# rows (identical by construction, which exercise 2's check asserts).
+# Eight controls, each a correct answer written differently, all score 141/141: edges from
+# np.quantile(method="inverted_cdf"); ECE by a boolean-mask loop; chi2_sf by the series and
+# continued fraction for the incomplete gamma; HL summed over event and non-event cells; CSI
+# edges by float ceil; rows ordered by two stable sorts; the bootstrap by rng.choice; the
+# false-alarm rate by np.mean with a brute-force threshold search.
+# Partial credit checked directly: with exercises 1, 2 and 4 left as stubs — the helpers later
+# exercises call — the rest still score 95/141, because each case swaps this rubric's reference
+# in for the earlier exercise; with 5, 7 and 9 stubbed, 87/141.
+#
+# TWO RUBRIC DEFECTS the mutation run found and fixed, rather than merely confirmed:
+#   * a zero-based rank (k n // n_bins) scored 141/141: every untied case had n prime to the
+#     bin count, where the two rules agree. Divisible sizes (40 in 4 and 10, 12 in 3) added.
+#   * edges cut on the two replicate samples POOLED scored 141/141: at every size in the first
+#     draft its null matched the honest one within noise. test_null_edges_cut_on_the_baseline
+#     (twenty development records against two thousand) now catches it at 138/141.
+#   And one lesson defect: the first draft's exercise-7 check told a failing student "near
+#   zero means the edges were cut on the current sample". Measured, that mistake moves the
+#   null by a few per cent at equal sizes, not to zero; the message now names the mistakes
+#   that do produce those readings (a frozen baseline, one shared index draw).
+#
+# COULD NOT VERIFY, for the owner:
+#   * the g-degrees-of-freedom rule for a sample outside the estimation sample is sourced to the
+#     Stata manual's methods and formulas, which state it without a citation of their own (the
+#     manual cites Hosmer, Lemeshow and Sturdivant (2013) only for regrouping into about ten
+#     groups; that textbook is not free and was not read). Section 6 measures the rule (an
+#     exactly right model on independent samples: false-rejection rate near ALPHA on g, well
+#     above it on g - 2). That g counts groups FORMED rather than requested is the lesson's own
+#     derivation, stated with its reason in section 6; the manual's G is the number requested.
+#   * that Fagerland, Hosmer and Bofin's (g - 2)(c - 1) reduces to g - 2 for this statistic is
+#     the lesson's reading of their abstract's construction at c = 2, not a sentence they wrote.
+#   * the 0.10 / 0.25 bands: Yurdakul and Naranjo attribute them to a 1994 textbook (Lewis),
+#     not read; the lesson attributes them to no one.
+#   * stata.com served its PDF to the fetch tool but a bot challenge to curl; the quotes were
+#     read from the PDF the fetch tool saved, on 2026-09-23. (Review note: curl with a browser
+#     user-agent was served the same PDF on 2026-09-23, and every quote was re-read from it.)
+#
+# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root: inject, build, check ok;
+# execute PASS; solution 141/141; stubs 0/141, all 53 rows TODO; verify_portable py311 and
+# py312 PASS; --completed identical across both (209 lines). Every URL in claims.yaml was
+# re-fetched and every quote found verbatim (NIST 1.3.6.7.4 and 1.3.6.6.6, all 21 tabled values
+# read off the live tables; DLMF 8.2.4, 8.4.5, 8.4.6, 8.8.2; the Ohio State abstract; PubMed
+# efetch for PMID 18203120; the Stata PDF; the Western Michigan PDF; arXiv 1706.04599).
+#   Mutation run, fresh and separate from the author's: 36 mutants on the reference, including
+#   a one-step boundary sweep of every graded edge, rank and comparison (equal-frequency rank
+#   +1, -1 and floor; ece_on_edges side='right'; chi2_sf x < 0 for x <= 0 and one recurrence
+#   term too many; HL dof guard < 0 and mean guard < 0 / > 1; characteristic_edges position +1
+#   and -1, k running to n_bins, and >= on the minimum filter; false-alarm >= ; threshold index
+#   -1 and ceil for floor; rate 0 rejected and rate 1 accepted; BREACH >= and REJECTED <=).
+#   34 caught at first, each losing only its own exercise's rows (127/141 to 140/141). TWO
+#   SURVIVORS, one rubric defect: characteristic_stability and psi_null_bootstrap that IGNORE
+#   their n_bins argument (characteristic_edges left at its default) both scored 141/141,
+#   because every rubric case used the default ten. Not equivalent: n_bins is in both
+#   signatures and exercise 7's docstring. Fixed by repeating test_csi_cut_on_baseline and
+#   test_null_two_sample_scale at n_bins=4; now 138/141 and 137/141, and all 36 are caught.
+#   Three controls written differently from the author's eight (distinct-score scan, running-
+#   product chi-square tail, pure-Python rates; boolean-mask ECE and event-plus-non-event HL,
+#   float-ceil edges, two stable sorts; np.digitize membership, all indices drawn up front,
+#   a sectioned renderer) score 141/141 before and after the rubric change, and run the
+#   notebook's own checks to an all-green board.
+#   Board wiring proved in a scratch copy: chi2_sf alone filled gives exercise 4 passed, the
+#   rest not started, the critical-values demo running; chi2_sf returning the CDF gives
+#   exercise 4 failed with its check's hint, every cell still runs under verify_portable py312,
+#   and the copy's lesson.py run as a script exits 1.
+#   Lesson fixes: section 6 said the Stata manual cites Hosmer, Lemeshow and Sturdivant for the
+#   g rule (it does not; attribution now to the manual alone, and the formed-not-requested
+#   rule given its reason); section 1 called Guo and colleagues' statement of ECE their
+#   "definition" (they credit Naeini et al.); section 2 typed a master-scale PD into prose (now
+#   number-free); exercise 6's success message ended mid-phrase; one rubric assertion had no
+#   message. claims.yaml records the manual's typeset N / G (no i) and that its G is requested.
+#
+# OWNER ACTIONS (files this lesson may not touch):
+#   * programmes/model-risk/MODULES.md: module 5's status row, and its "specified" paragraph,
+#     are regenerated by tools/status.py; the paragraph could note the two-sample null and the
+#     log-odds attribution (differences 1 and 3 above).
+#   * programmes/model-risk/README.md "Status" section still says one module of ten is built.
+#   * the relayed request mentions branding the free tutorials; per the naming rule this lesson
+#     carries no project name in prose, docstrings or output. The launcher's ATLAS_* names are
+#     generated by tools/notebooks.py and left alone.
+#
+# Worst run of prose before the next runnable cell: 31 non-blank lines (sections 2 and 6, hints
+# included), then 29 (section 14, the self-check). Inside gate 3's ~40.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23: gates re-run, 36 mutants all caught after an n_bins rubric fix, 3 controls 141/141, sources re-fetched, board wiring proved"
+measured_seconds: 5.4
+measured_peak_mib: 39

@@ -1,0 +1,206 @@
+id: P04-L10-committee-pack
+title: Assemble the committee pack from the evidence — a findings register that keeps its history, a remediation tracker that ages and escalates from an explicit date, a summary and limitations built from the findings — and a gate that traces every figure in it to a computed result or refuses to render
+track: P04
+flagship: ""            # programme module 10, the closing module; feeds no flagship yet
+tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+budget_seconds: 120
+language: python        # python | c | cpp
+prerequisites:
+  - T00-L01-the-8gb-track              # the tier gate, and the house shape: stubs, checks, rubric
+  - P04-L01-validation-suite           # the report generator this pack extends, carried forward
+  - P04-L02-model-inventory-tiering    # TierDecision, CoverageRow, parse_date
+  - P04-L03-conceptual-soundness       # Finding, MonotonicityProbe, SEVERITY_ORDER
+  - P04-L04-discrimination-testing     # Interval, PairedDifference, Measurability
+  - P04-L05-calibration-stability-depth   # CharacteristicShift
+  - P04-L06-reproduce-the-number-in-c  # the REPRODUCED / EXPLAINED / FINDING verdict
+  - P04-L07-challenger-from-scratch    # Check, Audit
+  - P04-L08-explainability-evidence    # the reproducibility certificate
+  - P04-L09-streaming-monitor-in-c     # the monitor report and its breach bin
+objectives:
+  - "Implement a findings register whose identifiers, raised dates and owners survive from one pack to the next, and a remediation tracker that ages live findings from an explicit as-of date and escalates the overdue ones by policy"
+  - "Assemble an executive summary whose opinion follows from the register by a written rule, and a limitations section built from the subgroups, bins and comparisons the suite could not measure"
+  - "Implement a graded definition of a figure in a document — excluding dates, section numbers and identifiers; reading thousands separators, signs, ranges, percentages and scientific notation — with the half unit of precision each figure claims"
+  - "Implement a gate that traces every figure in the pack to a computed result within that half unit, and a committee pack that refuses to render while any figure is untraceable"
+  - "Measure how a widened tolerance, an exempted class of figure or numbers read out of strings let a typed figure through, and explain why a figure that traces is not thereby the right figure"
+datasets:
+  - name: synthetic retail application book, out-of-time sample and driver samples
+    kind: synthetic
+    licence: "not applicable - generated at run time by the lesson itself"
+    url: ""
+    note: >-
+      Module 1's generator and seed (numpy.random.default_rng(20260916)) re-create module 1's
+      development and monitoring samples record for record, and draw one further out-of-time
+      sample of 1,400 records; two stand-in driver samples for module 5's per-driver stability
+      come from default_rng(20260921). The evidence of modules 2, 3 and 6 to 9 is FIXTURE data
+      in each module's record format, labelled in section 3 and in DATA_NOTE, which the
+      notebook prints and module 1's report section carries into the pack. Nothing is
+      downloaded and nothing is written to disk.
+points: 158             # = sum of RUBRIC points in tests/test_lesson.py
+# Build notes, 2026-09-23. Every gate run from the repo root on the venv interpreter; the
+# measured figures at the foot were written back by tools/execute.py and never typed.
+#
+# WHAT MODULES.md MODULE 10 ASKED FOR, and where it is.
+#   * a findings register with severity, owner, due date and status -> exercise 1
+#     (`build_register`). Fed by `raise_findings` (given) from one record of each kind the
+#     earlier modules produce, in their own formats: module 1's ECE and StabilityResult,
+#     module 5's CharacteristicShift, module 2's TierDecision and CoverageRow, module 3's
+#     Finding and MonotonicityProbe, module 4's Interval, PairedDifference and Measurability,
+#     module 6's reproduction verdict, module 7's Check and Audit, module 8's certificate and
+#     module 9's monitor report. All nine kinds the brief lists raise at least one finding.
+#   * a remediation tracker that ages open findings and escalates the overdue -> exercise 2
+#     (`age_register`), every day counted from an explicit as_of; the rubric grades it at
+#     as-of dates in 2019 and 2031 so a clock read fails.
+#   * an executive summary assembled from the findings -> exercise 3 (`executive_summary`):
+#     opinion by a written rule, every count returned as data so the gate can trace it.
+#     Section 6 prints the hand-typed draft's opinion beside the assembled one; they differ.
+#   * a limitations section from what the suite could not measure -> exercise 4
+#     (`limitations`): suppressed subgroups, maximal runs of empty reliability bins, and
+#     module 4's NOT MEASURABLE comparisons (NOT SIGNIFICANT is graded as NOT a limitation).
+#   * trace_gate(report, findings) with a precise, graded definition of a figure -> exercises
+#     5 (`extract_figures`, the definition), 6 (`computed_values`, what counts as a computed
+#     result) and 7 (`trace_gate`). A figure's tolerance is half a unit in its own last
+#     printed place, carried on the Figure; the gate allows only a 1e-9 relative slack on it.
+#   * "the lab hands the student a report with one hand-typed number" -> `draft_pack`, a
+#     summary typed above module 1's report. Every figure but one is formatted from the run;
+#     the one typed, 0.0140, is the challenger's ECE (computed 0.013916, printed 0.0139)
+#     rounded up by hand — 1.7 half-units from the nearest result, so the definition's gate
+#     catches it and a fixed 0.0001 tolerance passes it. Section 10 measures that, and the
+#     catch rate of each tolerance rule on every traced figure copied one digit high.
+#   * the rubric must fail a gate that silences itself -> test_gate_half_unit_is_the_tolerance
+#     (1.5 half-units must fail, Python's own boundary roundings must pass),
+#     test_gate_no_class_of_figure_is_exempt, test_gate_adds_no_sources, and the extractor
+#     cases that require a bare year, a heading's non-section figure and a non-heading
+#     numbered line to remain figures.
+#   * artefact: a committee pack that refuses to render -> exercise 8
+#     (`render_committee_pack`), which extends module 1's generator and raises
+#     UntraceableFigures while any figure, commentary included, is untraceable. Section 12
+#     shows the refusal on the typed commentary, a string-harvesting collector passing it, and
+#     the pack rendering once the commentary quotes its figure from the findings.
+#
+# DELIBERATE DIFFERENCES FROM THE MODULE MAP, and why.
+#   * the map names one exercise (trace_gate); this lesson splits the gate into three graded
+#     exercises (definition, collector, gate) so each silencing route is graded where it
+#     happens, and injects its own reference extractor/collector/gate (`extract=`,
+#     `collect=`, `gate=`) so a broken exercise 5 costs nothing in 7 or 8.
+#   * "numbers in strings are not results" and "booleans are not results" are this lesson's
+#     rules, not the map's. Without the first, the typed commentary (a string in the
+#     findings) traces to itself — section 12 demonstrates it; without the second, True
+#     traces any "1".
+#   * the gate traces to the FIRST value that prints as the figure, not the closest and not
+#     the one the sentence means. Section 13 says so and measures the coincidence rate by
+#     precision (whole numbers, 2, 3 and 4 decimals) against the pack's own findings. That
+#     limit is stated, not hidden: the gate is a floor, not proof of meaning.
+#   * a recurring finding keeps its history's due date too, so a finding reopened after
+#     closure is immediately overdue and escalates. That is a policy choice the docstring
+#     states; a bank might instead set a fresh due date on reopening.
+#   * module 6's rule is raised on anything short of REPRODUCED (module 6 concluded only
+#     bit-for-bit reproduction closes a finding); the fixture's verdict is FINDING anyway.
+#   * module 1's renderer derives one figure itself (the worst PSI bin); run_suite registers
+#     it as psi_worst_bin, with the seed, sample size, event rate and promotion policy, so
+#     everything module 1's report prints is traceable. The lesson says why in a comment.
+#
+# DATA: synthetic (see datasets). Modules 1, 4 and 5 are COMPUTED here (module 1's samples
+# and suite; module 4's intervals and measurability by carried-forward faithful copies, 400
+# bootstrap replicates; module 5's CSI on two stand-in driver samples). Modules 2, 3 and 6-9
+# are FIXTURES, labelled. Carried-forward code keeps the earlier modules' names and fields.
+#
+# DETERMINISM: no clock, no hash-seed or set-order dependence (sets are used for membership
+# only, never iterated). verify_portable --completed: output identical on py311 and
+# py312, 264 lines, 0 varying run to run. The completed lesson was also executed as a
+# notebook in a real ipykernel (py312 env, empty temp dir) by hand: no errors, board all
+# passed.
+#
+# MUTATION TESTING, 2026-09-23, in a mktemp copy outside the repo. 41 plausible-wrong
+# variants of the reference, graded by tools/grade.py --solution; ALL 41 caught, every one
+# keeping partial credit (134/158 to 156/158; never 0, never 100):
+#   1. recurring finding re-raised with today's date 154 · ids from len(history) 155 · closed
+#      recurrence left closed 155 · un-raised history dropped 155 · new ids ignoring SOURCES
+#      order 155.
+#   2. reads date.today() 148 · strict > on thresholds 153 · tracks risk accepted 155 · due
+#      date counted as overdue 149.
+#   3. risk accepted counted live 142 · headline re-sorted by id 155 · any escalation counted
+#      as top-level 154.
+#   4. one limitation per empty bin 153 · NOT SIGNIFICANT listed 154.
+#   5. identifiers not masked 152 · dates not masked 152 · thousands split at commas 152 ·
+#      percent ignored 152 · percent scales the value only 155 · range dash read as a minus
+#      152 · fixed half unit 134 · a full unit instead of half 134 · heading lines skipped
+#      whole 155.
+#   6. booleans counted 155 · digits harvested from strings 155 · breadth-first walk 153.
+#   7. fixed 0.001 tolerance 146 · tolerance of a full unit 145 · strict with no slack 153 ·
+#      integers exempt 140 · percentages exempt 146 · table rows exempt 155 · magnitudes
+#      compared 153 · extract= ignored 156 · closest match instead of first 156 · always
+#      passes 151.
+#   8. gated before the commentary is added 151 · refusal swallowed into a warning 154 ·
+#      commentary dropped 151 · severity code missing 154 · empty-tracker sentence missing 155.
+# ONE SURVIVOR, found and fixed: "new ids ignoring SOURCES order" first scored 158/158,
+# because in the tie-ordering case alphabetical rule order happened to equal SOURCES order.
+# The case now uses five sources whose two orders disagree; the mutant scores 155/158.
+# TWO CONTROLS, correct answers written differently, both 158/158 with all eight notebook
+# checks green: (A) every exercise rewritten — dict-merged register with ordinal dates,
+# bisect escalation with two stable sorts, Counter summary, itertools.groupby runs, a
+# blank-the-masked-spans extractor, a generator walker, a numpy-vectorised gate, a StringIO
+# renderer (its only printed difference: one trailing blank line); (B) a single-pass
+# alternation tokenizer for figures, a bisect-window gate choosing the lowest original index,
+# and a dtype-dispatching walker — printed output byte-identical to the reference.
+# PARTIAL CREDIT, measured on the student file with the reference spliced in: exercises 1-4
+# only 68/158 (43%); 5-8 only 90/158 (57%); exercise 8 alone 25/158, its full share, because
+# the rubric injects its own gate; exercise 7 alone 22 of its 25 (the end-to-end case needs 5
+# and 6). No FAIL rows appear for untouched exercises — they are TODO.
+#
+# DEFECTS FOUND AND FIXED WHILE BUILDING (beyond the survivor above): the first typed figure,
+# 0.0193 (a transposition of 0.0139), traced BY COINCIDENCE to a PSI share and the gate passed
+# the draft — replaced by 0.0140 and the coincidence made the subject of section 13; the word
+# class omitted "+", so Python's own "2.000e+05" was masked as a name — fixed and graded; one
+# rubric case had "1" tracing to a 0.5 half a unit away — the probe value moved; the
+# computed_values docstring did not say depth-first although the rubric grades order — it
+# does now; the module 9 fixture expanded bin counts into 4-million-element arrays (peak 175
+# MiB) — replaced by module 9's own counts helper (41 MiB).
+#
+# COULD NOT VERIFY: the claims' quotes were matched against the Federal Reserve's PDF as
+# fetched and text-extracted on 2026-09-23 (pdftotext, whitespace collapsed); the OCC's and
+# FDIC's copies were not separately checked. Whether any bank uses these exact severity codes,
+# remediation periods or escalation thresholds is not claimed and not verified; they are
+# policy inputs (claims.yaml, non-claims).
+#
+# Prose runs: the longest run of markdown before the next runnable cell is 35 non-blank lines
+# (section 8, the definition of a figure plus its two hints), inside gate 3's ~40. The wall-
+# time cell sits between the self-check and the closing section to keep that run short.
+#
+# INDEPENDENT REVIEW, 2026-09-23 (every gate re-run from the repo root; mutants and controls in
+# mktemp copies outside the repo). 58 fresh mutants, a one-step boundary sweep included (due
+# date +-1 day, escalation threshold +-1, overdue +-1, raised == as_of, min support +-1, bin-run
+# edges, the tolerance at 1.005/1.01/1.5 half-units and with 1e-6/1e-9/1e-12 absolute epsilons).
+# Before the fixes, 7 non-equivalent mutants scored 158/158; each now loses only its own test:
+#   * age_register refusing a finding raised ON the as-of date (every new finding in the pack)
+#     -> test_ageing_due_date_is_not_overdue and _check_ageing now require age 0, no error.
+#   * a gate padded with an absolute 1e-6 (in this pack it lets one-digit slips of 6.836e-03,
+#     1.273e-03 and 0.012345 trace), or widened to 1.01 half-units -> the far case in
+#     test_gate_half_unit_is_the_tolerance adds a scientific figure 1.5 of its half-units off
+#     and a figure 1.005 half-units off.
+#   * thousands read without the exactly-three lookahead, silently dropping a digit
+#     ("12,3456" -> 12,345) -> test_figures_thousands_separators.
+#   * the pack naming only the first missing key -> test_pack_missing_keys drops two at once.
+#   * build_register's unknown-source rule, stated as graded and never graded ->
+#     test_register_rejects.
+#   * suppression read as count < min_support - 1 -> the suppressed-groups case now puts one
+#     group one record below the minimum.
+# Proven EQUIVALENT by measurement, not tightened: dropping the boolean-array skip (identical
+# computed_values output on VALIDATION, EVIDENCE and the assembled findings, which hold two
+# boolean arrays); a strict < with the slack kept, and absolute epsilons of 1e-9 and 1e-12 or a
+# relative 1e-6 (0 verdicts differ over the draft, the pack and the pack with the typed
+# commentary, every figure and every +-one-digit slip of it); suppression read as
+# count < min_support (subgroup_table defines reportable as exactly that).
+# Also fixed: self-check 2's stem said the draft PASSES a fixed 0.0001 gate, which section 10's
+# own printout contradicts (that gate flags correct three-decimal AUCs on the draft; it is the
+# typed figure it lets through) -> restated, option (c) says "can trace", answer 2 corrected;
+# claims.yaml placed the "Documentation" quote under "Components of Model Validation" -> it is
+# in section VI, Governance and Controls. Both quotes re-verified verbatim on the live PDF.
+# Three controls written differently (A: exercises 1-4 by ordinal dates, bisect, Counter,
+# groupby; B: 5-6 by match-then-decide-the-sign and a generator walker; C: 7-8 by a vectorised
+# gate and a StringIO block renderer) score 158/158 on the rubric before and after the changes.
+# Board proven wired in a copy: exercise 4 filled -> ✅ with the rest ⏳ and its demo running;
+# made wrong -> ❌ with the check's hint, every cell still runs, the script exits 1.
+status: reviewed        # draft | executed | reviewed | shipped
+reviewed_by: "Independent review 2026-09-23: all gates re-run green; 58 mutants (7 rubric gaps fixed, 6 proven equivalent), 3 controls at 100%, both quotes re-verified, self-check 2 and one quote context corrected"
+measured_seconds: 0.8
+measured_peak_mib: 42
