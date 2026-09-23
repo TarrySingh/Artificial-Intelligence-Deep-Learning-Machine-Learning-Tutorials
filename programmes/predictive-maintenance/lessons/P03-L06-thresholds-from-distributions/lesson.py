@@ -112,9 +112,12 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import math
 import sys
 import time
+import traceback
 from typing import Callable, NamedTuple, Sequence
 
 import numpy as np
@@ -208,27 +211,73 @@ class Schedule(NamedTuple):
 
 SCENARIO = Prices(planned=9_000.0, unplanned=180_000.0, life_per_hour=220.0)
 
-_FAILED_CHECKS: list = []
+_FAILED_CHECKS: list[str] = []
+
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("forecast_summary",),
+    "exercise 2": ("survival_and_hazard",),
+    "exercise 3": ("expected_cost_at",),
+    "exercise 4": ("best_intervention_time",),
+    "exercise 5": ("realised_cost",),
+    "exercise 6": ("slot_costs",),
+    "exercise 7": ("fleet_cost_matrix",),
+    "exercise 8": ("greedy_schedule",),
+    "exercise 9": ("best_schedule",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
 
-def _try(label: str, check: Callable[[], None]) -> None:
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (expected_cost_at)"; several -> "exercises 1, 3 and 4"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def _show(fig) -> None:
@@ -358,6 +407,24 @@ print(f"prices         planned {SCENARIO.planned:,.0f} · unplanned {SCENARIO.un
 # probability has reached 0.10 — reached, not passed. Off by one here and every interval you
 # quote is narrower than it should be on one side and wider on the other, which is the sort of
 # bug that survives for years because nobody can see it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A pmf is already a set of weights, so does the mean need dividing by anything afterwards?
+# For the percentiles, the rule is the smallest hour whose cumulative probability has
+# REACHED q, and a running sum of floats can land a hair under a boundary that ought to be
+# exact. Finally: what should happen to a pmf that does not sum to one, or that has a
+# negative bin, and whose bug is it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate before computing: equal lengths, an explicit check that no bin is negative (a
+# negative bin can hide inside a pmf that still sums to one), and a total within the
+# docstring's tolerance, each failure a `ValueError` rather than a quiet renormalise. Take
+# the pmf-weighted mean, then the square root of the pmf-weighted squared deviations. For
+# each percentile, find the first position where the cumulative sum reaches q less a tiny
+# slack, and report the hour stored at that position as an int, not the position.
+# </details>
 
 # %%
 def forecast_summary(forecast: RULForecast) -> Summary:
@@ -443,6 +510,23 @@ _try("exercise 1", _check_forecast_summary)
 # denominator is the population still at risk at the *start* of the hour, which is
 # `S[k] + pmf[k]`, not `S[k]`. Use `S[k]` and your hazard is shifted by one bin and diverges
 # at the tail. Where the at-risk population is zero the hazard is 0, not a nan.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Survival at hour k is the chance of lasting BEYOND hour k, so it already excludes the
+# machines that fail during hour k. The hazard asks about the machines still running at the
+# START of hour k: which population is that, in terms of the two arrays you have? And what
+# happens to your division at the tail, once nothing is left running?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Survival is one minus the running total of the pmf, clipped into the unit interval so a
+# floating-point overshoot cannot come back as a tiny negative probability. The at-risk
+# population for hour k is that hour's survival plus that hour's own probability. Divide the
+# pmf by it only where it is positive and leave a zero everywhere else, rather than dividing
+# everywhere and repairing the nans afterwards. Return both as float arrays the length of
+# the pmf.
+# </details>
 
 # %%
 def survival_and_hazard(forecast: RULForecast) -> tuple:
@@ -524,6 +608,22 @@ _try("exercise 2", _check_survival_and_hazard)
 # Average those over the distribution and you have the expected cost of the plan. That third
 # price is what replaces module 1's false alarm: against a distribution, *every* intervention
 # is early by some amount, and the question is only how much you are willing to waste.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Split the distribution at the intervention hour. Which side does a failure DURING the
+# booked hour fall on: did you collect that machine or not? On the side you do catch, what
+# are you paying for besides the planned job, and who pays it: the machines you caught, or
+# the ones that had already failed? Hour 0 is a real hour with real probability in it.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject a negative `hours_ahead` with `ValueError`. Mark the hours at or before the
+# intervention: that mass pays the unplanned price. Every other hour pays the planned price
+# plus the life-per-hour charge on the hours of life still left on the machine. Weight both
+# by the pmf, sum, and return a plain float. Past the end of the grid every hour is marked,
+# so the answer falls out without a special case.
+# </details>
 
 # %%
 def expected_cost_at(forecast: RULForecast, hours_ahead: int, prices: Prices) -> float:
@@ -605,6 +705,21 @@ _try("exercise 3", _check_expected_cost_at)
 # keep a point only if it is **strictly** cheaper than the best so far, so a tie goes to the
 # earlier hour. Earlier is the safe side of a tie, and picking one deliberately beats letting
 # `argmin` pick for you.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is module 1's sweep and module 1's tie rule. When two candidate hours cost exactly
+# the same, which one is the safe side to take, and does your comparison keep the first of a
+# tie or the last? Would sorting the candidates, or searching them backwards, quietly change
+# the answer? And what should an empty sweep produce?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Raise `ValueError` on an empty candidate list. Walk the candidates in the order given,
+# pricing each with your `expected_cost_at`, and replace the running best only when a
+# candidate is strictly cheaper. Return a `Plan` holding that hour as an int together with
+# its own cost as a float.
+# </details>
 
 # %%
 def best_intervention_time(forecast: RULForecast, candidates, prices: Prices) -> Plan:
@@ -682,6 +797,11 @@ _try("exercise 4", _check_best_intervention_time)
 # computes the crossing from your `survival_and_hazard` and compares it with your sweep.
 
 # %%
+# The cells that plan one machine at a time use YOUR best_intervention_time, which prices
+# with YOUR expected_cost_at, and report YOUR forecast_summary beside it.
+_FOR_PLAN = ("exercise 1", "exercise 3", "exercise 4")
+
+
 def hazard_crossing(forecast: RULForecast, prices: Prices) -> int:
     """First hour at which the hazard reaches life_per_hour / (unplanned - planned).
 
@@ -720,7 +840,7 @@ def _two_routes_agree() -> None:
           f"dashboard shows.")
 
 
-_try("the mean is not the plan", _two_routes_agree)
+_try("the mean is not the plan", _two_routes_agree, needs=_FOR_PLAN + ("exercise 2",))
 
 # %%
 def _plot_cost_curve() -> None:
@@ -746,7 +866,7 @@ def _plot_cost_curve() -> None:
           f"higher at the mean")
 
 
-_try("cost curve", _plot_cost_curve)
+_try("cost curve", _plot_cost_curve, needs=_FOR_PLAN)
 
 # %% [markdown]
 # ## 7. Width, not just centre
@@ -791,7 +911,7 @@ def _width_and_centre() -> None:
           "recover\nthe plan from the mean with a fixed safety factor either.")
 
 
-_try("width and centre", _width_and_centre)
+_try("width and centre", _width_and_centre, needs=_FOR_PLAN)
 
 # %%
 def _plot_width() -> None:
@@ -811,7 +931,7 @@ def _plot_width() -> None:
     print("plotted: three forecasts with the same mean and three different optima")
 
 
-_try("width plot", _plot_width)
+_try("width plot", _plot_width, needs=("exercise 3", "exercise 4"))
 
 # %% [markdown]
 # ## 8. Exercise 5 — `realised_cost()`, and what a confident wrong answer costs
@@ -823,6 +943,21 @@ _try("width plot", _plot_width)
 #
 # Same convention as before. Fail at or before the intervention hour and you pay `unplanned`;
 # otherwise you pay `planned` plus the life you threw away.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is exercise 3 for one known outcome, and averaging it over a forecast must give
+# exercise 3's answer back exactly. So the same boundary rule has to apply: a machine that
+# stops during the hour you booked, collected or failed? Two functions that disagree about
+# that single hour end up a whole bin's worth of probability apart.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Reject a negative `hours_ahead` or a negative `true_rul` with `ValueError`. If the
+# machine's true remaining life ends at or before the booked hour, it is the unplanned
+# price. Otherwise it is the planned price plus the life-per-hour charge on the hours you
+# threw away. Use exactly the comparison your `expected_cost_at` uses.
+# </details>
 
 # %%
 def realised_cost(hours_ahead: int, true_rul: int, prices: Prices) -> float:
@@ -927,7 +1062,7 @@ def _confidence_is_not_accuracy() -> None:
           f"about\nthe world, and pricing a plan takes them at their word.")
 
 
-_try("confidence is not accuracy", _confidence_is_not_accuracy)
+_try("confidence is not accuracy", _confidence_is_not_accuracy, needs=_FOR_PLAN + ("exercise 5",))
 
 # %% [markdown]
 # ## 9. Exercise 6 — `slot_costs()`: the calendar is not a clock
@@ -939,6 +1074,21 @@ _try("confidence is not accuracy", _confidence_is_not_accuracy)
 # A slot before the forecast was made is not a choice, and it is not cost zero either. Mark it
 # `np.inf`, which is the only value that will survive every `min` downstream without quietly
 # being chosen.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Slots are absolute hours on the workshop's clock; the forecast counts hours from the
+# moment it was made. What has to happen to a slot before it can be priced? And what should
+# a slot that is already in the past cost, given that it must never win a `min` further
+# down? Zero would win it, and so would pretending the slot is now.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each slot, work out how many hours after `made_at` it falls. A slot before `made_at`
+# is unreachable: record infinity and move on, without clamping it to hour 0. Price every
+# other slot with your `expected_cost_at`. Return a float array with one entry per slot, in
+# the order the slots were given.
+# </details>
 
 # %%
 def slot_costs(forecast: RULForecast, slots, prices: Prices) -> np.ndarray:
@@ -1002,7 +1152,7 @@ def _calendar_price() -> None:
     print("\nand nobody has said yet that two of these machines want the same Thursday.")
 
 
-_try("what the calendar costs", _calendar_price)
+_try("what the calendar costs", _calendar_price, needs=("exercise 3", "exercise 4", "exercise 6"))
 
 # %% [markdown]
 # ## 10. Exercise 7 — `fleet_cost_matrix()`
@@ -1014,6 +1164,21 @@ _try("what the calendar costs", _calendar_price)
 # A machine with no finite entry in its row is a machine the calendar cannot serve. That is a
 # planning problem — hire a contractor, borrow a slot, accept the failure — and not something
 # to round away here.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which way round will the schedulers read this matrix: machines down the rows, or slots? A
+# square test case cannot tell you, so decide deliberately. Then separate two situations: a
+# row that CONTAINS an unreachable slot, which is normal, and a row with no reachable slot
+# at all, which is a machine the calendar cannot serve. Which of those must raise?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Raise `ValueError` on an empty fleet or an empty calendar. Build one row per forecast with
+# your `slot_costs` and stack the rows, so the shape is machines by slots. Then inspect
+# every row: one with no finite entry raises `ValueError` naming the machine, rather than
+# being dropped (which renumbers every machine below it) or zeroed.
+# </details>
 
 # %%
 def fleet_cost_matrix(forecasts, slots, prices: Prices) -> np.ndarray:
@@ -1093,6 +1258,23 @@ _try("exercise 7", _check_fleet_cost_matrix)
 # turn comes; whoever is further down the list takes what is left. It is first come, first
 # served, it is defensible, it is what a spreadsheet does — and exercise 9 will measure what
 # it costs.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# This is the planner's method, not the optimum: each machine takes its favourite without
+# asking whether a later machine needs it more, and the machines are taken in row order, not
+# sorted by anything. As you go down the list, what do you need to remember about each slot?
+# How is a tie between two equally cheap free slots broken? And what happens to a machine
+# for which every slot still free is infinite?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse a capacity below one, and more machines than the slots can hold in total, with
+# `ValueError`. Keep a count of the room left in each slot. For each row in turn, consider
+# only the slots with room left and take the cheapest, the lowest index on a tie, even when
+# all of them are infinite; use up one unit of its room and add its entry to the total.
+# Return the choices as a tuple of ints together with the total.
+# </details>
 
 # %%
 def greedy_schedule(costs: np.ndarray, capacity: int = CAPACITY) -> Schedule:
@@ -1178,6 +1360,25 @@ _try("exercise 8", _check_greedy_schedule)
 #
 # Ties go to the **lexicographically smallest** assignment, so the function returns one
 # definite schedule rather than whichever one the iteration order happened to reach first.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The optimum may ask a machine to give up its favourite slot so another machine has
+# somewhere cheap to go, which greedy never does. What makes an assignment feasible when
+# capacity is two rather than one: is the limit per slot, per machine, or on the whole
+# schedule? And among schedules that cost the same, which one does the docstring ask for,
+# whatever order your search happens to visit them in?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate exactly as `greedy_schedule` does. Search the assignments machine by machine,
+# trying slots in increasing index order and only those with room left, and keep a running
+# total. Abandon a branch as soon as its partial total is already strictly dearer than the
+# best complete schedule so far; costs are never negative, so it cannot recover. Replace the
+# best only when a complete schedule is strictly cheaper: with slots tried in index order,
+# that keeps the lexicographically smallest on a tie. If every feasible schedule is
+# infinite, still return one, with an infinite total.
+# </details>
 
 # %%
 def best_schedule(costs: np.ndarray, capacity: int = CAPACITY) -> Schedule:
@@ -1255,6 +1456,11 @@ def _check_best_schedule() -> None:
 _try("exercise 9", _check_best_schedule)
 
 # %%
+# The schedules below are built from YOUR cost matrix, which is built from YOUR
+# slot_costs, which prices with YOUR expected_cost_at.
+_FOR_SCHEDULES = ("exercise 3", "exercise 6", "exercise 7", "exercise 8", "exercise 9")
+
+
 def _price_the_workshop() -> None:
     matrix = fleet_cost_matrix([fu.forecast for fu in FLEET], SLOTS, SCENARIO)
     free = sum(best_intervention_time(fu.forecast, CANDIDATES, SCENARIO).cost for fu in FLEET)
@@ -1284,7 +1490,7 @@ def _price_the_workshop() -> None:
           f"first-come-first-served plan looks locally sensible at every step.")
 
 
-_try("what the workshop costs", _price_the_workshop)
+_try("what the workshop costs", _price_the_workshop, needs=_FOR_SCHEDULES + ("exercise 4",))
 
 # %%
 def _plot_schedules() -> None:
@@ -1307,7 +1513,7 @@ def _plot_schedules() -> None:
     print("plotted: where the two schedules disagree, and what the disagreement costs")
 
 
-_try("schedule plot", _plot_schedules)
+_try("schedule plot", _plot_schedules, needs=_FOR_SCHEDULES)
 
 # %% [markdown]
 # ## 13. Common mistakes
@@ -1360,7 +1566,7 @@ def _price_the_rules_of_thumb() -> None:
           "\nThe prices are known. Use them.")
 
 
-_try("rules of thumb, priced", _price_the_rules_of_thumb)
+_try("rules of thumb, priced", _price_the_rules_of_thumb, needs=_FOR_PLAN)
 
 # %% [markdown]
 # ## 14. Self-check
@@ -1434,7 +1640,7 @@ def _handover() -> None:
           "are\n  changes to the decision, not to the model.")
 
 
-_try("handover note", _handover)
+_try("handover note", _handover, needs=_FOR_PLAN + _FOR_SCHEDULES)
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1458,19 +1664,46 @@ _try("handover note", _handover)
 # somebody hands you a date, ask what the next-best date would have cost.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_forecast_summary),
-                          ("exercise 2", _check_survival_and_hazard),
-                          ("exercise 3", _check_expected_cost_at),
-                          ("exercise 4", _check_best_intervention_time),
-                          ("exercise 5", _check_realised_cost),
-                          ("exercise 6", _check_slot_costs),
-                          ("exercise 7", _check_fleet_cost_matrix),
-                          ("exercise 8", _check_greedy_schedule),
-                          ("exercise 9", _check_best_schedule)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_forecast_summary),
+                              ("exercise 2", _check_survival_and_hazard),
+                              ("exercise 3", _check_expected_cost_at),
+                              ("exercise 4", _check_best_intervention_time),
+                              ("exercise 5", _check_realised_cost),
+                              ("exercise 6", _check_slot_costs),
+                              ("exercise 7", _check_fleet_cost_matrix),
+                              ("exercise 8", _check_greedy_schedule),
+                              ("exercise 9", _check_best_schedule)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

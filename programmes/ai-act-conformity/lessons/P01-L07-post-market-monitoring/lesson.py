@@ -116,10 +116,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import math
 import statistics
 import sys
+import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Callable
 
@@ -149,24 +152,69 @@ print("as of", iso(AS_OF_DT), "· system", SYSTEM_ID)
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("control_limits",),
+    "exercise 2": ("windowed_monitor",),
+    "exercise 3": ("monitor_costs",),
+    "exercise 4": ("estimate_clock_offset",),
+    "exercise 5": ("merge_deployer_feed",),
+    "exercise 6": ("classify_incident",),
+    "exercise 7": ("incident_log",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (<its function>)"; several -> "exercises 3, 6 and 7"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other six.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -394,6 +442,23 @@ print(f"a deployer row: {DEPLOYER_FEED[0]}")
 # will plot. And the baseline period is declared **before** you look, because limits refitted
 # over the period that contains the breach are limits wide enough to contain it. That is the
 # defect the capstone module plants, and you are about to reproduce it on purpose.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which spread are the limits meant to describe: how precisely you know the baseline rate, or
+# how far ONE window of `window_size` decisions wanders when nothing is wrong? That decides
+# which count goes under the square root. Then ask what a limit outside the range a rate can
+# take would mean on a chart, and what limits fitted to no baseline at all ought to let
+# through.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Deal with the degenerate case first: if either count is not positive, return the permissive
+# limits the docstring lists before anything divides. Otherwise the centre is the baseline's
+# error share, sigma is the binomial standard error over the WINDOW size, and each limit is the
+# centre plus or minus `k` sigmas, clamped into the unit interval only where it escapes. Echo
+# `k`, `window_size` and `baseline_n` back rather than a constant.
+# </details>
 
 # %%
 def control_limits(baseline_errors: int, baseline_n: int, window_size: int,
@@ -483,6 +548,22 @@ _try("exercise 1", _check_control_limits)
 # - **Confirm before paging.** A single window outside the limits is an excursion; `MIN_RUN`
 #   consecutive ones is a signal. The alert is reported at the *first* window of the run, so
 #   the record says when the process changed, not when you noticed.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three questions decide this function. Which field is the authority on order when a batch of
+# rows carries timestamps days late? Is the handful of rows left over at the end a short
+# window, or nothing? And when several outside windows follow one another, how many alerts is
+# that, and which window does the record name?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Sort by `seq` (a sorted copy, not the caller's list) and take only as many whole windows as
+# fit; the remainder is `dropped_rows`. Mark a window outside only when its rate is strictly
+# above `ucl` or strictly below `lcl`. Then walk the windows keeping a run length: add one on
+# an outside window, reset it on an inside one, and record one alert at the moment the run
+# first reaches `min_run`, naming the window where that run began.
+# </details>
 
 # %%
 def windowed_monitor(rows: list, limits: dict, window_size: int = WINDOW_SIZE,
@@ -582,6 +663,10 @@ _try("exercise 2", _check_monitor)
 # incomplete tail scored as if it were a window, and the whole feed ordered by timestamp.
 
 # %%
+# The chart and the refit demo both print your monitor's windows.
+_FOR_CHART = ("exercise 1", "exercise 2")
+
+
 def _show_chart() -> None:
     lim = control_limits(BASELINE_ERRORS, BASELINE_N, WINDOW_SIZE, DEFAULT_K)
     rep = windowed_monitor(PROVIDER_FEED, lim)
@@ -620,7 +705,7 @@ def _show_chart() -> None:
           f"count: {moved}. At k={DEFAULT_K} the alert happens to survive that.")
 
 
-_try("chart", _show_chart)
+_try("chart", _show_chart, needs=_FOR_CHART)
 
 # %% [markdown]
 # ### The defect the capstone plants
@@ -650,7 +735,7 @@ def _show_refit() -> None:
     print("included the thing they were supposed to find.")
 
 
-_try("refit demo", _show_refit)
+_try("refit demo", _show_refit, needs=_FOR_CHART)
 
 # %% [markdown]
 # ## 5. Exercise 3 — what a mis-tuned monitor costs, in both directions
@@ -669,6 +754,24 @@ _try("refit demo", _show_refit)
 #
 # Both constants are this lesson's, and the number that matters is their ratio, not either
 # one. The sweep cell after the exercise shows the optimum moving when you change it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A muted monitor is not a quieter monitor. From the alert that mutes it onward nothing it
+# would have raised counts, true or false, so the order you walk the alerts in matters and the
+# walk can end early. Then: which degraded windows did no LIVE alert cover — before the first
+# genuine detection, and after the mute? And what is the delay of a monitor that never detected
+# at all?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the alerts in ascending order, keeping each as live and counting the ones not in
+# `degraded`; when that count reaches `switch_off_after`, record the alert as `switched_off_at`
+# and stop. The first detection is the smallest live alert that IS degraded, or None. A
+# degraded window is missed when there is no detection, when it precedes the detection, or when
+# it follows the mute. With no detection the delay is None, not zero; the costs are counts ×
+# prices.
+# </details>
 
 # %%
 def monitor_costs(report: dict, degraded, cost_false: int = COST_PER_FALSE_ALERT,
@@ -758,6 +861,10 @@ _try("exercise 3", _check_costs)
 # Now sweep `k` and read the bill. The first column is the dial; the last is what it costs.
 
 # %%
+# The sweep prices every k with your monitor AND your cost function.
+_FOR_SWEEP = ("exercise 1", "exercise 2", "exercise 3")
+
+
 def _show_sweep() -> None:
     rows = []
     for k in K_GRID:
@@ -789,7 +896,7 @@ def _show_sweep() -> None:
           f"{widest[3]['total_cost']} — the same bill as having no monitor at all.")
 
 
-_try("k sweep", _show_sweep)
+_try("k sweep", _show_sweep, needs=_FOR_SWEEP)
 
 # %%
 def _show_ratio_moves_the_answer() -> None:
@@ -812,7 +919,7 @@ def _show_ratio_moves_the_answer() -> None:
     print("page and a missed window cost has not made a decision; it has copied one.")
 
 
-_try("cost ratio", _show_ratio_moves_the_answer)
+_try("cost ratio", _show_ratio_moves_the_answer, needs=_FOR_SWEEP)
 
 # %% [markdown]
 # ## 6. Exercise 4 — the deployer's clock
@@ -827,6 +934,23 @@ _try("cost ratio", _show_ratio_moves_the_answer)
 # because a handful of re-exported rows drag it. Report the residual spread as well, because
 # an offset with no spread beside it is a number you cannot act on: it is the spread that
 # tells you whether the merged order is trustworthy to seconds or to hours.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which way round is the difference? The offset is how far the DEPLOYER's clock runs ahead, so
+# a positive number has to mean the deployer's timestamp is the later one. Then ask what a
+# handful of rows re-exported a whole day late do to the mean, the median and the standard
+# deviation of otherwise tightly bunched deltas. The centre and the spread you report must
+# both shrug them off.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Index the provider's timestamps by `decision_id`, and for each deployer row that matches take
+# deployer time minus provider time, in seconds, parsing both. If nothing matched, return the
+# all-zero result before any statistics run. Otherwise the offset is the median delta, the
+# spread is the median of each delta's absolute distance from that median, and an outlier is a
+# pair further from the median than the `tolerance` ARGUMENT — not the module constant.
+# </details>
 
 # %%
 def estimate_clock_offset(provider: list, deployer: list,
@@ -910,7 +1034,7 @@ def _show_clock() -> None:
     print("loud, because the same statistic on a feed with a drifting clock would not be.")
 
 
-_try("clock demo", _show_clock)
+_try("clock demo", _show_clock, needs=("exercise 4",))
 
 # %% [markdown]
 # ## 7. Exercise 5 — merging the deployer feed without counting it twice
@@ -926,6 +1050,24 @@ _try("clock demo", _show_clock)
 # — which is why you measured its spread first. Report `out_of_seq_rows`, the number of your
 # own rows the merge has moved out of sequence order, so the price of that fallback is on the
 # face of the artefact rather than in somebody's head.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two kinds of deployer row arrive, and only one kind is evidence you did not already have. For
+# the rows you do add, think about the direction of the correction: the offset says how far the
+# deployer's clock runs AHEAD, so which way must a deployer timestamp move to read on yours?
+# And once everything is ordered by the reconciled clock, how would you notice your own rows
+# leaving their `seq` order?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Start the merged list with every provider row (`src_seq` = its own `seq`). For each deployer
+# row, count and skip it if its `decision_id` is already held; otherwise move its parsed
+# timestamp BACK by `offset_seconds`, format it with `iso()`, and add it with `src_seq` None.
+# Sort on `(ts, decision_id)` and renumber `seq` from zero. For `out_of_seq_rows`, compare the
+# provider rows' `src_seq` in merged order with the same values sorted, position by position.
+# The error rate divides by every merged row, not by the added ones.
+# </details>
 
 # %%
 def merge_deployer_feed(provider: list, deployer: list, offset_seconds: float) -> dict:
@@ -1004,6 +1146,10 @@ _try("exercise 5", _check_merge)
 # these failures is visible at all.
 
 # %%
+# The ingest demo runs your monitor over your merge, on your clock offset.
+_FOR_INGEST = ("exercise 1", "exercise 2", "exercise 4", "exercise 5")
+
+
 def _show_ingest() -> None:
     lim = control_limits(BASELINE_ERRORS, BASELINE_N, WINDOW_SIZE, DEFAULT_K)
     est = estimate_clock_offset(PROVIDER_FEED, DEPLOYER_FEED)
@@ -1042,7 +1188,7 @@ def _show_ingest() -> None:
           "that is not evidence, because you already had it.")
 
 
-_try("ingest", _show_ingest)
+_try("ingest", _show_ingest, needs=_FOR_INGEST)
 
 # %% [markdown]
 # ## 8. Exercise 6 — classifying a serious incident
@@ -1062,6 +1208,22 @@ _try("ingest", _show_ingest)
 # because a tie-break that resolves an overlap by choosing the later date converts an overlap
 # into a delay. That is the lesson's choice, not the Regulation's, and it is in `claims.yaml`
 # as one.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two instincts are wrong here. A fundamental-rights infringement feels like the urgent case,
+# and any point (a) harm feels like the death clock. Read which TWO conditions trigger 73(3),
+# and which single fact triggers 73(4). Then ask what your branch order does to an incident
+# that is both a death and a critical-infrastructure disruption.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Sort the points into a tuple first; with none, it is not serious and has no paragraph and no
+# clock. Otherwise test the short-deadline branch — the `widespread` flag, or point (b) among
+# the points — BEFORE the `death` flag, and let everything else fall through to 73(2). Read the
+# days from `DEADLINE_DAYS` by paragraph rather than typing them, and write a trigger that
+# names what decided the branch in words a reviewer could argue with.
+# </details>
 
 # %%
 def _inc(incident_id, occurred, aware, reported, points, death, widespread, summary):
@@ -1191,6 +1353,23 @@ _try("exercise 6", _check_classify)
 #
 # The log below is the artefact. It sorts by deadline, so the thing that is due first is read
 # first — not the thing that happened first.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every deadline runs from AWARENESS, and in this fixture awareness trails occurrence by days,
+# so the start of the clock changes verdicts. Then think about truncation: `int()` rounds
+# towards zero, which is the wrong direction for a deadline already behind you. Finally, the
+# log is read by whoever has to act first — so what is the sort key, and what breaks a tie?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Classify each candidate with your exercise 6 function; count and skip the ones that are not
+# serious. For the rest, the due moment is awareness plus the deadline in days. Status: if
+# reported, compare the report with the due moment ("not later than", so equal is in time); if
+# not, compare `as_of_dt` the same way. Both hour figures are seconds over 3600, floored
+# towards minus infinity. Sort on `(due_ts, incident_id)`, start the counts at zero for all
+# four statuses, and fail the verdict on any late or overdue entry.
+# </details>
 
 # %%
 def incident_log(candidates: list, as_of_dt: datetime = AS_OF_DT) -> dict:
@@ -1304,7 +1483,7 @@ def _show_wrong_clocks() -> None:
     print("regulator you were late when you were not; the other tells you that you are fine.")
 
 
-_try("wrong clocks", _show_wrong_clocks)
+_try("wrong clocks", _show_wrong_clocks, needs=("exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## 10. The artefact
@@ -1365,7 +1544,7 @@ def _show_artefact() -> None:
     print(f"  {log['n_not_serious']} candidate(s) classified as not a serious incident")
 
 
-_try("the artefact", _show_artefact)
+_try("the artefact", _show_artefact, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ### The two halves are one artefact
@@ -1399,7 +1578,7 @@ def _show_awareness_gap() -> None:
     print("of that argument, in hours, on the face of the artefact.")
 
 
-_try("awareness gap", _show_awareness_gap)
+_try("awareness gap", _show_awareness_gap, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 11. Common mistakes
@@ -1458,7 +1637,7 @@ def _show_without_the_plan() -> None:
     print("\nSame quarter, same data, same verdict. One of them can be re-run.")
 
 
-_try("without the plan", _show_without_the_plan)
+_try("without the plan", _show_without_the_plan, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 12. Self-check
@@ -1570,16 +1749,43 @@ def check_self_check(answers: dict) -> None:
 # **Again, and finally: this is engineering, not legal advice.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_control_limits),
-                          ("exercise 2", _check_monitor),
-                          ("exercise 3", _check_costs),
-                          ("exercise 4", _check_offset),
-                          ("exercise 5", _check_merge),
-                          ("exercise 6", _check_classify),
-                          ("exercise 7", _check_log)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_control_limits),
+                              ("exercise 2", _check_monitor),
+                              ("exercise 3", _check_costs),
+                              ("exercise 4", _check_offset),
+                              ("exercise 5", _check_merge),
+                              ("exercise 6", _check_classify),
+                              ("exercise 7", _check_log)):
+            _try(_name, _check)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

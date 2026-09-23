@@ -247,9 +247,12 @@ points: 122        # = sum of RUBRIC points in tests/test_lesson.py
 #     lesson — every `executed` lesson in this programme (L05-L08) lacks one and every
 #     `reviewed` one (L02-L04) has it — so generating it is the owner's executed->reviewed
 #     step, with `tools/notebooks.py`, which the reviewer must not run against tools/.
-#   * Gate 14: this lesson has no progress board and no `<details>` hint blocks. Neither
-#     reviewed exemplar (P03-L04, P01-L04) has them either, so gate 14 is unapplied across
-#     the repository's Python lessons rather than missed here. It is an owner decision.
+#   * Gate 14, applied 2026-09-23: the house `_try` from P03-L01 now records a status per
+#     exercise, every demonstration names the exercises it `needs` and skips until they
+#     pass, each exercise carries two collapsed `<details>` hints written against its own
+#     check messages and rubric hints, the notebook ends with a progress board, and the
+#     final SystemExit fires only outside a notebook kernel. Rubric, checks and every
+#     computed number are unchanged.
 #   * INDEPENDENTLY REVIEWED 2026-09-23. Two rubric defects were found and fixed in this
 #     directory (see reviewed_by). The author's own mutation report stands except that it
 #     did not cover either of them.
@@ -258,4 +261,4 @@ status: executed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-23, reviewer re-measured everything rather than trusting the author - 4 gates re-run green from the repo root (execute PASS, 1.0 s and a peak of 91 MiB against a 90 s / 8 GiB cpu8 budget, solution 122/122, stub file 0/122 with a TODO row for all 31 rubric entries); 26 fresh mutants and 7 controls graded, 18 mutants caught at 83-98% with partial credit intact and all 8 survivors adjudicated; TWO RUBRIC DEFECTS FOUND AND FIXED that the author's 38-mutant pass missed - fit_posterior dividing by noise_sd instead of noise_sd**2 scored 122/122 and more than doubles a real unit's 90% interval (40.8 h to 86.0 h), now 119/122; rul_samples subtracting t_now from RUL_CAP scored 122/122 because every non-degrading rubric case sat at t_now=0, now 118/122; both fixes mirrored into the notebook _check_ helpers; ONE GATE 12 VIOLATION fixed - self-check Q2 claimed section 11 measured an RMSE pair of 22.8/23.0 h when it computes 21.11/24.05 h; 6 survivors proved equivalent by byte-identical whole-lesson output plus a 2,000,007-point exhaustive scan of phm_score, 2 more are conforming variants that leave the argument intact; 9 differently-shaped right answers all score 122/122; all six claims.yaml quotes re-fetched and re-verified verbatim on 2026-09-23"
 
 measured_seconds: 0.9
-measured_peak_mib: 89
+measured_peak_mib: 91

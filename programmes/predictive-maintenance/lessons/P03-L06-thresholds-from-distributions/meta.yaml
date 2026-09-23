@@ -121,6 +121,12 @@ points: 122        # = sum of RUBRIC points in tests/test_lesson.py, 30 cases
 # * Every demonstration that depends on student code sits inside `_try`, so a completely
 #   unfilled lesson.py imports cleanly, prints a hint per exercise, and scores 0/122 with a
 #   TODO row for every one of the 30 rubric entries rather than crashing at import.
+# * Gate 14, applied 2026-09-23: the house `_try` from P03-L01 records a status per exercise,
+#   every demonstration names the exercises it `needs` and skips until they pass (so no demo
+#   prints half a table before discovering a stub), each exercise carries two collapsed
+#   `<details>` hints, the notebook ends with a progress board, and the final SystemExit
+#   fires only outside a notebook kernel. Rubric, checks and every computed number are
+#   unchanged.
 # * Gate 3 measured, not assumed: the longest run of consecutive prose before the next
 #   runnable cell is 37 raw / 30 non-blank lines (the self-check quiz), inside the ~40 the
 #   gate allows. The self-check's answers are c, a, b, a, c — deliberately not one letter.

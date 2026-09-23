@@ -116,10 +116,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import json
 import math
 import sys
+import traceback
 from datetime import date
 from typing import Any, Callable
 
@@ -135,24 +138,71 @@ print(f"{LESSON_ID} · system {SYSTEM_ID} · as of {AS_OF.isoformat()}")
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("bootstrap_ci",),
+    "exercise 2": ("declare",),
+    "exercise 3": ("seal_floor",),
+    "exercise 4": ("perturbation_curve",),
+    "exercise 5": ("crossing_severity",),
+    "exercise 6": ("poison_scan",),
+    "exercise 7": ("extraction_risk",),
+    "exercise 8": ("residual_risk",),
+    "exercise 9": ("unbounded_numbers",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 7"] -> "exercise 7 (extraction_risk)"; several -> "exercises 1, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other eight.
+    exercise never hides the feedback on the other eight. A demo names the exercises it
+    `needs`: until each has passed its check, the demo says which one it is waiting for and
+    skips. Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board
+    at the foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script
+    run non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def canonical_bytes(obj: Any) -> bytes:
@@ -418,6 +468,25 @@ print(f"{len(METRICS)} metrics · level {CI_LEVEL} · B {N_BOOT} headline / {N_B
 # Vectorise it. Draw an `(n_boot, n)` matrix of indices in one call, index both arrays with it,
 # and let the metric reduce over the last axis. The demo after the checks shows what the unpaired
 # version reports on a model that is right about every single row.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A resample is a draw of applicants, and each applicant brings a label AND a prediction with
+# them. What happens to a model that is right about every row if the labels and predictions
+# are drawn with different indices? Then three smaller traps the check names: is `point` the
+# metric on the full sample or the average of the replicates; are the percentiles placed from
+# `level` or typed in; and what can honestly be said when there are no rows at all?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Deal with the degenerate case first: no rows or no resamples gets the blind answer the
+# docstring gives. Otherwise build the generator from `seed`, make ONE draw of integer row
+# indices with replacement, shaped resamples by rows, and index both arrays with that same
+# matrix — when `y_pred` is None, the labels stand in for both. The metric reduces the last
+# axis to one value per resample. `point` comes from the untouched arrays, the bounds are
+# percentiles of the replicates placed from `level`, and the result echoes the level, the row
+# count, the resample count and the method.
+# </details>
 
 # %%
 def bootstrap_ci(y_true: np.ndarray, y_pred: np.ndarray | None = None,
@@ -537,7 +606,7 @@ def _show_pairing() -> None:
     print("It is an interval for a different question.")
 
 
-_try("pairing demo", _show_pairing)
+_try("pairing demo", _show_pairing, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 5. Exercise 2 — declaring a metric, and refusing to declare a point
@@ -550,6 +619,23 @@ _try("pairing demo", _show_pairing)
 # the number you can defend against a challenge is the *lower* confidence bound. For a false
 # positive rate, lower is better, so the defensible number is the *upper* bound. Getting that
 # backwards publishes the most flattering end of your own uncertainty.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which end of your own uncertainty could you defend against a challenge? Where higher is
+# better it is one end, where lower is better it is the other, and taking the same end for
+# both publishes the flattering one twice. Then: how many different ways can something look
+# like an interval without being one? The check starts with a bare float and gets subtler.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse before you build. Anything that is not a mapping holding every key in
+# `DECLARATION_KEYS`, a point or bound that is None or nan, an upper bound below the lower, or
+# a point outside its own bounds raises `UndeclarableMetricError`. Then build a NEW dict —
+# never write into the one you were handed. The declared value is the lower bound when higher
+# is better and the upper bound otherwise; the width is upper minus lower; and the name,
+# direction, level, method, row count and resample count travel with it.
+# </details>
 
 # %%
 DECLARATION_KEYS = ("point", "lo", "hi", "level", "n", "n_boot", "method")
@@ -638,6 +724,23 @@ _try("exercise 2", _check_declare)
 # measured, and it refuses to seal a **second** floor for a metric that already has one —
 # because re-sealing after the fact is the same cheat wearing a hat. It also refuses a floor
 # with no rationale, since a bare number is the thing that later gets described as principled.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# There are two ways to seal a floor too late — after the metric has been measured, and after
+# a floor for it already exists — and both are one question put to the ledger. Put it about
+# THIS metric: a measurement of some other metric must not block you. And what exactly does
+# the digest cover, so that somebody downstream can recompute it from the sealed fields alone?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Ask the ledger's `find` for earlier entries of each kind carrying this metric, and raise
+# `FloorAfterTheFactError` if either exists. Raise `ValueError` for a floor outside [0, 1]
+# (both ends allowed) or a rationale that is not a string, or is shorter than
+# `MIN_RATIONALE_CHARS` once stripped. Build the four-field payload with the date as ISO text,
+# append it as a floor entry, and return the payload plus that entry's `seq` and `digest_of`
+# the payload — not of the entry, which also carries the seq and the chain.
+# </details>
 
 # %%
 MIN_RATIONALE_CHARS = 20
@@ -760,7 +863,7 @@ def _show_ordering() -> None:
     print("part of this that a reviewer can check without taking somebody's word.")
 
 
-_try("ordering demo", _show_ordering)
+_try("ordering demo", _show_ordering, needs=("exercise 3",))
 
 # %% [markdown]
 # ## 7. The headline metrics, measured and declared
@@ -804,7 +907,7 @@ def _show_headline() -> None:
           f"floor of {floor['floor']} sealed on {floor['as_of']}.")
 
 
-_try("headline metrics", _show_headline)
+_try("headline metrics", _show_headline, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 8. Exercise 4 — the perturbation sweep
@@ -821,6 +924,23 @@ _try("headline metrics", _show_headline)
 #
 # Their severities are **not comparable across families**: one is a share of rows, another a
 # multiple of a standard deviation. Each family carries its own unit, and the report prints it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every point on this curve has to be provable later, which means it has to land in the
+# ledger with its own sequence number: which of the two measuring functions you have does
+# that, and which does not? And each severity must be measured on a freshly damaged copy of
+# the UNTOUCHED inputs. What happens to a later severity if an earlier one's damage is still
+# sitting in the arrays?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Look the family up in `PERTURBATIONS`. For each severity, in the order given, hand the
+# original features to the family's `apply`, predict on what comes back, and record it through
+# `measure()` with the family-at-severity label, the unchanged labels and the `n_boot`
+# argument. Add the severity to each result. Return the points with the family and the metric,
+# and with the feature, unit and expected operating severity copied from the table.
+# </details>
 
 # %%
 def _subset(n: int, fraction: float, seed: int) -> np.ndarray:
@@ -975,6 +1095,26 @@ _try("exercise 4", _check_curve)
 # system stops being defensible when the lower bound falls through, not when the point does.
 # Both are computed, because the gap between them is the size of the claim you would have been
 # making.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Refuse before you report. Three things make a crossing meaningless: a floor for a different
+# metric, a floor whose contents no longer match its own digest, and a floor sealed after ANY
+# point in the curve — any, so the comparison is with the earliest point, not the latest. Then
+# two questions about the report itself: you declared the lower bound, so whose crossing is
+# the finding? And is a crossing that lands exactly on the expected operating severity
+# headroom, or a failure?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Check the metric, then recompute `digest_of` from the floor's four payload fields and compare
+# it with its `digest`, then compare its `seq` with the smallest seq among the points — raising
+# the matching error each time. Walk the points in order for the first severity whose `lo`
+# falls under the floor and, separately, the first whose `point` does. Headroom is counted in
+# grid steps with `grid_index`, from the expected severity to the bound's crossing — not as a
+# difference of severities — and the verdict fails when the crossing is at or below the
+# expected severity.
+# </details>
 
 # %%
 def grid_index(severities: list, value: float, tol: float = 1e-9) -> int:
@@ -1108,7 +1248,8 @@ def _show_sweep() -> None:
         print(f"{'':15s} unit: {rep['severity_unit']}")
 
 
-_try("sweep table", _show_sweep)
+_try("sweep table", _show_sweep,
+     needs=("exercise 1", "exercise 3", "exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 10. Exercise 6 — poisoning, and the batch too small to accuse
@@ -1122,6 +1263,25 @@ _try("sweep table", _show_sweep)
 # loudest batch in the table is a 20-row upload with half its labels flipped. Twenty rows cannot
 # carry an accusation, so the scan names it and makes no claim about its rate either way —
 # `MIN_SUPPORT` is the same 30-row floor that lesson used.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three decisions carry this scan. When is a batch too small to say anything about, and does
+# that test come before or after any comparison? What is a batch compared WITH — would the
+# comparison be fair if the batch sat inside its own baseline? And does "worse than the
+# baseline" mean a higher point estimate, or two intervals that have come apart?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Flag every row whose neighbour agreement is under `NEIGHBOUR_AGREEMENT_FLOOR`, and measure
+# the overall flag rate with your bootstrap and the `rate` metric. For each batch id in sorted
+# order, measure its own rows and, separately, every row outside it. Apply the support floor
+# before anything else, using the `min_support` argument; only an examinable batch can be
+# poisoned, and only when its lower bound sits above the baseline's upper bound. Half of each
+# interval's width, added, is the minimum detectable excess. Each batch's entry records its row
+# count, whether it cleared the floor, both intervals, that excess and its status; rank the
+# findings worst rate first.
+# </details>
 
 # %%
 K_NEIGHBOURS = 15
@@ -1277,7 +1437,7 @@ def _show_batches() -> None:
           "enough to act on.")
 
 
-_try("batch table", _show_batches)
+_try("batch table", _show_batches, needs=("exercise 1", "exercise 6"))
 
 # %% [markdown]
 # ## 11. Exercise 7 — how many queries buy you the model
@@ -1291,6 +1451,24 @@ _try("batch table", _show_batches)
 # fresh population. The curve is given; you turn it into a budget, and the direction of the
 # bound **flips**. For your own performance you declare the bound you can defend. For somebody
 # else's attack you plan against the bound that favours them.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The budget is an interval too, and each end of it comes from a different end of the
+# agreement interval. As the query count grows, which bound of agreement reaches the target
+# first — and is that the budget a defender plans against, or the one to feel confident about?
+# Then: which end should the recommended rate limit be sized from, and is a client running
+# at exactly the limit over it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the grid in order for three first arrivals: the first budget whose UPPER bound reaches
+# the target is the lucky one, the first whose point does is the middle one, and the first
+# whose LOWER bound does is the confident one. If the grid never gets there, say so, and leave
+# the budget and the days as None rather than inventing them. Divide each budget by the
+# enforced daily limit, size the recommendation from the lucky budget over `target_days`
+# rounded down, and list the clients strictly above the limit, busiest first.
+# </details>
 
 # %%
 EXTRACTION_TARGET = 0.95
@@ -1426,7 +1604,7 @@ def _show_extraction() -> None:
     print("quoted from a paper.")
 
 
-_try("extraction table", _show_extraction)
+_try("extraction table", _show_extraction, needs=("exercise 1", "exercise 7"))
 
 # %% [markdown]
 # ## 12. Exercise 8 — the residual risk the evidence bounds
@@ -1437,6 +1615,23 @@ _try("extraction table", _show_extraction)
 # that do not are reported as unsupported rather than quietly dropped.
 #
 # Three of the seven below can never resolve. They are the honest half of the statement.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A risk you cannot support is still a statement: the point is that the unbounded ones stay on
+# the page, in catalogue order. So each entry has three possible outcomes — which one of them
+# is an error rather than an unsupported statement? Think about what a bare number waiting at
+# the end of an evidence path is claiming.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each entry in order: with no evidence path, emit an unsupported statement whose reason
+# is the entry's `blind_spot`. Otherwise split the path on dots and walk the report one key at
+# a time, all the way down; a key that is not there makes an unsupported statement whose
+# reason names the path. If the walk arrives, `is_interval` decides: an interval is a
+# supported statement with it as the bound, and anything else raises
+# `UndeclarableMetricError`. Then count the supported and list the unsupported ids.
+# </details>
 
 # %%
 def is_interval(node: Any) -> bool:
@@ -1553,6 +1748,22 @@ _try("exercise 8", _check_residual)
 # legitimately has none. There are three such kinds, and the distinction is the whole lesson:
 # numbers **counted** on the data in front of you, numbers **declared** or chosen by you, and
 # numbers read off the grid or computed from intervals already reported.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three kinds of node want three treatments: an interval, bounded as a whole; a container, to
+# be walked; and a leaf, to be judged. In Python `True` passes an isinstance test for int — so
+# which test would report every boolean in the report? And inside a list, which key decides
+# whether a number may be bare: the index, or the key the list hangs under?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Recurse. A mapping that `is_interval` accepts contributes nothing and is not entered. Any
+# other mapping is walked with `.key` appended to the path and that key passed down. A list or
+# tuple is walked with `[i]` appended and the PARENT's key passed down unchanged. A leaf that
+# is an int or a float but not a bool is reported when its key is not in `EXACT_QUANTITIES`.
+# Collect everything, and sort once at the end.
+# </details>
 
 # %%
 EXACT_QUANTITIES = frozenset({
@@ -1634,6 +1845,9 @@ _try("exercise 9", _check_audit)
 
 # %%
 _REPORT_CACHE: dict = {}
+# The assembler runs exercises 1 to 8 in a row, so every cell that reads the report waits on
+# all eight. Exercise 9 audits the finished report; it is not part of building it.
+_FOR_REPORT = tuple(f"exercise {k}" for k in range(1, 9))
 
 
 def article_15_report(as_of: date = AS_OF) -> dict:
@@ -1705,7 +1919,7 @@ def _show_report() -> None:
     print(f"\n  OVERALL      {report['verdict'].upper()}")
 
 
-_try("the artefact", _show_report)
+_try("the artefact", _show_report, needs=_FOR_REPORT)
 
 # %%
 def _show_audit() -> None:
@@ -1727,7 +1941,7 @@ def _show_audit() -> None:
           f"{len(typical_naked)} numbers and a method.")
 
 
-_try("audit demo", _show_audit)
+_try("audit demo", _show_audit, needs=_FOR_REPORT + ("exercise 9",))
 
 # %% [markdown]
 # ## 15. Common mistakes
@@ -1777,7 +1991,7 @@ def _show_self_check_figures() -> None:
           f"{report['cybersecurity']['poisoning']['min_support']}")
 
 
-_try("self-check figures", _show_self_check_figures)
+_try("self-check figures", _show_self_check_figures, needs=_FOR_REPORT)
 
 # %% [markdown]
 # ## 16. Self-check
@@ -1885,18 +2099,45 @@ def check_self_check(answers: dict) -> None:
 # **Again, and finally: this is engineering, not legal advice.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_bootstrap),
-                          ("exercise 2", _check_declare),
-                          ("exercise 3", _check_seal_floor),
-                          ("exercise 4", _check_curve),
-                          ("exercise 5", _check_crossing),
-                          ("exercise 6", _check_poison),
-                          ("exercise 7", _check_extraction),
-                          ("exercise 8", _check_residual),
-                          ("exercise 9", _check_audit)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_bootstrap),
+                              ("exercise 2", _check_declare),
+                              ("exercise 3", _check_seal_floor),
+                              ("exercise 4", _check_curve),
+                              ("exercise 5", _check_crossing),
+                              ("exercise 6", _check_poison),
+                              ("exercise 7", _check_extraction),
+                              ("exercise 8", _check_residual),
+                              ("exercise 9", _check_audit)):
+            _try(_name, _check)
+    _progress_board()
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends this run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel the board above has already said so, in a line
+    # rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

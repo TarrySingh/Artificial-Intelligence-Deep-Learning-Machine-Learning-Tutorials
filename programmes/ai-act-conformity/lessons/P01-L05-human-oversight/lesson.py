@@ -116,10 +116,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import json
 import math
 import sys
+import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -158,24 +161,68 @@ assert abs(normal_cdf(Z_BETA_80) - 0.800) < 1e-6
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("decision_view",),
+    "exercise 2": ("override_rates",),
+    "exercise 3": ("time_to_decision",),
+    "exercise 4": ("four_eyes_report",),
+    "exercise 5": ("automation_bias",),
+    "exercise 6": ("oversight_gate", "gate_report"),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 5"] -> "exercise 5 (automation_bias)"; several -> "exercises 1, 2 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other five.
+    exercise never hides the feedback on the other five. A demo names the exercises it
+    `needs`: until each has passed its check, the demo says which one it is waiting for and
+    skips. Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board
+    at the foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script
+    run non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def parse_ts(stamp: str) -> datetime:
@@ -468,6 +515,23 @@ print(json.dumps(LOG[3], indent=2)[:520])
 #   common way a four-eyes rule is defeated in production, and a fold that quietly collapses
 #   `["u:marlies", "u:marlies"]` to one entry destroys the only evidence of it. Keep the raw
 #   list; the checks that follow are the ones that count *distinct* persons.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What would sorting by timestamp do to the two verification events whose clock stepped
+# backwards between them — and what evidence vanishes if a person recorded twice becomes one
+# entry? Then two quieter traps: some entries belong to no decision at all, and a later event
+# that carries nothing (None, an empty string, an empty list) must not wipe out a real value.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the entries in ascending `seq` and skip any whose event has no `decision_id`. The first
+# time you meet an id, start a record with every key present (an empty list for the
+# verifiers) and note its `seq`; every time, move `last_seq` on. Copy a scalar field only when
+# the payload holds something real, turn the match score into a float, and append each
+# non-empty verifier id as you meet it, never de-duplicating. When the walk is done, work out
+# each duration from the two timestamps where both exist: end minus start, sign kept.
+# </details>
 
 # %%
 def decision_view(log: list) -> dict:
@@ -579,6 +643,23 @@ _try("exercise 1", _check_decision_view)
 #   most important number on the page and the easiest one to lose.
 #
 # Apply those three in that order, and report the counts you removed alongside the rate.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each excluded decision lands in exactly one counter, and the order you test the three
+# reasons decides which — a decision that never closed AND was never scored belongs to the
+# first. Then, for the breakdowns: whose call is the by-recommendation table measuring
+# disagreement with, the model's or the reviewer's? And how many times should one decision
+# count for a person whose id appears on it twice?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Test the exclusions in the docstring's order and stop at the first that applies. For each
+# survivor decide override-or-not once, then add it to the overall tally, to the tally of
+# every DISTINCT verifier on it, and to the tally keyed on what the model recommended. Turn
+# tallies into rates at the end (None for an empty one), and mark each reviewer supported
+# against the `min_support` argument, inclusive. Nobody below the floor is dropped.
+# </details>
 
 # %%
 def override_rates(view: dict, min_support: int = MIN_SUPPORT) -> dict:
@@ -673,6 +754,22 @@ _try("exercise 2", _check_override_rates)
 # and it belongs in its own list with its own remedy. Include it in the distribution and the
 # percentiles quietly move; take its absolute value and you have invented a forty-second
 # review that never happened.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A duration is missing, negative or real, and only one of those three is evidence about a
+# reviewer. Where does each kind go before any percentile is taken? Notice too that a negative
+# number sits below every floor, so the order in which you test things decides whether a
+# broken clock is reported as a rushed person.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the ids in sorted order and put each record in one of three bins: no duration (count
+# it), negative (collect its id) or real. Only the real ones feed the list of durations, the
+# fast list — strictly under the `floor_seconds` argument, not the module constant — and the
+# list kept for each distinct verifier. Take percentiles and medians with numpy's default
+# interpolation, and return None for them when there is nothing to take them over.
+# </details>
 
 # %%
 def time_to_decision(view: dict, floor_seconds: float = MIN_PLAUSIBLE_SECONDS) -> dict:
@@ -754,6 +851,22 @@ _try("exercise 3", _check_time_to_decision)
 # never applied to them.
 #
 # Three ways to fail it, and they need different remedies, so they get different reasons.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Article 14(5) counts natural persons. A list holding one person twice has two entries and one
+# person: which of your tests can tell those apart? And before you count anyone, ask which
+# decisions the rule reaches at all — a decision outside its scope is neither compliant nor a
+# violation, and it is reported as neither.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the ids in sorted order. A record whose identification basis is not the `basis`
+# argument is only counted as out of scope. For the rest, count distinct verifier ids; when
+# that is under two, look at the raw list to choose the reason, testing the docstring's three
+# in order — nobody at all, then one person entered more than once, then one person once. The
+# rate is compliant over in scope, and the verdict follows from whether any violation exists.
+# </details>
 
 # %%
 def four_eyes_report(view: dict, basis: str = "remote_biometric") -> dict:
@@ -847,6 +960,24 @@ _try("exercise 4", _check_four_eyes)
 # * that sensitivity compared against **this reviewer's own** minimum detectable difference,
 #   so a small sample cannot manufacture a finding;
 # * and the high-confidence rate compared against `HIGH_CONFIDENCE_FLOOR`.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The status ladder has four rungs and their order is the lesson. What has to be true before
+# any rate is compared at all? Once a sample can carry a rate, is a decline smaller than what
+# THIS reviewer's own sample could detect evidence of anything? And why must the sensitivity
+# keep its sign — what would an absolute value make of a reviewer who overrides MORE when the
+# model is confident?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Skip any record missing an outcome, a recommendation or a confidence. For each distinct
+# verifier on the rest, tally decisions and overrides per confidence bin and per half; the
+# high half starts at `split`, inclusive. Per reviewer, stop at the support rung if the
+# smaller half is under the floor. Otherwise take low rate minus high rate, signed, work out
+# the detectable floor from the rate pooled over both halves and the two half sizes, and walk
+# the remaining rungs in order. Rank findings by sensitivity, largest first, ties by id.
+# </details>
 
 # %%
 def min_detectable_difference(p: float, n_a: int, n_b: int) -> float:
@@ -983,7 +1114,7 @@ def _plot_bias_curves() -> None:
         print()
 
 
-_try("bias curves", _plot_bias_curves)
+_try("bias curves", _plot_bias_curves, needs=("exercise 1", "exercise 5"))
 
 # %% [markdown]
 # ## 8. Exercise 6 — the gate
@@ -999,6 +1130,24 @@ _try("bias curves", _plot_bias_curves)
 # and a missed bug in a clock. The fourth reason, `self_verification`, is **this lesson's own
 # rule and not the Act's** — but "separately verified" is hard to read as satisfied by the
 # person who submitted the case.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A negative duration is below every floor, so the naive comparison accuses a named person of
+# rushing a case whose clock was broken: which test has to come first? And every threshold
+# here — the verifier count per basis, the seconds floor, both switches — lives in the policy
+# you are handed. What does your gate do when a caller hands it a different one? For the
+# report: can one blocked decision carry more than one reason?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# In `oversight_gate`, look the required count up by the record's identification basis,
+# defaulting to one, and compare it with the number of DISTINCT ids. Treat the duration as
+# three cases — missing (no reason), negative (the clock reason and nothing else), otherwise
+# too fast only when strictly under the policy's floor — and read both switches from the
+# policy. Sort the reasons; `allowed` is just "no reasons". In `gate_report`, walk the ids in
+# sorted order and add one to every reason each refused decision carries.
+# </details>
 
 # %%
 def oversight_gate(record: dict, policy: dict = POLICY) -> dict:
@@ -1147,7 +1296,7 @@ def _show_plan() -> None:
         print(f"    {duty:30s} {DUTIES[duty]}")
 
 
-_try("oversight plan", _show_plan)
+_try("oversight plan", _show_plan, needs=tuple(_EXERCISES))   # it is all six in a row
 
 # %% [markdown]
 # ## 10. Common mistakes
@@ -1198,7 +1347,8 @@ def _show_without_the_curve() -> None:
           f"{bias['by_reviewer'][worst]['high_rate']:.1%}. That is the module.")
 
 
-_try("without the curve", _show_without_the_curve)
+_try("without the curve", _show_without_the_curve,
+     needs=("exercise 1", "exercise 2", "exercise 5"))
 
 # %% [markdown]
 # ## 11. Self-check
@@ -1304,15 +1454,42 @@ def check_self_check(answers: dict) -> None:
 # **Again, and finally: this is engineering, not legal advice.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_decision_view),
-                          ("exercise 2", _check_override_rates),
-                          ("exercise 3", _check_time_to_decision),
-                          ("exercise 4", _check_four_eyes),
-                          ("exercise 5", _check_automation_bias),
-                          ("exercise 6", _check_gate)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_decision_view),
+                              ("exercise 2", _check_override_rates),
+                              ("exercise 3", _check_time_to_decision),
+                              ("exercise 4", _check_four_eyes),
+                              ("exercise 5", _check_automation_bias),
+                              ("exercise 6", _check_gate)):
+            _try(_name, _check)
+    _progress_board()
+    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is:
+    # in a script or under CI it ends this run non-zero, rather than letting a green exit code
+    # paper over it. Inside a notebook kernel the board above has already said so, in a line
+    # rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

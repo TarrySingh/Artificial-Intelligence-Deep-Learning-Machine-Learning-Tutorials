@@ -105,11 +105,16 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import math
+import re
 import subprocess
 import sys
+import traceback
 from pathlib import Path
+from typing import Callable
 
 import numpy as np
 
@@ -165,18 +170,44 @@ DATA_NOTE = ("SYNTHETIC. The protocol capture, the fleet behind it and the outag
              "here is downloaded.")
 
 _BUILD = None
+_BUILT_FROM = None   # the C source's size and modification time when _BUILD was made
 _CACHE = {}
 
 
+def _source_stamp():
+    """Size and modification time of the C source, or None if it is not there."""
+    try:
+        st = (LESSON_DIR / C_SRC).stat()
+    except OSError:
+        return None
+    return (st.st_size, st.st_mtime_ns)
+
+
 def build(verbose: bool = True):
-    """Compile the C source with make. Cached: the compiler runs once per session."""
-    global _BUILD
-    if _BUILD is None:
-        proc = subprocess.run(
-            ["make", "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
-             f"SRC={C_SRC}", f"BIN={BIN}"],
-            capture_output=True, text=True, timeout=600)
-        _BUILD = (proc.returncode == 0, (proc.stdout + proc.stderr).strip())
+    """Compile the C source with make.
+
+    Cached: the compiler runs once per session, and again only when the C source changes. So
+    after you edit lesson.c, re-running any cell below rebuilds it and forgets every answer
+    the old binary gave — you are never graded against yesterday's build.
+    """
+    global _BUILD, _BUILT_FROM
+    stamp = _source_stamp()
+    if _BUILD is None or stamp != _BUILT_FROM:
+        for key in [k for k in _CACHE if isinstance(k, tuple)]:   # the binary's old answers
+            del _CACHE[key]
+        # A rebuild after an edit is forced (-B): some makes compare whole seconds, and an edit
+        # saved in the same second as the last build would otherwise look up to date.
+        force = ["-B"] if _BUILD is not None else []
+        try:
+            proc = subprocess.run(
+                ["make", *force, "-C", str(LESSON_DIR), f"PYTHON={sys.executable}",
+                 f"SRC={C_SRC}", f"BIN={BIN}"],
+                capture_output=True, text=True, timeout=600)
+            _BUILD = (proc.returncode == 0, (proc.stdout + proc.stderr).strip())
+        except (OSError, subprocess.TimeoutExpired) as exc:   # no make, or no compiler
+            _BUILD = (False, f"could not run make ({exc}). This lesson needs make and a C "
+                             "compiler (clang or gcc) on the machine running the notebook.")
+        _BUILT_FROM = stamp
     ok, out = _BUILD
     if verbose:
         print("build OK" if ok else "BUILD FAILED\n" + out)
@@ -203,7 +234,8 @@ def run_c(*args, timeout: int = 300) -> str:
 
 
 def cached(*args) -> str:
-    """run_c, but each distinct command line is executed once per session."""
+    """run_c, but each distinct command line is executed once per build of the binary."""
+    build(verbose=False)   # an edited lesson.c is rebuilt here, and its old answers dropped
     if args not in _CACHE:
         _CACHE[args] = run_c(*args)
     return _CACHE[args]
@@ -236,21 +268,92 @@ def make_test():
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
-_FAILURES = []
+_FAILED_CHECKS: list = []
+
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES = {
+    "exercise 1": ("gw_alloc",),
+    "exercise 2": ("frame_decode",),
+    "exercise 3": ("q_health",),
+    "exercise 4": ("float_health",),
+    "exercise 5": ("agreement_report",),
+    "exercise 6": ("sf_push", "sf_take", "sf_ack"),
+    "exercise 7": ("psi",),
+}
+# Four of the seven are written in lesson.c, not in this notebook.
+_IN_C = {"gw_alloc", "frame_decode", "q_health", "sf_push", "sf_take", "sf_ack"}
+# What the binary runs to turn the capture into published readings: start-up, decode, infer.
+# Every cell that reads the deployed readings needs all three.
+_ON_THE_GATEWAY = ("exercise 1", "exercise 2", "exercise 3")
+_STATUS = {}   # label -> "passed" | "failed" | "not started", latest run
 
 
-def _try(fn, *a, **k):
-    """Run a public check, print what it says, and remember whether it passed."""
+def _named(labels: list) -> str:
+    """["exercise 3"] -> "exercise 3 (q_health)"; several -> "exercises 1, 2 and 3"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _stub_name(exc: NotImplementedError) -> str:
+    """The unfinished function behind a NotImplementedError.
+
+    The binary names a C stub in its own message ("NOT IMPLEMENTED: gw_alloc() is still a
+    stub"); a Python stub is simply the frame that raised.
+    """
+    found = re.search(r"NOT IMPLEMENTED: (\w+)\(\)", str(exc))
+    return found.group(1) if found else traceback.extract_tb(exc.__traceback__)[-1].name
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
+    """Run a check, or a demo that depends on your code, without derailing the notebook.
+
+    A stub you have not filled in yet simply says so — in C or in Python. A wrong answer
+    prints the check's own message, which names the likely mistake, and the notebook carries
+    on, so one broken exercise never hides the feedback on the others. A demo names the
+    exercises it `needs`: until each has passed its check, the demo says which one it is
+    waiting for and skips. Nothing is swallowed: every outcome is recorded in `_STATUS` for
+    the progress board at the foot of the notebook, and every failure in `_FAILED_CHECKS`,
+    which ends a script run non-zero.
+    """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
-        fn(*a, **k)
-    except NotImplementedError as e:
-        print(f"  TODO {fn.__name__}: {e}")
-        _FAILURES.append(fn.__name__)
-    except AssertionError as e:
-        print(f"  FAIL {fn.__name__}: {e}")
-        _FAILURES.append(fn.__name__)
+        check()
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = _stub_name(exc)
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            where = "in lesson.c" if stub in _IN_C else "above"
+            print(f"{label}: not implemented yet — fill in {stub}() {where}, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
+    except AssertionError as exc:
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        print(f"{label}: FAILED — {exc}")
+    except Exception as exc:  # a half-finished implementation, or a C build that failed
+        _STATUS[label] = "failed"
+        _FAILED_CHECKS.append(label)
+        text = str(exc)
+        if text.startswith("the C build failed"):
+            text = "lesson.c did not compile. Run build() in a cell for the compiler's own words."
+        print(f"{label}: raised {type(exc).__name__}: {text}")
     else:
-        print(f"  ok   {fn.__name__}")
+        _STATUS[label] = "passed"
+        if label in _EXERCISES:
+            print(f"{label}: passed")
 
 
 if _IS_MAIN:
@@ -272,7 +375,7 @@ if _IS_MAIN:
 # Every constraint above is a number. Ask the binary what they are, rather than being told.
 
 # %%
-if _IS_MAIN:
+def _show_the_constraints() -> None:
     _f = metrics(cached("facts"))
     _hours_held = _f["ring_capacity"] / _f["n_machines"]
     print(f"  fleet            {_f['n_machines']:.0f} machines x {_f['n_hours']:.0f} hours "
@@ -289,6 +392,10 @@ if _IS_MAIN:
     print(f"  the wire         Q{16 - _f['wire_frac']:.0f}.{_f['wire_frac']:.0f} in one "
           f"16-bit register: a resolution of {1 / _f['wire_scale']:.6f} health units")
     print(f"\n  {DATA_NOTE}")
+
+
+if _IS_MAIN:
+    _try("the constraints", _show_the_constraints)
 
 # %% [markdown]
 # ## 2. The capture, byte for byte
@@ -432,7 +539,7 @@ def _check_capture_is_identical_in_c_and_python() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_capture_is_identical_in_c_and_python)
+    _try("the capture", _check_capture_is_identical_in_c_and_python)
 
 # %% [markdown]
 # ## 3. Exercise 1 — `gw_alloc()` in `lesson.c`
@@ -444,6 +551,25 @@ if _IS_MAIN:
 #
 # Fill in `gw_alloc` in `lesson.c`. `make test` is your feedback loop and the cell below runs
 # it; every case in it is hand-workable.
+#
+# After an edit to `lesson.c`, just re-run the cell: the notebook notices the file has
+# changed and rebuilds it before it checks anything.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# There are two ways to say no, and they keep different books. After `gw_freeze()`, which
+# counters must hear about the attempt? And when a request will not fit, what must the cursor
+# look like afterwards — including any alignment padding you have already worked out? A
+# refusal that moves the cursor makes the remaining budget depend on requests that failed.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Deal with a zero-byte request and a frozen arena first. Otherwise round the current cursor
+# up to the next multiple of 8 in a local variable, and if that plus the request would pass
+# the arena size, count a refusal and return NULL with the cursor untouched. Only on success
+# move the cursor to the end of the new block, count the call, raise the high-water mark if
+# it moved, and return the address at the aligned offset.
+# </details>
 
 # %%
 def _check_gw_alloc() -> None:
@@ -471,7 +597,7 @@ if _IS_MAIN:
     _code, _out = make_test()
     print(_out)
     print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a failure)\n")
-    _try(_check_gw_alloc)
+    _try("exercise 1", _check_gw_alloc)
 
 # %% [markdown]
 # ## 4. Exercise 2 — `frame_decode()` in `lesson.c`
@@ -489,6 +615,21 @@ if _IS_MAIN:
 # a single error being raised.
 # **A rejected frame writes nothing.** A half-filled struct is worse than an empty one,
 # because the caller cannot tell which half is real.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# One frame carries two byte orders: the registers are stored one way round and the checksum
+# the other. Which is which? And if the checksum turns out to be wrong after you have already
+# copied half the registers into `*out`, what has the caller been handed?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Run the five checks in the order the comment in `lesson.c` lists them — length, function
+# code, byte count against the length, capacity, checksum — and return the matching code at
+# the first one that fails, reading the stored checksum low byte first. Only when all five
+# pass, fill `*out`: address, function code, register count, and each register built from its
+# high byte shifted up eight bits and the byte that follows it.
+# </details>
 
 # %%
 def _check_frame_decode() -> None:
@@ -522,7 +663,7 @@ def _check_frame_decode() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_frame_decode)
+    _try("exercise 2", _check_frame_decode)
 
 # %% [markdown]
 # ## 5. Exercise 3 — `q_health()` in `lesson.c`
@@ -536,6 +677,23 @@ if _IS_MAIN:
 # `int32_t` a full-scale burst carries each of them, before it checks anything.
 #
 # This is the number that will go on the wire, so get it exact before asking what it costs.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two overflows wait one line apart, and the cell below prints how far past an `int32_t` each
+# one goes. Which two intermediate values are they, and where must each become 64 bits wide —
+# before the operation or after it? Then: 0 is a legitimate health index, so what does a bad
+# input return, and what should a quotient too big for an `int32_t` become instead of
+# wrapping?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Guard `n` and the baseline first. Accumulate the squares in a 64-bit sum, widening each
+# sample before you multiply it, divide by `n`, and take the given integer square root. Widen
+# that root to 64 bits before shifting it left by `Q_FRAC`, then divide by the baseline. If the
+# quotient will not fit an `int32_t`, saturate; otherwise return it. No floating point and no
+# rounding anywhere: every step truncates.
+# </details>
 
 # %%
 def _check_q_health() -> None:
@@ -577,7 +735,7 @@ if _IS_MAIN:
           f"{_acc / _i32:,.0f}x the largest value an int32_t holds")
     print(f"    and rms_q << {Q_FRAC} for that burst is {_shifted:.3e}, "
           f"{_shifted / _i32:,.0f}x — the same bug one line further down")
-    _try(_check_q_health)
+    _try("exercise 3", _check_q_health)
 
 # %% [markdown]
 # ## 6. Exercise 4 — `float_health()`, in Python
@@ -587,6 +745,20 @@ if _IS_MAIN:
 #
 # It is here so that the disagreement in the next section is a measurement between two
 # implementations you wrote, rather than an assertion about fixed point in general.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The counts arrive as unsigned 16-bit integers. What does squaring one do if you have not
+# converted it first? And in root MEAN square, which comes first — the squaring or the
+# averaging? Squaring the mean gives a different number on any burst that is not flat.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Convert to float64 before any arithmetic. Check the burst axis is not empty and every
+# baseline is positive, then turn counts into engineering units by the sample shift, take the
+# square root of the mean of the squares along the last axis only, and divide by the
+# baseline, which broadcasts over the leading axes.
+# </details>
 
 # %%
 def float_health(counts: np.ndarray, baseline: np.ndarray) -> np.ndarray:
@@ -649,7 +821,7 @@ def _check_float_health() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_float_health)
+    _try("exercise 4", _check_float_health)
 
 # %% [markdown]
 # ## 7. Exercise 5 — `agreement_report()`: the disagreement IS the deployment risk
@@ -665,6 +837,23 @@ if _IS_MAIN:
 #
 # One of those is a property of your code. The other is a property of somebody else's
 # register map, and it is the larger one.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The wire holds whole steps of 1 / WIRE_SCALE and nothing in between. Which step is the
+# first a reading must reach to clear the threshold: the nearest one, or the one at or
+# above it? And a single count of disagreements hides the finding — a deployment that only
+# ever misses alarms and one that only ever adds them are different risks. Which way did
+# yours go?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse mismatched shapes. Take the absolute differences once; the largest, the mean and the
+# flat position of the largest all come from them. Compare both arrays with the same
+# threshold, at or above, and count the readings that alarm only in float64 and only on the
+# wire separately, then add them for the total. The effective threshold rounds the threshold
+# UP onto the wire's grid. Convert every value to a plain `int` or `float` before returning.
+# </details>
 
 # %%
 def agreement_report(h_float: np.ndarray, h_wire: np.ndarray, threshold: float) -> dict:
@@ -744,6 +933,9 @@ def _check_agreement_report() -> None:
     else:
         raise AssertionError("mismatched shapes must raise ValueError")
 
+
+def _show_the_two_gaps() -> None:
+    """The report on the real capture: your arithmetic's gap against the register map's."""
     idx, mach, hour, internal, wire = deployed_health()
     counts = generate_counts()
     hf = float_health(counts[idx], baseline_counts(mach) / float(1 << SAMPLE_SHIFT))
@@ -764,7 +956,9 @@ def _check_agreement_report() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_agreement_report)
+    _try("exercise 5", _check_agreement_report)
+    _try("the two gaps", _show_the_two_gaps,
+         needs=_ON_THE_GATEWAY + ("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 8. A threshold that does not fit the wire
@@ -821,7 +1015,8 @@ def _check_the_threshold_moved() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_the_threshold_moved)
+    _try("the threshold on the wire", _check_the_threshold_moved,
+         needs=_ON_THE_GATEWAY + ("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 9. Exercise 6 — store and forward, in `lesson.c`
@@ -840,6 +1035,26 @@ if _IS_MAIN:
 #   reading is the historian's record of the highest sequence number it has stored.
 #
 # Four scenarios, one capture.
+#
+# `make test` and the comments in `lesson.c` call this exercise 4, because the C file numbers
+# only its own four exercises. It is the same exercise.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Delivery is at-least-once: the link may take a batch and lose the acknowledgement coming
+# back. What must `sf_take` leave behind so the same records can be offered again? When the
+# ring is full, which fields may a refused push change — and may it use up a sequence number?
+# And an acknowledgement says "everything up to here": is that a count, or a sequence number?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# `sf_push`: when the ring is full, count the refusal and return the refusal code with nothing
+# else touched; otherwise write at head plus count, wrapped by the capacity, stamp the record
+# with `next_seq`, advance `next_seq` and the count, and keep the peak. `sf_take`: copy from the
+# head forward, wrapping, no more than `max` or the count, and change nothing. `sf_ack`: while
+# the oldest held record's sequence number is at or below the one acknowledged, drop it from
+# the head and tally it; a stale acknowledgement drops nothing.
+# </details>
 
 # %%
 _SCENARIOS = ("clean", "outage", "lostack", "overflow")
@@ -899,7 +1114,7 @@ def _check_store_and_forward() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_store_and_forward)
+    _try("exercise 6", _check_store_and_forward)
 
 # %% [markdown]
 # ## 10. Exercise 7 — what the diode costs you
@@ -914,6 +1129,22 @@ if _IS_MAIN:
 # outcomes — needs labels and has none. An unsupervised one compares the distribution of the
 # published feature against its commissioning window and needs nothing but the feature.
 # Implement the second.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The bins must stay put while the data moves, so which window sets them? A reading beyond the
+# reference's range has to land somewhere. And a reference with a gap in the middle leaves
+# bins it never fills: when the current window lands in one, which proportion is zero, and
+# what happens to its logarithm?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate first: both samples non-empty, at least two bins, and a reference whose maximum is
+# above its minimum. Space `n_bins + 1` edges evenly across the reference's range and replace
+# the two outer ones with minus and plus infinity. Histogram both samples on those edges,
+# divide each by its own size, floor BOTH proportion arrays, and sum the difference times the
+# natural log of their ratio, current over reference in both.
+# </details>
 
 # %%
 def psi(reference: np.ndarray, current: np.ndarray, n_bins: int = 10,
@@ -1014,7 +1245,7 @@ def _check_psi() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_psi)
+    _try("exercise 7", _check_psi)
 
 # %% [markdown]
 # ## 11. The diode, priced
@@ -1078,7 +1309,8 @@ def _check_the_diode_leaves_only_one_signal() -> None:
 
 
 if _IS_MAIN:
-    _try(_check_the_diode_leaves_only_one_signal)
+    _try("the diode, priced", _check_the_diode_leaves_only_one_signal,
+         needs=_ON_THE_GATEWAY + ("exercise 4", "exercise 7"))
 
 # %% [markdown]
 # ## 12. Common mistakes
@@ -1127,7 +1359,8 @@ def _demonstrate_common_mistakes() -> None:
 
 
 if _IS_MAIN:
-    _try(_demonstrate_common_mistakes)
+    _try("common mistakes", _demonstrate_common_mistakes,
+         needs=_ON_THE_GATEWAY + ("exercise 4", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 13. Self-check
@@ -1181,8 +1414,18 @@ def _check_self_check(answers: dict = None) -> None:
     print("self-check: all four right")
 
 
+def _mark_self_check() -> None:
+    """Mark the answers given, or say plainly that none have been given yet."""
+    if all(str(v).strip() in ("", "?") for v in SELF_CHECK.values()):
+        _STATUS["self-check"] = "not started"
+        print("self-check: not answered yet — put a, b, c or d against each question, then "
+              "re-run this cell.")
+        return
+    _try("self-check", _check_self_check)
+
+
 if _IS_MAIN:
-    _try(_check_self_check)
+    _mark_self_check()
 
 # %% [markdown]
 # ## 14. What you built
@@ -1200,8 +1443,56 @@ if _IS_MAIN:
 # all have to work without a single label coming back.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+_SELF_CHECK_SAYS = {"passed": "all four right",
+                    "failed": "some answers are still wrong; its cell names the section "
+                              "that settles each",
+                    "not started": "not answered yet"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        where = "lesson.c" if funcs[0] in _IN_C else "notebook"
+        print(f"  {_MARKS[state]} {label:<11} {', '.join(funcs):<{width}}  {where:<9} {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open in the text that "
+              "introduces it.")
+    else:
+        print("every public check is green — now run:  python tools/grade.py <this lesson>")
+    print("self-check (section 13): "
+          + _SELF_CHECK_SAYS[_STATUS.get("self-check", "not started")])
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise, in the notebook or in lesson.c, and did not re-run
+# its check. An edited lesson.c is rebuilt first.
 if _IS_MAIN:
-    if _FAILURES:
-        print(f"\n{len(_FAILURES)} check(s) still failing: {', '.join(_FAILURES)}")
-        sys.exit(1)
-    print("\nall public checks green — now run:  python tools/grade.py <this lesson>")
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_gw_alloc),
+                              ("exercise 2", _check_frame_decode),
+                              ("exercise 3", _check_q_health),
+                              ("exercise 4", _check_float_health),
+                              ("exercise 5", _check_agreement_report),
+                              ("exercise 6", _check_store_and_forward),
+                              ("exercise 7", _check_psi)):
+            _try(_name, _check)
+        _mark_self_check()
+    _progress_board()
+    # A stub you have not reached yet is not a failure, and neither is a self-check you have
+    # not answered. A check that ran and came back wrong is: in a script or under CI it ends
+    # this run non-zero, rather than letting a green exit code paper over it. Inside a
+    # notebook kernel the board above has already said so, in a line rather than a traceback
+    # at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
+        raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

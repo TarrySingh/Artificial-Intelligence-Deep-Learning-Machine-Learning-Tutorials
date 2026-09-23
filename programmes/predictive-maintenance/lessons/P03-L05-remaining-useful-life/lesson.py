@@ -115,8 +115,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Callable, NamedTuple, Sequence
 
 import numpy as np
@@ -206,25 +209,71 @@ class Posterior(NamedTuple):
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("log_signal",),
+    "exercise 2": ("fit_posterior",),
+    "exercise 3": ("rul_samples",),
+    "exercise 4": ("rul_track",),
+    "exercise 5": ("rul_rmse",),
+    "exercise 6": ("phm_score",),
+    "exercise 7": ("cone_breakdown",),
+    "exercise 8": ("warning_lead",),
+    "exercise 9": ("best_quantile",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (rul_samples)"; several -> "exercises 1, 2 and 4"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -332,6 +381,21 @@ print(f"scored later    {len(FLEET_FAILURES)} fleet units reached a failure insi
 # `nan` that will propagate silently through a least-squares fit to a posterior mean of
 # `nan`. Clamp at `LOG_FLOOR` and the row stays finite and very negative, which is the truth:
 # the unit is as healthy as this index can express.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two separate things can break the straight line. Which quantity is exponential in time:
+# the health index itself, or its distance above the healthy baseline? And a healthy unit's
+# reading sits a hair below that baseline on ordinary rows: what does a logarithm of a
+# negative number give you in numpy? It does not raise, and that is the trap.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Turn the input into a float array first, so a scalar and a 2-D block of the fleet go down
+# the same path and keep their shape. Subtract the baseline, raise anything below the floor
+# up to the floor, and only then take the natural log. The order is the whole exercise: a
+# floor applied after the log arrives too late, because the nan already exists.
+# </details>
 
 # %%
 def log_signal(health: np.ndarray | float) -> np.ndarray:
@@ -454,7 +518,7 @@ def _show_prior() -> None:
           " — the ones that never failed still have a slope")
 
 
-_try("the fleet prior", _show_prior)
+_try("the fleet prior", _show_prior, needs=("exercise 1",))
 
 # %% [markdown]
 # ## 4. Exercise 2 — `fit_posterior()`
@@ -468,6 +532,24 @@ _try("the fleet prior", _show_prior)
 # Two properties are worth noticing while you write it, because both are graded. With no
 # data at all the answer is the prior, exactly. And `S` shrinks monotonically as rows arrive —
 # that shrinking is the only reason the predictive interval in section 6 narrows.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Work out what the formula becomes in the two corners the check tries. With no readings at
+# all the data terms vanish: what is left? With a very tight prior, one reading should
+# barely move it. Then look at the formula again: it divides by the noise VARIANCE, and the
+# argument you are handed is a standard deviation.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate first: `t` and `y` the same length, `noise_sd` strictly positive, else
+# `ValueError`. Build the design matrix with the column of ones first and time second; that
+# order is what makes `mean[0]` the intercept. Invert the prior covariance to get its
+# precision, add the data's precision (design transposed times design, over the squared
+# noise), invert the sum to get the posterior covariance, then combine the prior's
+# precision-weighted mean with the data term. Never divide by the number of readings: an
+# empty `t` must fall straight through to the prior.
+# </details>
 
 # %%
 def fit_posterior(t: np.ndarray, y: np.ndarray, prior_mean: np.ndarray,
@@ -575,6 +657,23 @@ _try("exercise 2", _check_fit_posterior)
 # - **A draw with a crossing time already behind you** says the unit should have failed by
 #   now. Clip it at zero. A predictive distribution with mass below zero is telling you the
 #   model and the machine disagree, and zero is the honest way to say so.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three kinds of draw need a decision rather than the formula: a slope of zero or below (the
+# line never reaches the failure level, so what does the division hand you instead?), a
+# crossing time already behind `t_now`, and a posterior so narrow that every draw is the
+# plug-in answer. For that last one, is your answer counted from hour 0 or from `t_now`? And
+# would two calls with the same seed return the same draws?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Make a fresh generator from `seed` inside the function and draw intercept-slope pairs from
+# the full covariance, not from two independent normals. Turn each draw into a crossing hour
+# using `y_fail` from the argument, then subtract `t_now`. Replace every non-degrading draw
+# with `RUL_CAP`, which is already an amount of remaining life and so is not shifted by
+# `t_now`, and finally clip everything into the range from zero to the cap.
+# </details>
 
 # %%
 def rul_samples(mean: np.ndarray, cov: np.ndarray, t_now: float, y_fail: float,
@@ -666,6 +765,22 @@ _try("exercise 3", _check_rul_samples)
 # asks about hour 200; on this fleet that quietly hands the model the repair, the overhaul
 # and the replacement unit. It is module 4's leak in a new costume, and the rubric puts a
 # nonsense tail on the row specifically to catch it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The row you are given runs past every checkpoint, and on this fleet the hours after a
+# checkpoint can belong to a repaired or replaced machine. Which readings is the prognostic
+# at hour `t_k` actually allowed to see, and is the reading taken AT `t_k` one of them?
+# Then: what tells `rul_samples` how much of the unit's life has already gone?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Loop over the checkpoints with their index `k`. For each one, read the row from hour 0 up
+# to and including `t_k` at the sampling interval, fit the posterior on only those readings,
+# draw with `t_now` set to `t_k` and the seed moved on by `k`, and take all the requested
+# quantiles of that one set of draws. Stack one row per checkpoint, so the result is
+# checkpoints by quantiles and not its transpose.
+# </details>
 
 # %%
 def rul_track(y_row: np.ndarray, checkpoints: np.ndarray, prior_mean: np.ndarray,
@@ -755,6 +870,9 @@ _try("exercise 4", _check_rul_track)
 
 # %%
 _PREDICTIONS: list = []
+# fleet_predictions() runs your first four exercises end to end, so every cell that
+# reads its table waits until all four have passed their checks.
+_FOR_TRACKS = ("exercise 1", "exercise 2", "exercise 3", "exercise 4")
 
 
 def checkpoints_for(run: Run) -> np.ndarray:
@@ -810,7 +928,7 @@ def _show_narrowing() -> None:
           "so:\nnear the end there is less life left to be uncertain about.")
 
 
-_try("the interval narrows", _show_narrowing)
+_try("the interval narrows", _show_narrowing, needs=_FOR_TRACKS)
 
 # %%
 def _plot_one_track() -> None:
@@ -841,7 +959,7 @@ def _plot_one_track() -> None:
           f"truth")
 
 
-_try("the track, plotted", _plot_one_track)
+_try("the track, plotted", _plot_one_track, needs=_FOR_TRACKS)
 
 # %% [markdown]
 # ## 7. Exercise 5 — `rul_rmse()`, the number everybody reports
@@ -856,6 +974,21 @@ _try("the track, plotted", _plot_one_track)
 # notebook scores only the rows with `true_rul <= EVAL_HORIZON`, and every metric in
 # sections 7 to 11 is computed on exactly those rows — the comparison is only honest if the
 # metrics are looking at the same table.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Three averages look alike here: the mean of the signed errors, the mean of their sizes,
+# and the root of the mean of their squares. One prediction early and one equally late tells
+# them apart: which of the three says that pair is perfect? And what should an RMSE over
+# zero rows be, given that the answer will be fed to a minimisation?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse mismatched lengths and an empty table with `ValueError`. Then square each error,
+# average over n (not n - 1), and take the square root last. Return a plain Python float.
+# Resist the urge to make it asymmetric; this metric is meant to be blind to direction, and
+# section 11 depends on it being so.
+# </details>
 
 # %%
 def rul_rmse(predicted: np.ndarray, true_rul: np.ndarray) -> float:
@@ -922,6 +1055,22 @@ _try("exercise 5", _check_rul_rmse)
 # prediction can outweigh a hundred good ones — that is deliberate, and it is why section 11
 # also reports a plain count. And the challenge summed it over units; this notebook takes the
 # mean instead, so that tables computed over different numbers of rows stay comparable.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Fix the sign convention before anything else. `d` is predicted minus true, so a positive
+# `d` promised more life than the unit had: that is late. Which time constant belongs on the
+# late branch, the larger or the smaller? And what should an exactly right prediction score,
+# and can any score ever be negative?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Compute `d` for every row, then choose between the two exponential branches row by row
+# with a vectorised selection, not a Python `if` on the whole array. Subtract one after
+# exponentiating, on both branches, so a perfect prediction scores zero. Return the per-row
+# array, not its sum or mean (`mean_phm_score` does the averaging), and raise `ValueError`
+# on a length mismatch rather than letting numpy broadcast.
+# </details>
 
 # %%
 def phm_score(predicted: np.ndarray, true_rul: np.ndarray) -> np.ndarray:
@@ -1002,6 +1151,22 @@ _try("exercise 6", _check_phm_score)
 # inclusive at both ends. Return all three rates, not just the middle one, because the two
 # outer ones are the point of this lesson: the cone is symmetric, so a model that is always
 # a little early and a model that is always a little late score exactly the same.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The cone's half-width is a fraction of each row's TRUE remaining life, so the same miss in
+# hours can be inside the cone on one row and outside it on another. Which side is early:
+# below the cone or above it? And does a prediction sitting exactly on a bound count as
+# inside?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `alpha` from the argument (strictly between 0 and 1), equal lengths and at least
+# one row. Give each row its own lower and upper bound from its own true RUL. Count a row as
+# early only when it is strictly below the lower bound and late only when it is strictly
+# above the upper one, so the bounds themselves fall inside. Divide the counts by the number
+# of rows and return three floats in the order early, inside, late.
+# </details>
 
 # %%
 def cone_breakdown(predicted: np.ndarray, true_rul: np.ndarray,
@@ -1107,7 +1272,7 @@ def _plot_the_cone() -> None:
           "and\nthey are not.")
 
 
-_try("the cone, plotted", _plot_the_cone)
+_try("the cone, plotted", _plot_the_cone, needs=_FOR_TRACKS + ("exercise 7",))
 
 # %% [markdown]
 # ## 10. Exercise 8 — `warning_lead()`, the metric the workshop cares about
@@ -1120,6 +1285,22 @@ _try("the cone, plotted", _plot_the_cone)
 # did this model actually buy". Implement that, and note the word **first**: a track that
 # dips below the action level, rises again on the next reading and dips again is still a
 # warning at the first dip, because that is when the job was raised.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The work order is raised once: the first time the track says remaining life has fallen to
+# the action level. Not at the lowest prediction, and not at the last dip. What if the track
+# never gets there: is "no warning at all" the same thing as "a warning with no notice"? And
+# does a prediction exactly at the action level trigger the job?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse empty or mismatched inputs with `ValueError`. Find the first checkpoint whose
+# predicted RUL is at or below `action_rul`, taken from the argument, and return the failure
+# hour minus that checkpoint's hour as a float. If no checkpoint qualifies, return the
+# sentinel the docstring names for no warning, never zero: a zero reads as a warning with
+# no notice, which is a different failure.
+# </details>
 
 # %%
 def warning_lead(checkpoints: np.ndarray, predicted_rul: np.ndarray, end_hour: int,
@@ -1190,6 +1371,22 @@ _try("exercise 8", _check_warning_lead)
 #
 # Sweep all nineteen under a metric and return the winner. Then let four metrics each pick
 # their favourite, and read what they chose.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# One column of the matrix is one complete model, so the metric has to see a whole column
+# against the whole truth vector, never a single row. Which way is better depends on `mode`:
+# does your code ever maximise? And when two columns tie, which one should win, and why is
+# that the safe choice?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate first: `mode` must be exactly one of the two strings the docstring names, and the
+# matrix needs one column per quantile and one row per truth. Score each column with the
+# metric, then take the position of the best score, the first minimum or the first maximum,
+# which numpy's own arg functions already give you. Return the quantile at that position
+# (not the position itself) and its score, both as Python floats.
+# </details>
 
 # %%
 def best_quantile(quantiles: np.ndarray, matrix: np.ndarray, true_rul: np.ndarray,
@@ -1272,6 +1469,8 @@ _try("exercise 9", _check_best_quantile)
 
 # %%
 _SWEEP: list = []
+# metric_sweep() scores that table with your four metrics as well.
+_FOR_SWEEP = _FOR_TRACKS + ("exercise 5", "exercise 6", "exercise 7", "exercise 8")
 
 
 def metric_sweep() -> dict:
@@ -1347,7 +1546,7 @@ def _the_wrong_metric_wins() -> None:
           "you ship.")
 
 
-_try("the wrong metric wins", _the_wrong_metric_wins)
+_try("the wrong metric wins", _the_wrong_metric_wins, needs=_FOR_SWEEP + ("exercise 9",))
 
 # %%
 def _plot_the_sweep() -> None:
@@ -1376,7 +1575,7 @@ def _plot_the_sweep() -> None:
           f"q={QUANTILES[i_s]:.2f}")
 
 
-_try("the sweep, plotted", _plot_the_sweep)
+_try("the sweep, plotted", _plot_the_sweep, needs=_FOR_SWEEP)
 
 # %% [markdown]
 # ## 12. Common mistakes
@@ -1429,7 +1628,7 @@ def _check_calibration() -> None:
           f"about before\nanybody argues about the model.")
 
 
-_try("is the interval honest", _check_calibration)
+_try("is the interval honest", _check_calibration, needs=_FOR_TRACKS)
 
 # %% [markdown]
 # ## 13. Self-check
@@ -1505,7 +1704,7 @@ def _handover() -> None:
           f"All three are\n  in the model, and none of them is in the training data.")
 
 
-_try("handover note", _handover)
+_try("handover note", _handover, needs=_FOR_SWEEP + ("exercise 9",))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -1526,19 +1725,46 @@ _try("handover note", _handover)
 # when somebody shows you a leaderboard, ask which direction the errors point.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_log_signal),
-                          ("exercise 2", _check_fit_posterior),
-                          ("exercise 3", _check_rul_samples),
-                          ("exercise 4", _check_rul_track),
-                          ("exercise 5", _check_rul_rmse),
-                          ("exercise 6", _check_phm_score),
-                          ("exercise 7", _check_cone_breakdown),
-                          ("exercise 8", _check_warning_lead),
-                          ("exercise 9", _check_best_quantile)):
-        _try(_name, _check)
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_log_signal),
+                              ("exercise 2", _check_fit_posterior),
+                              ("exercise 3", _check_rul_samples),
+                              ("exercise 4", _check_rul_track),
+                              ("exercise 5", _check_rul_rmse),
+                              ("exercise 6", _check_phm_score),
+                              ("exercise 7", _check_cone_breakdown),
+                              ("exercise 8", _check_warning_lead),
+                              ("exercise 9", _check_best_quantile)):
+            _try(_name, _check)
+    _progress_board()
     print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

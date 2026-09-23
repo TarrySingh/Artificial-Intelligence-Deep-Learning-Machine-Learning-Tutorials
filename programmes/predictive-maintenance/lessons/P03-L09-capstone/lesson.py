@@ -362,12 +362,14 @@ _EVIDENCE_NEEDS = _ALL_EXERCISES[:9]      # everything the evidence bundle is bu
 
 
 def _named(labels: list) -> str:
-    """["exercise 3"] -> "exercise 3 (label_runs)"; several -> "exercises 3, 6 and 8"."""
+    """["exercise 3"] -> "exercise 3 (label_runs)"; several -> "exercises 3, 6 and 8", and
+    ["exercise 2", "your specification"] -> "exercise 2 and your specification"."""
     if len(labels) == 1:
         return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
-    nums = [label.split()[-1] if label.startswith("exercise ") else label
-            for label in labels]
-    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+    nums = [label.split()[-1] for label in labels if label.startswith("exercise ")]
+    items = nums + [label for label in labels if not label.startswith("exercise ")]
+    head = "exercises " if len(nums) > 1 else "exercise " if nums else ""
+    return head + ", ".join(items[:-1]) + " and " + items[-1]
 
 
 def _try(label: str, check: Callable, needs: tuple = ()) -> None:
@@ -377,6 +379,9 @@ def _try(label: str, check: Callable, needs: tuple = ()) -> None:
     message — which names the likely mistake — and the notebook carries on, so one broken
     exercise never hides the feedback on the others. A demo names the exercises it `needs`:
     until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
     import traceback
     waiting = [name for name in _EXERCISES   # in the order you meet them
@@ -918,7 +923,9 @@ _try("two pumps", _show_two_pumps)
 #
 # Four steps, in order: what does duty and ambient predict, what is left over, what is this
 # pump's own quiet level for that leftover, and how do you smooth it without looking
-# forwards. Which of those four steps is allowed to see an hour past `baseline_hours`?
+# forwards. Which of those four steps is allowed to see an hour past `baseline_hours`? And a
+# pump three times the size of its neighbour is not three times as sick: does taking out its
+# own level mean subtracting it or dividing by it?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
@@ -927,9 +934,8 @@ _try("two pumps", _show_two_pumps)
 # constants already fitted, so it is causal. Take each pump's median of that ratio over the
 # first `baseline_hours` columns, divide by it, and pass the result through
 # `causal_rolling_median` — in that order, with the smoothing LAST. Validate first: matching
-# 2-D shapes,
-# `1 <= baseline_hours <= n_hours`, and a strictly positive expected level and baseline
-# level, because both are divisors.
+# 2-D shapes, a `baseline_hours` inside the window, a `window` of at least one hour, and a
+# strictly positive expected level and baseline level, because both are divisors.
 # </details>
 
 # %%
@@ -1097,13 +1103,16 @@ _try("exercise 1", _check_causal_health)
 #
 # Which hours must be identical between the two runs, and which are allowed to differ? If you
 # compared the whole array rather than the head, what would a perfectly causal feature score?
+# And a feature can read next week's duty point or next week's ambient temperature just as
+# easily as next week's vibration: which of the three channels does your probe disturb?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
-# Copy the three arrays, overwrite the last `tail_hours` columns of each with something
-# obviously different, call `feature_fn` on the originals and on the copies, and return the
-# largest absolute difference over the first `n_hours - tail_hours` columns only. Validate
-# `tail_hours` first: it has to leave at least one hour of head behind.
+# Copy the three arrays, overwrite the last `tail_hours` columns of every one of them — raw,
+# duty AND ambient, not raw alone — with something obviously different, call `feature_fn` on
+# the originals and on the copies, and return the largest absolute difference over the head
+# columns only. Validate `tail_hours` first: it is a count of hours at the END, at least one,
+# and it has to leave at least one hour of head behind.
 # </details>
 
 # %%
@@ -1247,16 +1256,18 @@ _try("the causality probe", _measure_the_leak, needs=("exercise 1", "exercise 2"
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
 # Every unit gets exactly one run, including the ones the log never mentions — what is their
-# end hour, and what kind are they? If a unit has two orders, which one ends the run? And if
-# two orders on the same unit share an hour, which kind wins?
+# end hour, and what kind are they? Each order carries two hours: which one belongs to the
+# pump, and which to the maintenance office? If a unit has two orders, which one ends the
+# run? And if two orders on the same unit share an hour, which kind wins?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
 # Validate first: `n_units >= 1`, `horizon_end >= 0`, and every order's unit and raised hour
-# inside those bounds. Start every unit as a run censored at `horizon_end`. Classify each
-# order; skip IGNORE; sort what is left so that earlier hours come first and, on an equal
-# hour, FAILURE comes before SUSPENSION; then let the first surviving order per unit set that
-# unit's run. Return them sorted by unit.
+# inside those bounds — `horizon_end` itself is a legal hour, one past it is not. Start every
+# unit as a run censored at `horizon_end`. Classify each order: an IGNORE ends nothing, and a
+# SUSPENSION ends the run as CENSORED. Sort what is left so that earlier raised hours come
+# first and, on an equal hour, FAILURE comes before SUSPENSION; then let the first surviving
+# order per unit set that unit's run. Return them sorted by unit.
 # </details>
 
 # %%
@@ -1357,9 +1368,11 @@ _try("exercise 3", _check_label_runs)
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
 # Validate the run table first: non-empty, `n_hours >= 1`, every kind known, every end hour
-# inside `0 .. n_hours - 1`. Then count the two kinds, collect the censored units in sorted
-# order, divide the censored count by the total, and add up `n_hours - 1 - end_hour` over the
-# censored runs only.
+# inside the window — whose last hour is one less than `n_hours`. Then count the two kinds,
+# collect the censored units in sorted order, and divide the censored count by the total.
+# For the unobserved hours, walk the CENSORED runs only and add up the hours between each
+# one's end and the last hour of the window: a failure adds nothing, and a run censored at
+# the last hour adds zero.
 # </details>
 
 # %%
@@ -1492,7 +1505,8 @@ _try("the labelling policy", _show_the_policy, needs=("exercise 3", "exercise 4"
 #
 # What is the mean of an empty list, and what does a monitoring programme do with it? Which
 # of the three outcomes is the audit most likely to be short of, and what does under-pricing
-# that one do to the threshold?
+# that one do to the threshold? And breakdown invoices have a long right tail: which of the
+# two usual averages does that tail move, and what does the other do to that price?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
@@ -1625,7 +1639,8 @@ _try("the three prices", _show_the_prices, needs=("exercise 5",))
 # Check that every field of `counts` is as long as `thresholds` and that the grid is
 # non-empty, then price the whole sweep with `expected_cost`, take `argmin` — which already
 # breaks ties towards the lowest index, and therefore the lowest, more cautious threshold —
-# and build the `OperatingPoint` at that index out of plain ints and floats.
+# and build the `OperatingPoint` at that index out of plain ints and floats. The accuracy it
+# reports is the accuracy AT that index, not the best accuracy anywhere on the grid.
 # </details>
 
 # %%
@@ -1713,6 +1728,11 @@ _try("exercise 6", _check_choose_operating_point)
 # %%
 SWEPT = None
 POINT = None
+# HEALTH comes from section 4's probe (exercises 1 and 2) and RUNS from section 6's policy
+# (exercises 3 and 4), so this cell, and every later one that reads SWEPT or POINT, waits on
+# all six exercises rather than on the two or three whose functions it calls.
+_FOR_POINT = ("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+              "exercise 6")
 
 
 def _choose_and_compare() -> None:
@@ -1764,9 +1784,7 @@ def _choose_and_compare() -> None:
           f"word 'causal'.")
 
 
-_try("the operating point", _choose_and_compare,
-     needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
-            "exercise 6"))
+_try("the operating point", _choose_and_compare, needs=_FOR_POINT)
 
 
 # %% [markdown]
@@ -1802,8 +1820,7 @@ def _plot_the_cost_curve() -> None:
           "plant spends.")
 
 
-_try("the cost curve", _plot_the_cost_curve,
-     needs=("exercise 1", "exercise 3", "exercise 5", "exercise 6"))
+_try("the cost curve", _plot_the_cost_curve, needs=_FOR_POINT)
 
 # %% [markdown]
 # ## 9. Exercise 7 — `failures_given_up()`: name them
@@ -1828,15 +1845,18 @@ _try("the cost curve", _plot_the_cost_curve,
 #
 # Which runs can appear in this list at all? A pump that was pulled for a line
 # reconfiguration did not fail, so it cannot be a failure you gave up. And for a pump that
-# never alarmed, what is the warning — zero, or something that says "there was none"?
+# never alarmed, what is the warning — zero, or something that says "there was none"? A pump
+# that alarmed exactly `lead_hours` before it broke: caught, or given up?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
-# Validate the threshold and the lead time, then call the given `alarm_hours` once at this
-# threshold. Walk the FAILURE runs only. A run with an alarm at least `lead_hours` before its
-# end is caught and is not in the list. Everything else is: reason `TOO_LATE` if it alarmed at
-# all, `NEVER_ALARMED` if it did not, with `alarm_hour` and `warning_hours` both -1 in that
-# case. Return them sorted by unit.
+# Validate the threshold, the lead time and every run's unit against the rows of `health`
+# first, so a missing pump is your ValueError and not an IndexError from inside
+# `alarm_hours`. Then call the given `alarm_hours` once at this threshold and walk the
+# FAILURE runs only. A run with an alarm at least `lead_hours` before its end is caught and
+# is not in the list. Everything else is: `TOO_LATE` if it alarmed at all, `NEVER_ALARMED` if
+# it did not, with both hour fields set to the "there was none" value the docstring names.
+# Return them sorted by unit.
 # </details>
 
 # %%
@@ -1986,8 +2006,7 @@ def _name_the_give_ups() -> None:
               f"specification says so rather than averaging it away.")
 
 
-_try("the failures given up", _name_the_give_ups,
-     needs=("exercise 1", "exercise 3", "exercise 5", "exercise 6", "exercise 7"))
+_try("the failures given up", _name_the_give_ups, needs=_FOR_POINT + ("exercise 7",))
 
 # %% [markdown]
 # ## 10. Exercise 8 — `deployment_report()`: the constraint it respects
@@ -2014,13 +2033,13 @@ _try("the failures given up", _name_the_give_ups,
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
-# `bytes_per_unit = window * sample_bytes + constant_bytes`, times the number of rows in
-# `health` for the total, which must not exceed `arena_bytes`. Let `scale = 2 ** wire_frac`;
-# round both the health matrix and the threshold to the nearest multiple of `1 / scale` with
-# `np.rint`. Count the readings where `health >= threshold` and `wire_health >=
-# wire_threshold` disagree, and count the rows whose first True index differs between the two
-# — with "never crosses" as its own value, so a pump that crosses in one and not the other
-# counts as moved.
+# A pump costs the gateway its retained window of readings plus its per-pump constants; the
+# fleet costs that for every row of `health`, and it fits when the total is no more than the
+# arena. On the wire, the health index AND the threshold each become the NEAREST step the
+# format can hold — rounding in both directions, never truncating, because a threshold
+# rounded down alarms earlier than the published number. Then count two different things:
+# the readings whose alarm verdict differs between float and wire, and the pumps whose FIRST
+# crossing differs, with "never crosses" as a value of its own.
 # </details>
 
 # %%
@@ -2180,8 +2199,7 @@ def _sweep_the_window() -> None:
           f"respect and one you have not looked at.")
 
 
-_try("the deployment constraint", _sweep_the_window,
-     needs=("exercise 1", "exercise 3", "exercise 5", "exercise 6", "exercise 8"))
+_try("the deployment constraint", _sweep_the_window, needs=_FOR_POINT + ("exercise 8",))
 
 # %% [markdown]
 # ## 11. Exercise 9 — `rederivation_trigger()`: when this number stops being true
@@ -2200,8 +2218,9 @@ _try("the deployment constraint", _sweep_the_window,
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
 # Some multipliers move the threshold and some do not. Of the ones that do, which is the one
-# you report — and what do you report when none of them does? And is a 10% rise in a price
-# the same size of move as a 10% fall?
+# you report — and what do you report when none of them does? Is a 10% rise in a price the
+# same size of move as a 10% fall? And `which` names one of three prices: does your loop
+# scale the price it names, or always the one you had in mind?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
@@ -2209,7 +2228,8 @@ _try("the deployment constraint", _sweep_the_window,
 # to get the threshold in force. Then for every multiplier, rebuild the prices with that one
 # field scaled and choose again; whenever the threshold differs and `abs(m - 1)` is strictly
 # smaller than the smallest seen so far, keep it and the threshold it moved to. If nothing in
-# the grid moves it, report `float("inf")` and the unchanged threshold.
+# the grid moves it, report the "not within the range we looked at" value the docstring
+# names — never zero — and the unchanged threshold.
 # </details>
 
 # %%
@@ -2300,7 +2320,10 @@ def _check_rederivation_trigger() -> None:
 
 
 # %%
-_try("exercise 9", _check_rederivation_trigger)
+# Re-deriving a threshold means choosing it again, so this check runs your
+# choose_operating_point too. It waits for exercise 6 to pass: a wrong chooser would
+# otherwise fail THIS exercise, and send you to debug code that may be right.
+_try("exercise 9", _check_rederivation_trigger, needs=("exercise 6",))
 
 # %% [markdown]
 # Run it on this fleet, for all three prices, with the drift alert level measured on the
@@ -2338,8 +2361,7 @@ def _show_the_triggers() -> None:
           f"reason the threshold is not one.")
 
 
-_try("the re-derivation trigger", _show_the_triggers,
-     needs=("exercise 1", "exercise 3", "exercise 5", "exercise 6", "exercise 9"))
+_try("the re-derivation trigger", _show_the_triggers, needs=_FOR_POINT + ("exercise 9",))
 
 # %% [markdown]
 # ## 12. The evidence bundle
@@ -2432,16 +2454,20 @@ _try("the evidence bundle", _show_evidence, needs=_EVIDENCE_NEEDS)
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
 # For each item, what exactly makes it true — a sentence being present, a number matching the
-# evidence, or both? Which items can be satisfied by prose alone, and which must be pinned to
-# a number the notebook computed?
+# evidence, or both? Agreement is not always enough: a document can faithfully report a
+# feature that leaks, a lead time of zero, or a budget the gateway cannot hold. And for the
+# two items this module exists for: what happens to an empty `gives_up` when the evidence
+# names pumps, or to a provenance line the audit does not support?
 # </details>
 # <details><summary>💡 Hint 2 — the approach, in words</summary>
 #
 # Validate the two arguments first. Then build the results one at a time, in `CHECKLIST_ITEMS`
 # order, appending a `CheckResult` for each: compare the prose fields for being non-empty
-# after stripping, compare the tuples for exact equality, and compare the floats with
-# `same_number` at the given tolerance. Write the `detail` as if the reader has to fix it —
-# name the value found and the value expected, never "mismatch".
+# after stripping, compare the tuples for exact equality, and compare the floats — some of
+# which may be infinite — with `same_number` at the given tolerance. Each item reads only its
+# own fields, so breaking one line fails one item and leaves the other seven alone. Write the
+# `detail` as if the reader has to fix it — name the value found and the value expected,
+# never "mismatch".
 # </details>
 
 # %%
@@ -2606,6 +2632,24 @@ _try("exercise 10", _check_check_specification)
 # could rebuild them.
 #
 # Then run the checklist. It is the same code your reviewer will run.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which fields are numbers or tuples the bundle already holds, and which are sentences only
+# you can write? The checklist compares `gives_up` with the evidence's give-ups pump by pump,
+# in order: is each entry of `bundle.given_up` the thing the document asks for, or a record
+# that contains it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Read every numeric and tuple field off the matching part of `bundle`: the causal margin,
+# the censoring report's units, the lead time, the operating point's threshold, the price
+# evidence's prices and provenance, the unit of each given-up record, the deployment
+# report's total bytes, and the trigger's price move and drift alert. Write the feature, the
+# labelling policy and the deployment constraint as one plain sentence each, and use the two
+# `TRIGGERS` from the setup cell. If the checklist still refuses it, each FAIL line names the
+# field, what the document said and what the evidence measured.
+# </details>
 
 # %%
 def my_specification(bundle: Evidence) -> Specification:
@@ -2647,8 +2691,17 @@ def print_checklist(results: Sequence, title: str = "") -> None:
 
 def _run_my_checklist() -> None:
     bundle = evidence()
-    print_checklist(check_specification(my_specification(bundle), bundle),
-                    "YOUR SUBMISSION")
+    results = check_specification(my_specification(bundle), bundle)
+    print_checklist(results, "YOUR SUBMISSION")
+    # The eight PASS/FAIL lines grade the DOCUMENT. This exercise is done only when the
+    # document is accepted, so a refusal is a failed check, not a pass that printed REJECTED.
+    refused = [r.item for r in results if not r.ok]
+    assert specification_passes(results), (
+        f"the checklist refuses your specification on {len(refused)} of {len(results)} "
+        f"items ({'; '.join(refused) or 'see above'}). Each FAIL line above names what the "
+        "document said and what the evidence measured: read that field from the bundle, "
+        "not from memory"
+    )
 
 
 _try("your specification", _run_my_checklist, needs=_EVIDENCE_NEEDS + ("exercise 10",))
@@ -2907,26 +2960,61 @@ _try("self-check numbers", _self_check_numbers,
 # before anything breaks, which pumps are not on the list.
 
 # %%
-_MARKS = {"passed": "PASS", "failed": "FAIL", "not started": "TODO"}
+import contextlib
+import io
+
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
 
 
 def _progress_board() -> None:
-    print("\nprogress")
-    done = 0
+    """One line per exercise, from the latest run of its check, then the tally.
+
+    This grades your CODE. The PASS/FAIL lines of a checklist run grade a DOCUMENT; the two
+    meet only at `your specification`, which is done when your document is accepted.
+    """
+    names = max(len(label) for label in _EXERCISES)
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
     for label, funcs in _EXERCISES.items():
         state = _STATUS.get(label, "not started")
-        done += state == "passed"
-        print(f"  [{_MARKS[state]}] {label:<20} {', '.join(funcs)}")
-    print(f"  {done} of {len(_EXERCISES)} complete")
+        print(f"  {_MARKS[state]} {label:<{names}}  {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
 
 
-_progress_board()
-
-# %%
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check. Exercise 9 and
+# `your specification` keep the `needs` their own cells have, so neither is credited, or
+# blamed, on the strength of an exercise that has not passed yet.
 if __name__ == "__main__":
-    print(f"\nnotebook wall time: {time.perf_counter() - _LESSON_T0:.1f}s")
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check, _needs in (
+                ("exercise 1", _check_causal_health, ()),
+                ("exercise 2", _check_causality_margin, ()),
+                ("exercise 3", _check_label_runs, ()),
+                ("exercise 4", _check_censoring_report, ()),
+                ("exercise 5", _check_price_the_outcomes, ()),
+                ("exercise 6", _check_choose_operating_point, ()),
+                ("exercise 7", _check_failures_given_up, ()),
+                ("exercise 8", _check_deployment_report, ()),
+                ("exercise 9", _check_rederivation_trigger, ("exercise 6",)),
+                ("exercise 10", _check_check_specification, ()),
+                ("your specification", _run_my_checklist,
+                 _EVIDENCE_NEEDS + ("exercise 10",))):
+            _try(_name, _check, needs=_needs)
+    _progress_board()
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f} s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))
 

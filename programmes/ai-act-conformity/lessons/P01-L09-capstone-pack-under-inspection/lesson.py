@@ -115,11 +115,14 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import copy
 import hashlib
+import io
 import json
 import math
 import sys
+import traceback
 from datetime import date, datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -133,24 +136,85 @@ GENESIS_HASH = "0" * 64
 
 _FAILED_CHECKS: list[str] = []
 
+# YOUR exercises, in the order you meet them, and the function each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here. It is deliberately not the pack's
+# six checks: a check on the pack is SUPPOSED to come back red, and the exercise that
+# reports it has passed when it says so.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("run_suite",),
+    "exercise 2": ("inspect_pack",),
+    "exercise 3": ("evidence_delta",),
+    "exercise 4": ("suite_delta",),
+    "exercise 5": ("unsupported_values",),
+    "exercise 6": ("silencing_audit",),
+    "exercise 7": ("plan_repairs",),
+    "exercise 8": ("inspection_report",),
+}
+# audit_repair() in section 11 runs your first six functions end to end, so anything built
+# on it waits for all six. Four of the checks also run your earlier functions: exercise 2's
+# calls your run_suite, and from exercise 6 on the check goes through audit_repair. Until
+# those pass, a wrong answer further down could be the earlier function's fault, so the check
+# waits and names the exercise it is waiting for rather than blaming the wrong one.
+_PIPELINE = ("exercise 1", "exercise 2", "exercise 3", "exercise 4", "exercise 5",
+             "exercise 6")
+_UPSTREAM: dict[str, tuple[str, ...]] = {
+    "exercise 2": ("exercise 1",),
+    "exercise 6": _PIPELINE[:5],
+    "exercise 7": _PIPELINE,
+    "exercise 8": _PIPELINE + ("exercise 7",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (evidence_delta)"; several -> "exercises 1, 3 and 5"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other seven.
+    exercise never hides the feedback on the others. A cell names the exercises it `needs`:
+    until each has passed its check, it says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def canonical_bytes(obj: Any) -> bytes:
@@ -1449,6 +1513,23 @@ print(f"evidence index: {sum(len(v) for v in _index.values())} keys across "
 # switched off and the runner reported the absence of a failure as a pass. So `run_suite` has
 # three statuses, not two, and `verdict` is `"pass"` only when every check ran *and* every
 # check was green.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Before you call anything, ask two questions of each check id: is it switched on, and
+# does anything implement it? A check you never called has no counts at all, and a 0 would
+# read as "we looked and found nothing". Then ask what the verdict should be for a suite
+# with every check switched off.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the suite's ids in sorted order. Settle the not-run cases first — switched off,
+# then unknown to `checks` — each with its own documented reason code and empty fields, and
+# without calling anything. Only then call the check with its own `params`, turn its `green`
+# flag into a status, and copy the other four fields across untouched. Build the three lists
+# from the statuses, and let the verdict pass only when the red list and the not-run list
+# are both empty.
+# </details>
 
 # %%
 def run_suite(pack: dict, suite: dict, checks: dict = CHECKS) -> dict:
@@ -1536,6 +1617,24 @@ _try("exercise 1", _check_run_suite)
 # * Rank by share, not by count. Fourteen purged log entries out of 441 and one undeclarable
 #   metric out of three are not the same size of hole, and sorting by `affected` says they
 #   are.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Which rows become findings? Everything that is not green — and the not-run rows are the
+# ones people drop. Then ask what "how big" means: a few purged log entries out of hundreds
+# sounds larger than one bad metric until you divide each by what it came from. A not-run
+# row has nothing to divide, so its share has to come from what not running means.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Skip green rows and any id `CHECK_META` does not know. Copy evidence id, module and
+# basis out of `CHECK_META`, and the reason code, counts and detail out of the result,
+# unchanged; only the share is derived — fixed for a check nobody ran, affected over
+# population for a red one, and zero whenever that division cannot be done. Sort the
+# detail's keys, treating an absent list as empty. Sort the findings on one key, share
+# largest first and then finding id alphabetically: reversing the whole sort would reverse
+# the tie-break too.
+# </details>
 
 # %%
 def inspect_pack(run: dict) -> list:
@@ -1611,7 +1710,7 @@ def _check_inspect_pack() -> None:
         print(f"  {finding['share']:6.1%}  {finding['module']}  {finding['finding_id']}")
 
 
-_try("exercise 2", _check_inspect_pack)
+_try("exercise 2", _check_inspect_pack, needs=_UPSTREAM["exercise 2"])
 
 # %% [markdown]
 # ## 8. Exercise 3 — what the repair did to the evidence
@@ -1625,6 +1724,22 @@ _try("exercise 2", _check_inspect_pack)
 # records in it has not been repaired.
 #
 # `conserved` deliberately says less than it looks like it says. Read its docstring.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A repair can drop a whole family, or add one the pack never had. If you loop over one
+# index's families, what happens to a family only the other index has? Then reread what
+# `conserved` promises, and decide which of added, mutated and removed it is allowed to
+# look at.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Take the union of the two indices' family names, and treat a family missing from either
+# side as empty there. Within a family, set differences of the key sets give removed and
+# added; mutated is the shared keys whose digests disagree. `n_before` and `n_after` are the
+# sizes of the two dicts, not of any difference. Sum each kind across the families for the
+# totals, and set `conserved` from the removed total alone.
+# </details>
 
 # %%
 def evidence_delta(before: dict, after: dict) -> dict:
@@ -1679,7 +1794,9 @@ def _check_evidence_delta() -> None:
     assert set(delta) == {"families", "totals", "conserved"}, (
         f"evidence_delta returned {sorted(delta)} — three top-level keys, no more")
     assert delta["totals"]["removed"] == 400 and delta["conserved"] is False, (
-        f"deleting 400 verifications showed {delta['totals']['removed']} removals")
+        f"deleting 400 verifications showed {delta['totals']['removed']} removals and "
+        f"conserved={delta['conserved']} — every deleted record is a removal, and a single "
+        "removal anywhere means the delta is not conserved")
     assert delta["families"]["oversight"]["n_before"] == 2800, (
         "n_before is the size of the family BEFORE, not the size of the difference")
     assert delta["families"]["log"]["removed"] == [], "nothing was removed from the log"
@@ -1706,6 +1823,25 @@ _try("exercise 3", _check_evidence_delta)
 # stricter, and an audit that flags it has cried wolf. `PARAM_DIRECTION` is what tells the
 # two apart, and a parameter it does not know about goes in `unknown` rather than being
 # guessed at in either direction.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every change has to answer one question before it is filed: does the check now let more
+# through? `PARAM_DIRECTION` answers it per parameter, and a parameter it has no entry for is
+# a question you cannot answer, so do not. Two changes are not moves of a number at all — a
+# parameter that vanished from `after`, and one that only `after` has. Which is a widening,
+# and which is a rule nobody has run yet?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Check ids first: in `before` but not in `after` is a removed check, not a disabled one;
+# disabled means present in both and switched off only in `after`. For each check in both,
+# walk the parameters `before` had and skip any whose value did not change. Look the
+# direction up first — no entry means `unknown`, whatever happened to the parameter.
+# Otherwise a vanished parameter is loosened with `after` None, a move the weak way is
+# loosened and any other move is tightened. Ignore parameters only `after` has, sort the rows
+# by check then parameter, and compute `unchanged` from the four weakening lists alone.
+# </details>
 
 # %%
 def suite_delta(before: dict, after: dict, directions: dict = PARAM_DIRECTION) -> dict:
@@ -1817,6 +1953,27 @@ _try("exercise 4", _check_suite_delta)
 # the hash chain behind all three. A value that does not come back when you recompute it is
 # not evidence, whatever the repair ledger says about where it came from. This function
 # never reads the repair ledger, on purpose.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every rule is the same move: take the number the pack states, find the evidence it says
+# it came from, compute it again, and compare. The mistakes are borrowing a setting from
+# somewhere else — the suite's `k` instead of the one the limits record, a default seed
+# instead of the declaration's own, any declaration instead of the one the artefact names —
+# and comparing one field when the rule lists several.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# One pass per rule, each adding at most one row per claim: stop at the first reason that
+# applies. Declarations: the required keys, then the seed, then recompute over the retained
+# evaluation split with the metric, resample count, level and seed stored in the
+# declaration, and compare point, lo and hi within `tol`. Sections: the emitted value against
+# the field it cites, then its stored digest against the artefact's payload; separately, a
+# sourced field's `_source` stamp against the digest of the declaration for that artefact's
+# own `primary_metric`. Limits: rebuild from the sealed baseline at the limits' own `k` and
+# compare all four numbers. Ledger: `verify_ledger`. Sort by claim, and never open the
+# repair ledger.
+# </details>
 
 # %%
 CLAIM_CHECKS = (("accuracy.declarations", ("declared_accuracy",)),
@@ -1946,6 +2103,26 @@ _try("exercise 5", _check_unsupported_values)
 # The order matters. A check that did not run is never "unfixed" and never "repaired": it is
 # the cleanest silencing there is, and reporting it as anything else is the failure this
 # lesson is about.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The verdict is a ladder, and the order of its rungs is the lesson. A check that did not
+# run can never be unfixed or repaired; a check that is still red is unfixed whatever else
+# the repair did. Only a green check earns the four questions, and each one is about this
+# check alone: a widened threshold on another check, a removal from another family, or a
+# rewrite of a key the finding itself named is not evidence against this one.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# For each finding, look its check up in the after-run. Missing or not run: silenced, plus
+# the removed-from-suite reason when the suite change lists it. Red: unfixed, with the reason
+# code the after-run reports now, not the one in the finding. Green: build the reasons in the
+# docstring's four steps, finishing each step across all the check's families before
+# starting the next, leaving out mutated keys the finding named, and skipping a family the
+# delta does not have. Count all three verdicts, zeros included. Collateral is green before
+# and anything else after, not-run included; honest needs every finding repaired AND no
+# collateral.
+# </details>
 
 # %%
 def silencing_audit(findings: list, before_run: dict, after_run: dict, delta: dict,
@@ -2080,7 +2257,7 @@ def _check_silencing_audit() -> None:
     print("all five tempting repairs: verdict silenced")
 
 
-_try("exercise 6", _check_silencing_audit)
+_try("exercise 6", _check_silencing_audit, needs=_UPSTREAM["exercise 6"])
 
 # %% [markdown]
 # ## 12. The table this lesson is about
@@ -2088,6 +2265,8 @@ _try("exercise 6", _check_silencing_audit)
 # Five repairs. Every one of them was somebody's afternoon, every one of them turns a red
 # check green, and every one of them leaves the system exactly as it was. The middle column
 # is what a green pipeline tells you. The right-hand column is what your audit tells you.
+# The cell runs your first six functions end to end, so it waits until exercises 1 to 6
+# have passed.
 
 # %%
 def _show_tempting() -> None:
@@ -2106,7 +2285,7 @@ def _show_tempting() -> None:
           "green too — which is why exercise 1 has three statuses and not two.")
 
 
-_try("the table", _show_tempting)
+_try("the table", _show_tempting, needs=_PIPELINE)
 
 # %% [markdown]
 # ## 13. Exercise 7 — the honest repair
@@ -2123,6 +2302,27 @@ _try("the table", _show_tempting)
 # control limits un-hides an excursion nobody has filed, so the incident has to be filed.
 # A repair that stops halfway turns one red check into a different red check, which is
 # **unfixed** — and that is still a better outcome than green.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every repair reads its target out of the finding's detail: the missing sequence numbers,
+# the empty path, the stamped ids, the latest substantial change, the hidden windows.
+# Remembering them from this notebook is the trap — the grader also runs your plan on a
+# different pack with the defects in different places. And two of the six repairs take two
+# steps: ask what the check will say after the first step alone.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the findings in the order given, branch on the reason code, and tag every operation
+# with its finding id. Log: the cold-store export whose `covers` range overlaps the missing
+# seqs, not the first one listed. Accuracy: one recompute per metric named. Document: split
+# each empty path into artefact and field, and take the metric from that artefact's own
+# `primary_metric`. Oversight: strip the prefixes, void the verifications with an authority
+# and a reason, then withhold the decisions, with a reason too. Declaration: withdraw with a
+# reason, then reassess and reissue, each dated no earlier than what it has to cover. Limits:
+# refit, then file one incident, aware today, over the hidden windows. Any other code:
+# nothing.
+# </details>
 
 # %%
 def plan_repairs(pack: dict, findings: list) -> list:
@@ -2225,7 +2425,7 @@ def _check_plan_repairs() -> None:
           f"{result['delta']['totals']['removed']}")
 
 
-_try("exercise 7", _check_plan_repairs)
+_try("exercise 7", _check_plan_repairs, needs=_UPSTREAM["exercise 7"])
 
 # %% [markdown]
 # ## 14. Exercise 8 — the inspection report
@@ -2237,6 +2437,23 @@ _try("exercise 7", _check_plan_repairs)
 # in a worse state than a pack with six unfixed ones, because the second pack is honest about
 # where it is and the first one is not. So **silenced** outranks **unfixed**, and a repair
 # that broke a check nobody had complained about — `collateral` — is also a rejection.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Nearly every field is copied, and the traps are in what gets copied: the checks the run
+# covered rather than the findings, the claim names rather than the claim rows, and the
+# findings in their own worst-first order rather than grouped by verdict. The one judgement
+# is the last word: ask why a pack that has been made green deserves a harsher one than a
+# pack that is honestly red.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Take each field from the place the docstring names in the `audit_repair()` result. Build
+# each row from the four fields the docstring copies from the finding (which are not the
+# finding's first four keys) plus the audit's verdict and reasons for that finding id,
+# keeping the findings' order. Then decide the verdict top down: any silenced finding first;
+# then any unfixed finding or any collateral; only then accepted.
+# </details>
 
 # %%
 def inspection_report(result: dict, as_of: date = AS_OF) -> dict:
@@ -2329,14 +2546,14 @@ def _check_inspection_report() -> None:
           f"repaired: {honest['verdict']}")
 
 
-_try("exercise 8", _check_inspection_report)
+_try("exercise 8", _check_inspection_report, needs=_UPSTREAM["exercise 8"])
 
 # %% [markdown]
 # ## 15. The two green packs
 #
 # Both packs below pass all six checks. One of them was repaired and one of them was
 # silenced, and the only thing that tells them apart is an audit that looked at what the
-# repair did rather than at what the pipeline says.
+# repair did rather than at what the pipeline says. The cell needs all eight exercises.
 
 # %%
 def _show_two_green_packs() -> None:
@@ -2356,7 +2573,7 @@ def _show_two_green_packs() -> None:
         print(f"   -> {report['verdict']}\n")
 
 
-_try("two green packs", _show_two_green_packs)
+_try("two green packs", _show_two_green_packs, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 16. Common mistakes
@@ -2415,7 +2632,7 @@ def _show_half_done() -> None:
           "better place to be than green.")
 
 
-_try("half a repair", _show_half_done)
+_try("half a repair", _show_half_done, needs=_PIPELINE)
 
 # %% [markdown]
 # ## 17. Self-check
@@ -2526,17 +2743,46 @@ def check_self_check(answers: dict) -> None:
 # **Again, and finally: this is engineering, not legal advice.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print(f"progress board: your {len(_EXERCISES)} exercises. The pack's own checks are "
+          "not on it.")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code,\n"
+              "and a check that is waiting on an earlier exercise says which one.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_run_suite),
-                          ("exercise 2", _check_inspect_pack),
-                          ("exercise 3", _check_evidence_delta),
-                          ("exercise 4", _check_suite_delta),
-                          ("exercise 5", _check_unsupported_values),
-                          ("exercise 6", _check_silencing_audit),
-                          ("exercise 7", _check_plan_repairs),
-                          ("exercise 8", _check_inspection_report)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_run_suite),
+                              ("exercise 2", _check_inspect_pack),
+                              ("exercise 3", _check_evidence_delta),
+                              ("exercise 4", _check_suite_delta),
+                              ("exercise 5", _check_unsupported_values),
+                              ("exercise 6", _check_silencing_audit),
+                              ("exercise 7", _check_plan_repairs),
+                              ("exercise 8", _check_inspection_report)):
+            _try(_name, _check, needs=_UPSTREAM.get(_name, ()))
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

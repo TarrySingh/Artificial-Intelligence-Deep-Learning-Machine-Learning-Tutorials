@@ -118,10 +118,13 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
 import hashlib
+import io
 import json
 import re
 import sys
+import traceback
 from datetime import date
 from typing import Any, Callable
 
@@ -165,24 +168,70 @@ def plus_years(day: date, years: int) -> date:
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("annex_iii_point",),
+    "exercise 2": ("standards_gap",),
+    "exercise 3": ("assessment_route",),
+    "exercise 4": ("is_substantial_modification",),
+    "exercise 5": ("modification_history",),
+    "exercise 6": ("readiness",),
+    "exercise 7": ("declaration_of_conformity",),
+    "exercise 8": ("ce_marking_record",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (<its function>)"; several -> "exercises 3, 6 and 7"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the other seven.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
-    except Exception as exc:                 # a half-finished implementation raising something else
+    except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 # %% [markdown]
@@ -380,6 +429,23 @@ for _sid, _rec in RECORDS.items():
 # what the range check is really for: a record reading "Annex III point 9" is not a system in
 # some ninth category, it is a record somebody typed wrong, and a route chosen from it would
 # be a route chosen from a typo.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Several records here must come back None, for different reasons: no q3 step at all, a q3
+# answer that is empty, an area label that names no point, and a number Annex III does not
+# have. Each is a record that does not determine a route, not a system in some default
+# category. One trap hides in `str()`: think about what `str(None)` looks like by the time a
+# pattern sees it.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Walk the trail and stop at the FIRST step whose question is the q3 one; if there is none,
+# return None. If its answer is falsy, return None before the regex ever runs. Search
+# `str(answer)` with the given pattern, and treat no match as None. Convert the captured digits
+# to an `int` and return it only when it is in `ANNEX_III_POINTS`. Never fall back on the tier,
+# and ignore the step's `decisive` flag.
+# </details>
 
 # %%
 # Given to you: the pattern that finds a point number inside P01-L02's free-text area label.
@@ -463,6 +529,22 @@ _try("exercise 1", _check_annex_iii_point)
 # This lesson reads (c) as exactly what it says — common specifications exist and were not
 # applied — independently of whether a harmonised standard was also applied. That is a
 # reading of a cross-reference, not a ruling.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The four gaps are not a ladder, so a chain that returns at the first match silently loses a
+# reason a reviewer would want to read. Notice too which gaps presuppose that something exists:
+# three of them can only fire when there is a standard or a common specification to misapply,
+# and one only when there is neither.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Read every field with `.get()`, so an absent key counts as falsy. Test the four conditions
+# independently and collect the id of each one that holds: (a) needs BOTH the standard and the
+# specification absent; (b) needs the standard to exist and `applied` to be anything but
+# `"full"`, a missing value included; (c) needs the specification to exist and not be applied;
+# (d) needs the standard to exist and carry a restriction. Sort before you return.
+# </details>
 
 # %%
 def standards_gap(context: dict) -> list:
@@ -532,6 +614,25 @@ _try("exercise 2", _check_standards_gap)
 # actually applied, which route it would choose if it had a choice, and who is going to put
 # the system into service. Two of the nine contexts below carry the *same* standards gap. One
 # of them is forced onto Annex VII by it and the other is not affected by it at all.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Article 43(1) is the longer, more interesting paragraph, and it applies to the fewest
+# systems. Before you run any standards test, ask which Annex III point you are on: for points
+# 2 to 8 the gap is never consulted, and reporting one there suggests it mattered. For point 1,
+# ask WHEN the provider's stated preference counts, and what a preference naming something
+# other than an Annex III procedure should become.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Branch on the tier first, in the documented order. For an Annex III record, read the point
+# with your exercise 1 function and stop at undetermined when it is None — never a default
+# route. For point 1, compute the gaps once: with none, honour `chosen_route` only if it is one
+# of the two Annex III procedures, else internal control; with any, the notified-body route is
+# forced. Points 2 to 8 get internal control and an empty gap list. Derive
+# `notified_body_required` from the route (plus the Annex I context flag), then the role from
+# the deployer against `AUTHORITY_DEPLOYERS`.
+# </details>
 
 # %%
 def _context(standard: bool = True, applied: str = "full", restricted: bool = False,
@@ -695,7 +796,7 @@ def _show_routes() -> None:
           f"{routes[twins[0]]} vs {routes[twins[1]]}")
 
 
-_try("route table", _show_routes)
+_try("route table", _show_routes, needs=("exercise 1", "exercise 2", "exercise 3"))
 
 # %% [markdown]
 # ## 6. Exercise 4 — `is_substantial_modification(change, plan)`
@@ -715,6 +816,22 @@ _try("route table", _show_routes)
 # purpose* is a different animal, and Article 3(23) names it as its own limb. So this lesson
 # tests intended purpose **before** the carve-out: you cannot pre-declare your way into a new
 # purpose. That is a reading of where a sentence stops, not a ruling.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The order of the five rules IS the exercise. What should a change the provider pre-determined
+# but never wrote into the Annex IV point 2(f) description fall through to? Can a change of
+# intended purpose shelter under the carve-out at all? And the boundary: is a change dated on
+# the very day of placing "before" it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Parse both dates with `parse_date()`. Rule 1 fires only when a placing date exists and the
+# change is strictly earlier. Then the purpose flag, then the carve-out — the id in
+# `pre_determined` AND the 2(f) flag set, both of them — then the compliance flag, then the
+# no-effect default. Return at the first rule that fires, and pick the basis by which rule it
+# was.
+# </details>
 
 # %%
 REASON_BEFORE_PLACING = "before_placing_on_the_market"
@@ -836,6 +953,23 @@ _try("exercise 4", _check_is_substantial)
 # events inside it, so the lesson takes the reading that leaves the provider re-assessing
 # rather than the one that lets a same-day change slip under the certificate. That is a
 # modelling choice about ambiguity, not a rule anybody wrote down.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Substantial is not the same as uncovered. A provider who re-assessed after a substantial
+# change is covered for it; only the substantial changes the assessment on file has not seen
+# reset the route. Decide what a change dated on the assessment day itself counts as (the note
+# above says), what a plan with no assessment at all means, and how to read the log in time
+# order without rearranging the caller's list.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Sort a copy of the log on `(on, change_id)` and assess each change with your exercise 4
+# function. From the substantial verdicts take the sorted ids and the LATEST date, or None when
+# there are none. A substantial change is uncovered when the plan has no `assessed_on`, or when
+# its date is on or after `assessed_on`, compared as dates. `route_reset` is simply whether
+# that uncovered list is non-empty.
+# </details>
 
 # %%
 def modification_history(changes: list, plan: dict) -> dict:
@@ -1007,7 +1141,7 @@ def _show_history() -> None:
           f"assessment ({', '.join(cv['since_assessment'])}) -> route resets")
 
 
-_try("modification table", _show_history)
+_try("modification table", _show_history, needs=("exercise 4", "exercise 5"))
 
 # %% [markdown]
 # ## 8. The pack, and the completeness checker you already have
@@ -1213,6 +1347,24 @@ print(f"credit-scorer's planted defects: {_no_doc} carrying no usable document "
 # Each blocking item is reported in exactly one bucket, by the first test it fails. A stale
 # item is not also reported as untraceable; there is no point telling a reader to chase a
 # pointer on a document they have to reissue anyway.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# A status field is a claim; the document reference is the evidence. P01-L01's checker already
+# knows that a record marked present with a blank reference is absent, so ask it rather than
+# writing a second definition of present. The three buckets are exclusive and tested in order,
+# so a stale item is never also untraceable. And mind the ladder: a complete pack for a system
+# substantially modified since its assessment is not ready.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Build `required` from `ROUTE_EVIDENCE` for the route, run `completeness_report` over
+# `pack_as_trace(pack)`, and copy `present`, `missing` and `coverage` from it. For each PRESENT
+# item: out of date if it has no date, a date after `as_of`, or a `review_due` strictly before
+# `as_of`; otherwise untraceable if its source is not a key of `pack["artefacts"]`. Blocking is
+# the sorted union. Then walk the verdicts in the documented order — the two route-based ones,
+# then `route_reset`, then blocking — reading the pack and never writing to it.
+# </details>
 
 # %%
 def readiness(route_record: dict, pack: dict, history: dict, as_of: date) -> dict:
@@ -1343,6 +1495,24 @@ _try("exercise 6", _check_readiness)
 # That last sentence is why this function's most important behaviour is refusing. A
 # declaration is not a document you produce and then check; it is the act of taking
 # responsibility, and there is no such thing as taking responsibility provisionally.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The most important thing this function does is refuse. Which single field of the readiness
+# report decides that, and why is passing it through as the reason more useful than a generic
+# "not ready"? When it does issue, two fields are easy to get wrong: the retention clock starts
+# at a date in the pack, not today; and point 7 follows whether the ROUTE needed a body, not
+# whether the pack happens to name one.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Return the refusal shape at once for any verdict but ready. Otherwise assemble the nine keys
+# from the docstring: copy the provider dict rather than sharing it, sort the standards, and
+# sign with the signatory's place, name and function and the `as_of` date. For point 7 use None
+# unless `notified_body_required`; then copy the body's name and number from the pack and the
+# certificate from the evidence item `CERTIFICATE_ITEM` names for this route. `keep_until` is
+# `plus_years` of the parsed placing date. Seal last, so the hash covers everything else.
+# </details>
 
 # %%
 def declaration_of_conformity(route_record: dict, readiness_report: dict, pack: dict,
@@ -1466,6 +1636,23 @@ _try("exercise 7", _check_declaration)
 #
 # The system in this lesson that fails here fails on the word "only". Its declaration is
 # valid and its pack is clean, and there is still no lawful way to mark it.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Article 48 is a decision tree, and its order is the trap: nothing about the system matters
+# until you know there is a declaration to attest to. Then read the word "only" in 48(2): a
+# digitally provided system without an accessible marking does not fall back to another form.
+# And where does the notified body's number come from — the pack, which may name any body, or
+# the declaration, which names the one responsible for this route?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Refuse on a missing declaration first, then on digital-without-access. Otherwise the form is
+# digital if the system is provided digitally, physical if its surface permits marking, and the
+# accompanying documentation otherwise. The number is the `identification_number` inside the
+# declaration's point 7 entry, or None when that entry is None; the hash is the declaration's
+# `record_hash`; and the basis depends only on whether the form is digital.
+# </details>
 
 # %%
 def ce_marking_record(route_record: dict, declaration_result: dict, system: dict) -> dict:
@@ -1592,7 +1779,7 @@ def _show_pack_table() -> None:
           f"{issued - marked} system(s) earned a declaration and still cannot be marked.")
 
 
-_try("the pack", _show_pack_table)
+_try("the pack", _show_pack_table, needs=tuple(_EXERCISES))
 
 
 # %%
@@ -1614,7 +1801,7 @@ def _show_the_trap() -> None:
     print("A pack with nothing missing, and no declaration. That is the whole lesson.")
 
 
-_try("the trap", _show_the_trap)
+_try("the trap", _show_the_trap, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # ## 13. Common mistakes
@@ -1672,7 +1859,7 @@ def _self_check_aids() -> None:
           f"untraceable={credit['untraceable']}")
 
 
-_try("self-check aids", _self_check_aids)
+_try("self-check aids", _self_check_aids, needs=tuple(_EXERCISES))
 
 # %% [markdown]
 # 3. A readiness report comes back with coverage 1.00 and nothing missing, stale or
@@ -1764,17 +1951,44 @@ def check_self_check(answers: dict) -> None:
 # **Again, and finally: this is engineering, not legal advice.**
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<12} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_annex_iii_point),
-                          ("exercise 2", _check_standards_gap),
-                          ("exercise 3", _check_assessment_route),
-                          ("exercise 4", _check_is_substantial),
-                          ("exercise 5", _check_modification_history),
-                          ("exercise 6", _check_readiness),
-                          ("exercise 7", _check_declaration),
-                          ("exercise 8", _check_ce_marking)):
-        _try(_name, _check)
-    # A stub nobody has reached yet is not a failure. A check that ran and came back wrong is,
-    # and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_annex_iii_point),
+                              ("exercise 2", _check_standards_gap),
+                              ("exercise 3", _check_assessment_route),
+                              ("exercise 4", _check_is_substantial),
+                              ("exercise 5", _check_modification_history),
+                              ("exercise 6", _check_readiness),
+                              ("exercise 7", _check_declaration),
+                              ("exercise 8", _check_ce_marking)):
+            _try(_name, _check)
+    _progress_board()
+    # A stub you have not reached yet is not a failure. A check that ran and came back wrong
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

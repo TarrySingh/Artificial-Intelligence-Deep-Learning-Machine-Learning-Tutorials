@@ -112,8 +112,11 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
+import contextlib
+import io
 import sys
 import time
+import traceback
 from typing import Callable, NamedTuple, Sequence
 
 import numpy as np
@@ -265,25 +268,71 @@ class Response(NamedTuple):
 
 _FAILED_CHECKS: list[str] = []
 
+# The exercises, in the order you meet them, and the functions each one asks you to write.
+# The progress board at the foot of the notebook is built from this, and a cell that is
+# waiting on an unfinished exercise names it from here.
+_EXERCISES: dict[str, tuple[str, ...]] = {
+    "exercise 1": ("reference_bins",),
+    "exercise 2": ("psi",),
+    "exercise 3": ("conditional_psi",),
+    "exercise 4": ("drift_signature",),
+    "exercise 5": ("diagnose_drift",),
+    "exercise 6": ("adjust_feature",),
+    "exercise 7": ("estimate_prices",),
+    "exercise 8": ("apply_fix",),
+    "exercise 9": ("respond_to_drift",),
+}
+_STATUS: dict[str, str] = {}   # label -> "passed" | "failed" | "not started", latest run
 
-def _try(label: str, check: Callable[[], None]) -> None:
+
+def _named(labels: list[str]) -> str:
+    """["exercise 3"] -> "exercise 3 (conditional_psi)"; several -> "exercises 1, 2 and 7"."""
+    if len(labels) == 1:
+        return f"{labels[0]} ({', '.join(_EXERCISES[labels[0]])})"
+    nums = [label.split()[-1] for label in labels]
+    return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
+
+
+def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = ()) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message — which names the likely mistake — and the notebook carries on, so one broken
-    exercise never hides the feedback on the others. Nothing is swallowed: every failure is
-    recorded and the `__main__` block at the foot of this file exits non-zero if any remain.
+    exercise never hides the feedback on the others. A demo names the exercises it `needs`:
+    until each has passed its check, the demo says which one it is waiting for and skips.
+    Nothing is swallowed: every outcome is recorded in `_STATUS` for the progress board at the
+    foot of the notebook, and every failure in `_FAILED_CHECKS`, which ends a script run
+    non-zero.
     """
+    waiting = [name for name in _EXERCISES   # in the order you meet them
+               if name in needs and _STATUS.get(name) != "passed"]
+    if waiting:
+        _STATUS[label] = "not started"
+        print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
+        return
     try:
         check()
-    except NotImplementedError:
-        print(f"{label}: not implemented yet — fill in the stub above, then re-run this cell.")
+    except NotImplementedError as exc:
+        _STATUS[label] = "not started"
+        stub = traceback.extract_tb(exc.__traceback__)[-1].name   # the frame that raised
+        owner = [name for name, funcs in _EXERCISES.items() if stub in funcs and name != label]
+        if owner:
+            print(f"{label}: skipped — needs {_named(owner)} first.")
+        elif label in _EXERCISES:
+            print(f"{label}: not implemented yet — fill in {stub}() above, then re-run "
+                  "this cell.")
+        else:
+            print(f"{label}: skipped — {stub}() is not implemented yet.")
     except AssertionError as exc:
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: FAILED — {exc}")
     except Exception as exc:  # a half-finished implementation raising something else
+        _STATUS[label] = "failed"
         _FAILED_CHECKS.append(label)
         print(f"{label}: raised {type(exc).__name__}: {exc}")
+    else:
+        _STATUS[label] = "passed"
 
 
 def _show(fig: "matplotlib.figure.Figure") -> None:
@@ -561,6 +610,21 @@ _try("the plant", _show_the_plant)
 # infinities on the outside so no later reading can fall off the end. A reference with heavy
 # ties can produce duplicate cut points; collapse them rather than dividing by a zero-width
 # bin.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Picture a reference where four readings in five sit on one low value and the fifth is far
+# out. A cut that shares out the *readings* lands in one place; a cut that shares out the
+# *range* lands somewhere nothing lives. Which one does a PSI need? And where does a later
+# reading go if it is lower than anything the reference ever produced?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Flatten and validate first: empty input, any non-finite value, fewer than two bins. Take the
+# reference's quantiles at evenly spaced probabilities strictly between 0 and 1, one fewer of
+# them than there are bins. Keep each distinct cut point once, in order, then put minus
+# infinity in front and plus infinity at the end. The current window plays no part.
+# </details>
 
 # %%
 def reference_bins(values: np.ndarray, n_bins: int = N_BINS) -> np.ndarray:
@@ -645,6 +709,23 @@ _try("exercise 1", _check_reference_bins)
 # left the plant with a one-way path out and no automatic way back, and built exactly this
 # statistic for exactly that reason. Here it takes its bin edges as an argument, because
 # section 4 needs a different set of them inside every duty regime.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two readings against four is not drift, so what must each histogram be divided by before
+# the two are compared? Then the empty bin: skip its term and you silence the loudest drift
+# there is; take its logarithm as it stands and the answer is no longer a number. And a value
+# sitting exactly on an interior edge — which of its two neighbouring bins owns it?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate the edges, both samples and the floor before counting anything. Count each
+# flattened sample into the bins, sending a value on an edge to the bin above it. Divide each
+# count by the size of its OWN sample and raise both proportion arrays to at least the floor.
+# Then sum, bin by bin, the difference of the two proportions times the natural log of their
+# ratio, both taken current over reference as in the formula above. Drop either factor and
+# you have a one-sided divergence, which is not symmetric.
+# </details>
 
 # %%
 def psi(reference: np.ndarray, current: np.ndarray, edges: np.ndarray,
@@ -765,7 +846,7 @@ def _show_null_band() -> None:
     print(f"  anything above {band:.5f} is something this plant does not do by chance.")
 
 
-_try("null band", _show_null_band)
+_try("null band", _show_null_band, needs=("exercise 1", "exercise 2"))
 
 # %% [markdown]
 # ## 3b. Why the bins are quantiles
@@ -805,7 +886,8 @@ def _show_why_the_bins_are_quantiles() -> None:
     print("equal-mass rule is the one that behaves the same way on all three.")
 
 
-_try("why quantile bins", _show_why_the_bins_are_quantiles)
+_try("why quantile bins", _show_why_the_bins_are_quantiles,
+     needs=("exercise 1", "exercise 2"))
 
 # %% [markdown]
 # ## 4. Exercise 3 — `conditional_psi()`
@@ -821,6 +903,22 @@ _try("why quantile bins", _show_why_the_bins_are_quantiles)
 # drift in the work. One rule has no sensible answer: a regime the reference never contains.
 # You cannot condition on a duty point you have never measured a healthy machine at, and
 # pretending otherwise is how a cold start becomes a fleet-wide alarm.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two choices decide this function. Inside one regime, whose readings set the bins? If it is
+# not the reference readings at that regime, the bins move with the thing you are measuring.
+# And whose mix sets the weights? The current window's mix is exactly what you are trying to
+# condition away, so it cannot also decide how much each regime counts.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Check both value/regime pairs match in shape, then refuse any regime the current window
+# holds that the reference never did. For each regime present in both: build its bins from
+# its own reference readings with exercise 1, score its current readings with exercise 2,
+# and keep its reference count as the weight. Return the weighted average over the regimes
+# you actually scored; if there were none, raise.
+# </details>
 
 # %%
 def conditional_psi(reference: np.ndarray, reference_regime: np.ndarray,
@@ -939,6 +1037,22 @@ _try("exercise 3", _check_conditional_psi)
 # *unidentifiable*: "every sensor reads half a unit high" and "every machine is half a unit
 # worse" produce exactly the same feature distribution. A check standard is what breaks the
 # tie, which is why the instrument reports one and why section 6 consults it first.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The self-test is a different stream with its own centre and spread. Cut it with the health
+# index's bins and most of it falls into a bin or two, where a move is invisible. For the
+# conditional term, each window carries its own duty-point array: which one belongs beside
+# which readings?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# One field at a time. Marginal: exercise 2 on the two health arrays, over bins built from the
+# reference's health readings. Conditional: exercise 3 with each window's own health and
+# regime. Check: exercise 2 on the two check arrays, over bins built from the reference's
+# check readings. Median shift: current median minus reference median. Pass n_bins to every
+# bin set you build.
+# </details>
 
 # %%
 def drift_signature(reference: Window, current: Window, n_bins: int = N_BINS
@@ -1008,6 +1122,10 @@ _try("exercise 4", _check_drift_signature)
 # and the median shift that cannot separate any of them.
 
 # %%
+# Every demo from here on that scores a window against the reference needs these four.
+_FOR_SIGNATURES = ("exercise 1", "exercise 2", "exercise 3", "exercise 4")
+
+
 def _show_signatures() -> None:
     band = null_psi_band(REFERENCE)
     print(f"alert level (measured, section 3): {band:.5f}\n")
@@ -1024,7 +1142,7 @@ def _show_signatures() -> None:
     print("section is the rule that turns them into a name.")
 
 
-_try("signature table", _show_signatures)
+_try("signature table", _show_signatures, needs=_FOR_SIGNATURES)
 
 # %% [markdown]
 # ## 6. Exercise 5 — `diagnose_drift()`, and why the order of the tests is the lesson
@@ -1044,6 +1162,22 @@ _try("signature table", _show_signatures)
 # The last window in the table does both at once — a turnaround that swapped transmitters
 # *and* changed the duty mix. Test duty first and you call it a regime change and condition
 # on a lie.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# The turnaround window satisfies two rules at once. Which of the two makes the other
+# statistic untrustworthy? That answers the order. Then look at the three boundaries: a
+# marginal exactly on the alert level, a check exactly on it, a conditional exactly at the
+# fraction of the marginal. The docstring says which side of the line each one falls on.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate first: a negative alert level, a fraction not strictly between 0 and 1, any
+# negative PSI component. Then test in the order the section lists and return at the first
+# rule that fires: quiet, then the instrument, then duty, and only then the fleet. Use the
+# `explained_fraction` you were handed, never the module constant, and return the exact
+# strings in `DIAGNOSES`.
+# </details>
 
 # %%
 def diagnose_drift(signature: DriftSignature, psi_alert: float,
@@ -1182,7 +1316,7 @@ def _show_diagnoses() -> None:
     print("both are true. Only one of them is a reason to trust the other two statistics.")
 
 
-_try("diagnoses", _show_diagnoses)
+_try("diagnoses", _show_diagnoses, needs=_FOR_SIGNATURES + ("exercise 5",))
 
 # %% [markdown]
 # ## 7. Exercise 6 — `adjust_feature()`, the three fixes
@@ -1203,6 +1337,22 @@ _try("diagnoses", _show_diagnoses)
 # was derived in, so neither of them touches the threshold. Section 12 shows what happens
 # when you re-baseline against the *feature* instead of against the check, which is the
 # version most monitoring systems ship.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Each fix undoes exactly one thing. Duty belongs to an hour and an instrument's shift belongs
+# to a unit, so what shape is the thing you subtract in each case? For the two fixes that
+# leave the readings alone, what goes wrong in section 9 if you hand back the caller's own
+# array? And which way does a channel that reads high have to move?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate everything first. `none` and `reprice` return a float copy. `condition` looks up
+# each reading's own regime in the baseline's offsets and subtracts that, reading by reading.
+# `rebaseline` takes each unit's median self-test reading minus the kick-off check level as
+# that unit's shift and subtracts it from the whole of that unit's row — a median, so one
+# absurd self-test reading cannot move a healthy channel. Never write into `health`.
+# </details>
 
 # %%
 def adjust_feature(fix: str, health: np.ndarray, regime: np.ndarray, check: np.ndarray,
@@ -1326,7 +1476,7 @@ def _show_what_the_fixes_remove() -> None:
     print("make that untrue. Section 9 prices what happens when you try.")
 
 
-_try("what the fixes remove", _show_what_the_fixes_remove)
+_try("what the fixes remove", _show_what_the_fixes_remove, needs=("exercise 6",))
 
 # %% [markdown]
 # ## 8. Exercise 7 — `estimate_prices()`, the audit that closes the loop
@@ -1345,6 +1495,21 @@ _try("what the fixes remove", _show_what_the_fixes_remove)
 # The trap is the class with almost no rows. A no-fault-found call-out rarely reaches the
 # ledger, so `false_alarm` has a handful of entries and averaging them is worse than useless.
 # A class below `min_observations` keeps the kick-off guess **and says so**.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# What should a class with too few lines report: a number, or the guess plus an admission that
+# it is one? What does a class with no lines at all turn into if you average nothing, and what
+# does a zero price for a missed failure do to the threshold? And invoices are right-skewed:
+# is it the typical invoice or the average one that makes count times price equal the bill?
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Validate `min_observations` and every entry first. Walk `OUTCOMES` in order — `Prices` has
+# the same field order. For each outcome count its entries; if the count reaches the minimum
+# use the mean cost, otherwise keep the fallback's price for that field and add the outcome's
+# name to `still_guessed`. The counts always report what the audit holds, used or not.
+# </details>
 
 # %%
 TRUE_PLANNED = 11_800.0
@@ -1513,7 +1678,7 @@ def _show_the_audit() -> None:
           f"{ratio_guess:.1f} and measures {ratio_real:.1f}.")
 
 
-_try("the audit", _show_the_audit)
+_try("the audit", _show_the_audit, needs=("exercise 7",))
 
 # %% [markdown]
 # ## 9. Exercise 8 — `apply_fix()`, and the cost of the wrong fix
@@ -1523,6 +1688,22 @@ _try("the audit", _show_the_audit)
 # and it re-derives it on the **history** half of the fleet, never on the half it is about to
 # be scored on — a threshold fitted to the same rows it is graded on flatters every fix
 # equally and hides the whole point of the table.
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Two fleets arrive: one to fit on and one to be scored on. Which of the four fixes is allowed
+# to move the threshold, which fleet does it fit on, and at which prices: the ones frozen in
+# the baseline, or the ones you were handed? The cost at the end asks the same question about
+# prices again.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Adjust the window's feature with exercise 6. If the fix is `reprice`, adjust the history
+# window the same way and take the threshold from the given sweep on that history at the
+# prices passed in; for any other fix keep the baseline's threshold. Count the adjusted window
+# at that threshold with the lead time you were given, price the counts at the prices passed
+# in, and return the four fields together.
+# </details>
 
 # %%
 def apply_fix(fix: str, window: Window, history: Window, baseline: Baseline, prices: Prices,
@@ -1632,6 +1813,21 @@ _try("exercise 8", _check_apply_fix)
 # | `recalibration` | `rebaseline` | the instrument moved, so re-zero it against its check |
 # | `regime` | `condition` | the work moved, so compare like with like |
 # | `ageing` | `reprice` | the fleet moved, so the base rate moved, and the base rate is an input to the cost function |
+#
+# <details><summary>💡 Hint 1 — what to think about</summary>
+#
+# Every piece already exists; this exercise is wiring. Which of your own parameters does each
+# of the three calls need? A caller who passes a different `n_bins` or `explained_fraction`
+# sees no difference if one of your calls quietly uses the module constant instead, and that
+# is the mistake to avoid.
+# </details>
+# <details><summary>💡 Hint 2 — the approach, in words</summary>
+#
+# Build the signature against the reference with your `n_bins`, diagnose it with your
+# `psi_alert` and `explained_fraction`, look the diagnosis up in the table above to get its
+# fix, then apply that fix with the history, baseline, prices, thresholds and lead time you
+# were given. Return the diagnosis, the fix and the priced result together.
+# </details>
 
 # %%
 def respond_to_drift(window: Window, history: Window, reference: Window, baseline: Baseline,
@@ -1749,7 +1945,7 @@ def _show_matrix() -> None:
           f"failures. Nothing is wrong with the arithmetic. It is the wrong arithmetic.")
 
 
-_try("the matrix", _show_matrix)
+_try("the matrix", _show_matrix, needs=tuple(_EXERCISES))   # every exercise feeds it
 
 # %% [markdown]
 # One row of that table deserves a second look. On the **regime** window re-pricing lands on
@@ -1781,7 +1977,8 @@ def _show_the_regime_trap() -> None:
     print("what it was for. Conditioning carries the reason with it.")
 
 
-_try("the regime trap", _show_the_regime_trap)
+_try("the regime trap", _show_the_regime_trap,
+     needs=("exercise 6", "exercise 7", "exercise 8"))
 
 # %% [markdown]
 # ## 12. Closing the loop
@@ -1829,7 +2026,7 @@ def _close_the_loop() -> None:
           f"never travel without a label.")
 
 
-_try("closing the loop", _close_the_loop)
+_try("closing the loop", _close_the_loop, needs=("exercise 7",))
 
 # %% [markdown]
 # ## 13. Common mistakes
@@ -1893,7 +2090,8 @@ def _price_the_rolling_baseline() -> None:
     print(f"a time, and the alarm log will look quieter every year.")
 
 
-_try("the rolling baseline, priced", _price_the_rolling_baseline)
+_try("the rolling baseline, priced", _price_the_rolling_baseline,
+     needs=("exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ## 14. Self-check
@@ -1940,7 +2138,7 @@ def _self_check_numbers() -> None:
           f"history, arriving weeks late")
 
 
-_try("self-check numbers", _self_check_numbers)
+_try("self-check numbers", _self_check_numbers, needs=_FOR_SIGNATURES + ("exercise 7",))
 
 # %% [markdown]
 # 4. The alarm audit has four false-alarm lines and a minimum of five. Your price estimator
@@ -1992,7 +2190,7 @@ def _handover() -> None:
           f"{expected_cost(counts, audited.prices):,.0f}")
 
 
-_try("handover note", _handover)
+_try("handover note", _handover, needs=("exercise 1", "exercise 2", "exercise 7"))
 
 # %% [markdown]
 # ## What you built, and where it goes next
@@ -2016,19 +2214,46 @@ _try("handover note", _handover)
 # no meaning.
 
 # %%
+_MARKS = {"passed": "✅", "failed": "❌", "not started": "⏳"}
+
+
+def _progress_board() -> None:
+    """One line per exercise, from the latest run of its check, then the tally."""
+    width = max(len(", ".join(funcs)) for funcs in _EXERCISES.values())
+    print("progress board")
+    for label, funcs in _EXERCISES.items():
+        state = _STATUS.get(label, "not started")
+        print(f"  {_MARKS[state]} {label:<11} {', '.join(funcs):<{width}}  {state}")
+    done = sum(_STATUS.get(label) == "passed" for label in _EXERCISES)
+    print(f"\n{done} of {len(_EXERCISES)} exercises complete")
+    failing = [label for label in _EXERCISES if _STATUS.get(label) == "failed"]
+    if failing:
+        print("failing right now: " + ", ".join(failing) + ". Each one printed what went "
+              "wrong in its own cell above, and every exercise has hints you can open.")
+    elif done < len(_EXERCISES):
+        print("work top to bottom: every exercise has hints you can open above its code.")
+
+
+# Your progress board. Every check is re-run here, quietly, against your code as it stands
+# now — each one already printed its feedback in its own cell above — so the board is
+# current even if you edited an exercise and did not re-run its check.
 if __name__ == "__main__":
-    for _name, _check in (("exercise 1", _check_reference_bins),
-                          ("exercise 2", _check_psi),
-                          ("exercise 3", _check_conditional_psi),
-                          ("exercise 4", _check_drift_signature),
-                          ("exercise 5", _check_diagnose_drift),
-                          ("exercise 6", _check_adjust_feature),
-                          ("exercise 7", _check_estimate_prices),
-                          ("exercise 8", _check_apply_fix),
-                          ("exercise 9", _check_respond_to_drift)):
-        _try(_name, _check)
-    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f}s")
+    with contextlib.redirect_stdout(io.StringIO()):
+        for _name, _check in (("exercise 1", _check_reference_bins),
+                              ("exercise 2", _check_psi),
+                              ("exercise 3", _check_conditional_psi),
+                              ("exercise 4", _check_drift_signature),
+                              ("exercise 5", _check_diagnose_drift),
+                              ("exercise 6", _check_adjust_feature),
+                              ("exercise 7", _check_estimate_prices),
+                              ("exercise 8", _check_apply_fix),
+                              ("exercise 9", _check_respond_to_drift)):
+            _try(_name, _check)
+    _progress_board()
+    print(f"\nnotebook wall time so far: {time.perf_counter() - _LESSON_T0:.1f} s")
     # A stub you have not reached yet is not a failure. A check that ran and came back wrong
-    # is, and it ends this run non-zero rather than letting a green exit code paper over it.
-    if _FAILED_CHECKS:
+    # is: in a script or under CI it ends this run non-zero, rather than letting a green exit
+    # code paper over it. Inside a notebook kernel the board above has already said so, in a
+    # line rather than a traceback at the foot of the page.
+    if _FAILED_CHECKS and "ipykernel" not in sys.modules:
         raise SystemExit("checks failed: " + ", ".join(dict.fromkeys(_FAILED_CHECKS)))

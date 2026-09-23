@@ -303,5 +303,29 @@ reviewed_by: "independent review 2026-09-23: 4 gates re-run from the repo root (
 # half of the programme rather than lesson by lesson. programmes/ai-act-conformity/MODULES.md
 # still says "Four are built" and carries "specified" for modules 5 to 9; module 9's row
 # should read BUILT, 138 pts / 34 cases, with the measured figures below.
-measured_seconds: 2.6
+#
+# ---------------------------------------------------------------------------------------
+# GATE 14 (Run all is a good experience), 2026-09-23. The house _try from
+# P03-L01-alarm-economics replaces this lesson's two-state one: it records passed / failed /
+# not started per exercise, and a cell names the exercises it needs and skips until they
+# pass. The three demos (the table, two green packs, half a repair) need exercises 1-6 or
+# 1-8. Four CHECKS need earlier exercises too, because they run the student's own upstream
+# functions: exercise 2's check calls run_suite, and 6, 7 and 8 go through audit_repair. A
+# wrong run_suite would otherwise fail exercise 2 and blame inspect_pack. Every exercise has
+# two <details> hints taken from its own check messages and rubric hints. The last cell is a
+# progress board of the eight EXERCISES, deliberately not the pack's six checks, and
+# SystemExit fires only outside a kernel. One check message was made clearer (exercise 3's
+# "showed N removals" now also prints conserved=). No graded behaviour changed: stubs
+# 0/138, solution 138/138, before and after. verify_portable passes py311 + py312, and
+# --completed is identical across both.
+# Independent gate-14 review, 2026-09-23: every gate above re-run from the repo root and
+# matched. Board proven wired on a scratch copy: exercise 3 alone solved -> it shows passed
+# and the rest not started, and the waiting lists drop it; exercises 1-6 solved -> the table
+# and half a repair run, two green packs still waits on 7 and 8; exercise 3 made wrong
+# (n_before as the size of the difference) and exercise 1 made wrong (verdict ignoring
+# not_run) -> failed with the check's own message, exercise 2 waits on 1, no traceback in
+# the kernel, script exits 1. Hints: no code, no checked values, no solutions path. Two
+# corrected for accuracy: exercise 7's withdraw step takes a reason, not a date; exercise
+# 8's row fields are the four the docstring names, not the finding's first four keys.
+measured_seconds: 2.5
 measured_peak_mib: 62
