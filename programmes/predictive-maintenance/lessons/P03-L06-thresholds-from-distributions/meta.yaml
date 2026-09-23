@@ -9,6 +9,7 @@ language: python        # python | c | cpp
 prerequisites:
   - T00-L01-the-8gb-track
   - P03-L01-alarm-economics
+  - P03-L05-remaining-useful-life   # the RUL distribution this module prices; added in module order by the owner
 objectives:
   - "Implement expected_cost_at so a plan prices a failure at or before the booked hour separately from the remaining useful life thrown away when the intervention gets there first"
   - "Implement survival_and_hazard, and explain why the optimal intervention time is where the hazard reaches life_per_hour / (unplanned - planned), by checking that route against an independent cost sweep"
@@ -253,7 +254,7 @@ points: 122        # = sum of RUBRIC points in tests/test_lesson.py, 30 cases
 # scenario parameter the code then uses, not a result; no measured figure is typed anywhere.
 # Self-check answers remain c, a, b, a, c and no prose names a path under solutions/.
 #
-status: executed        # draft | executed | reviewed | shipped
+status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent review 2026-09-23 — 4 gates re-run green (execute PASS 0.8 s / 77 MiB vs 90 s / 8 GiB, solution 122/122, stub 0/122 across all 30 rubric rows); 44 mutants graded, 40 caught at 57-98% with partial credit and 4 survivors found to be RUBRIC DEFECTS and fixed (unclipped survival, the never-graded negative-probability guard, fleet_cost_matrix raising on any inf rather than a dead row, greedy's deleted all-infinite fallback), each now losing only its own row; 3 differently-shaped correct controls at 122/122 before and after; all 3 claims.yaml sources re-fetched and matched verbatim; 4 wrong section cross-references and 1 wrong typed count corrected in prose; P03-L05 has since appeared on disk as a draft, see difference 1 — owner to add the prerequisite when it reaches reviewed; prior: Author self-review 2026-09-22 — 4 gates green (execute PASS, 0.8-0.9 s and peak RSS 77 MiB across four runs against a 90 s / 8 GiB budget, the write-back below being the last, solution 122/122, stub file 0/122 with a TODO row for all 30 rubric entries, jupytext converts to 47 cells); 32 breaking mutants all caught at 57-98% with partial credit, 1 survivor found and fixed (a slackless quantile comparison, measured to disagree 794 times in 99,515 lookups and never by more than 3e-16) and 3 differently-shaped correct controls still at 122/122; both NIST quotes and the NASA PCoE disclaimer fetched and matched verbatim; prerequisite on P03-L05 deferred because that lesson is not on disk, see difference 1 above; needs an independent reviewer before status: reviewed"
 
 measured_seconds: 0.8

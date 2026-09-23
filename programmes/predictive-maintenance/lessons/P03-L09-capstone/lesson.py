@@ -79,8 +79,8 @@ print("ready on " + atlas_host() + ("; fetched " + ", ".join(_fetched) if _fetch
 # %% [markdown]
 # # P03-L09 · Capstone: a monitoring programme for one asset class
 #
-# **You will build:** not a model. A **monitoring programme** for one asset class — 140
-# boiler feed pumps — delivered as this runnable notebook *plus* a one-page specification,
+# **You will build:** not a model. A **monitoring programme** for one asset class — a fleet
+# of boiler feed pumps — delivered as this runnable notebook *plus* a one-page specification,
 # and graded on both. Seven things have to be in it, and every one of them is a decision you
 # have already made once in an earlier module:
 #
@@ -2017,7 +2017,7 @@ _try("the failures given up", _name_the_give_ups, needs=_FOR_POINT + ("exercise 
 # eight fractional bits. Two things follow, and both belong in the specification:
 #
 # - a causal median over `window` hours means keeping `window` readings per pump, for ever.
-#   Multiply by 140 pumps and the window is a memory decision, not a filter-design decision;
+#   Multiply by every pump in the fleet (`N_UNITS`) and the window is a memory decision, not a filter-design decision;
 # - the threshold you publish is not the threshold that runs. Q8.8 can hold only multiples
 #   of 1/256, so `1.25` survives the trip exactly and `1.40` and `1.15` do not. The gateway
 #   compares the nearest representable numbers, and the
@@ -2152,7 +2152,7 @@ _try("exercise 8", _check_deployment_report)
 
 # %% [markdown]
 # The window is the decision this makes visible. Offline it is a filter length; on the
-# gateway it is 140 pumps' worth of retained readings. Run the sweep: for each window, build
+# gateway it is `N_UNITS` pumps' worth of retained readings. Run the sweep: for each window, build
 # the feature, re-derive the cost-optimal threshold on it, and ask the gateway whether it
 # will hold.
 

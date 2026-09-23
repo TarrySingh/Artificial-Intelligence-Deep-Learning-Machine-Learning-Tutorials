@@ -9,6 +9,7 @@ language: python        # python | c | cpp
 prerequisites:
   - T10-L01-ai-act-conformity-pack
   - P01-L01-article-12-logging
+  - P01-L04-data-governance   # its support floor and name-it-not-drop-it rule are reused here by name
 objectives:
   - "Implement a paired percentile bootstrap and measure what resampling predictions independently of labels does to the interval of a model that is right about every row"
   - "Implement a declaration that refuses a bare point estimate, and declare the defensible end of the interval — the lower bound where higher is better, the upper bound where lower is better"
@@ -33,7 +34,7 @@ datasets:
       code against afterwards is named in claims.yaml with its real licence and direct URL; it
       is not on any path the grader needs.
 points: 132             # = sum of RUBRIC points in tests/test_lesson.py
-status: executed        # draft | executed | reviewed | shipped
+status: reviewed        # draft | executed | reviewed | shipped
 # Authoring notes, 2026-09-22/23.
 #
 # All four gates run from the repo root on the venv interpreter. The measured figures at the

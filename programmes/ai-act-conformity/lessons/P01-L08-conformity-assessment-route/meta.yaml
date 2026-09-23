@@ -34,7 +34,7 @@ datasets:
       provider, system or notified body is involved, and none of the figures the lesson
       prints is a claim about any real conformity assessment.
 points: 128             # = sum of RUBRIC points in tests/test_lesson.py
-status: executed        # draft | executed | reviewed | shipped
+status: reviewed        # draft | executed | reviewed | shipped
 # Authoring notes, 2026-09-22.
 #
 # All four gates were run from the repo root on the venv interpreter. The measured figures at
