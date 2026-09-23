@@ -114,7 +114,10 @@ MEASURE = re.compile(
     r"|KiB|MiB|GiB|kB|MB|GB|Hz|kHz|MHz|x|×"
     # rates of THIS machine. Not m/s: a simulated walking speed is a deterministic result.
     r"|(?:B|KB|kB|MB|GB|KiB|MiB|GiB|bytes|steps|it|samples|calls|ticks|rows|records|tokens"
-    r"|docs|documents|captures|readings|lines|fields|events|merges)/s)(?![\w/])")
+    r"|docs|documents|captures|readings|lines|fields|events|merges|rollouts|symbols)/s"
+    # time per unit of work on THIS machine: "0.673 us/tick", "12 ns/record"
+    r"|(?:s|ms|us|µs|ns)/(?:tick|step|call|iter|iteration|item|row|record|doc|document|sample"
+    r"|token|merge|byte|op|frame)s?)(?![\w/])")
 BUILD_JUNK = shutil.ignore_patterns("lesson_bin", "lesson_bin *", "*.o", "*.dSYM", "__pycache__",
                                     "* [0-9]", "* [0-9].*", "lesson.ipynb", "build", ".ipynb_checkpoints")
 

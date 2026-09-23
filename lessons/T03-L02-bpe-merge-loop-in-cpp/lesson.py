@@ -337,10 +337,10 @@ def python_scaling(fractions=(0.25, 0.5, 1.0), merges: int = 30) -> list:
 
 
 if __name__ == "__main__":
-    print(f"{'bytes':>8} {'symbols':>9} {'seconds':>8} {'ns/symbol/merge':>16}")
+    print(f"{'bytes':>8} {'symbols':>9} {'time':>9} {'per symbol, per merge':>22}")
     for _row in python_scaling():
-        print(f"{_row['bytes']:8d} {_row['symbols']:9d} {_row['seconds']:8.3f}"
-              f" {_row['ns_per_symbol_per_merge']:16.1f}")
+        print(f"{_row['bytes']:8d} {_row['symbols']:9d} {_row['seconds']:7.3f} s"
+              f" {_row['ns_per_symbol_per_merge']:19.1f} ns")
     print("\nSeconds roughly double when the corpus doubles. The last column is flat, and it")
     print("is the constant you are about to attack: the cost of one symbol, one time, here.")
 
@@ -788,10 +788,10 @@ def _show_scaling() -> None:
     cpp_rows = cpp_scaling()
     py_rows = python_scaling()
     print("per symbol, per merge — the only column that can tell a constant from a curve")
-    print(f"{'symbols':>9} {'python ns':>11} {'c++ ns':>9} {'ratio':>9}")
+    print(f"{'symbols':>9} {'python':>11} {'c++':>11} {'ratio':>9}")
     for p, c in zip(py_rows, cpp_rows):
-        print(f"{c['symbols']:9d} {p['ns_per_symbol_per_merge']:11.1f}"
-              f" {c['ns_per_symbol_per_merge']:9.1f}"
+        print(f"{c['symbols']:9d} {p['ns_per_symbol_per_merge']:8.1f} ns"
+              f" {c['ns_per_symbol_per_merge']:8.1f} ns"
               f" {p['ns_per_symbol_per_merge'] / c['ns_per_symbol_per_merge']:8.1f}x")
     print("\nRead the two middle columns DOWN, not across. Each is roughly flat as the corpus")
     print("grows, and that flatness is the straight line — the same line in both languages.")

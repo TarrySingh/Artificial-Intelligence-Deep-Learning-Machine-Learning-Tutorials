@@ -12,6 +12,9 @@
 // Moved or copied this checkout? Run `make clean` first. See the common-mistakes section of
 // the notebook for why.
 
+/* clock_gettime and CLOCK_MONOTONIC are POSIX, not ISO C. Under -std=c11, glibc (Linux)
+   hides them unless asked before the first header; macOS shows them regardless. */
+#define _DEFAULT_SOURCE
 #include <float.h>
 #include <math.h>
 #include <setjmp.h>

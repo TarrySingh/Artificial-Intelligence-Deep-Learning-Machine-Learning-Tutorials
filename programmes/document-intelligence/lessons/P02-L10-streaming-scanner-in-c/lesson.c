@@ -16,6 +16,9 @@
  * of the notebook measure both on your machine, and those measured numbers are the only ones
  * you should ever quote.
  */
+/* clock_gettime and CLOCK_MONOTONIC are POSIX, not ISO C. Under -std=c11, glibc (Linux)
+   hides them unless asked before the first header; macOS shows them regardless. */
+#define _DEFAULT_SOURCE
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>

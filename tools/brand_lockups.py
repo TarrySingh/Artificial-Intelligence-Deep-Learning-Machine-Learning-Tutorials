@@ -12,6 +12,7 @@ synapse curve, "Synapsa" in Geist 700 at 26 px with -0.04em tracking. "Commons" 
   synapsa-commons-dark.png    white ink and the brand's on-dark blue and saffron
   synapsa-commons-badge.png   the light lockup on a white rounded tile, which reads on both
                               notebook themes -- used at the top of every lesson.ipynb
+  social-preview.png          1280 x 640, the card shown when the repository is shared
 
 Text is drawn as glyph outlines, so the PNGs do not depend on Geist being installed where they
 are viewed. Geist (SIL Open Font Licence) is fetched from Google Fonts into a temporary directory.
@@ -88,6 +89,67 @@ def draw(name, fonts, ink, blue, saffron, stroke, bg=None):
     print(f"  wrote brand/{name}.png  ({round(W) * 2} x {H * 2} px)")
 
 
+COURSES = ("EU AI Act conformity", "Model risk", "Predictive maintenance",
+           "Document intelligence", "Humanoid lab")
+
+
+def measure(s, prop, size):
+    """Advance width of a whole string, spaces included (a trailing bar gives spaces an extent)."""
+    bar = TextPath((0, 0), "|", size=size, prop=prop).get_extents()
+    return TextPath((0, 0), s + "|", size=size, prop=prop).get_extents().x1 - bar.width
+
+
+def text(ax, x, y, s, prop, size, colour):
+    """A whole line as one outline, so the font's own spacing and kerning apply; returns the end x."""
+    place = Affine2D().scale(1, -1).translate(0, y)
+    ax.add_patch(PathPatch(place.transform_path(TextPath((x, 0), s, size=size, prop=prop)),
+                           fc=colour, ec="none"))
+    return x + measure(s, prop, size)
+
+
+def social(fonts):
+    """brand/social-preview.png, 1280 x 640: the card GitHub shows when the repository is shared.
+    Pure black canvas, brand colour only in the mark (the handover's rules 4 and 9)."""
+    regular, bold = fonts
+    W, H, M = 1280, 640, 88
+    fig = plt.figure(figsize=(W / 100, H / 100), dpi=100)
+    ax = fig.add_axes([0, 0, 1, 1])
+    ax.set_xlim(0, W); ax.set_ylim(H, 0); ax.axis("off")
+    ax.add_patch(plt.Rectangle((0, 0), W, H, fc="#000000", ec="none"))
+    # the lockup, scaled 1.5x from the wordmark geometry
+    k, top = 1.5, 72
+    ax.add_patch(Circle((M + 13 * k - 4 * k, top + 24 * k), 9 * k, fc=hsl(228, 100, 64), ec="none"))
+    ax.add_patch(Circle((M + 32 * k - 4 * k, top + 24 * k), 5 * k, fc=hsl(34, 100, 60), ec="none"))
+    x0 = M - 4 * k
+    ax.add_patch(PathPatch(MPath([(x0 + 22 * k, top + 24 * k), (x0 + 27 * k, top + 16 * k), (x0 + 31 * k, top + 24 * k)],
+                                 [MPath.MOVETO, MPath.CURVE3, MPath.CURVE3]),
+                           fc="none", ec="#ffffff", lw=2.8 * k * 72 / 100, capstyle="round"))
+    place = Affine2D().scale(k, -k).translate(x0 + 52 * k, top + 32 * k)   # the lockup's own tracking
+    word, xe = tracked("Synapsa", bold, 0)
+    word2, _ = tracked("Commons", regular, xe + 0.28 * SIZE)
+    for p in word + word2:
+        ax.add_patch(PathPatch(place.transform_path(p), fc="#ffffff", ec="none"))
+    # the thesis
+    text(ax, M, 292, "Free, hands-on AI courses", bold, 64, "#ffffff")
+    text(ax, M, 370, "that run anywhere.", bold, 64, "#ffffff")
+    text(ax, M, 430, "Autograded notebooks for Colab, Kaggle, Binder, Codespaces and Jupyter.",
+         regular, 25, hsl(0, 0, 70))
+    # the courses, as quiet outlined chips
+    x, y, h = M, 492, 44
+    for c in COURSES:
+        w = measure(c, regular, 20) + 36
+        if x + w > W - M:
+            x, y = M, y + h + 14
+        ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=22",
+                                    fc="#000000", ec=hsl(0, 0, 32), lw=1.2))
+        text(ax, x + 18, y + 29, c, regular, 20, hsl(0, 0, 88))
+        x += w + 12
+    text(ax, M, 598, "From the team building Synapsa  \u00b7  synapsa.realai.eu", regular, 20, hsl(0, 0, 55))
+    fig.savefig(OUT / "social-preview.png", dpi=100, facecolor="#000000")
+    plt.close(fig)
+    print("  wrote brand/social-preview.png  (1280 x 640 px)")
+
+
 def main():
     OUT.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
@@ -95,6 +157,7 @@ def main():
         draw("synapsa-commons-light", fonts, "#000000", hsl(228, 95, 54), hsl(34, 95, 56), "#000000")
         draw("synapsa-commons-dark", fonts, "#ffffff", hsl(228, 100, 64), hsl(34, 100, 60), "#ffffff")
         draw("synapsa-commons-badge", fonts, "#000000", hsl(228, 95, 54), hsl(34, 95, 56), "#000000", bg="#ffffff")
+        social(fonts)
 
 
 if __name__ == "__main__":

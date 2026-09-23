@@ -8,6 +8,9 @@
 // watch the TODOs turn into PASSes. Everything below the three exercises is the harness; it
 // is given, and it is worth reading, because it is the shape every control loop has.
 
+/* clock_gettime and CLOCK_MONOTONIC are POSIX, not ISO C. Under -std=c11, glibc (Linux)
+   hides them unless asked before the first header; macOS shows them regardless. */
+#define _DEFAULT_SOURCE
 #include <mujoco/mujoco.h>
 
 #include <math.h>
