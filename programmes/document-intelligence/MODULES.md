@@ -32,78 +32,102 @@ inside its lesson from a fixed seed. The labs below are designed within that, no
 
 ## Module 1 — Field extraction you can measure: build the evaluation harness before the extractor
 
-**Status: BUILT.** `lessons/P02-L01-extraction-evaluation/` · tier `cpu8` · measured 0.2 s,
-29 MiB · 84 rubric points across 21 autograded cases · prerequisite `T00-L01-the-8gb-track`.
+`lessons/P02-L01-extraction-evaluation/` · tier `cpu8` · prerequisites `T00-L01-the-8gb-track`
 
-**The lab.** The student is handed 180 short synthetic remittance advices with gold labels, and
-a deliberately mediocre stand-in extractor with a seeded, documented error model — it reformats
-dates and amounts into its own house style, drops fields, invents payment terms that were never
-printed, smudges a supplier name the way a scan does, and substitutes a digit in an amount. They
+**The lab.** The student is handed 180 short synthetic remittance advices with gold labels,
+generated inside the lesson from a fixed seed, and a deliberately mediocre stand-in extractor
+with a seeded, documented error model — it reformats dates and amounts into its own house
+style, drops fields, invents payment terms that were never printed, smudges a supplier name the
+way a scan does, and gets a digit wrong in an amount, an invoice number or a payment term. They
 then implement, in pure numpy and stdlib:
 
 1. `normalise_value` — a per-field-type normalisation policy (money, date, id, integer, text),
    including the trap that a comma is a thousands separator in one convention and a decimal
-   point in another.
-2. `match_value` — exact, normalised and fuzzy matching, with fuzzy confined to text fields.
-   They then run a cell that counts how many genuinely wrong amounts a fuzzy money matcher
-   would wave through on this corpus.
+   point in another: a lone comma is decimal only when one or two digits follow it and end the
+   number.
+2. `match_value` — exact, normalised and fuzzy matching, with fuzzy confined to text fields and
+   its threshold inclusive. A later cell counts how many genuinely wrong amounts a fuzzy money
+   matcher would wave through on this corpus.
 3. `score_field` and `macro_f1` — per-field precision, recall and F1, where a wrong value counts
    as both a false positive and a false negative, and an unweighted macro average that refuses
    to let the field on every page bury the rare one.
 4. `classify_cell` and `confusion_by_field_type` — five mutually exclusive labels per cell
-   (correct, miss, spurious, wrong value, true negative), aggregated by field *type*, so one F1
-   number becomes a work order.
+   (correct, miss, spurious, wrong value, true negative), aggregated by field *type* under the
+   matching mode it is given, so one F1 number becomes a work order.
 5. `review_queue` and `apply_reviews` — a confidence-ordered routing policy under a fixed
-   budget, with a deterministic tie-break, that must not mutate the records it scores.
+   budget in which every cell is a candidate, a confident silence included, ties break on
+   `(doc_id, field)`, and corrections land in new records rather than the ones being scored.
 
 They finish by sweeping the budget and reading a quality/cost table: macro F1 against a random
 routing control, cost per document from placeholder rates they are told to replace, and the
 marginal F1 bought per unit of cost. On this corpus the yield *rises* then falls, because the
-lowest-confidence cells are all misses and the next band contains the wrong values — and fixing
-a wrong value is worth strictly more than fixing a miss. That is measured in the notebook, not
+lowest-confidence cells are all misses and the next band brings in wrong values — and fixing a
+wrong value is worth strictly more than fixing a miss. That is measured in the notebook, not
 asserted.
 
-**Why this is module 1 rather than module 3.** Published evidence puts the residual difficulty
-of contract extraction in exactly the fields normalisation governs (see `claims.yaml`). A
-student who has not written the normaliser cannot tell a formatting difference from a defect,
-and will spend the rest of the programme filing bugs against models that were already right.
+**Why this is module 1 rather than module 3.** A May 2026 study of structured contract
+extraction found its domain-trained model weakest on currency fields requiring normalisation,
+and scored its models with no currency parsing at all (both are sourced in the
+lesson's `claims.yaml`). A student who has not written the normaliser cannot tell a formatting
+difference from a defect, and will spend the rest of the programme filing bugs against models
+that were already right.
 
 ---
 
 ## Module 2 — Ingestion and layout without a PDF library
 
-**Status: BUILT.** `lessons/P02-L02-layout-reading-order/` · tier `cpu8` · measured 0.2 s,
-31 MiB · 94 rubric points across 23 autograded cases.
+`lessons/P02-L02-layout-reading-order/` · tier `cpu8` · prerequisites `T00-L01-the-8gb-track`,
+`P02-L01-extraction-evaluation`
 
-**Lab:** reading order from geometry. The student is given synthetic pages as
-token boxes (text, x, y, width, height, page) covering single-column, two-column and
-table-bearing layouts. They implement recursive XY-cut segmentation, a reading-order sort within
-each block, and a header/footer detector; then score their reading order against the gold
-sequence with Kendall's tau and a block-level boundary F1, using the harness from module 1. They
-finish by measuring how much field-extraction F1 moves when reading order is wrong, which is the
-argument for caring about layout at all.
+**Lab:** reading order from geometry. The student is given synthetic pages, laid out inside the
+lesson from a fixed seed, as token boxes (`text`, `x`, `y`, `w`, `h`, `page`) covering
+single-column, two-column and table-bearing layouts. They implement recursive XY-cut
+segmentation (`find_gaps`, `xy_cut`), a lines-first sort within each block
+(`order_within_block`) and a header/footer detector that masks digits (`detect_header_footer`);
+then score their reading order against the gold sequence with Kendall's tau and a block-level
+boundary F1 (`kendall_tau`, `boundary_f1`), and must show a setting where the two disagree: a
+page shredded into blocks keeps a perfect tau. They finish by measuring, with module 1's scorer
+reproduced inside the lesson, how much field-extraction F1 moves when reading order is wrong —
+naive raster order scores 0.745 against 1.000 for gold order — which is the argument for caring
+about layout at all.
 
 ## Module 3 — From rules to a tagger: sequence labelling over document tokens
 
-**Status: BUILT.** `lessons/P02-L03-sequence-labelling/` · tier `cpu8` · measured 0.7 s,
-34 MiB · 90 rubric points across 20 autograded cases.
+`lessons/P02-L03-sequence-labelling/` · tier `cpu8` · prerequisites `T00-L01-the-8gb-track`,
+`P02-L01-extraction-evaluation`, `P02-L02-layout-reading-order`
 
-**Lab:** implement an averaged structured perceptron in numpy over BIO tags on
-the module 2 token stream, with hand-built features (shape, prefix, neighbouring token,
-line position). Train it, then score it with module 1's harness — same scorer, different
-extractor, which is the whole point. They compare against the rule-based baseline on the same
-axes and identify which field types the tagger actually improved.
+**Lab:** build an averaged structured perceptron in numpy over BIO tags on a document token
+stream by implementing its parts: the features (`word_shape`, `token_features` — shape, affix,
+neighbouring token, line head, line position and one `head|shape` conjunction), `decode_spans`,
+`sequence_scores`, `viterbi_decode` and `perceptron_update`, whose transition half is graded
+because one wrong tag breaks two bigrams. The training loop and the weight averaging are given.
+Train it, then score it on held-out suppliers with module 1's harness — same
+scorer, different extractor, which is the whole point — and compare it field by field with a
+given rule-based baseline (`improvement_table`, `fields_improved`) to identify which field types
+the tagger actually improved; here it still loses to the rule on counterparty. Two deliberate
+departures: the token stream is regenerated inside the lesson from a fixed seed rather than
+imported from module 2, since a student bundle is one lesson directory, and the weights are
+averaged once per training document rather than once per update. One unplanned result is kept
+in the open: greedy decoding beats Viterbi on held-out macro F1, because the learned transitions
+cut the longer held-out supplier names short.
 
 ## Module 4 — Table extraction: structure and content are two different scores
 
-**Status: BUILT.** `lessons/P02-L04-table-extraction/` · tier `cpu8` · measured 7.3 s,
-30 MiB · 94 rubric points across 21 autograded cases.
+`lessons/P02-L04-table-extraction/` · tier `cpu8` · prerequisites `T00-L01-the-8gb-track`,
+`P02-L01-extraction-evaluation`, `P02-L02-layout-reading-order`, `P02-L03-sequence-labelling`
 
-**Lab:** reconstruct rows and columns from token geometry by projection
-profiling and clustering, handle a spanning header and a row split across a page break, then
-implement two scorers — cell-content F1 and a structure score in the spirit of TEDS — and show a
-case where content is nearly perfect while structure is wrong, and a case where the reverse is
-true. Ends with a rule for which of the two your downstream consumer actually needs.
+**Lab:** on synthetic two-page tables laid out inside the lesson from a fixed seed rather than
+imported from module 2, reconstruct rows and columns with one projection profile (`ink_runs`)
+on both axes — `row_bands` on y, and columns on x read from body ink only, because a spanning
+header's continuous ink hides the gaps beneath it. `cells_in_band` must cluster a band into
+cells before assigning columns, and `merge_continuations` stitches a row split across a page
+break, matching cells on `(col, colspan)`. Then two scorers, `content_f1` over the multiset of
+cell texts and `teds_like` (built on `row_distance`, with a text-blind TEDS-Struct variant), and
+a case where content is perfect while structure is wrong — every body row cut in two scores
+content F1 1.000, TEDS-Struct 0.367 — and a case where the reverse is true. Ends with a rule: name the
+consumer, and gate on the smallest set of scores that catches the defects that would break it.
+`teds_like` is deliberately not TEDS — a two-level alignment over rows and cells, no rowspan,
+clamped at zero — and the lesson says where the resemblance ends.
 
 ## Module 5 — Contract clause classification and calibrated abstention *(specified)*
 
@@ -148,15 +172,21 @@ recommendation a finance partner would sign.
 
 ## Module 10 — The scanner in C: fixed memory over an unbounded export
 
-**Status: BUILT.** `lessons/P02-L10-streaming-scanner-in-c/` · tier `cpu8`, language **C** ·
-measured 4.3 s, 65 MiB · 39 rubric points across 12 autograded cases.
+`lessons/P02-L10-streaming-scanner-in-c/` · tier `cpu8` · prerequisites `T00-L01-the-8gb-track`,
+`P02-L01-extraction-evaluation`
 
-**Lab:** implement a streaming field scanner over a multi-gigabyte
-synthetic document export in C, in constant memory, with explicit handling of quoted fields,
-embedded newlines and a truncated final record; graded by a test binary built with `clang` and
-`make`. They measure throughput and peak RSS against the Python version from module 1 and learn
-where the factor comes from. Per `QUALITY.md`, this module's common-mistakes section must tell
-students to run `make clean` after moving or rebuilding their checkout.
+**Lab:** implement, in `lesson.c`, a streaming field scanner in constant memory over a synthetic
+export the program generates from a fixed seed: `field_push` (a fixed buffer, overflow counted
+per field, not per byte), `field_complete`, `scan_chunk` (quoted fields, escaped quotes and
+embedded newlines, with counters that must not depend on where the stream was split — graded
+down to one-byte chunks) and `scan_finish` (a truncated final record versus a legal one with no
+trailing newline). It is built with `make` and graded against a Python oracle on identical
+bytes, and on peak RSS staying flat as the export grows. They measure throughput and peak RSS
+against that Python scanner and learn where each factor comes from: C buys the throughput, the
+chunk loop the memory. Two departures: the Python scanner is the one given in this lesson,
+since module 1 has no scanner, and the export stops short of multiple gigabytes, because the flat
+memory line is already unambiguous. Its common-mistakes section tells students to run
+`make clean` after moving or rebuilding their checkout, as `QUALITY.md` requires.
 
 ## Module 11 — Capstone: the conformity pack *(specified)*
 
@@ -170,8 +200,7 @@ from the artefacts supplied — which is the only definition of "documented" tha
 
 ## Build order for later waves
 
-Modules 2, 3 and 4 next: they are the extractor side, and they are the ones module 1's harness
-was built to judge. Then 6 and 7 (the human and statistical honesty pair), then 8 and 9 (the
-operations pair), then 10, then the capstone. Modules 5 and 10 are the two with real
-implementation risk inside this environment's package set and should be prototyped before they
-are promised to anyone.
+Of the modules still specified, 6 and 7 come next (the human and statistical honesty pair),
+then 8 and 9 (the operations pair), then the capstone. Module 5 carries real implementation
+risk inside this environment's package set and should be prototyped before it is promised to
+anyone.
