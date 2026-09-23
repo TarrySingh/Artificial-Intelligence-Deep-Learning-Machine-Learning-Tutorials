@@ -982,9 +982,9 @@ def _show_memory() -> None:
               "from a clone of the repository to measure all three rows.")
         return
     print(f"ru_maxrss unit measured as {rss_scale()} byte(s) per unit\n")
-    print(f"{'how the export was read':<32} {'peak RSS (MiB)':>15}")
+    print(f"{'how the export was read':<32} {'peak RSS':>15}")
     for row in memory_report():
-        print(f"{row['how']:<32} {row['peak_mib']:15.1f}")
+        print(f"{row['how']:<32} {row['peak_mib']:11.1f} MiB")
     print(f"\nThe export is {RACE_BYTES / (1 << 20):.0f} MiB. The third row carries it, plus a")
     print("Python list object per line and per field, and it is also WRONG — it splits inside")
     print("quotes. The second row is Python and is flat. Streaming is an algorithm, not a")

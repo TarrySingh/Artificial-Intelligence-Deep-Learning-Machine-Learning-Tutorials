@@ -700,7 +700,7 @@ def _show_observer_effect() -> None:
     traced = measure(sum_squares_list, N_DEMO).wall_s
     print(f"sum_squares_list, tracemalloc off: {untraced:.3f}s")
     print(f"sum_squares_list, tracemalloc on:  {traced:.3f}s")
-    print(f"tracing cost a factor of {traced / untraced:.1f} on this workload")
+    print(f"tracing made this workload {traced / untraced:.1f}x slower")
     print("\nthe ranking in the table above survives this; the absolute seconds do not.")
     print("tools/execute.py times a lesson with tracing OFF, in a fresh process, which is why")
     print("its wall-clock number — not this one — is what the budget is written against.")
