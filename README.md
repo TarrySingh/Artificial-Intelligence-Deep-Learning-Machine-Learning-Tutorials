@@ -1,17 +1,48 @@
-# The AI Atlas — wave 1 (pre-alpha, unpublished)
+# The AI Atlas (pre-alpha, unpublished)
 
-Local build only. Nothing here has been pushed to any GitHub repository, and the repo
-strategy and history purge are still open decisions.
+Hands-on AI lessons you *do* rather than read: every lesson is a notebook with exercises to fill
+in, instant feedback as you go, hints when you are stuck, an autograded rubric with partial
+credit, and a worked solution. Some lessons are C or C++ exercises, built and graded the same way.
 
-- `QUALITY.md` — the 12 gates every lesson must pass, and the language policy.
-- `tools/` — the autograder (`grade.py`), the execution gate (`execute.py`), lesson template.
-- `flagships/` — flagship subtrees, each with its own README and lessons.
-- `lessons/` — track lessons.
-- `programmes/` — industry-vertical programmes.
+Local build only. Nothing here has been pushed to any GitHub repository, and the repository
+strategy and history purge are still open decisions. Until it is published,
+the "Open in" badges at the top of each notebook point at addresses that do not exist yet.
 
-Run a lesson's grader:   `python tools/grade.py flagships/<id>/lessons/<lesson>`
-Run the execution gate:  `python tools/execute.py flagships/<id>/lessons/<lesson> --write-back`
-Verify the whole repo:   `python tools/verify_all.py`
+## Start a lesson
+
+Open any `lesson.ipynb` — in Google Colab, Kaggle, Binder, GitHub Codespaces, or local Jupyter.
+Its first code cell installs anything the lesson needs that your environment lacks and fetches any file
+it needs beside it; where everything is already present, that cell does nothing.
+
+Then press **Run all**. Before you have written a line, every cell still runs: each unfinished
+exercise says it is not implemented yet, and the notebook ends with a progress board. Fill in an
+exercise, re-run its cell, and its check tells you whether you are right — and if not, what the
+likely mistake is. Each exercise has two hints, hidden until you open them.
+
+To work locally instead:
+
+    python -m venv .venv && .venv/bin/pip install -r requirements.txt
+    .venv/bin/jupyter lab
+
+Anything a lesson measures on your machine — a time, a memory peak — is printed with its unit
+and will differ from ours. Every other number a finished lesson prints is identical on Python
+3.11 and 3.12 — measured on macOS; the Linux CI proves the same once the repository is public.
+
+## For maintainers
+
+- `QUALITY.md` — the 14 gates every lesson passes, and the language policy.
+- `lessons/`, `flagships/`, `programmes/` — track lessons, flagship subtrees, industry programmes.
+  Each programme's `MODULES.md` is its map: what is built and what is only specified.
+- `tools/`:
+  - `execute.py` runs a lesson's solution within its declared budget and writes back what it measured;
+  - `grade.py` runs the autograder (`--solution` grades the reference);
+  - `notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift);
+  - `verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and 3.12;
+  - `build_student_bundle.py` builds what a student receives and fails on any solution leak;
+  - `status.py` generates the status tables below and in each `MODULES.md`;
+  - `verify_all.py` runs gates 1-12 on every lesson.
+
+`.github/workflows/lessons.yml` runs all of it on Linux once the repository is on GitHub.
 
 ## What exists today
 

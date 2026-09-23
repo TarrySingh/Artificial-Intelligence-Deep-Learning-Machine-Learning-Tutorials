@@ -17,7 +17,9 @@ matplotlib==3.11.2
 mujoco==3.13.0          # humanoid-lab flagship
 tokenizers==0.23.2      # T03 tokenisation lessons
 pyyaml==6.0.3
-# notebook + authoring tools
+# notebook + authoring tools. jupyterlab is the interface a student opens locally; it prints
+# nothing a lesson measures, so it is left unpinned.
+jupyterlab
 jupytext==1.19.5
 ipykernel
 nbclient
