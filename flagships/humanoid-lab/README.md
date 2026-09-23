@@ -91,8 +91,9 @@ could be verified on the day.
 # the autograder, against your own work
 .venv/bin/python tools/grade.py flagships/humanoid-lab/lessons/<lesson-id>
 
-# turn the source of truth into a student notebook
-.venv/bin/jupytext --to ipynb flagships/humanoid-lab/lessons/<lesson-id>/lesson.py
+# regenerate the student notebook from lesson.py (never run jupytext directly: its random
+# cell ids make the committed notebook look stale to tools/notebooks.py --check)
+.venv/bin/python tools/notebooks.py --build flagships/humanoid-lab/lessons/<lesson-id>
 ```
 
 `lesson.py` is the source of truth; the `.ipynb` is generated and never hand-edited.

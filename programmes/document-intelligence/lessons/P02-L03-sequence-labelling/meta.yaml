@@ -112,8 +112,14 @@ points: 90              # = sum of RUBRIC points in tests/test_lesson.py
 # `_check_improvement` assertion had no failure message.
 # Reported by the reviewer and since resolved by the owner: the directory and `id` were the bare
 # `P02-L03`, where every sibling uses a descriptive slug; both are now `P02-L03-sequence-labelling`.
-# Still open, and the owner's call: the closing prose run (post-Viterbi discussion + a six-question
-# self-check) is 70 lines against a 39-41 line house maximum in the three sibling lessons.
+# Gate 3, fixed 2026-09-23: the closing prose run (post-Viterbi discussion + the six-question
+# self-check + the scorecard's lead-in) was 56 non-blank lines. A span-length cell now follows
+# the discussion and tests its own claim (measured: every Viterbi span-length error on the
+# disputed field is short, and greedy makes none), and the scorecard's framing sits after the
+# scorecard. Longest run now 40, the self-check itself (question 4's stem tightened to one line).
+# Re-reviewed the same day: tests/ and claims.yaml untouched, stub 0/90 before and after,
+# solution 90/90, the new cell's shared text identical in lesson.py and the solution; question
+# 4's one-line stem reworded to fit the lesson's 96-column prose width rather than run past it.
 status: reviewed        # draft | executed | reviewed | shipped
 reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16 — four gates re-run; 22 mutants graded, 19 died as authored, 2 rubric defects found and fixed (decode_spans O-boundary, improvement_table mode pass-through), 1 survivor proved out-of-contract by measurement; all four claims.yaml sources re-fetched and quotes confirmed."
 measured_seconds: 0.8

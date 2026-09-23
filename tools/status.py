@@ -106,7 +106,7 @@ def readme_region() -> str:
         rows.append(f"| `flagships/{fl.name}` | {ok} lessons{' + capstone' if (fl / 'capstone').is_dir() else ''} | — |")
     ds, ok = count("lessons/*/")
     total += len(ds)
-    rows.append(f"| `lessons/` — track openers | {ok} | the rest of every track |")
+    rows.append(f"| `lessons/` — track lessons | {ok} | — |")
     for prog in sorted(ROOT.glob("programmes/*/")):
         r = programme_rows(prog)
         b = sum(x[2] == "**built**" for x in r)

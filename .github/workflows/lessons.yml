@@ -1,4 +1,4 @@
-# Every gate, on Linux -- which is what Colab, Kaggle, Binder and Codespaces all run.
+# The gates, on Linux -- which is what Colab, Kaggle, Binder and Codespaces all run.
 # The lessons are developed on macOS; this workflow is the only thing that proves they work
 # where students actually open them.
 #
@@ -16,16 +16,24 @@ on:
 
 jobs:
   gates:
-    name: four gates, notebook sync, student bundles
+    name: lesson gates, notebook sync, student bundles
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+          filter: blob:none
+          sparse-checkout: |
+            lessons
+            programmes
+            flagships
+            tools
+            brand
       - uses: astral-sh/setup-uv@v6
       - name: environment (pinned, as measured)
         run: |
           uv venv --python 3.12 .venv
           uv pip install --python .venv/bin/python -r requirements.txt
-      - name: gates 1-12 on every lesson
+      - name: every machine-checkable gate on every lesson (see tools/verify_all.py)
         run: .venv/bin/python tools/verify_all.py
       - name: committed notebooks match their lesson.py
         run: .venv/bin/python tools/notebooks.py --check
@@ -45,6 +53,14 @@ jobs:
           - { env: py312, python: "3.12" }   # Colab-like
     steps:
       - uses: actions/checkout@v4
+        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+          filter: blob:none
+          sparse-checkout: |
+            lessons
+            programmes
+            flagships
+            tools
+            brand
       - uses: astral-sh/setup-uv@v6
       - name: a deliberately minimal notebook environment -- no mujoco, no tokenizers
         run: |
@@ -61,6 +77,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+          filter: blob:none
+          sparse-checkout: |
+            lessons
+            programmes
+            flagships
+            tools
+            brand
       - uses: astral-sh/setup-uv@v6
       - name: both minimal environments
         run: |
@@ -72,13 +96,21 @@ jobs:
       - run: python3 tools/verify_portable.py --completed --reset
 
   live-links:
-    # The badges and the launcher's raw URLs point at `main`. On a pull request they would
-    # fetch main's files, not the branch's, so the real URLs are tested only on main itself.
+    # The badges and the launcher's raw URLs point at the default branch. On a pull request they
+    # would fetch that branch's files, not the PR's, so the real URLs are tested only there.
     name: badges and raw URLs resolve
-    if: github.ref == 'refs/heads/main'
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+          filter: blob:none
+          sparse-checkout: |
+            lessons
+            programmes
+            flagships
+            tools
+            brand
       - uses: astral-sh/setup-uv@v6
       - run: |
           uv venv --seed --python 3.12 ~/.cache/synapsa-commons/portable/py312

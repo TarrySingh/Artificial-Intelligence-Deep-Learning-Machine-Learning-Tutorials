@@ -107,7 +107,7 @@ Fixed by the harness, not by you:
 ```bash
 # from the repository root
 .venv/bin/python flagships/humanoid-lab/capstone/measure_walk.py \
-    --policy capstone/policy.py --seed dev --episodes 24
+    --policy flagships/humanoid-lab/capstone/policy.py --seed dev --episodes 24
 ```
 
 A submission whose reported numbers do not reproduce under the grading seed, within the noise

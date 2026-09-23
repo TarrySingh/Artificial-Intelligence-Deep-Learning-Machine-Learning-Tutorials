@@ -101,7 +101,7 @@ claims:
       array's buffer is therefore visible to tracemalloc, so "it is a C library, so
       tracemalloc cannot see it" is not a sound rule — the lesson's blind spot is demonstrated
       with mmap, which genuinely bypasses Python's allocators, rather than with numpy.
-    where: "the course solution bundle self-check answer 2"
+    where: "the worked solution's self-check answer 2"
     source_url: https://numpy.org/doc/stable/reference/c-api/data_memory.html
     source_title: "NumPy C-API — Memory management in NumPy"
     quote: "NumPy places its CPU memory allocations into the np.lib.tracemalloc_domain domain."

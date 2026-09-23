@@ -15,8 +15,7 @@ objectives:
   - "Implement rul_samples and rul_track to turn that posterior into a predictive RUL distribution re-computed at every checkpoint, and measure how far its interval narrows between a third of life and the last fifth"
   - "Implement rul_rmse, phm_score and cone_breakdown, and explain why two of those three cannot tell an early error from a late one"
   - "Implement warning_lead and measure, in units rather than in hours, how often each model gives less warning than the maintenance contract requires"
-  - "Implement best_quantile and measure which quantile of one predictive distribution each metric selects when all four are run on the same rows"
-  - "Demonstrate from the notebook's own numbers that a later model can score a lower RMSE than a cautious one while being late an order of magnitude more often"
+  - "Implement best_quantile, measure which quantile of one predictive distribution each metric selects when all four are run on the same rows, and demonstrate from those numbers that a later model can score a lower RMSE than a cautious one while being late an order of magnitude more often"
 datasets:
   - name: synthetic-run-to-failure-fleet
     kind: synthetic

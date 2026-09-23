@@ -3,7 +3,7 @@
 
     python tools/notebooks.py --inject [lesson ...]   # put/refresh the launcher in lesson.py
     python tools/notebooks.py --build  [lesson ...]   # regenerate lesson.ipynb from lesson.py
-    python tools/notebooks.py --check  [lesson ...]   # fail if any .ipynb is stale or missing
+    python tools/notebooks.py --check  [lesson ...]   # fail if a launcher or .ipynb is stale or missing
 
 Every lesson must open and run in the environments a student actually has: Google Colab,
 Kaggle, Binder, GitHub Codespaces, or a local Jupyter. That is not something an author should
@@ -16,7 +16,7 @@ The block is a no-op wherever everything is already present, which is why the ex
 does not slow down and why `no network on a required path` still holds: nothing is installed
 and nothing is fetched unless it is genuinely absent.
 """
-import argparse, ast, hashlib, json, os, re, subprocess, sys, tempfile
+import argparse, ast, hashlib, json, os, re, subprocess, sys, tempfile, textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +26,10 @@ JUPYTEXT = str(ROOT / ".venv/bin/jupytext")
 # rename is a one-line change here followed by --inject. PREFIX is the folder the lessons sit
 # under inside the repository; "" means they sit at its root.
 REPO, BRANCH, PREFIX = "TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials", "master", ""
+# Binder and Codespaces clone the WHOLE repository they are pointed at, history included, and
+# mybinder.org's build pod has 2 GB of disk. Colab and Kaggle fetch one notebook. So the two
+# cloning services may point at a slim copy of the lessons; until one exists this is REPO.
+LAUNCH_REPO = REPO
 
 # The header every notebook opens with. SYNAPSA_URL is None until the platform is public; set
 # it and re-run --inject, and every notebook links the name at once.
@@ -33,7 +37,7 @@ BRAND = "Synapsa Commons"
 BRAND_BADGE = "brand/synapsa-commons-badge.png"
 SYNAPSA_URL = None
 
-VERSION = "v2"
+VERSION = "v3"
 OPEN, CLOSE = f"# --- COMMONS LAUNCHER {VERSION}", "# --- END COMMONS LAUNCHER ---"
 MD_OPEN = f"# <!-- COMMONS LAUNCHER {VERSION}"
 
@@ -48,6 +52,18 @@ SIBLINGS = ("Makefile", "lesson.c", "lesson.cpp", "lesson.h")
 
 def stdlib() -> set:
     return set(sys.stdlib_module_names)
+
+
+def pinned() -> dict:
+    """pip name -> "name==version" from requirements.txt, so a notebook installs what every
+    number in the lessons was measured with. Lines carrying an environment marker (numpy's
+    per-Python pins) are skipped: those packages are never installed by the launcher."""
+    out = {}
+    for line in (ROOT / "requirements.txt").read_text().splitlines():
+        m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(#.*)?$", line)
+        if m:
+            out[m.group(1).lower()] = f"{m.group(1)}=={m.group(2)}"
+    return out
 
 
 OPTIONAL_GUARDS = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
@@ -109,7 +125,9 @@ def launcher(d: Path, src: str) -> str:
     badge = "/".join(p for p in (PREFIX, BRAND_BADGE) if p)
     synapsa = f"[Synapsa]({SYNAPSA_URL})" if SYNAPSA_URL else "Synapsa"
     pkgs = [p for p in third_party(src) if p not in ALWAYS_THERE]
-    pairs = ", ".join(f'("{p}", "{PIP_NAME.get(p, p)}")' for p in pkgs) or ""
+    pins = pinned()
+    specs = [pins.get(PIP_NAME.get(p, p).lower(), PIP_NAME.get(p, p)) for p in pkgs]
+    pairs = ", ".join(f'("{p}", "{s}")' for p, s in zip(pkgs, specs)) or ""
     sibs = [s for s in SIBLINGS if (d / s).exists()]
     if (d / "assets").is_dir():
         sibs += [f"assets/{f.name}" for f in sorted((d / "assets").iterdir()) if f.is_file()]
@@ -121,21 +139,32 @@ def launcher(d: Path, src: str) -> str:
         f"# [![Open in Kaggle](https://kaggle.com/static/images/open-in-kaggle.svg)]"
         f"(https://kaggle.com/kernels/welcome?src=https://github.com/{REPO}/blob/{BRANCH}/{nb})\n"
         f"# [![Open in Binder](https://mybinder.org/badge_logo.svg)]"
-        f"(https://mybinder.org/v2/gh/{REPO}/{BRANCH}?labpath={nb})\n"
+        f"(https://mybinder.org/v2/gh/{LAUNCH_REPO}/{BRANCH}?labpath={nb})\n"
         f"# [![Open in Codespaces](https://github.com/codespaces/badge.svg)]"
-        f"(https://github.com/codespaces/new?repo={REPO})\n"
+        f"(https://codespaces.new/{LAUNCH_REPO})\n"
     )
-    needs = "a compiler (`clang` or `gcc`)" if any(s.startswith("lesson.") and s != "lesson.h" for s in sibs) else "nothing beyond Python"
+    compiled = any(s.startswith("lesson.") and s != "lesson.h" for s in sibs)
+    needs = ("Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle, Binder and "
+             "Codespaces already have" + (", and a C or C++ compiler (`clang` or `gcc`)" if compiled else ""))
+    about = f"This lesson needs {needs}."
+    if pkgs or sibs:
+        what = " and ".join(x for x in (
+            ("installs " + ", ".join(f"`{s}`" for s in specs)) if pkgs else "",
+            "fetches the files it needs beside it" if sibs else "") if x)
+        about += (f" The cell below {what}, and does nothing where they are already present. On "
+                  "Kaggle, switch Internet on in the notebook's settings first; Kaggle allows that "
+                  "only for phone-verified accounts.")
+    about = textwrap.fill(about, width=94, initial_indent="# ", subsequent_indent="# ",
+                          break_on_hyphens=False, break_long_words=False)
     return f'''# %% [markdown]
 {MD_OPEN} · generated by tools/notebooks.py · do not edit by hand -->
 # <a href="https://github.com/{REPO}"><img src="https://raw.githubusercontent.com/{REPO}/{BRANCH}/{badge}" alt="{BRAND}" height="36"></a>
 #
-# **{BRAND}**: free, hands-on AI courses that run anywhere, from the team building {synapsa}.
+# Free, hands-on AI courses that run anywhere, from the team building {synapsa}, an AI-native
+# learning platform.
 #
 {badges}#
-# **Runs in:** Google Colab · Kaggle · Binder · GitHub Codespaces · local Jupyter.
-# This lesson needs {needs}. The cell below installs anything missing and fetches the files
-# this lesson needs beside it; on a machine that already has them it does nothing at all.
+{about}
 
 # %%
 {OPEN} · generated by tools/notebooks.py · do not edit by hand ---
@@ -144,7 +173,7 @@ def launcher(d: Path, src: str) -> str:
 import importlib.util, os, subprocess, sys, urllib.request
 from pathlib import Path
 
-COMMONS_PIP = [{pairs}]            # (import name, pip name) for what this lesson imports
+COMMONS_PIP = [{pairs}]            # (import name, pinned pip spec) for what this lesson imports
 COMMONS_SIBLINGS = [{sib_list}]    # files that must sit beside the notebook
 # A fork, a classroom mirror or an offline copy can serve the files from elsewhere by setting
 # COMMONS_RAW_OVERRIDE before running this cell.
@@ -197,8 +226,9 @@ for _name in COMMONS_SIBLINGS:
         except Exception as _e:  # Kaggle disables the internet by default; say so plainly
             raise RuntimeError(
                 f"this lesson needs {{_name}} beside the notebook and could not fetch it "
-                f"({{_e}}). On Kaggle, switch Internet on in the notebook settings panel; "
-                f"otherwise download it from {{COMMONS_RAW + _name}} and upload it."
+                f"({{_e}}). On Kaggle, switch Internet on in the notebook settings panel "
+                f"(Kaggle allows that only for phone-verified accounts); otherwise download it "
+                f"from {{COMMONS_RAW + _name}} and upload it beside the notebook."
             ) from None
 
 print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fetched else ""))
@@ -268,6 +298,11 @@ def check(d: Path) -> str:
     nb = d / "lesson.ipynb"
     if not nb.exists():
         return "MISSING lesson.ipynb"
+    # The launcher is generated too. Comparing only notebook to lesson.py would pass a lesson
+    # whose launcher still points at an old branch, an old path or an unpinned package.
+    src = (d / "lesson.py").read_text()
+    if launcher(d, strip(src)) + strip(src) != src:
+        return "STALE LAUNCHER (run --inject, then --build, then commit)"
     text, err = render(d)
     if text is None:
         return f"FAILED {err}"

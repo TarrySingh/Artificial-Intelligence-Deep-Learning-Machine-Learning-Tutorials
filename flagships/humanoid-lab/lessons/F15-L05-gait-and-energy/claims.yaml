@@ -105,7 +105,7 @@ claims:
     accessed: 2026-09-16
     verified: >-
       This entry is a statement about this lesson's own code, checked by reading it: the energy
-      accumulator in the course solution bundle applies np.abs to the power before summing.
+      accumulator in the worked solution applies np.abs to the power before summing.
       It is recorded here because gate 12 binds the comparison the lesson prints, and a
       comparison against a published number is a claim about that number's meaning.
 

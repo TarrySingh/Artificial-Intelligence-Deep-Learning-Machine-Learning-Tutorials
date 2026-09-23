@@ -11,9 +11,8 @@ prerequisites:
   - P03-L01-alarm-economics
   - P03-L03-vibration-features
 objectives:
-  - "Implement parse_log_hour and classify_work_order so a CMMS export in three date formats yields failure and suspension events without counting a no-fault-found call-out as a failure"
-  - "Implement build_runs so that a unit the log never mentions is right-censored at the edge of the window rather than dropped or treated as a survivor"
-  - "Implement horizon_labels so a censored unit's final horizon emits unknown rather than negative, and so no row survives the hour the run ended"
+  - "Implement parse_log_hour, classify_work_order and event_hour so a CMMS export in three date formats yields failure and suspension events, each dated under a stated policy, without counting a no-fault-found call-out as a failure"
+  - "Implement build_runs and horizon_labels so that a unit the log never mentions is right-censored at the edge of the window rather than dropped or treated as a survivor, a suspended or censored unit's final horizon emits unknown rather than negative, and no row survives the hour the run ended"
   - "Implement split_by_unit and measure how many units a row-level split puts on both sides of the boundary"
   - "Implement a tie-aware rank_auc and a two-detector leakage_report, and explain from the measured table why a score ceiling alone misses the quiet leak"
   - "Measure how far the cost-optimal threshold moves between three labelling policies applied to one unchanged health index, and what the worst of them costs when scored honestly"

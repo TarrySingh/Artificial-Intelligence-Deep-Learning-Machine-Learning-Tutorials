@@ -1,19 +1,26 @@
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="brand/synapsa-commons-dark.png">
-  <img src="brand/synapsa-commons-light.png" alt="Synapsa Commons" height="48">
-</picture>
+<h1>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="brand/synapsa-commons-dark.png">
+    <img src="brand/synapsa-commons-light.png" alt="Synapsa Commons" height="48">
+  </picture>
+</h1>
 
-**Free, hands-on AI courses that run anywhere, from the team building Synapsa.**
+**Free, hands-on AI courses that run anywhere, from the team building Synapsa, an AI-native
+learning platform.**
+
+Looking for the tutorials this repository carried from 2017 to 2025? They are in
+[`archive/`](archive/), unchanged.
 
 [![lessons](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml/badge.svg?branch=master)](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml)
 
-Every lesson here is a notebook you *do*, not one you read. You fill in the exercises and get instant
-feedback as you go. Hints stay hidden until you ask for them, an autograded rubric gives partial
-credit, and a worked solution waits at the end. Some lessons are C or C++ exercises, built and graded
-the same way. Open any of them in Google Colab, Kaggle, Binder, GitHub Codespaces or your own Jupyter:
-the first cell installs whatever is missing and does nothing where it is already there.
+Every lesson here is a notebook you *do*, not one you read. You fill in the exercises, and each one
+checks itself the moment you run it. Hints stay hidden until you ask for them. Every lesson also has
+an autograded rubric with partial credit and a worked solution, both in its folder in this
+repository. Some lessons are C or C++ exercises, built and graded the same way. Open any of them in
+Google Colab, Kaggle, Binder, GitHub Codespaces or your own Jupyter: the first cell installs what the
+lesson needs at the versions it was measured with, and does nothing where it is already there.
 
-The courses are aimed at the work people are actually paid for: evidence a regulator accepts, a model
+The courses are aimed at the work people are actually paid for: evidence an inspector can re-run, a model
 a risk committee can sign off, an alarm a plant manager will trust. Every number a lesson prints is
 computed by code you run, and every claim it makes about the world cites a primary source.
 
@@ -21,15 +28,18 @@ computed by code you run, and every claim it makes about the world cites a prima
 
 | If you want to… | Course | First lesson |
 |---|---|---|
-| Show that an AI system meets the EU AI Act, with evidence an inspector can re-run | [`programmes/ai-act-conformity/`](programmes/ai-act-conformity/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/ai-act-conformity/lessons/P01-L01-article-12-logging/lesson.ipynb) |
+| Show that an AI system meets the EU AI Act, with evidence an inspector can re-run | [`programmes/ai-act-conformity/`](programmes/ai-act-conformity/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T10-L01-ai-act-conformity-pack/lesson.ipynb) |
 | Validate a model well enough to sign it off: calibration, challengers, explainability, the committee pack | [`programmes/model-risk/`](programmes/model-risk/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/model-risk/lessons/P04-L01-validation-suite/lesson.ipynb) |
 | Take predictive maintenance from sensor physics to an alarm threshold priced in money | [`programmes/predictive-maintenance/`](programmes/predictive-maintenance/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/predictive-maintenance/lessons/P03-L01-alarm-economics/lesson.ipynb) |
 | Pull fields out of invoices and contracts, and prove how often you are wrong | [`programmes/document-intelligence/`](programmes/document-intelligence/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/document-intelligence/lessons/P02-L01-extraction-evaluation/lesson.ipynb) |
 | Make a simulated humanoid stand and walk, then measure how far that is from a robot | [`flagships/humanoid-lab/`](flagships/humanoid-lab/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/flagships/humanoid-lab/lessons/F15-L01-first-contact/lesson.ipynb) |
 | Start from nothing: the 8 GB machine, tokenisers from scratch, a language model on a CPU | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L01-the-8gb-track/lesson.ipynb) |
 
-Each course's `MODULES.md` is its map, and shows which lessons exist and which are still only
-specified.
+The model-risk, predictive-maintenance and document-intelligence courses build on
+[`lessons/T00-L01-the-8gb-track`](lessons/T00-L01-the-8gb-track/), which makes the profiler and the
+compute tiers every lesson is held to; start there if you have not done it. Each programme's
+`MODULES.md` is its map and shows which lessons exist and which are still only specified; the
+humanoid lab's is its `README.md`, and [`lessons/`](lessons/) has its own.
 
 ## What exists today
 
@@ -40,7 +50,7 @@ specified.
 | Area | Built | Specified, not built |
 |---|---|---|
 | `flagships/humanoid-lab` | 8 lessons + capstone | — |
-| `lessons/` — track openers | 5 | the rest of every track |
+| `lessons/` — track lessons | 5 | — |
 | `programmes/ai-act-conformity` | 9 of 9 | 0 |
 | `programmes/document-intelligence` | 5 of 11 | 6 |
 | `programmes/model-risk` | 10 of 10 | 0 |
@@ -55,17 +65,24 @@ says it is not implemented yet, and the notebook ends with a progress board, one
 marked ✅ passed, ❌ failed or ⏳ not started. Fill in an exercise and re-run its cell, and its check
 tells you whether you are right, and if not, what the likely mistake is. Each exercise has two
 hints: the first says what to think about, the second the approach in words. Neither gives you the
-answer.
+answer. To score your work against the full rubric, clone the repository and run
+`python tools/grade.py <lesson folder>`.
 
 Anything a lesson measures on your machine, like a time or a memory peak, prints with its unit and
 will differ from ours. Every other number a finished lesson prints is identical on Python 3.11 and
 3.12, and the workflow above re-checks that on Linux, which is what Colab, Kaggle, Binder and
 Codespaces run.
 
-To work locally instead:
+On Kaggle, a lesson that installs a package or fetches a file needs Internet switched on in the
+notebook's settings, and Kaggle allows that only for phone-verified accounts. Colab, Binder and
+Codespaces need nothing.
+
+To work locally instead, with Python 3.11 or 3.12:
 
     python -m venv .venv && .venv/bin/pip install -r requirements.txt
     .venv/bin/jupyter lab
+
+On Windows the two commands are `.venv\Scripts\pip` and `.venv\Scripts\jupyter`.
 
 ## The bar every lesson clears
 
@@ -75,7 +92,8 @@ To work locally instead:
   self-check;
 - runs top to bottom in a fresh interpreter, inside a declared compute tier and time budget;
 - data that is free and needs no registration, named with its licence;
-- every claim about the world cites a primary source, and no number in the prose is typed by hand;
+- every claim about the world cites a primary source, and no measured or computed number in the
+  prose is typed by hand;
 - the notebook opens and runs alone on Python 3.11 and 3.12, and Run all is a good experience.
 
 A lesson is marked built only after an independent reviewer has tried to break it, including by
@@ -91,18 +109,22 @@ grading plausible wrong answers against its rubric.
   - `verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and 3.12;
   - `build_student_bundle.py` builds what a student receives and fails on any solution leak;
   - `status.py` generates the status tables above and in each `MODULES.md`;
-  - `verify_all.py` runs gates 1-12 on every lesson.
+  - `verify_all.py` machine-checks every lesson against what a machine can judge of gates 1-12.
+  - `brand_lockups.py` redraws the lockups in `brand/` from the Synapsa wordmark's geometry.
 - `.github/workflows/lessons.yml` runs all of it on Linux on every change outside `archive/`.
 - `brand/` holds the Synapsa Commons lockups used here and at the top of every notebook.
 
 ## The 2017-2025 tutorials
 
-The tutorials that first made this repository popular are in [`archive/`](archive/), unchanged,
-with their history. Links into the old layout keep working at the
-[`legacy-tutorials`](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/legacy-tutorials) tag.
+The tutorials that first made this repository popular are in [`archive/`](archive/), unchanged
+and with their history. GitHub does not redirect moved files, so an old link of the form
+`.../blob/master/<path>` no longer resolves; replace `master` with
+[`legacy-tutorials`](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/tree/legacy-tutorials), the tag that keeps the old
+layout, and it will.
 
 ## Licence
 
-Code and lessons are under the Apache License 2.0; see [`LICENSE`](LICENSE). Assets authored for
-a lesson say their own terms in that lesson's `assets/SOURCE.md`, and third-party material keeps
-its own licence. The Synapsa name and logo are not covered by the licence.
+Content developed by Tarry Singh is licensed under the Apache License 2.0; see
+[`LICENSE`](LICENSE). Assets authored for a lesson state their own terms in that lesson's
+`assets/SOURCE.md`, and third-party material keeps its own licence. The Synapsa name and logo are
+not covered by the licence.

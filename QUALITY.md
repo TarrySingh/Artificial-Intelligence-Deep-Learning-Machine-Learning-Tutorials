@@ -1,8 +1,11 @@
 # The lesson contract
 
 Every lesson in this repository is something a student *does*, not something they read.
-A lesson ships only when all 14 gates below are green. Gates 1-8 are machine-checked by
-`tools/execute.py` and `tools/grade.py`; 9-12 are human-reviewed and recorded in `meta.yaml`.
+A lesson ships only when all 14 gates below are green. `tools/verify_all.py` machine-checks
+what a machine can in gates 1-12 (its docstring lists each check); `tools/notebooks.py --check`
+and `tools/verify_portable.py` check gates 13 and 14. What no tool can judge -- whether an
+objective is measurable, whether a quote is on the live page, whether a number in the prose was
+typed -- is checked by an independent reviewer and recorded in the lesson's `meta.yaml`.
 
 ## Pedagogy gates (the Coursera/Udacity shape)
 
@@ -10,7 +13,8 @@ A lesson ships only when all 14 gates below are green. Gates 1-8 are machine-che
    ("implement", "measure", "explain why"). No objective may be "understand X".
 2. **Prerequisites** — explicit lesson ids. A student who has done the prerequisites can
    finish this lesson without reaching for anything else.
-3. **Interleaving** — no more than ~40 lines of prose before the next thing the student runs.
+3. **Interleaving** — no more than 40 lines of prose (non-blank markdown lines, hint blocks
+   included) before the next thing the student runs.
    Concept, then immediately a cell they execute or edit.
 4. **Scaffolded exercises** — each exercise is a function stub with a docstring, a worked
    example in the docstring, `# YOUR CODE HERE`, and `raise NotImplementedError`.

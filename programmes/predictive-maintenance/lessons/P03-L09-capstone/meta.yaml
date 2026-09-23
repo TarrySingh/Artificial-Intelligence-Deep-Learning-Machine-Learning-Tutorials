@@ -19,10 +19,9 @@ prerequisites:
 objectives:
   - "Implement causal_health and causality_margin so that the claim 'this feature is causal' is a number the notebook prints, and measure what a whole-window fit does to readings that were already recorded"
   - "Implement label_runs and censoring_report so a suspension is censored rather than counted as a survivor, and report what the policy censors in units and in unobserved unit-hours"
-  - "Implement price_the_outcomes and choose_operating_point so the threshold is derived in currency from audited prices, and so a price the audit could not support is carried as a labelled guess"
-  - "Implement failures_given_up and measure, for every failure the chosen threshold does not catch, the reason and the price of catching it anyway"
+  - "Implement price_the_outcomes, choose_operating_point and failures_given_up so the threshold is derived in currency from audited prices, with a price the audit could not support carried as a labelled guess, and measure, for every failure that threshold does not catch, the reason and the price of catching it anyway"
   - "Implement deployment_report and rederivation_trigger so the smoothing window is decided by the gateway's arena and the re-derivation rule is two measured numbers rather than a sentence"
-  - "Implement check_specification and explain why a submission that reports a threshold without its prices, or without naming the failures it gives up, must fail however good its detector is"
+  - "Implement check_specification and my_specification, and explain why a submission that reports a threshold without its prices, or without naming the failures it gives up, must fail however good its detector is"
 datasets:
   - name: synthetic-feed-pump-fleet-log-and-alarm-audit
     kind: synthetic

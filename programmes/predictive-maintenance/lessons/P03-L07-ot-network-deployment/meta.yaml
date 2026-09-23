@@ -13,8 +13,7 @@ prerequisites:
 objectives:
   - "Implement a fixed-arena allocator in C that aligns, refuses rather than overruns, and hands out nothing once start-up is over"
   - "Implement a Modbus RTU frame decoder that rejects a damaged frame without half-filling the caller's struct"
-  - "Implement the health index twice — in Q16.16 integers in C and in float64 in numpy — and measure the disagreement between them"
-  - "Measure how many alarm decisions change because the threshold is not representable on the wire, and in which direction they change"
+  - "Implement the health index twice — in Q16.16 integers in C and in float64 in numpy — and measure both the disagreement between them and how many alarm decisions change, and in which direction, because the threshold is not representable on the wire"
   - "Implement a store-and-forward buffer that neither loses nor duplicates a reading across a link outage, and measure how many hours of plant it holds"
   - "Explain, from a measured comparison, why a one-way data diode forces drift detection to be unsupervised, and implement the signal that survives it"
 datasets:

@@ -22,11 +22,23 @@ build/
 # iCloud Drive sync duplicates. This tree lives under ~/Documents, which iCloud syncs, and a
 # build running while it syncs leaves copies named "lesson_bin 2", "assets 3" and so on. They
 # are never wanted: the build products are ignored above and the asset directories are real.
-lesson_bin [0-9]
-assets [0-9]
-*.o [0-9]
+lesson_bin [0-9]*
+assets [0-9]*
+build [0-9]*/
+*.o [0-9]*
+# ...and duplicates of source files ("lesson 2.py", "README 2.md"), which `git add -A` would
+# otherwise commit. Scoped to the curriculum, because archive/ tracks real names like
+# "ex4data1 2.mat".
+/lessons/**/* [0-9].*
+/programmes/**/* [0-9].*
+/flagships/**/* [0-9].*
+/tools/**/* [0-9].*
+/* [0-9].*
 # NOTE: solutions/ and tests/ are deliberately NOT ignored. They are version-controlled and
 # excluded from the student bundle by tools/build_student_bundle.py (QUALITY.md gate 7).
 
 # MuJoCo writes this beside whatever ran it when a simulation goes unstable
 MUJOCO_LOG.TXT
+
+# written beside the lesson each time F15-L03's solution runs
+tracking_error_curve.png

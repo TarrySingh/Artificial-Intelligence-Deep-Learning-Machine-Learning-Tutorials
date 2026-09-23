@@ -8,8 +8,7 @@ language: python        # python | c | cpp
 prerequisites:
   - T00-L01-the-8gb-track
 objectives:
-  - "Implement normalise_value so that per-field-type equality is a written, reviewable policy"
-  - "Implement exact, normalised and fuzzy matching, and measure what fuzzy matching costs when it is applied to a money field"
+  - "Implement normalise_value and exact, normalised and fuzzy matching so that per-field-type equality is a written, reviewable policy, and measure what fuzzy matching costs when it is applied to a money field"
   - "Implement a per-field precision/recall/F1 scorer that counts a wrong value as both a false positive and a false negative"
   - "Build a confusion analysis over field types that turns one F1 number into a work order"
   - "Implement a confidence-ordered review queue under a fixed budget and measure the macro-F1 it buys per unit of cost"

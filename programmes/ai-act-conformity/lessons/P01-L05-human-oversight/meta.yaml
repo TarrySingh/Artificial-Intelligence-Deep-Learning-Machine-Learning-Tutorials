@@ -13,9 +13,8 @@ objectives:
   - "Implement a decision view that folds module 1's chained log in sequence order and keeps the duplicate verifier entries a deduplicating fold destroys"
   - "Implement override rate overall, per reviewer and per model recommendation, and explain why an undecided, an unscored and an unreviewed decision each leave the denominator by a different door"
   - "Implement a time-to-decision distribution that separates a clock that stepped backwards from a reviewer who was too fast, and explain why abs() on the first invents the second"
-  - "Implement the Article 14(5) four-eyes check as a count of distinct natural persons, and measure how many decisions a length test would have passed"
   - "Implement an automation-bias curve and separate a reviewer whose override rate collapses from one whose rate merely declines, using each reviewer's own minimum detectable difference"
-  - "Implement oversight_gate() and report every decision it would have blocked, with each reason it failed on rather than only the first"
+  - "Implement the Article 14(5) four-eyes check as a count of distinct natural persons and measure how many decisions a length test would have passed, then implement oversight_gate(), the control that enforces it, and report every decision it would have blocked with each reason it failed on rather than only the first"
 datasets:
   - name: loan-copilot synthetic Article 12 event log
     kind: synthetic
