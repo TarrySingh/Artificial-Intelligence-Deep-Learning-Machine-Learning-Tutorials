@@ -42,3 +42,15 @@ MUJOCO_LOG.TXT
 
 # written beside the lesson each time F15-L03's solution runs
 tracking_error_curve.png
+
+# Answers never live in this repository: worked solutions, rubric tests and authoring masters
+# stay in the private source and come with enrolment on Synapsa.
+/lessons/*/solutions/
+/lessons/*/tests/
+/lessons/*/authoring/
+/flagships/*/lessons/*/solutions/
+/flagships/*/lessons/*/tests/
+/flagships/*/lessons/*/authoring/
+/programmes/*/lessons/*/solutions/
+/programmes/*/lessons/*/tests/
+/programmes/*/lessons/*/authoring/

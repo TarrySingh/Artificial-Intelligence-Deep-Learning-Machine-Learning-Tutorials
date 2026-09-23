@@ -1,14 +1,27 @@
 Synapsa Commons
-Copyright 2026 RealAI
+Copyright 2026 RealAI. All rights not granted by the licence below are reserved.
 
-Licensed under the Apache License, Version 2.0; see LICENSE.
+Everything in this repository outside archive/ is licensed under the Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International licence (CC BY-NC-SA 4.0). The full
+legal code is in LICENSE and at https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+
+In plain words -- this summary is not the licence, and the legal code governs:
+
+  You may   use these lessons to learn and to teach, and copy, fork, share and adapt them.
+  You must  credit "Synapsa Commons by RealAI" with a link to this repository, say what you
+            changed, and share anything you adapt under this same licence.
+  You may not  use them, or anything adapted from them, in a way primarily intended for
+            commercial advantage or monetary compensation -- for example selling them,
+            charging for a course, bootcamp or training built on them, or packaging them
+            into a paid product or service.
+
+Commercial licences are available from RealAI: https://www.realai.eu/contact
+
+Third-party material inside a lesson keeps its own licence, named in that lesson's
+assets/SOURCE.md or claims.yaml. The Synapsa name and logo belong to RealAI and are not
+licensed.
 
 The tutorials in archive/ were published in this repository from 2017 to 2025 by Tarry Singh
-under the Apache License, Version 2.0. Their original grant is kept, unchanged, in
-archive/LICENSE-2017. Third-party content in archive/ is distributed under the licences its
-owners provided.
-
-Assets authored for a lesson state their own terms in that lesson's assets/SOURCE.md.
-
-The Synapsa name and logo belong to RealAI and are not licensed under the Apache License
-(see its section 6).
+under the Apache License, Version 2.0, which continues to apply to them. The original grant is
+kept, unchanged, in archive/LICENSE-2017. Third-party content in archive/ is distributed under
+the licences its owners provided.

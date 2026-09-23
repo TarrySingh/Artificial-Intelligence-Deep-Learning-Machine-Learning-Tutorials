@@ -14,9 +14,9 @@ Looking for the tutorials this repository carried from 2017 to 2025? They are in
 [![lessons](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml/badge.svg?branch=master)](https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/actions/workflows/lessons.yml)
 
 Every lesson here is a notebook you *do*, not one you read. You fill in the exercises, and each one
-checks itself the moment you run it. Hints stay hidden until you ask for them. Every lesson also has
-an autograded rubric with partial credit and a worked solution, both in its folder in this
-repository. Some lessons are C or C++ exercises, built and graded the same way. Open any of them in
+checks itself the moment you run it. Hints stay hidden until you ask for them. Worked solutions
+and the full autograded rubric, with partial credit and an official score, come with free
+enrolment on [Synapsa](https://synapsa.realai.eu), opening in the coming weeks. Some lessons are C or C++ exercises, built and graded the same way. Open any of them in
 Google Colab, Kaggle, Binder, GitHub Codespaces or your own Jupyter: the first cell installs what the
 lesson needs at the versions it was measured with, and does nothing where it is already there.
 
@@ -65,13 +65,13 @@ says it is not implemented yet, and the notebook ends with a progress board, one
 marked ✅ passed, ❌ failed or ⏳ not started. Fill in an exercise and re-run its cell, and its check
 tells you whether you are right, and if not, what the likely mistake is. Each exercise has two
 hints: the first says what to think about, the second the approach in words. Neither gives you the
-answer. To score your work against the full rubric, clone the repository and run
-`python tools/grade.py <lesson folder>`.
+answer. Your score against the full rubric, and the worked solution, come with enrolment on
+Synapsa.
 
 Anything a lesson measures on your machine, like a time or a memory peak, prints with its unit and
 will differ from ours. Every other number a finished lesson prints is identical on Python 3.11 and
-3.12, and the workflow above re-checks that on Linux, which is what Colab, Kaggle, Binder and
-Codespaces run.
+3.12; every lesson is checked for that before it is released. The workflow above checks on Linux,
+which is what Colab, Kaggle, Binder and Codespaces run, that every notebook opens and runs.
 
 On Kaggle, a lesson that installs a package or fetches a file needs Internet switched on in the
 notebook's settings, and Kaggle allows that only for phone-verified accounts. Colab, Binder and
@@ -102,16 +102,12 @@ grading plausible wrong answers against its rubric.
 ## For maintainers
 
 - `lessons/`, `flagships/`, `programmes/`: track lessons, flagship subtrees, industry programmes.
-- `tools/`:
-  - `execute.py` runs a lesson's solution within its declared budget and writes back what it measured;
-  - `grade.py` runs the autograder (`--solution` grades the reference);
-  - `notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift);
-  - `verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and 3.12;
-  - `build_student_bundle.py` builds what a student receives and fails on any solution leak;
-  - `status.py` generates the status tables above and in each `MODULES.md`;
-  - `verify_all.py` machine-checks every lesson against what a machine can judge of gates 1-12.
-  - `brand_lockups.py` redraws the lockups in `brand/` from the Synapsa wordmark's geometry.
-- `.github/workflows/lessons.yml` runs all of it on Linux on every change outside `archive/`.
+- Lessons are written and gated in a separate source that holds the worked solutions and the
+  rubrics; this repository receives the student version of each lesson once it passes.
+- `tools/notebooks.py` generates each `lesson.ipynb` and its launcher cell (`--check` for drift),
+  and `tools/verify_portable.py` runs each notebook alone in a minimal kernel on Python 3.11 and
+  3.12. `.github/workflows/lessons.yml` runs both on Linux on every change outside `archive/`, and
+  fails if a solution or rubric file is ever committed here.
 - `brand/` holds the Synapsa Commons lockups used here and at the top of every notebook.
 
 ## The 2017-2025 tutorials
@@ -124,8 +120,16 @@ layout, and it will.
 
 ## Licence
 
-Synapsa Commons is © 2026 RealAI and licensed under the Apache License 2.0; see
-[`LICENSE`](LICENSE) and [`NOTICE`](NOTICE). The tutorials in `archive/` keep the grant they were
-published under, in [`archive/LICENSE-2017`](archive/LICENSE-2017). Assets authored for a lesson
-state their own terms in that lesson's `assets/SOURCE.md`, and third-party material keeps its own
-licence. The Synapsa name and logo belong to RealAI and are not covered by the licence.
+Synapsa Commons is © 2026 RealAI, free to learn from and share, and licensed under
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/); the legal code is in
+[`LICENSE`](LICENSE) and a plain-words summary in [`NOTICE`](NOTICE).
+
+| You may | You must | You may not |
+|---|---|---|
+| use the lessons to learn and to teach; copy, fork, share and adapt them | credit "Synapsa Commons by RealAI" with a link here, say what you changed, and share adaptations under the same licence | use them, or anything adapted from them, for commercial advantage or payment: selling them, charging for a course or training built on them, or packaging them into a paid product or service |
+
+Commercial licences are available from [RealAI](https://www.realai.eu/contact). Third-party
+material inside a lesson keeps its own licence, named in that lesson's `assets/SOURCE.md` or
+`claims.yaml`. The Synapsa name and logo belong to RealAI and are not licensed. The tutorials in
+`archive/` keep the Apache 2.0 grant they were published under, in
+[`archive/LICENSE-2017`](archive/LICENSE-2017).

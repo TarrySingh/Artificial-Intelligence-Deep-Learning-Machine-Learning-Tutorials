@@ -1,6 +1,6 @@
-# The gates, on Linux -- which is what Colab, Kaggle, Binder and Codespaces all run.
-# The lessons are developed on macOS; this workflow is the only thing that proves they work
-# where students actually open them.
+# What a student meets, checked on Linux -- which is what Colab, Kaggle, Binder and Codespaces
+# run. The full gates, which need the worked solutions and rubrics, run in the private source
+# before a lesson is released; this repository never holds either.
 #
 # The lessons sit at the repository root; the 2017-2025 tutorials in archive/ are not built
 # or tested, so a change that touches only archive/ does not trigger this workflow.
@@ -15,8 +15,24 @@ on:
     - cron: "17 5 * * 1"   # weekly: catch upstream drift (a new mujoco, a Colab image change)
 
 jobs:
-  gates:
-    name: lesson gates, notebook sync, student bundles
+  no-answers:
+    name: no solution or rubric file is committed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          filter: blob:none
+          sparse-checkout: |
+            lessons
+            programmes
+            flagships
+      - run: |
+          leaked=$(git ls-files | grep -E '^(lessons/[^/]+|flagships/[^/]+/lessons/[^/]+|programmes/[^/]+/lessons/[^/]+)/(solutions|tests|authoring)/' || true)
+          if [ -n "$leaked" ]; then echo "answers committed to the public repository:"; echo "$leaked"; exit 1; fi
+          echo "no answers committed"
+
+  notebooks:
+    name: committed notebooks and launchers match their lesson.py
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,18 +45,10 @@ jobs:
             tools
             brand
       - uses: astral-sh/setup-uv@v6
-      - name: environment (pinned, as measured)
-        run: |
+      - run: |
           uv venv --python 3.12 .venv
-          uv pip install --python .venv/bin/python -r requirements.txt
-      - name: every machine-checkable gate on every lesson (see tools/verify_all.py)
-        run: .venv/bin/python tools/verify_all.py
-      - name: committed notebooks match their lesson.py
-        run: .venv/bin/python tools/notebooks.py --check
-      - name: student bundles build with no solution leaks
-        run: .venv/bin/python tools/build_student_bundle.py
-      - name: status tables in MODULES.md and README.md match the lessons
-        run: .venv/bin/python tools/status.py --check
+          uv pip install --python .venv/bin/python jupytext==1.19.5
+      - run: .venv/bin/python tools/notebooks.py --check
 
   portable:
     name: opens anywhere (${{ matrix.env }})
@@ -53,7 +61,7 @@ jobs:
           - { env: py312, python: "3.12" }   # Colab-like
     steps:
       - uses: actions/checkout@v4
-        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+        with:
           filter: blob:none
           sparse-checkout: |
             lessons
@@ -70,31 +78,6 @@ jobs:
       - name: every notebook, alone in an empty directory, in a real kernel
         run: python3 tools/verify_portable.py --env ${{ matrix.env }} --reset
 
-  reproducible:
-    # The FINISHED lesson, run in both environments; its printed results must match. Lines that
-    # vary between two runs in the same environment (timings, speeds) are masked automatically.
-    name: same results on Python 3.11 + numpy 2.4 and 3.12 + numpy 2.5
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:            # the lessons only: archive/ is 2.2 GB that no job reads
-          filter: blob:none
-          sparse-checkout: |
-            lessons
-            programmes
-            flagships
-            tools
-            brand
-      - uses: astral-sh/setup-uv@v6
-      - name: both minimal environments
-        run: |
-          for v in 3.11 3.12; do
-            e=~/.cache/synapsa-commons/portable/py${v/./}
-            uv venv --seed --python $v $e
-            uv pip install --python $e/bin/python numpy matplotlib ipykernel nbclient nbformat
-          done
-      - run: python3 tools/verify_portable.py --completed --reset
-
   live-links:
     # The badges and the launcher's raw URLs point at the default branch. On a pull request they
     # would fetch that branch's files, not the PR's, so the real URLs are tested only there.
@@ -103,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:            # the lessons only: archive/ is 2.2 GB that no job reads
+        with:
           filter: blob:none
           sparse-checkout: |
             lessons
