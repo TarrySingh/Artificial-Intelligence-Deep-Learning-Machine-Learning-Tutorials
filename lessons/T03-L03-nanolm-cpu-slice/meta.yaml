@@ -1,44 +1,42 @@
 id: T03-L03-nanolm-cpu-slice
-title: Train a character-level language model on a CPU with numpy alone, deriving the backward pass by hand and proving it against finite differences
+title: Train a character-level language model on a CPU with numpy alone, deriving the backward pass by
+  hand and proving it against finite differences
 track: T03
 flagship: F01-nanolm
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+tier: cpu8
 budget_seconds: 300
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track   # the profiler and tier gate: this lesson asks the student to trust
-                            # measured numbers over asserted ones (sections 5, 10 and 11) and to
-                            # keep the whole run inside the cpu8 budget.
-# Deliberately NOT T03-L01/T03-L02: the lesson builds its own 57-symbol character tokeniser, so
-# nothing about BPE is assumed. Remaining background is numpy array indexing, matrix
-# multiplication and the chain rule — no autodiff framework, no prior transformer exposure.
+- T00-L01-the-8gb-track
 objectives:
-  - "Implement softmax and cross-entropy that survive logits of magnitude 1e4 without overflowing to nan"
-  - "Implement causal single-head self-attention and demonstrate it cannot see the future by perturbing a later position and measuring zero change"
-  - "Derive and implement the backward pass by hand, and verify every parameter gradient against central finite differences to a stated tolerance"
-  - "Measure why a gradient check run at initialisation can pass a broken attention gradient, and choose a probe scale where it cannot"
-  - "Train the model on a CPU and measure that held-out loss beats the corpus unigram entropy by a stated margin"
+- Implement softmax and cross-entropy that survive logits of magnitude 1e4 without overflowing to nan
+- Implement causal single-head self-attention and demonstrate it cannot see the future by perturbing a
+  later position and measuring zero change
+- Derive and implement the backward pass by hand, and verify every parameter gradient against central
+  finite differences to a stated tolerance
+- Measure why a gradient check run at initialisation can pass a broken attention gradient, and choose
+  a probe scale where it cannot
+- Train the model on a CPU and measure that held-out loss beats the corpus unigram entropy by a stated
+  margin
 datasets:
-  - name: "Shakespeare's Sonnets (opening excerpt), Project Gutenberg eBook #1041"
-    licence: "Public domain (work first published 1609; author died 1616). Project Gutenberg records the copyright status of this eBook as 'Public domain in the USA.'"
-    url: "https://www.gutenberg.org/ebooks/1041"
-    source_file_url: "https://www.gutenberg.org/cache/epub/1041/pg1041.txt"
-    copyright: "None. William Shakespeare (1564-1616); the work predates copyright entirely."
-    cached_at: "embedded directly in lesson.py as the CORPUS string literal"
-    bytes: 5988
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      The lesson downloads nothing, at authoring time or at student run time. A 5988-character
-      excerpt of the sonnets is embedded as a Python string literal, so the lesson runs with no
-      network and no assets/ directory at all. Project Gutenberg's own header and footer, which
-      carry the Project Gutenberg trademark licence, are NOT included: only the public-domain
-      Shakespeare text is used. Three Unicode punctuation marks in the Gutenberg transcription
-      (U+2019 and U+2018 curly quotes, U+2014 em dash) were folded to ASCII apostrophe and
-      hyphen so the corpus is pure ASCII and the character vocabulary stays at 57 symbols.
-      That normalisation is the only edit made to the text.
+- name: 'Shakespeare''s Sonnets (opening excerpt), Project Gutenberg eBook #1041'
+  licence: Public domain (work first published 1609; author died 1616). Project Gutenberg records the
+    copyright status of this eBook as 'Public domain in the USA.'
+  url: https://www.gutenberg.org/ebooks/1041
+  source_file_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
+  copyright: None. William Shakespeare (1564-1616); the work predates copyright entirely.
+  cached_at: embedded directly in lesson.py as the CORPUS string literal
+  bytes: 5988
+  retrieved: 2026-09-16
+  gated: false
+  notes: 'The lesson downloads nothing, at authoring time or at student run time. A 5988-character excerpt
+    of the sonnets is embedded as a Python string literal, so the lesson runs with no network and no assets/
+    directory at all. Project Gutenberg''s own header and footer, which carry the Project Gutenberg trademark
+    licence, are NOT included: only the public-domain Shakespeare text is used. Three Unicode punctuation
+    marks in the Gutenberg transcription (U+2019 and U+2018 curly quotes, U+2014 em dash) were folded
+    to ASCII apostrophe and hyphen so the corpus is pure ASCII and the character vocabulary stays at 57
+    symbols. That normalisation is the only edit made to the text.'
 points: 40
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "second independent review 2026-09-16: rubric mutation-tested with 32 broken solutions, 4 that scored 40/40 fixed (log-of-softmax cross-entropy, swapped Q/K cache labels, mask cached as None, off-by-one batch bound hidden by try/except), 2 survivors measured and proved equivalent; prerequisite set to T00-L01-the-8gb-track; all 4 sources re-fetched and 1 unsourced prose claim added to claims.yaml; 4 gates re-run green"
+status: reviewed
 measured_seconds: 6.8
 measured_peak_mib: 56

@@ -1,33 +1,36 @@
 id: T10-L01-ai-act-conformity-pack
 title: Turn an AI system registry into a machine-checkable EU AI Act conformity evidence pack
 track: T10
-flagship: F09           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F09
+tier: cpu8
 budget_seconds: 60
-language: python        # python | c | cpp
-prerequisites: []       # first lesson of the track; assumes only Python dicts, lists and datetime.date
+language: python
+prerequisites: []
 objectives:
-  - "Implement classify() so a described system maps to a risk tier, a cumulative obligation set, and the date each obligation starts to bind"
-  - "Implement missing_evidence() so an item counts only when it is present, actually referenced, in date and not overdue for review"
-  - "Generate a conformity report over a registry and read its blocking list, overdue count and next deadline off computed output"
-  - "Explain why deferring the Annex III high-risk duties to 2 December 2027 defers neither Article 5, nor Article 4, nor Article 50"
-  - "Justify which date binds a system that is both an Annex III use case and a safety component of a product regulated under Annex I"
+- Implement classify() so a described system maps to a risk tier, a cumulative obligation set, and the
+  date each obligation starts to bind
+- Implement missing_evidence() so an item counts only when it is present, actually referenced, in date
+  and not overdue for review
+- Generate a conformity report over a registry and read its blocking list, overdue count and next deadline
+  off computed output
+- Explain why deferring the Annex III high-risk duties to 2 December 2027 defers neither Article 5, nor
+  Article 4, nor Article 50
+- Justify which date binds a system that is both an Annex III use case and a safety component of a product
+  regulated under Annex I
 datasets:
-  - name: "systems.yaml — fictional AI system registry authored for this lesson"
-    licence: "CC-BY-NC-SA-4.0"
-    url: "none — authored in this repository, ships at assets/systems.yaml"
-    origin: authored-for-this-lesson
-    cached_at: "assets/systems.yaml"
-    gated: false
-    downloads: none
-    notes: >-
-      Not a third-party dataset. Every system, document reference and date in it is invented
-      for this lesson; it describes no real product, company or audit. It ships in the
-      lesson's assets/ directory and is read from disk, so the lesson runs with no network at
-      all. The legal texts the rulebook encodes are not data files: they are cited in
-      claims.yaml with their EUR-Lex and European Commission URLs and access dates.
+- name: systems.yaml — fictional AI system registry authored for this lesson
+  licence: CC-BY-NC-SA-4.0
+  url: none — authored in this repository, ships at assets/systems.yaml
+  origin: authored-for-this-lesson
+  cached_at: assets/systems.yaml
+  gated: false
+  downloads: none
+  notes: 'Not a third-party dataset. Every system, document reference and date in it is invented for this
+    lesson; it describes no real product, company or audit. It ships in the lesson''s assets/ directory
+    and is read from disk, so the lesson runs with no network at all. The legal texts the rulebook encodes
+    are not data files: they are cited in claims.yaml with their EUR-Lex and European Commission URLs
+    and access dates.'
 points: 30
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Second independent review 2026-09-16, all four gates re-run green. Rubric mutation-tested against 35 plausible wrong implementations built from the reference solution and graded outside the lesson tree; 30 caught, 5 scored 100% and were rubric defects, all five now closed and re-confirmed (missing_evidence returning an unsorted list off a set; overdue comparing < as_of instead of <= so an obligation binding on the grading date was ignored; next_deadline comparing >= as_of so today was reported as the next deadline; by_tier pre-seeded with all six tiers, which the shipped registry cannot detect because it happens to use all six; row['name'] never compared to the system's name). Final: 35 of 35 mutants caught, reference still 30/30. Also fixed: a rubric failure message and a section-7 prose line that both said the blocking systems are not the ones with the longest gap lists, when loan-copilot has the registry's longest list and does block; two counts typed into prose that the code already computes (the PAST rungs, the registry size). Content re-verified from scratch: every claims.yaml source re-fetched, all six rulebook dates plus the 27 July 2026 Omnibus entry into force returned verbatim by the European Commission's own pages, and two quotes previously stored with an ellipsis re-retrieved in full. EUR-Lex CELEX 32026R1744 still returns HTTP 202 with an empty body, so the retrieval notes stand. Prerequisites [] is correct and matches the other track openers. Open for the owner, repo-wide not lesson-specific: curriculum/ and programmes/ are empty, so no flagship id resolves anywhere — F09 here, and equally F01-nanolm, F02, F13 elsewhere, in two competing naming conventions."
+status: reviewed
 measured_seconds: 0.1
 measured_peak_mib: 23

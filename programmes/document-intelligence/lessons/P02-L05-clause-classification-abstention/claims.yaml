@@ -1,202 +1,149 @@
-# Every factual claim this lesson makes about the world, with a primary source and the date
-# the source was read. Numbers a student sees in output are computed by the code they run and
-# are therefore not claims; they do not appear here.
-#
-# Every quote below was checked verbatim against the live page on the access date, by fetching
-# the page and searching its text — not from memory and not from a summariser's paraphrase.
-# Where a page typesets part of a sentence as mathematics, the quote stops before the maths and
-# quote_context says what the maths states.
-#
-# This lesson generates its own corpus, so it has no dataset entry to license. The four cost
-# constants in section 11 (SECONDS_PER_REVIEWED_CLAUSE, REVIEWER_COST_PER_HOUR,
-# MACHINE_COST_PER_CLAUSE, COST_OF_AN_UNREVIEWED_ERROR) are labelled in the notebook as
-# placeholders for the reader's own rates; the lesson asserts nothing about what they are in
-# any organisation, so they are not claims either.
 claims:
-  - id: cuad-clause-categories-and-the-assignment-overlap
-    claim: >-
-      Five of this lesson's six clause types correspond to label categories in CUAD, an
-      expert-annotated dataset for legal contract review: Governing Law, Anti-Assignment,
-      Change of Control, Cap on Liability and Termination for Convenience. CUAD has no
-      indemnity category; the sixth type is this lesson's addition, chosen because it shares
-      its vocabulary with the liability cap. CUAD's own definition of Change of Control
-      includes assignment by operation of law, so the assignment / change-of-control confusion
-      the generator builds in is present in an expert annotation guideline, not only here.
-    where: "lesson.py section 1 (the corpus, and the two pairs that make it hard)"
-    source_url: https://ar5iv.labs.arxiv.org/html/2103.06268
-    source_title: "CUAD: An Expert-Annotated NLP Dataset for Legal Contract Review (Hendrycks, Burns, Chen, Ball; arXiv 2103.06268v2, last revised 8 Nov 2021), HTML rendering"
-    quote: >-
-      Does one party have the right to terminate or is consent or notice required of the
-      counterparty if such party undergoes a change of control, such as a merger, stock sale,
-      transfer of all or substantially all of its assets or business, or assignment by
-      operation of law?
-    quote_context: >-
-      The description of the 'Change of Control' category in the paper's table of the 41 label
-      categories. The same table lists 'Anti-Assignment', 'Governing Law', 'Cap on Liability'
-      and 'Termination for Convenience'. A search of the full text for 'ndemn' returned no
-      match on the access date, which is the basis for saying CUAD has no indemnity category.
-      Abstract page: https://arxiv.org/abs/2103.06268.
-    accessed: 2026-09-23
-
-  - id: bpe-encodes-rare-words-as-subwords
-    claim: >-
-      Byte-pair encoding was introduced to neural machine translation to handle rare and
-      unknown words by encoding them as sequences of subword units. That is the property the
-      lesson relies on when a smudged word the training split never contained still maps to
-      known subwords rather than to [UNK].
-    where: "lesson.py section 2 (a subword vocabulary)"
-    source_url: https://arxiv.org/abs/1508.07909
-    source_title: "Neural Machine Translation of Rare Words with Subword Units (Sennrich, Haddow, Birch; arXiv 1508.07909v5, last revised 10 Jun 2016)"
-    quote: >-
-      making the NMT model capable of open-vocabulary translation by encoding rare and unknown
-      words as sequences of subword units.
-    quote_context: "abstract"
-    accessed: 2026-09-23
-
-  - id: tokenizers-bpe-merges-most-frequent-pairs
-    claim: >-
-      The `tokenizers` BPE model builds its vocabulary by starting from characters and
-      repeatedly merging the pairs seen together most often in the training corpus, and its
-      Whitespace pre-tokenizer splits on the regular expression \w+|[^\w\s]+. Section 2's
-      description of what train_subword_vocab does rests on this.
-    where: "lesson.py section 2 (train_subword_vocab)"
-    source_url: https://huggingface.co/docs/tokenizers/components
-    source_title: "Hugging Face Tokenizers documentation — Components (Models, Pre-tokenizers)"
-    quote: >-
-      The Byte-Pair-Encoding works by starting with characters, while merging those that are
-      the most frequently seen together, thus creating new tokens.
-    quote_context: >-
-      'Models' table, row 'BPE'. The Whitespace pre-tokenizer row on the same page gives the
-      regular expression. The lesson pins tokenizers 0.23.2 through requirements.txt.
-    accessed: 2026-09-23
-
-  - id: modern-networks-poorly-calibrated
-    claim: >-
-      Probabilities from a trained classifier need not be calibrated: Guo et al. found modern
-      neural networks, unlike those from a decade earlier, poorly calibrated. The lesson cites
-      this only as a reason to measure calibration rather than assume it; its own model is a
-      regularised linear one, and the direction of its miscalibration is measured in section 7,
-      not asserted.
-    where: "lesson.py section 7 (exercise 5 preamble)"
-    source_url: https://arxiv.org/abs/1706.04599
-    source_title: "On Calibration of Modern Neural Networks (Guo, Pleiss, Sun, Weinberger; arXiv 1706.04599v2, last revised 3 Aug 2017)"
-    quote: >-
-      We discover that modern neural networks, unlike those from a decade ago, are poorly
-      calibrated.
-    quote_context: "abstract"
-    accessed: 2026-09-23
-
-  - id: temperature-scaling-recommended
-    claim: >-
-      Temperature scaling — one scalar dividing every logit — is the calibration method Guo et
-      al. recommend as a simple recipe for practice.
-    where: "lesson.py section 7 (exercise 5 preamble)"
-    source_url: https://arxiv.org/abs/1706.04599
-    source_title: "On Calibration of Modern Neural Networks (Guo, Pleiss, Sun, Weinberger; arXiv 1706.04599v2)"
-    quote: >-
-      on most datasets, temperature scaling -- a single-parameter variant of Platt Scaling --
-      is surprisingly effective at calibrating predictions.
-    quote_context: "abstract, final sentence"
-    accessed: 2026-09-23
-
-  - id: temperature-fitted-on-held-out-data
-    claim: >-
-      Guo et al. fit the temperature by minimising negative log-likelihood on the validation
-      set, data held out from training. The lesson's calibration split plays that role; the
-      test split is kept out as well because it is the split the lesson reports (that second
-      rule is the lesson's own, measured in section 10, not attributed to the paper), and
-      fit_policy is graded on reading nothing but the calibration split.
-    where: "lesson.py section 7 (exercise 5 preamble) and section 9 (exercise 7)"
-    source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
-    source_title: "On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 4.2"
-    quote: >-
-      is optimized with respect to NLL on the validation set.
-    quote_context: >-
-      section 4.2, the paragraph defining temperature scaling. The sentence opens with the
-      temperature T, typeset as mathematics, so the quote starts after it (header rule).
-    accessed: 2026-09-23
-
-  - id: temperature-scaling-keeps-accuracy
-    claim: >-
-      Dividing the logits by a positive temperature cannot change the predicted class, so
-      temperature scaling leaves accuracy unchanged. Section 7 counts the clauses whose argmax
-      moved rather than relying on this.
-    where: "lesson.py section 7 (exercise 5 preamble, and the calibration table's 'argmax moved' column)"
-    source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
-    source_title: "On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 4.2"
-    quote: >-
-      In other words, temperature scaling does not affect the model’s accuracy.
-    quote_context: >-
-      section 4.2, immediately after 'Because the parameter T does not change the maximum of
-      the softmax function, the class prediction' (followed by a typeset symbol) 'remains
-      unchanged.' The apostrophe in the quote is the page's typographic one.
-    accessed: 2026-09-23
-
-  - id: ece-weighted-equal-width-right-closed-bins
-    claim: >-
-      The expected calibration error groups predictions into M equal-width confidence bins and
-      takes the average of each bin's |accuracy - confidence| gap weighted by the bin's share
-      of samples; bin m is the right-closed interval ((m-1)/M, m/M]. expected_calibration_error
-      implements exactly this definition, including the right-closed edges the rubric grades.
-    where: "lesson.py section 7 (exercise 5, expected_calibration_error docstring)"
-    source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
-    source_title: "On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 2 (Definitions)"
-    quote: >-
-      equally-spaced bins (similar to the reliability diagrams) and taking a weighted average
-      of the bins’ accuracy/confidence difference.
-    quote_context: >-
-      section 2, paragraph 'Expected Calibration Error (ECE)'. The quote is preceded by
-      'partitioning predictions into' and the bin count M, typeset as mathematics, so it starts
-      after the maths (header rule). The formula that follows
-      weights each bin by |B_m| / n. The right-closed interval I_m = ((m-1)/M, m/M] is typeset
-      as mathematics in the 'Reliability Diagrams' paragraph of the same section, in the
-      sentence beginning 'Let B m be the set of indices of samples whose prediction confidence
-      falls into the interval'. The apostrophe is the page's own.
-    accessed: 2026-09-23
-
-  - id: production-confidence-read-as-probability-correct
-    claim: >-
-      A production document-extraction service documents its field confidence as a calibrated
-      probability: Microsoft's Azure AI Document Intelligence says a confidence of 0.95 means
-      the prediction is likely correct 19 times in 20. That is the reading a reviewer brings to
-      a confidence score, and the reason section 7 measures whether this lesson's scores
-      deserve it.
-    where: "lesson.py section 7 (exercise 5 preamble)"
-    source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
-    source_title: "Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI Document Intelligence)"
-    quote: >-
-      For example, a confidence value of 0.95 (95%) indicates that the prediction is likely
-      correct 19 out of 20 times.
-    quote_context: "page metadata ms.date 2026-04-08, updated_at 2026-07-10"
-    accessed: 2026-09-23
-
-  - id: confidence-gates-human-review
-    claim: >-
-      Routing a prediction to a human on the strength of its confidence is the documented
-      design of the same service, which tells operators that confidence can decide whether to
-      accept a prediction automatically or flag it for review. Section 11 hands the abstained
-      clauses to module 1's queue on exactly that basis.
-    where: "lesson.py section 11 preamble"
-    source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
-    source_title: "Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI Document Intelligence)"
-    quote: >-
-      For scenarios where accuracy is critical, confidence can be used to determine whether to
-      automatically accept the prediction or flag it for human review.
-    quote_context: "the sentence directly after the 19-out-of-20 example; same page and dates"
-    accessed: 2026-09-23
-
-  - id: selective-classification-with-guaranteed-risk
-    claim: >-
-      Abstaining below a confidence threshold is selective classification (also called the
-      reject option), and a threshold can be chosen so that a desired risk is met with high
-      probability rather than only on average. The lesson's choose_threshold is the plain
-      point-estimate version without that guarantee, and says so in section 12; section 10
-      measures how often the point estimate over-promises.
-    where: "lesson.py section 12 (common mistakes: reading the threshold as a guarantee)"
-    source_url: https://arxiv.org/abs/1705.08500
-    source_title: "Selective Classification for Deep Neural Networks (Geifman, El-Yaniv; arXiv 1705.08500v2, last revised 1 Jun 2017)"
-    quote: >-
-      Our method allows a user to set a desired risk level. At test time, the classifier
-      rejects instances as needed, to grant the desired risk (with high probability).
-    quote_context: "abstract; its first sentence names the technique 'also known as reject option'"
-    accessed: 2026-09-23
+- id: cuad-clause-categories-and-the-assignment-overlap
+  claim: 'Five of this lesson''s six clause types correspond to label categories in CUAD, an expert-annotated
+    dataset for legal contract review: Governing Law, Anti-Assignment, Change of Control, Cap on Liability
+    and Termination for Convenience. CUAD has no indemnity category; the sixth type is this lesson''s
+    addition, chosen because it shares its vocabulary with the liability cap. CUAD''s own definition of
+    Change of Control includes assignment by operation of law, so the assignment / change-of-control confusion
+    the generator builds in is present in an expert annotation guideline, not only here.'
+  where: lesson.py section 1 (the corpus, and the two pairs that make it hard)
+  source_url: https://ar5iv.labs.arxiv.org/html/2103.06268
+  source_title: 'CUAD: An Expert-Annotated NLP Dataset for Legal Contract Review (Hendrycks, Burns, Chen,
+    Ball; arXiv 2103.06268v2, last revised 8 Nov 2021), HTML rendering'
+  quote: Does one party have the right to terminate or is consent or notice required of the counterparty
+    if such party undergoes a change of control, such as a merger, stock sale, transfer of all or substantially
+    all of its assets or business, or assignment by operation of law?
+  quote_context: 'The description of the ''Change of Control'' category in the paper''s table of the 41
+    label categories. The same table lists ''Anti-Assignment'', ''Governing Law'', ''Cap on Liability''
+    and ''Termination for Convenience''. A search of the full text for ''ndemn'' returned no match on
+    the access date, which is the basis for saying CUAD has no indemnity category. Abstract page: https://arxiv.org/abs/2103.06268.'
+  accessed: 2026-09-23
+- id: bpe-encodes-rare-words-as-subwords
+  claim: Byte-pair encoding was introduced to neural machine translation to handle rare and unknown words
+    by encoding them as sequences of subword units. That is the property the lesson relies on when a smudged
+    word the training split never contained still maps to known subwords rather than to [UNK].
+  where: lesson.py section 2 (a subword vocabulary)
+  source_url: https://arxiv.org/abs/1508.07909
+  source_title: Neural Machine Translation of Rare Words with Subword Units (Sennrich, Haddow, Birch;
+    arXiv 1508.07909v5, last revised 10 Jun 2016)
+  quote: making the NMT model capable of open-vocabulary translation by encoding rare and unknown words
+    as sequences of subword units.
+  quote_context: abstract
+  accessed: 2026-09-23
+- id: tokenizers-bpe-merges-most-frequent-pairs
+  claim: The `tokenizers` BPE model builds its vocabulary by starting from characters and repeatedly merging
+    the pairs seen together most often in the training corpus, and its Whitespace pre-tokenizer splits
+    on the regular expression \w+|[^\w\s]+. Section 2's description of what train_subword_vocab does rests
+    on this.
+  where: lesson.py section 2 (train_subword_vocab)
+  source_url: https://huggingface.co/docs/tokenizers/components
+  source_title: Hugging Face Tokenizers documentation — Components (Models, Pre-tokenizers)
+  quote: The Byte-Pair-Encoding works by starting with characters, while merging those that are the most
+    frequently seen together, thus creating new tokens.
+  quote_context: '''Models'' table, row ''BPE''. The Whitespace pre-tokenizer row on the same page gives
+    the regular expression. The lesson pins tokenizers 0.23.2 through requirements.txt.'
+  accessed: 2026-09-23
+- id: modern-networks-poorly-calibrated
+  claim: 'Probabilities from a trained classifier need not be calibrated: Guo et al. found modern neural
+    networks, unlike those from a decade earlier, poorly calibrated. The lesson cites this only as a reason
+    to measure calibration rather than assume it; its own model is a regularised linear one, and the direction
+    of its miscalibration is measured in section 7, not asserted.'
+  where: lesson.py section 7 (exercise 5 preamble)
+  source_url: https://arxiv.org/abs/1706.04599
+  source_title: On Calibration of Modern Neural Networks (Guo, Pleiss, Sun, Weinberger; arXiv 1706.04599v2,
+    last revised 3 Aug 2017)
+  quote: We discover that modern neural networks, unlike those from a decade ago, are poorly calibrated.
+  quote_context: abstract
+  accessed: 2026-09-23
+- id: temperature-scaling-recommended
+  claim: Temperature scaling — one scalar dividing every logit — is the calibration method Guo et al.
+    recommend as a simple recipe for practice.
+  where: lesson.py section 7 (exercise 5 preamble)
+  source_url: https://arxiv.org/abs/1706.04599
+  source_title: On Calibration of Modern Neural Networks (Guo, Pleiss, Sun, Weinberger; arXiv 1706.04599v2)
+  quote: on most datasets, temperature scaling -- a single-parameter variant of Platt Scaling -- is surprisingly
+    effective at calibrating predictions.
+  quote_context: abstract, final sentence
+  accessed: 2026-09-23
+- id: temperature-fitted-on-held-out-data
+  claim: Guo et al. fit the temperature by minimising negative log-likelihood on the validation set, data
+    held out from training. The lesson's calibration split plays that role; the test split is kept out
+    as well because it is the split the lesson reports (that second rule is the lesson's own, measured
+    in section 10, not attributed to the paper), and fit_policy is graded on reading nothing but the calibration
+    split.
+  where: lesson.py section 7 (exercise 5 preamble) and section 9 (exercise 7)
+  source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
+  source_title: On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 4.2
+  quote: is optimized with respect to NLL on the validation set.
+  quote_context: section 4.2, the paragraph defining temperature scaling. The sentence opens with the
+    temperature T, typeset as mathematics, so the quote starts after it (header rule).
+  accessed: 2026-09-23
+- id: temperature-scaling-keeps-accuracy
+  claim: Dividing the logits by a positive temperature cannot change the predicted class, so temperature
+    scaling leaves accuracy unchanged. Section 7 counts the clauses whose argmax moved rather than relying
+    on this.
+  where: lesson.py section 7 (exercise 5 preamble, and the calibration table's 'argmax moved' column)
+  source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
+  source_title: On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 4.2
+  quote: In other words, temperature scaling does not affect the model’s accuracy.
+  quote_context: section 4.2, immediately after 'Because the parameter T does not change the maximum of
+    the softmax function, the class prediction' (followed by a typeset symbol) 'remains unchanged.' The
+    apostrophe in the quote is the page's typographic one.
+  accessed: 2026-09-23
+- id: ece-weighted-equal-width-right-closed-bins
+  claim: The expected calibration error groups predictions into M equal-width confidence bins and takes
+    the average of each bin's |accuracy - confidence| gap weighted by the bin's share of samples; bin
+    m is the right-closed interval ((m-1)/M, m/M]. expected_calibration_error implements exactly this
+    definition, including the right-closed edges the rubric grades.
+  where: lesson.py section 7 (exercise 5, expected_calibration_error docstring)
+  source_url: https://ar5iv.labs.arxiv.org/html/1706.04599
+  source_title: On Calibration of Modern Neural Networks (arXiv 1706.04599), HTML rendering, section 2
+    (Definitions)
+  quote: equally-spaced bins (similar to the reliability diagrams) and taking a weighted average of the
+    bins’ accuracy/confidence difference.
+  quote_context: section 2, paragraph 'Expected Calibration Error (ECE)'. The quote is preceded by 'partitioning
+    predictions into' and the bin count M, typeset as mathematics, so it starts after the maths (header
+    rule). The formula that follows weights each bin by |B_m| / n. The right-closed interval I_m = ((m-1)/M,
+    m/M] is typeset as mathematics in the 'Reliability Diagrams' paragraph of the same section, in the
+    sentence beginning 'Let B m be the set of indices of samples whose prediction confidence falls into
+    the interval'. The apostrophe is the page's own.
+  accessed: 2026-09-23
+- id: production-confidence-read-as-probability-correct
+  claim: 'A production document-extraction service documents its field confidence as a calibrated probability:
+    Microsoft''s Azure AI Document Intelligence says a confidence of 0.95 means the prediction is likely
+    correct 19 times in 20. That is the reading a reviewer brings to a confidence score, and the reason
+    section 7 measures whether this lesson''s scores deserve it.'
+  where: lesson.py section 7 (exercise 5 preamble)
+  source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
+  source_title: Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI
+    Document Intelligence)
+  quote: For example, a confidence value of 0.95 (95%) indicates that the prediction is likely correct
+    19 out of 20 times.
+  quote_context: page metadata ms.date 2026-04-08, updated_at 2026-07-10
+  accessed: 2026-09-23
+- id: confidence-gates-human-review
+  claim: Routing a prediction to a human on the strength of its confidence is the documented design of
+    the same service, which tells operators that confidence can decide whether to accept a prediction
+    automatically or flag it for review. Section 11 hands the abstained clauses to module 1's queue on
+    exactly that basis.
+  where: lesson.py section 11 preamble
+  source_url: https://learn.microsoft.com/en-us/azure/ai-services/document-intelligence/concept/accuracy-confidence
+  source_title: Microsoft Learn — Interpret and improve model accuracy and confidence scores (Azure AI
+    Document Intelligence)
+  quote: For scenarios where accuracy is critical, confidence can be used to determine whether to automatically
+    accept the prediction or flag it for human review.
+  quote_context: the sentence directly after the 19-out-of-20 example; same page and dates
+  accessed: 2026-09-23
+- id: selective-classification-with-guaranteed-risk
+  claim: Abstaining below a confidence threshold is selective classification (also called the reject option),
+    and a threshold can be chosen so that a desired risk is met with high probability rather than only
+    on average. The lesson's choose_threshold is the plain point-estimate version without that guarantee,
+    and says so in section 12; section 10 measures how often the point estimate over-promises.
+  where: 'lesson.py section 12 (common mistakes: reading the threshold as a guarantee)'
+  source_url: https://arxiv.org/abs/1705.08500
+  source_title: Selective Classification for Deep Neural Networks (Geifman, El-Yaniv; arXiv 1705.08500v2,
+    last revised 1 Jun 2017)
+  quote: Our method allows a user to set a desired risk level. At test time, the classifier rejects instances
+    as needed, to grant the desired risk (with high probability).
+  quote_context: abstract; its first sentence names the technique 'also known as reject option'
+  accessed: 2026-09-23

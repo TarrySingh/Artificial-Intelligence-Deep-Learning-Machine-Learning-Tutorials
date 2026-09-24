@@ -13,8 +13,7 @@
 # [![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=lessons/T03-L02-bpe-merge-loop-in-cpp/lesson.ipynb)
 # [![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials)
 #
-# This lesson needs Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle,
-# Binder and Codespaces already have, and a C or C++ compiler (`clang` or `gcc`). The cell
+# This lesson needs Python 3.11 or newer, and a C or C++ compiler (`clang` or `gcc`). The cell
 # below installs `tokenizers==0.23.2` and fetches the files it needs beside it, and does
 # nothing where they are already present. On Kaggle, switch Internet on in the notebook's
 # settings first; Kaggle allows that only for phone-verified accounts.

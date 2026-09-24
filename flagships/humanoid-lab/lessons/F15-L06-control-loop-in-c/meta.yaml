@@ -1,143 +1,65 @@
 id: F15-L06-control-loop-in-c
-title: Write a PD control loop against MuJoCo's C API and measure the per-tick overhead that separates it from the same loop in Python
+title: Write a PD control loop against MuJoCo's C API and measure the per-tick overhead that separates
+  it from the same loop in Python
 track: T11
 flagship: F15-humanoid-lab
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+tier: cpu8
 budget_seconds: 120
-language: c             # python | c | cpp
+language: c
 prerequisites:
-  - F15-L01-first-contact      # mjModel vs mjData, stepping, reading qpos/qvel
-  - F15-L03-pd-control         # the control law this lesson rewrites on the other side of the bindings
+- F15-L01-first-contact
+- F15-L03-pd-control
 objectives:
-  - "Implement a joint's qpos and qvel address lookup through mjModel's own tables in C, and show the two addresses differ on a model with a free joint"
-  - "Implement a per-actuator clamped PD control law in C and pass the binary's self-test on all three exercises"
-  - "Implement a fixed-step control loop in C and show it advances simulated time by exactly one timestep per tick"
-  - "Measure the same loop's throughput in C and in Python on identical work and report the per-tick overhead and ratio between them"
-  - "Explain why a PD law leaves a steady-state error, from a measured comparison of that error against qfrc_bias divided by the gain"
+- Implement a joint's qpos and qvel address lookup through mjModel's own tables in C, and show the two
+  addresses differ on a model with a free joint
+- Implement a per-actuator clamped PD control law in C and pass the binary's self-test on all three exercises
+- Implement a fixed-step control loop in C and show it advances simulated time by exactly one timestep
+  per tick
+- Measure the same loop's throughput in C and in Python on identical work and report the per-tick overhead
+  and ratio between them
+- Explain why a PD law leaves a steady-state error, from a measured comparison of that error against qfrc_bias
+  divided by the gain
 datasets:
-  - name: "arm2.xml — pinned two-link planar arm, authored for this lesson"
-    licence: "CC-BY-NC-SA-4.0"
-    url: "https://creativecommons.org/publicdomain/zero/1.0/"
-    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA 4.0 with the rest of the course"
-    cached_at: "assets/arm2.xml"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Not a download. Two capsules, two hinges and two direct-drive motors, written out in
-      full: no mesh, no include, no file= reference, so the lesson runs with the network
-      switched off. Contacts are disabled and the actuator limits are deliberately tight, so
-      the per-actuator clamp the student writes is load-bearing rather than dead code.
-      Provenance and the reasoning behind each modelling choice are in assets/SOURCE.md.
-  - name: "arm2_floating.xml — the same arm on a free-floating base, authored for this lesson"
-    licence: "CC-BY-NC-SA-4.0"
-    url: "https://creativecommons.org/publicdomain/zero/1.0/"
-    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA 4.0 with the rest of the course"
-    cached_at: "assets/arm2_floating.xml"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Never stepped. It exists so the address exercise has a model where qpos and qvel
-      addresses genuinely differ: the free joint takes 7 qpos slots against 6 qvel rows, so
-      the two actuators sit at qpos 7/8 but dof 6/7. Without it, indexing qvel with a qpos
-      address passes every test, which is precisely the bug the lesson exists to prevent.
-  - name: "MuJoCo 3.13.0 (the physics engine itself)"
-    licence: "Apache-2.0"
-    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
-    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
-    copyright: "DeepMind Technologies Limited"
-    cached_at: "(installed in the environment; not vendored)"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Free, ungated, commercial use permitted, no registration. The only third-party
-      dependency on the lesson's required path. Both the C headers and the shared library come
-      from the installed Python wheel, which is why the Makefile discovers them by asking the
-      interpreter where its own mujoco package lives rather than hard-coding a path.
+- name: arm2.xml — pinned two-link planar arm, authored for this lesson
+  licence: CC-BY-NC-SA-4.0
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+  copyright: Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA
+    4.0 with the rest of the course
+  cached_at: assets/arm2.xml
+  retrieved: 2026-09-16
+  gated: false
+  notes: 'Not a download. Two capsules, two hinges and two direct-drive motors, written out in full: no
+    mesh, no include, no file= reference, so the lesson runs with the network switched off. Contacts are
+    disabled and the actuator limits are deliberately tight, so the per-actuator clamp the student writes
+    is load-bearing rather than dead code. Provenance and the reasoning behind each modelling choice are
+    in assets/SOURCE.md.'
+- name: arm2_floating.xml — the same arm on a free-floating base, authored for this lesson
+  licence: CC-BY-NC-SA-4.0
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+  copyright: Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA
+    4.0 with the rest of the course
+  cached_at: assets/arm2_floating.xml
+  retrieved: 2026-09-16
+  gated: false
+  notes: 'Never stepped. It exists so the address exercise has a model where qpos and qvel addresses genuinely
+    differ: the free joint takes 7 qpos slots against 6 qvel rows, so the two actuators sit at qpos 7/8
+    but dof 6/7. Without it, indexing qvel with a qpos address passes every test, which is precisely the
+    bug the lesson exists to prevent.'
+- name: MuJoCo 3.13.0 (the physics engine itself)
+  licence: Apache-2.0
+  url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  licence_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  copyright: DeepMind Technologies Limited
+  cached_at: (installed in the environment; not vendored)
+  retrieved: 2026-09-16
+  gated: false
+  notes: Free, ungated, commercial use permitted, no registration. The only third-party dependency on
+    the lesson's required path. Both the C headers and the shared library come from the installed Python
+    wheel, which is why the Makefile discovers them by asking the interpreter where its own mujoco package
+    lives rather than hard-coding a path.
 points: 47
-# Authored 2026-09-16 to replace an unworked template stub left by an earlier pass.
-#
-# Design notes worth keeping:
-#
-#  - The address exercise is graded on TWO models on purpose. On the pinned arm nq == nv == 2
-#    and qpos[i] pairs with qvel[i], so the wrong answer (`qvel[qadr]`) scores full marks. The
-#    floating-base companion model is the discriminating case: its free joint takes 7 qpos
-#    slots against 6 qvel rows, so the actuators sit at qpos 7/8 but dof 6/7. Six of the 47
-#    points ride on that single distinction, because it is the bug this lesson exists to stop
-#    and it is silent in every model a student is likely to test against first.
-#  - The actuator limits in arm2.xml are tight (8 N m and 3 N m against a PD law that asks for
-#    32 and -48 on the first tick) so that the per-actuator clamp fires: 5.5% of ticks
-#    saturate in the reference run. With a generous actuator the clamp would be unreachable
-#    code and the rubric could not tell a correct one from a missing one. The two ranges also
-#    differ from each other, so a single shared clamp fails.
-#  - The timing comparison is per-tick overhead rather than a bare ratio, because the ratio is
-#    the folklore number and the overhead is the one that generalises. Both loops call the
-#    same compiled mj_step through the same libmujoco, which is asserted from MuJoCo's own
-#    documentation in claims.yaml and demonstrated by the trace comparison: C and Python agree
-#    bit for bit at every sampled tick, so the measured difference cannot be the physics.
-#  - The droop section needed no invented number. The C `run` command prints final error
-#    beside qfrc_bias/kp, and on the shipped model they agree to better than one part in
-#    10^10 (measured: 1.9e-11 relative at the shoulder, 2.3e-11 at the elbow),
-#    so the PD steady-state-error result from F15-L03 is re-derived here as a measurement the
-#    student's own loop produces rather than as a claim.
-#  - Gate 7: lesson.py never names a path under solutions/, and the two file variants set
-#    their own source and binary names rather than sharing a switch, so the string the bundle
-#    builder greps for cannot appear in the student notebook.
-#  - Gate 3: the longest run of prose before something runnable is 45 non-blank lines, and it
-#    is the section 11 self-check — five questions with four options each, immediately
-#    followed by the cell that marks them. Every EXPOSITORY block is 23 lines or fewer, well
-#    inside the ~40 the gate asks for; the shape of the question bank matches F15-L08's
-#    self-check, which shipped.
-#
-# Two defects found by running the thing rather than reading it, both fixed:
-#
-#  - The section 10 "common mistakes" demo indexed qvel with a qpos address to show that it
-#    reads the wrong joint. On the floating arm that is not merely wrong: actuator 1's qpos
-#    address is 8 against nv = 8, so the read is off the end of the array and numpy raised
-#    IndexError, which failed gate 9 outright. The demo now reports both outcomes separately —
-#    actuator 0 silently damps against another joint, actuator 1 leaves the array — and makes
-#    the point that C bounds-checks neither. The bug was a better lesson than the one planned.
-#  - The closing control-rate ladder printed "fits" in every cell for both languages, so it
-#    discriminated nothing: at 0.65 us/tick (C) and 4.58 (Python) even a 2 kHz loop has a
-#    500 us budget. It now runs to 1 MHz, where Python misses and C does not, and says plainly
-#    that no rate a real robot runs troubles either — the overhead only decides anything when
-#    one control period must buy many ticks, which is F15-L07's problem, not this lesson's.
-#    A table whose verdict column never changes is decoration, not a measurement.
-#
-# Independent review, 2026-09-16. Twenty mutants of the reference were graded; eighteen were
-# caught as shipped and two scored a full 47/47:
-#
-#  - pd_ctrl clamping UNCONDITIONALLY, ignoring m->actuator_ctrllimited[i]. Both shipped
-#    models limit both actuators, so the conditional branch was unobservable and a wrong
-#    answer was indistinguishable from a right one. Fixed by giving the ctrldump command an
-#    --unlimited flag that clears the flag on the loaded model, then asserting the RAW 32 and
-#    -48 come back; the C self-test now makes the same check in-place (save, clear, restore)
-#    so the student sees it before the autograder does.
-#  - pd_ctrl reading d->qvel[qadr] — the damping term indexed by the POSITION address. Every
-#    ctrldump case ran on the pinned arm, where the two addresses agree, so the exact bug this
-#    lesson exists to prevent scored full marks in the control law even though the address
-#    lookup itself was graded on both models. Fixed by a ctrldump case on the floating arm
-#    with both hinges on target and distinct dof velocities: the command IS the damping term
-#    there, so qvel[6] = 0.1 gives -0.2 and qvel[7] = 0.3 gives -0.6.
-#
-# Two further defects, neither visible to the four gates:
-#
-#  - make_test() returned MAKE's exit code, and make reports any failed recipe as 2 — the same
-#    code the binary uses for "still a stub". Every wrong C answer was therefore graded TODO,
-#    "not implemented yet", and the self-test's own named diagnostics never reached the
-#    student. It now builds with make and runs the binary directly, so 0/1/2 mean what
-#    section 2 says they mean.
-#  - lesson.py defined _check_self_check() and never called it, so the section 11 instruction
-#    to "run the cell" marked nothing. A marking cell now follows the answer block.
-#
-# Also: `make clean` — the documented fix for the dyld trap below — aborted with $(error)
-# when the interpreter on PATH had no mujoco, which is backwards for a target whose job is to
-# delete a binary; the error is now skipped for clean and paths. The compiled-lesson warning
-# required by QUALITY.md ("Known trap") is in section 10 of lesson.py. The answer key's claim
-# that error and qfrc_bias/kp "agree to twelve significant figures" overstated a measured
-# 1.9e-11 relative gap and now says one part in 10^10.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent reviewer (Claude Opus 5), 2026-09-16: 20-mutant rubric pass, 2 rubric defects found and fixed (unconditional clamp, qvel indexed by qpos address), plus a make-exit-code misreport, an uncalled self-check, a make clean that could not run and an overstated precision claim; 20/20 caught after, reference still 47/47, all four gates green"
+status: reviewed
 measured_seconds: 3.2
 measured_peak_mib: 51

@@ -1,190 +1,34 @@
 id: P01-L03-annex-iv-documentation
-title: Generate the Annex IV technical documentation from typed artefacts, so it refuses to emit a section it cannot source and reports the day it stopped being true
+title: Generate the Annex IV technical documentation from typed artefacts, so it refuses to emit a section
+  it cannot source and reports the day it stopped being true
 track: P01
 programme: ai-act-conformity
-flagship: F09           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F09
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T10-L01-ai-act-conformity-pack
-  - P01-L01-article-12-logging
+- T10-L01-ai-act-conformity-pack
+- P01-L01-article-12-logging
 objectives:
-  - "Implement field_value() and is_sourced() so 'this section has a source' is a test over typed artefacts rather than a claim in a spreadsheet"
-  - "Implement check_section() so it separates a field that is absent from a field that is present and blank, and reports an unmet either/or as neither"
-  - "Implement provenance_stamp() so every emitted section names the artefact, the run and the content digest it was generated from"
-  - "Implement render_document() so it emits the sourced sections and refuses the rest, naming every path each refusal is waiting for"
-  - "Implement staleness_report() and explain why a content digest, not a modification time, decides whether a section has drifted"
-datasets: []            # none: every artefact is constructed inside lesson.py, nothing is read from disk or downloaded
-synthetic_data: "All ten source artefacts — the model registry, dataset manifest, validation report, control design, event log design, metrics, risk register, change log, standards record and post-market plan — are SYNTHETIC and are constructed in section 2 of lesson.py from fixed literals and offsets against AS_OF. The provider, the system and every figure in them are invented for the exercise and say nothing about any real product. No random number generator is used, so two runs agree byte for byte, including every SHA-256 digest the lesson prints."
-points: 61              # = sum of RUBRIC points in tests/test_lesson.py
-status: reviewed        # draft | executed | reviewed | shipped
-# Authoring notes, 2026-09-16.
-#
-# All four gates run from the repo root on the venv interpreter. The measured figures below
-# were written back by tools/execute.py and were not typed.
-#
-# Relationship to the programme. This is module 3 of ai-act-conformity and fills the
-# `technical_documentation` evidence id from T10-L01's evidence table. MODULES.md specified
-# the lab as: a renderer that assembles the document from typed sources and refuses to emit a
-# section it cannot source; a staleness_report() comparing each section against the
-# modification time and content hash of the artefact it came from; and a rubric whose trap is
-# "a section that renders successfully from an EMPTY source". All three are built here.
-#
-# Two deliberate deviations from the MODULES.md sketch, both toward the brief in the task:
-#   * The brief asked for "a schema for each required section, a completeness checker naming
-#     what is missing, a provenance stamp per section, and a renderer". That is the shape
-#     built — SectionSpec/check_section/provenance_stamp/render_document — with
-#     staleness_report kept as the fifth piece MODULES.md named.
-#   * MODULES.md lists "the module 1 log" among the typed sources. Importing P01-L01's event
-#     stream would have made this lesson unrunnable on its own and would have re-taught
-#     hashing a chain. Instead the module 1 output appears as an `event_log_design` artefact
-#     that section 3 of the schema requires, so the dependency is real and the lesson still
-#     runs top to bottom by itself. canonical_bytes() is handed to the student for the same
-#     reason: it was graded in P01-L01 and is a prerequisite here, not an exercise.
-#
-# The four planted defects, and why there are four rather than one. The rubric has to grade
-# the checker "against deliberately incomplete inputs", and the four ways an input can be
-# incomplete send an engineer to four different places:
-#   2  dataset_manifest.labelling_procedure is ""            — the pipeline ran, produced a blank
-#   3  control_design.human_oversight_measures is absent      — nobody has produced it (module 5)
-#   5  risk_register.residual_risks is [{"risk": "", ...}]    — a pasted template row, truthy, blank
-#   8  the `declaration` artefact does not exist at all       — module 8 has not run
-# Five of the nine sections emit; the document says so and reports complete: False. A pack
-# that is honestly four sections short is the artefact this module is supposed to produce at
-# this point in the programme.
-#
-# Honesty note carried in the lesson itself. Annex IV's nine points are quoted verbatim in
-# claims.yaml against their sources. The FIELD PATHS the schema requires for each point are
-# the lesson's own decomposition, invented to fit the fictional artefacts, and section 3 of
-# lesson.py says so in those words. A real provider's schema differs because their pipeline
-# outputs differ; what transfers is the shape, not the list.
-#
-# Rubric mutation testing. 12 plausible-wrong variants of the reference solution were built
-# outside the lesson tree and graded through tools/grade.py, plus one CONTROL that is a
-# differently-shaped RIGHT answer (check_section rebuilt as four comprehensions over
-# spec.requires rather than one loop with accumulators) which must still score 100%.
-#
-# Result: 12 of 12 breaking variants lost points, every one kept partial credit on the
-# exercises it had not broken, and the control scored 100%. Measured scores:
-#
-#   61/61 100%  CONTROL  check_section rewritten as comprehensions   <- must not be caught
-#   35/61  57%  is_sourced written as bool(value)
-#   47/61  77%  is_sourced stopping at len() instead of recursing
-#   41/61  67%  is_sourced rejecting a measured 0 and False
-#   48/61  79%  field_value returning None instead of MISSING
-#   58/61  95%  field_value raising on a walk into a non-dict
-#   54/61  89%  check_section folding `empty` into `missing`
-#   47/61  77%  check_section treating any_of paths as required fields
-#   58/61  95%  check_section listing every artefact the spec NAMES, sourced or not
-#   52/61  85%  provenance_stamp hashing the whole Artefact, run id and timestamp included
-#   50/61  82%  render_document emitting every section, padding the unsourced fields
-#   58/61  95%  render_document stamping only the first artefact of a section
-#   55/61  90%  staleness_report keyed on generated_at rather than the content digest
-#
-# The last one is the mutant this lesson exists for. It loses exactly the two staleness cases
-# and keeps the other 18 — which is what partial credit is for, and is why the hand-edit case
-# and the re-run case are BOTH graded: a timestamp rule fails one in each direction, and
-# either case alone could be passed by a rule that flags everything or nothing.
-#
-# Sync: lesson.py and solutions/lesson_solution.py were diffed and differ only inside the six
-# stub bodies, plus a self-check answer section appended to the solution that has no
-# counterpart in the student file. The self-check key in lesson.py is salted SHA-256 digests,
-# so the answers are not readable off the student's own page, and no prose in lesson.py points
-# at a path under solutions/.
-#
-# Open for the owner: flagship F09 matches the rest of this programme; flagships/ still holds
-# no F09 directory. tools/build_student_bundle.py has still not been run against a lesson
-# under programmes/ (noted in P01-L01's meta as well), and it strips a line starting with
-# "reviewed_by:" but not the continuation lines of a folded block — hence the single-line
-# reviewed_by convention kept here.
-#
-# --- INDEPENDENT REVIEW, 2026-09-16 --------------------------------------------------------
-#
-# All four gates re-run from the repo root on the venv interpreter and re-confirmed. lesson.py
-# and solutions/lesson_solution.py re-diffed: six hunks, one per stub body, plus the
-# solution-only self-check appendix. Nothing else differs. No prose in lesson.py names a path
-# under solutions/. The five self-check digests were recomputed and each matches exactly one
-# of a/b/c/d, with no collision, so the key is not readable off the student's page.
-#
-# 16 plausible-wrong variants plus one CONTROL (a differently-shaped RIGHT answer) were built
-# in a temporary tree outside the lesson and graded through tools/grade.py, each under four
-# PYTHONHASHSEED values. The author's 12 were reproduced in kind and six further shapes added:
-# an off-by-one path walk, a truncated digest, a mutable default argument reused across calls,
-# a missing return, an exception swallowed into a default, a function that computes the right
-# rows and returns the wrong ones, and two artefact-ordering variants.
-#
-# TWO RUBRIC DEFECTS WERE FOUND AND FIXED. Both were in check_section and both let a wrong
-# implementation score 61/61.
-#
-#  1. `artefacts` ordering was never pinned on more than two names. Section 6 is the only
-#     multi-source section, and its two artefacts (change_log, model_registry) happen to be
-#     listed in the spec in alphabetical order already — so an answer returning INSERTION
-#     order scored 61/61 on every seed, and one returning `tuple(set)` scored 61/61 on 6 of 12
-#     seeds, because CPython randomises string hashes at interpreter start. A rubric that a
-#     wrong answer passes on a coin flip is not a rubric. FIX: test_check_section_shape_and_a_
-#     complete_section now checks a ten-artefact spec whose required paths are listed in a
-#     deliberately scrambled order and asserts the result equals tuple(sorted(SOURCES)). The
-#     ten-name set was measured over 60 seeds and never once iterated in sorted order.
-#
-#  2. An unmet either/or whose branch is ABSENT was never exercised. The `dark` fixture in
-#     test_check_section_any_of_paths_are_not_fields made both branches present-but-blank, so
-#     a checker that additionally reported the absent branch in `missing` scored 61/61. FIX:
-#     that fixture now drops harmonised_applied from the payload entirely, and a second
-#     fixture keeps the original empty-list/blank-string shape — which is also what stops an
-#     `all()`-where-`any()`-belongs answer from passing point 7 on a vacuous truth over [].
-#
-# After the fix: reference 61/61, CONTROL 61/61, and all 16 breaking variants lose points on
-# every seed. Measured scores (worst over four seeds):
-#
-#   61/61 100%  CONTROL  check_section rebuilt as comprehensions   <- must not be caught
-#   34/61  56%  check_section with mutable default accumulators
-#   38/61  62%  is_sourced as `value is not MISSING` (tolerance accepts anything)
-#   41/61  67%  field_value off-by-one, stopping one key short
-#   43/61  70%  check_section: `and` where `or` belongs in the verdict
-#   46/61  75%  is_sourced: `all()` where `any()` belongs in containers
-#   47/61  77%  render_document forgets to return
-#   47/61  77%  is_sourced stops at len() for dicts
-#   48/61  79%  field_value swallows the exception and returns None
-#   49/61  80%  staleness hash comparison flipped
-#   52/61  85%  staleness computes every row, returns only the stale ones
-#   52/61  85%  field_value folds "", [] and {} into MISSING
-#   55/61  90%  provenance_stamp truncates the digest to 16 hex characters
-#   55/61  90%  check_section returns tuple(set) instead of sorted   <- was 61/61 on half the seeds
-#   57/61  93%  render_document emits the unsourced any_of branch too
-#   58/61  95%  check_section returns insertion order                <- was 61/61 on every seed
-#   58/61  95%  check_section also reports an absent any_of branch as missing  <- was 61/61
-#
-# Truth checks. Every claims.yaml quote was re-fetched on the access date and matches
-# verbatim, including Article 11(1)'s "kept up-to date" hyphenation, Annex IV's opening
-# sentence, points 4 to 9, point 3's full sub-point text from the corroborating reproduction,
-# and all three Commission quotes behind the 2 December 2027 / 2 August 2028 / 27 July 2026
-# timetable. The retrieval_note honestly records that CELEX 32026R1744's enacting text was not
-# retrieved. The lesson matches MODULES.md module 3 — renderer that refuses, staleness_report
-# over modification time AND content hash, the empty-source trap, a per-section provenance
-# table and a staleness verdict — and the two declared deviations are stated in the notes
-# above. Objectives all open with a verb, no "understand X". Both prerequisite ids resolve to
-# real lessons. Longest markdown run is 42 lines and is the five-question self-check block,
-# which sits immediately above the cell that marks it.
-#
-# ONE PROSE CHANGE was made during review: the closing cell now names the
-# `technical_documentation` evidence id from T10-L01 that this module fills. P01-L01 names its
-# own evidence id twice in its lesson.py; this one named it nowhere outside meta.yaml, which
-# broke the programme's spine for a student reading only the notebook. Applied identically to
-# lesson.py and solutions/lesson_solution.py.
-#
-# Still open for the owner, unchanged by this review: no flagships/F09 directory exists, and
-# tools/build_student_bundle.py has still not been run against any lesson under programmes/.
-#
-# --- GATE 3 FIX, 2026-09-23 ---------------------------------------------------------------
-#
-# Counted as non-blank markdown lines between two code cells, the longest run was 56, not the
-# 42 recorded above: section 11 (common mistakes) ran straight into section 12 (self-check).
-# A runnable cell now sits between them. It types "TBC" into each gap in the SOURCES and
-# shows the student's own render_document going green, so the last common mistake is
-# demonstrated rather than asserted. It goes through _try with needs= exercises 1 to 5, and is
-# applied identically to lesson.py and solutions/lesson_solution.py. Longest run is now 35
-# (the self-check block). Stub 0/61 and solution 61/61, both unchanged.
-reviewed_by: "independent reviewer (Claude Opus 5), 2026-09-16 — all four gates re-run; 16 mutants + 1 control mutation-tested; 2 rubric defects found in check_section (artefact ordering unpinned beyond two names, absent any_of branch never exercised) and fixed in tests/test_lesson.py; claims re-verified against primary sources; points unchanged at 61"
+- Implement field_value() and is_sourced() so 'this section has a source' is a test over typed artefacts
+  rather than a claim in a spreadsheet
+- Implement check_section() so it separates a field that is absent from a field that is present and blank,
+  and reports an unmet either/or as neither
+- Implement provenance_stamp() so every emitted section names the artefact, the run and the content digest
+  it was generated from
+- Implement render_document() so it emits the sourced sections and refuses the rest, naming every path
+  each refusal is waiting for
+- Implement staleness_report() and explain why a content digest, not a modification time, decides whether
+  a section has drifted
+datasets: []
+synthetic_data: All ten source artefacts — the model registry, dataset manifest, validation report, control
+  design, event log design, metrics, risk register, change log, standards record and post-market plan
+  — are SYNTHETIC and are constructed in section 2 of lesson.py from fixed literals and offsets against
+  AS_OF. The provider, the system and every figure in them are invented for the exercise and say nothing
+  about any real product. No random number generator is used, so two runs agree byte for byte, including
+  every SHA-256 digest the lesson prints.
+points: 61
+status: reviewed
 measured_seconds: 0.0
 measured_peak_mib: 21

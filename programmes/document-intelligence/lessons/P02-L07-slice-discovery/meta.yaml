@@ -1,166 +1,34 @@
 id: P02-L07-slice-discovery
 title: Error analysis and slice discovery — is that regression real, and is the slice big enough to say?
 track: P02
-flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: ''
+tier: cpu8
 budget_seconds: 180
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
-  - P02-L01-extraction-evaluation
+- T00-L01-the-8gb-track
+- P02-L01-extraction-evaluation
 objectives:
-  - "Implement automatic slice discovery over document attributes (vendor, layout family, language, binned page count, scan quality), including two-attribute crosses, above a minimum size"
-  - "Implement a vectorised paired bootstrap for the change in a slice's macro F1 between two model versions, with a percentile interval and a one-sided p-value that is never zero"
-  - "Implement Holm's step-down and Benjamini-Hochberg's step-up adjustments, and explain why a release gate over overlapping slices uses the family-wise one"
-  - "Compute the sample size a slice needs before it may block a release, and measure what searching two attributes deep does to it and to the smallest p-value the bootstrap can produce"
-  - "Produce a release decision that names which slice regressions are real and which slices are too small to say, and measure how often point-estimate and uncorrected rules block a release in which nothing changed"
+- Implement automatic slice discovery over document attributes (vendor, layout family, language, binned
+  page count, scan quality), including two-attribute crosses, above a minimum size
+- Implement a vectorised paired bootstrap for the change in a slice's macro F1 between two model versions,
+  with a percentile interval and a one-sided p-value that is never zero
+- Implement Holm's step-down and Benjamini-Hochberg's step-up adjustments, and explain why a release gate
+  over overlapping slices uses the family-wise one
+- Compute the sample size a slice needs before it may block a release, and measure what searching two
+  attributes deep does to it and to the smallest p-value the bootstrap can produce
+- Produce a release decision that names which slice regressions are real and which slices are too small
+  to say, and measure how often point-estimate and uncorrected rules block a release in which nothing
+  changed
 datasets:
-  - name: document-intelligence slice evaluation set (module 1's remittance advices with attributes)
-    kind: synthetic
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    note: >-
-      1600 documents built by build_corpus() from random.Random(20260934), each with module
-      1's six gold fields and five attributes; two extractor versions scored by module 1's
-      harness, copied into the lesson. Nothing is read from disk and nothing is downloaded.
-points: 92              # = sum of RUBRIC points in tests/test_lesson.py
-# Authored 2026-09-23 as module 7 of the document-intelligence programme. All gates run from
-# the repo root on the venv interpreter; the measured figures at the foot of this file were
-# written back by tools/execute.py and never typed.
-#
-# WHAT MODULES.md ASKED FOR, AND WHAT IS HERE. "Implement automatic slice finding over document
-# attributes (vendor, layout family, language, page count, scan quality), bootstrap confidence
-# intervals on per-slice F1, and apply a multiple-comparison correction. The student is given
-# two model versions and must decide, with intervals rather than point estimates, which
-# apparent regressions are real. They also compute the sample size a slice needs before it is
-# allowed to block a release." All of it is an exercise: find_slices (1), macro_f1_from_counts
-# (2, module 1's scorer vectorised), paired_bootstrap (3), holm_adjust + bh_adjust (4),
-# required_slice_size (5), release_decision (6, the artefact).
-#
-# DELIBERATE CHOICES, each stated in the notebook:
-#  1. Per-slice F1 is module 1's MACRO F1 (the harness's headline), computed from
-#     per-document tp/fp/fn arrays that module 1's own cell rule fills (cell_counts, given).
-#     Module 1's normaliser, matcher, score_field and macro_f1 are copied in unchanged (fuzzy
-#     mode dropped, as module 3 did) because a lesson opens alone and may not import another.
-#  2. The bootstrap is PAIRED and resamples DOCUMENTS; the p-value is one-sided ("candidate is
-#     worse") and written (r + 1)/(n + 1). The brief left the test's sidedness open; a release
-#     gate asks only whether the candidate is worse.
-#  3. Both corrections are implemented. The brief said "Holm or Benjamini-Hochberg"; doing both
-#     lets the rubric grade the step-down AND the step-up ordering, and lets the lesson say why
-#     the gate is Holm (FWER, valid under the dependence overlapping slices create) and BH is
-#     the error-analysis queue (FDR, proved for independent statistics). Both sourced.
-#  4. The size gate is checked BEFORE significance: a slice below n_required is "too small to
-#     say" even when Holm flags it. This is the reading of "the sample size a slice needs
-#     before it is allowed to block a release" taken literally, and on this release it is what
-#     demotes vendor=Torrent Robotics Inc (13 documents, measured -0.120, Holm-adjusted p below
-#     ALPHA, generator's expected change about zero) from a false block.
-#  5. n_required uses one sigma for every slice, estimated from the whole-set paired bootstrap
-#     (NIST 7.2.2.2's "best estimate from a previous experiment"), tested at ALPHA/m, Holm's
-#     first and strictest step. The notebook prints the per-slice spread of sigma so the
-#     approximation is visible rather than hidden.
-#  6. The main family is depth 1 (34 slices). Depth 2 is implemented and graded, and section 7
-#     measures why it is not used: 253 slices raise n_required, and with N_BOOT = 2000 the
-#     smallest Holm-adjusted p the bootstrap can produce (m/(B+1)) is above ALPHA, so nothing
-#     could block. That is a finding of the lesson, not an omission.
-#
-# THE PLANTED REGRESSION AND THE NOISE. own_error_rate (given, readable) makes v2 worse than v1
-# in exactly one place: digit fields (money, date, id) on faxed documents. Elsewhere v2 is
-# better (lower base error, two-column reading order fixed). The five smallest vendors use
-# "rare templates" that raise BOTH versions' error rates equally, which makes their slices
-# noisy without changing what either version does to them. Every slice contains faxed
-# documents in proportion, so every slice inherits a diluted share of the fax regression; the
-# generator's improvement elsewhere was set so that, measured offline over 16 retrains of each
-# version, every slice at or above the size gate has an expected change >= 0. The notebook
-# itself prints the expected change (12 retrains) for every slice any rule blocks.
-#
-# SEED SELECTION, disclosed. The corpus and extractor seeds were chosen by a search over 50
-# candidates for an evaluation set that shows every failure the lesson teaches: the fax slice
-# at least 1.2x the size gate; no slice within 15% of the gate (so a differently drawn but
-# correct bootstrap cannot move a slice across it); at least two noise slices falling by more
-# than MARGIN; at least one noise slice with an uncorrected p <= ALPHA; the fax p at the
-# bootstrap floor. 5 of 50 qualified; the one used (search index 11) also had a noise slice
-# that Holm alone flags. The null-release table in section 9 re-runs the whole pipeline on 20
-# retrain pairs and shows how often each failure happens when nothing changed. It clears rules
-# 1-3 of seed-picking (they fire in most null releases); it does NOT clear the Holm-flagged
-# tiny slice, which Holm-without-size-gate produces in none of the 20, so that one IS a
-# property of the chosen seed. Section 9 now tells the student so, in words (review, below).
-#
-# MUTATION TESTING, 2026-09-23, by the author (not an independent review). 40 plausible-wrong
-# variants of the reference solution, each a real student mistake, were graded with
-# tools/grade.py --solution on scratch copies of this directory outside the repository. The
-# scores below are MEASURED against the final 92-point rubric. All 40 are caught and every one
-# keeps partial credit (68 to 89 of 92):
-#   find_slices   values in order of appearance 82 · min_size exclusive 79 · depth-2 name with
-#                 the attributes reversed 86 · permutations instead of combinations 86 · index
-#                 returned as a Python list 88
-#   macro F1      pooled (micro) F1 79 · arithmetic mean of P and R 82 · mean over the first
-#                 axis 68 · unguarded division with NaN cleaned afterwards 89
-#   bootstrap     independent resamples for the two versions 82 · delta = replicate mean 89 ·
-#                 interval at alpha / 1-alpha 89 · alpha ignored in the interval 89 · p without
-#                 the +1 88 · ties at zero counted as regression 87 · champion minus candidate
-#                 76 · permutation instead of resampling with replacement 83 · se at ddof=0 89 ·
-#                 two-sided p-value 83
-#   Holm / BH     Holm without the running maximum 84 · Holm as Bonferroni 84 · Holm multiplier
-#                 off by one 79 · BH without the running minimum 87 · BH running minimum from
-#                 the smallest 84 · BH rank off by one 82 · adjusted values left in sorted
-#                 order 69 · Holm not capped at 1 84
-#   sample size   no power term 85 · two-sided critical value 85 · sigma = se * n_ref 80 ·
-#                 round instead of ceil 85 · power quantile subtracted 85
-#   decision      on the point estimate (delta < -MARGIN) 75 · on the raw p-value 84 · with BH
-#                 87 · Holm over the slices that fell 84 · size gate after significance 83 ·
-#                 gate boundary n <= n_required 88 · too-small slices stop the release 88 ·
-#                 strict < alpha 87
-# Two were survivors of the rubric as first written and are now caught by an extra hidden
-# assertion inside an existing case, no points added: se at ddof=0 (92 -> 89; the replicates
-# are returned, so the docstring's ddof=1 can be checked exactly) and strict < alpha (a case
-# whose Holm-adjusted p is exactly 0.05 in floating point: 2 x 0.025). Mutants 30 and 31 (point
-# estimate, raw p) happen to give the RIGHT verdicts on the lesson's own release, because the
-# size gate demotes the two noise slices they would block; they are failed by the hand-built
-# cases in test_decision_ignores_point_estimates and test_decision_corrects_with_holm, which is
-# why those cases exist and why the brief's requirement is not left to the corpus.
-# Two CONTROLS, differently shaped and correct, score 92/92: (1) a brute-force slice finder
-# over boolean masks, macro F1 through separate precision and recall under np.errstate, a
-# GATHER bootstrap (rows indexed and summed rather than a matrix of draw counts), and Holm/BH
-# as explicit Python loops; (2) a bootstrap that draws with rng.choice instead of
-# rng.integers — different replicates, so it also proves the corpus-level case is not pinned to
-# one random stream — with the sample size written through the variance and a set-based
-# decision. Control 1 took roughly five times as long to grade as the reference, which is
-# what a student who writes the gather version will see; it is still well inside the budget.
-#
-# WHAT COULD NOT BE VERIFIED. (1) The Benjamini-Hochberg abstract on the Oxford Academic page:
-# the page serves a bot check to scripts and to the browser used here, and the check was not
-# bypassed; the quote is verbatim in the publisher's Crossref record and in a fetch of the page
-# text. (2) The notebook was run in this repository's minimal py311 (numpy 2.4.6) and py312
-# (numpy 2.5.3) environments by tools/verify_portable.py, not on Colab or Kaggle themselves.
-# (3) numpy Generator.integers streams were compared across those two numpy versions only; a
-# future numpy that changed the stream would move the printed intervals, not the decision.
-# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root; figures re-measured,
-# none copied from above. Mutation testing with 36 mutants of the reviewer's own, including a
-# one-step boundary sweep of every graded threshold (min_size, max_order, the F1 division
-# guard, ties at zero in the p-value, the +1s, the resample's range and size, the ceil,
-# n_required, alpha). Seven survived the rubric as authored and were real gaps against the
-# docstrings: a resample one document too small or too large; a generator seeded inside the
-# bootstrap; release_decision ignoring its alpha argument and using ALPHA; Holm over only the
-# slices that pass the size gate (twice: with too-small slices given 1.0, and with them missing
-# from `holm`, which crashes the release note); a division guard that zeroes a field with one
-# true positive. Each is now caught by an assertion inside an existing case; no points added.
-# Six mutants still score 92/92 and are equivalent: int32 positions; guard `denominator > 1`
-# (2tp + fp + fn = 1 forces tp = 0); an unstable argsort in Holm (tied p-values get the same
-# adjusted value in either order); BH without the cap (its running minimum starts at p_(m) <= 1);
-# no alpha/power range check (NormalDist.inv_cdf raises StatisticsError, a ValueError, for
-# every value outside (0, 1), NaN included via math.ceil); floor + 1 for ceil (differs only when
-# the bracket squared is an exact integer, which a bootstrap-measured se does not produce).
-# Three differently shaped correct controls (boolean-mask finder + precision/recall F1 + gather
-# bootstrap + loop Holm/BH; groupby finder + rng.choice with np.add.at; multinomial draw counts)
-# score 92/92 before and after. Also fixed: the analysis cache keyed on id()s, which CPython
-# reuses after a function is redefined twice (measured: 5 of 10 redefinitions reused the id),
-# so a student could be shown results from an implementation they had replaced; the seed
-# selection above disclosed to the student in section 9; "one in twenty" in section 6 prose
-# replaced by ALPHA; a rubric message that said "found 34 slices, expected 34" now names the
-# first differing slice. The JSTOR page for Holm (1979) returned a bot check to every tool the
-# reviewer had; its abstract wording was corroborated from OpenAlex's OCR text, not verbatim.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "independent reviewer (Claude), 2026-09-23: gates re-run, 36 mutants, 3 controls, 8 of 9 quotes confirmed verbatim"
-
+- name: document-intelligence slice evaluation set (module 1's remittance advices with attributes)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  note: 1600 documents built by build_corpus() from random.Random(20260934), each with module 1's six
+    gold fields and five attributes; two extractor versions scored by module 1's harness, copied into
+    the lesson. Nothing is read from disk and nothing is downloaded.
+points: 92
+status: reviewed
 measured_seconds: 10.4
 measured_peak_mib: 211

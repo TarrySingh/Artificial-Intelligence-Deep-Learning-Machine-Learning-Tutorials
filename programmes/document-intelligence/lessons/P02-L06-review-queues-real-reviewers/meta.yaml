@@ -1,158 +1,36 @@
 id: P02-L06-review-queues-real-reviewers
-title: Human-in-the-loop review queues that survive contact with humans — agreement, deadlines, escalation, and the ceiling your reviewers put on every score
+title: Human-in-the-loop review queues that survive contact with humans — agreement, deadlines, escalation,
+  and the ceiling your reviewers put on every score
 track: P02
-flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: ''
+tier: cpu8
 budget_seconds: 120
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
-  - P02-L01-extraction-evaluation
+- T00-L01-the-8gb-track
+- P02-L01-extraction-evaluation
 objectives:
-  - "Implement raw agreement and Cohen's kappa over the union of two reviewers' labels, including perfect agreement, chance level, systematic disagreement, one shared label and a label one reviewer never uses"
-  - "Implement an SLA-aware review queue that serves arrived work earliest deadline first and reports its breaches, and measure its breach rate against first-in-first-out and module 1's confidence order"
-  - "Implement a two-tier escalation policy and measure the tier-1 mistakes it sends to a senior reviewer against a random escalation of the same size"
-  - "Measure throughput against quality across shift lengths for reviewers who tire, and choose a rota against an explicit breach-rate target"
-  - "Compute from your own kappa the quality ceiling your evaluation harness can see, check it against the simulation's truth, and explain why it is not 1.0"
+- Implement raw agreement and Cohen's kappa over the union of two reviewers' labels, including perfect
+  agreement, chance level, systematic disagreement, one shared label and a label one reviewer never uses
+- Implement an SLA-aware review queue that serves arrived work earliest deadline first and reports its
+  breaches, and measure its breach rate against first-in-first-out and module 1's confidence order
+- Implement a two-tier escalation policy and measure the tier-1 mistakes it sends to a senior reviewer
+  against a random escalation of the same size
+- Measure throughput against quality across shift lengths for reviewers who tire, and choose a rota against
+  an explicit breach-rate target
+- Compute from your own kappa the quality ceiling your evaluation harness can see, check it against the
+  simulation's truth, and explain why it is not 1.0
 datasets:
-  - name: module 1's synthetic remittance advices and extractor, plus a simulated review team
-    kind: synthetic
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    note: >-
-      Module 1's generator and seeds (build_corpus seed 20260916, run_extractor seed 7) re-create
-      its 180 documents and 1080 (document, field) cells record for record, carried in-lesson
-      because a student bundle is one directory. Three simulated reviewers (seeds 101, 202, 303,
-      shifted per simulated day) label them; every parameter is printed in the notebook and none
-      is a claim about real people. Nothing is read from disk and nothing is downloaded.
-points: 90              # = sum of RUBRIC points in tests/test_lesson.py
-# Authored 2026-09-23. Every gate in the brief was run from the repo root on the venv
-# interpreter; the measured figures at the foot of this file were written back by
-# tools/execute.py and never typed. The results quoted below are what the finished lesson
-# printed, not predictions.
-#
-# WHAT MODULES.MD ASKED FOR (module 6). Module 1's reviewer was perfect; this one is not.
-# Simulate reviewers with disagreement and fatigue; measure raw agreement and Cohen's kappa;
-# implement a two-tier escalation policy and an SLA-aware queue; measure throughput against
-# quality; end on "the ceiling your harness can see is your annotation agreement, not 1.0".
-# The brief added: fatigue from a fixed seed, kappa's formula sourced, deadlines that the queue
-# orders by and reports breaches of, the ceiling computed from the student's own kappa on the
-# fixture, kappa's edge cases graded, module 1's review-queue record carried in-lesson, and an
-# artefact: a review policy with a measured quality ceiling and SLA breach rate. All present:
-# exercises 1-2 (agreement_table, raw_agreement, chance_agreement, cohens_kappa), exercise 3
-# (sla_schedule, breach_report), exercise 4 (escalate), exercise 5 (harness_ceiling), section 9
-# (the throughput/quality sweep) and section 11 (the policy card).
-#
-# WHAT IS DIFFERENT FROM THE SPEC, AND WHY.
-#  1. The ceiling is sqrt(kappa), not kappa. MODULES.md's sentence reads as if the ceiling WERE
-#     the agreement. Measured, it is not: on the audit the reviewers' kappa is 0.561, the kappa
-#     between the truth and reviewer A is 0.737 (B: 0.719), and sqrt(0.561) = 0.749. Kappa
-#     itself is what a system as good as a SECOND reviewer scores against the first; a perfect
-#     system shares sqrt(kappa) with one reviewer (exact for independent, evenly spread mistakes
-#     on balanced labels, and within 0.012 of the truth-vs-A kappa on this skewed fixture). On
-#     the raw-agreement scale the ceiling p_e + sqrt(kappa)(1 - p_e) reads 0.905 against a
-#     measured 0.906. The lesson keeps the spec's thesis ("set by your agreement, not 1.0") and
-#     grades the precise form; "the ceiling is kappa" is a mutant below and loses 15 marks. The
-#     derivation's assumption is not hidden: section 12 re-runs the audit with a second reviewer
-#     who shares A's dice, and the ceiling jumps to 0.935 while A's true kappa stays 0.737.
-#  2. Kappa is computed over VERDICTS (accept / fix / clear), read off module 1's five cell
-#     labels, rather than over field values. Kappa needs a small categorical label set; field
-#     values are free text. The verdict is also exactly what a reviewer in module 1's queue
-#     produces, so the same labels drive the queue, the escalation policy and the ceiling.
-#  3. Module 1's harness is carried without its fuzzy mode (as module 3 did), and module 1's
-#     `gold` key is re-read as the TRUTH on the page, so module 1's functions run unchanged and
-#     section 10 can build a second, reviewer-written gold to score against.
-#  4. One reviewer per tier, and tier 2 reuses the student's scheduler: an escalated cell
-#     arrives at tier 2 when tier 1 finishes it, with its original deadline. Staffing several
-#     reviewers per tier is a routing problem that belongs to module 9.
-#  5. Policy comparisons are averaged over N_DAYS = 20 simulated days (fresh reviewer dice each
-#     day, same queue). The first draft compared single days: tier 1 made 15 mistakes that day,
-#     the rules sent 7 of them up and one seeded random control 4, and the shift sweep was
-#     non-monotone (60 items looked worse than 80). Averaged, cells still wrong rise from 5.2
-#     (10-item shifts) to 15.4 (240-item shifts), flat between 120 and 160 (10.2, 10.1), and
-#     the random control finds 1.7 tier-1 mistakes a day against the rules' 7.7.
-#  6. The rota is chosen on cells still wrong, not on corpus macro F1. Measured: macro F1 moves
-#     by 0.007 across the whole sweep while cells still wrong triple, because the 240 routed
-#     cells are a small slice of 1080. The notebook prints both and says why.
-#
-# SIMULATION RESULTS THE LESSON PRINTS (all deterministic; identical on py311 and py312 and
-# under PYTHONHASHSEED 0, 1 and 2). Earliest deadline first breaches 0 of 240 cells at 60-item
-# shifts; first-in-first-out breaches 26 (all money) and module 1's confidence order 59. The
-# chosen rota is 60-item shifts: 35.6 items per hour, breach rate 0.000, 7.5 cells still wrong
-# a day, macro F1 0.962 against the truth (a perfect reviewer: 0.967). A perfect extractor
-# scored against gold written by reviewer A reaches macro F1 0.976, not 1.000.
-#
-# MUTATION TESTING (the author's run; the reviewer's re-run on the final rubric is below).
-# 39 plausible-wrong variants of the reference solution were written as text
-# substitutions and graded in a scratch copy of the lesson under a mktemp directory, outside
-# the repo. Scores are measured. 36 were caught, each keeping partial credit (62 to 88 of 90);
-# 2 survivors are equivalent and 1 never terminates.
-#   agreement_table: categories from A only 86 · transposed 86 · first-seen, not sorted 86
-#   raw_agreement: zip with no length check 86
-#   chance_agreement: frequencies sorted per reviewer and zipped 76 · pooled marginals
-#     (Scott's pi) 68
-#   cohens_kappa: clamped at 0 87 · 1.0 when p_e = 1 83 · nan whenever either reviewer used
-#     one label 87 · abs() 83 · divided by p_e 62
-#   sla_schedule: sorted once and served in order 77 · first in first out 80 · module 1's
-#     confidence order 82 · tie-break doc_id before conf 85 · break one item late 82 ·
-#     position restarts at 1 82 · idle time resets fatigue 82 · clock stepped a minute at a
-#     time 82 · sorts and pops the caller's list 84 · no parameter validation 87
-#   breach_report: finish == deadline counted late 86 · ZeroDivisionError on an empty day 86 ·
-#     worst lateness over every item 86
-#   escalate: only `fix` counts as a money change 86 · <= at the threshold 86 · unknown verdict
-#     answers False 88 · field type not validated 88 · 0.5 and "money" typed in 88 ·
-#     rubber-stamp guard skips money 86 · guard on any low-confidence verdict 88
-#   harness_ceiling: returns kappa 79 · accuracy ceiling = raw agreement 80 · sqrt(|kappa|) 86 ·
-#     returns nan instead of raising 86 · pooled chance agreement 86 (this one scored 90/90
-#     until an unequal-marginal case was added to test_ceiling_on_the_accuracy_scale)
-# EQUIVALENT, not holes: chance_agreement summed over the INTERSECTION of the two label sets
-# (a label only one reviewer used contributes a zero product either way) and sla_schedule
-# starting its clock at the first arrival instead of minute 0 (the reviewer idles until then
-# anyway, and idling does not move the position). Measured as well as argued: 0 differences
-# from the reference on 20,000 random label pairs and on 20,000 random queues respectively.
-# NEVER TERMINATES: sla_schedule testing readiness with `arrival < clock`. After jumping the
-# clock to the next arrival nothing is ever ready, so the loop spins; the grader has no
-# per-test timeout and neither does the notebook. Hint 1 of exercise 3 now warns about exactly
-# this. A per-test timeout in tools/grade.py is an owner decision (see below).
-# CONTROLS, differently shaped and right: (1) a numpy table with np.add.at, a heapq event loop
-# over arrival-sorted items, and a ceiling whose chance agreement is recovered algebraically
-# from kappa and raw agreement; (2) dicts and Counters, a min() over ready indices each step
-# with index-based removal, an if/elif escalation, and max(kappa, 0) ** 0.5. Both score 90/90,
-# both run clean as scripts, and both print output identical to the reference.
-#
-# NOT VERIFIED, AND SAID SO. Cohen (1960) is cited through scikit-learn's reference list,
-# because the journal's DOI page returned HTTP 403 to an automated fetch on 2026-09-23. The
-# sqrt(kappa) relation is derived under the stated model and checked against this simulation's
-# truth only; the lesson presents it as that, not as a law about real review teams. The EUR-Lex
-# text of the AI Act was not fetched; the AI Act Explorer's Article 14 page was read and quoted.
-#
-# FOR THE OWNER (nothing outside this directory was touched): MODULES.md module 6 still reads
-# "specified" until tools/status.py is re-run; tools/grade.py has no per-test timeout, so a
-# student's non-terminating scheduler hangs the grader (module 4's review found the same).
-#
-# INDEPENDENT REVIEW, 2026-09-23. Every gate re-run from the repo root; all pass. 76 mutants of
-# the reference, graded in a mktemp copy: 67 caught with partial credit (61 to 88 of 90), 1
-# never terminates (`arrival < clock`, as above), 8 score 90/90 and are equivalent, each proved
-# on 20,000 random inputs with 0 differences or by argument: chance agreement over the
-# intersection, or over A's labels only (a missing label adds an exact +0.0); `p_e == 1.0` for
-# `1 - p_e < 1e-12` (p_e is exactly 1.0 only when both used one shared label, else 1 - p_e is at
-# least 1/n); `position >= shift_items` (position never passes shift_items); the clock starting
-# at the first arrival (differs only for negative arrivals, which the lesson never makes);
-# `start = max(clock, arrival)` (ready means arrival <= clock); `kappa >= 0` before the root
-# (sqrt(0.0) is 0.0); and a floor at kappa > 1e-9 (needs ~1e9 items to show). Four were rubric
-# holes and are now graded: rejecting ONE item as if it were none (90 -> 80 and 86), a float
-# agreement table where the docstring promises ints (90 -> 86), and a ceiling floored at a small
-# positive kappa such as 0.01 or 0.001 (90 -> 86; new case kappa 0.0004 -> 0.02). Three
-# differently shaped right answers (numpy/heapq, Counter/min-over-ready, dict tables/pooled
-# ready list) score 90/90 before and after, run clean and print output identical to the
-# reference. Also fixed: self-check 2 option (c) claimed a shape error that a zip never raises;
-# the ceiling cell printed "the ceiling is your reviewers' agreement", the misconception section
-# 12 warns about; exercise 4's hint now says to name the constants; the Scott's pi attribution
-# in the grader's hints is sourced (claims.yaml). All six quotes re-read verbatim on 2026-09-23.
-# The board is wired: one stub filled shows that exercise passed and the rest not started; the
-# same stub made wrong shows it failed with its check's message, Run all still finishes, and
-# lesson.py run as a script exits 1.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "independent reviewer (Claude), 2026-09-23: all 14 gates re-run and passing, 76 mutants (4 rubric holes closed, 8 proved equivalent), 3 controls at 100%, 6 quotes verified verbatim"
+- name: module 1's synthetic remittance advices and extractor, plus a simulated review team
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  note: Module 1's generator and seeds (build_corpus seed 20260916, run_extractor seed 7) re-create its
+    180 documents and 1080 (document, field) cells record for record, carried in-lesson because a student
+    bundle is one directory. Three simulated reviewers (seeds 101, 202, 303, shifted per simulated day)
+    label them; every parameter is printed in the notebook and none is a claim about real people. Nothing
+    is read from disk and nothing is downloaded.
+points: 90
+status: reviewed
 measured_seconds: 2.9
 measured_peak_mib: 31

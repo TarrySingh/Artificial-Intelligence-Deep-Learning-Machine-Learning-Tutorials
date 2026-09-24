@@ -109,6 +109,9 @@ def structure(d: Path, known: set) -> list:
 
 
 def main() -> int:
+    if {"-h", "--help"} & set(sys.argv[1:]):
+        print(__doc__)
+        return 0
     wb = ["--write-back"] if "--write-back" in sys.argv else []
     rows, failed = [], 0
     every = list(lessons())

@@ -11,23 +11,28 @@
  *     make paths                     show what the build discovered
  *     make clean                     delete every compiled artefact (read section 13 first)
  *
- * Only the C standard library and POSIX getrusage are used. No third-party header, no CSV
+ * Only the C standard library and POSIX system calls are used. No third-party header, no CSV
  * library: the whole point is that the parser is a state machine you can hold in your head
  * and that its memory is a constant you can name. How big the constant is, and how much
  * faster this is than the Python scanner, are not for this comment to say — sections 9 to 11
  * of the notebook measure both on your machine, and those measured numbers are the only ones
  * you should ever quote.
  */
-/* clock_gettime and CLOCK_MONOTONIC are POSIX, not ISO C. Under -std=c11, glibc (Linux)
-   hides them unless asked before the first header; macOS shows them regardless. */
+/* clock_gettime, CLOCK_MONOTONIC, fork and waitpid are POSIX, not ISO C. Under -std=c11,
+   glibc (Linux) hides them unless asked before the first header; macOS shows them
+   regardless. */
 #define _DEFAULT_SOURCE
+#include <signal.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
 
 /* ======================================================================================
  * The export's shape. Given.
@@ -426,6 +431,32 @@ static long long peak_rss_raw(void) {
   return (long long)ru.ru_maxrss;
 }
 
+/* A peak that belongs to THIS program. ru_maxrss is a high-water mark, and a launched process
+ * does not always start its own: the Linux getrusage(2) page says resource usage survives
+ * execve(2), and until its execve a launched process is the process that launched it, memory
+ * and all. So a binary started from a large notebook kernel reports the kernel's size before
+ * it has touched a byte: the calibration below sees no change at all, and every peak in
+ * section 11 is the kernel's, not the scanner's. fork(2) resets resource usage in the child
+ * (claims.yaml has both sentences), so a child forked from this freshly started, small binary
+ * counts from this binary's own size. The three commands that REPORT a peak therefore do their
+ * work in such a child. The parent only waits and hands back the child's exit status, so
+ * exit code 3 still means "not implemented", and a child that crashes crashes the parent
+ * the same way. */
+static int in_fresh_child(int (*cmd)(int, char**), int argc, char** argv) {
+  int status = 0;
+  pid_t pid;
+  fflush(NULL); /* nothing buffered may be written twice, once by each process */
+  pid = fork();
+  if (pid < 0) return cmd(argc, argv); /* no fork: measure anyway, launcher's mark and all */
+  if (pid == 0) exit(cmd(argc, argv));
+  if (waitpid(pid, &status, 0) != pid) return 1;
+  if (WIFSIGNALED(status)) {
+    signal(WTERMSIG(status), SIG_DFL);
+    raise(WTERMSIG(status));
+  }
+  return WIFEXITED(status) ? WEXITSTATUS(status) : 1;
+}
+
 static void print_stats(const Scanner* s) {
   printf("records %lld\n", s->records);
   printf("fields %lld\n", s->fields);
@@ -572,7 +603,7 @@ static int cmd_gen(int argc, char** argv) {
  * one. Touch a known number of bytes in a SEPARATE process and report what the counter did;
  * the notebook divides. Keeping this out of the scanning processes is the point — a 64 MiB
  * calibration inside a bench run would be the peak it was trying to measure. */
-static int cmd_rssunit(void) {
+static int cmd_rssunit(int argc, char** argv) {
   const long long probe = 64LL << 20;
   long long before = peak_rss_raw();
   volatile char* block = (volatile char*)malloc((size_t)probe);
@@ -676,10 +707,10 @@ int main(int argc, char** argv) {
   if (strcmp(cmd, "push") == 0) return cmd_push(argc, argv);
   if (strcmp(cmd, "field") == 0) return cmd_field(argc, argv);
   if (strcmp(cmd, "scan") == 0) return cmd_scan(argc, argv);
-  if (strcmp(cmd, "scanfile") == 0) return cmd_scanfile(argc, argv);
-  if (strcmp(cmd, "bench") == 0) return cmd_bench(argc, argv);
+  if (strcmp(cmd, "scanfile") == 0) return in_fresh_child(cmd_scanfile, argc, argv);
+  if (strcmp(cmd, "bench") == 0) return in_fresh_child(cmd_bench, argc, argv);
   if (strcmp(cmd, "gen") == 0) return cmd_gen(argc, argv);
-  if (strcmp(cmd, "rssunit") == 0) return cmd_rssunit();
+  if (strcmp(cmd, "rssunit") == 0) return in_fresh_child(cmd_rssunit, argc, argv);
   fprintf(stderr, "unknown command %s (selftest|push|field|scan|scanfile|bench|gen|rssunit)\n",
           cmd);
   return 2;

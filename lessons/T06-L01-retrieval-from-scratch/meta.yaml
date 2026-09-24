@@ -1,0 +1,29 @@
+id: T06-L01-retrieval-from-scratch
+title: Build BM25, a from-scratch dense retriever and the evaluation harness that proves which one to
+  trust
+track: T06
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement BM25 from its primary-literature formula, including the term-saturation and length-normalisation
+  components, and measure how it handles a term that appears in every document
+- Implement a dense retriever with no external model — TF-IDF folded through a truncated SVD — with correct
+  cosine scoring and normalisation at both the document and query side
+- Implement reciprocal rank fusion to combine lexical and semantic rankings, and measure what its fusion
+  constant does to the blend
+- Implement an evaluation harness — recall@k, MRR and nDCG@k — with bootstrap confidence intervals computed
+  over queries
+- Measure, on a corpus built so identifiers and paraphrases favour different retrievers, when hybrid's
+  advantage over each pure method is real and when a paired bootstrap interval says it is not
+datasets:
+- name: T06-L01 synthetic retrieval corpus (ten planted subjects, exact and paraphrase queries)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 153
+status: reviewed
+measured_seconds: 0.1
+measured_peak_mib: 54

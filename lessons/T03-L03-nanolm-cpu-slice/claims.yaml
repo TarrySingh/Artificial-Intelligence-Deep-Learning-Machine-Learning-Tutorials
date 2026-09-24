@@ -1,193 +1,95 @@
-# Gate 12. Every factual claim this lesson makes about the world outside its own measurements,
-# with a primary source URL and the date the source was read.
-#
-# Numbers a student sees in output — the vocabulary size, the uniform and unigram baselines,
-# the finite-difference agreement, the training and held-out losses, the sampled text — are
-# all computed by the code the student runs. They are therefore not claims and are not listed
-# here. Nothing in this lesson's prose states a loss value, a timing or a tolerance that the
-# code does not itself print.
 claims:
-  - id: corpus-public-domain
-    claim: >-
-      The text used as the training corpus is an excerpt of Shakespeare's Sonnets, taken from
-      Project Gutenberg eBook #1041. Project Gutenberg records this eBook's copyright status as
-      "Public domain in the USA.", and the author, William Shakespeare, is recorded there with
-      the dates 1564-1616, so the work is long out of copyright worldwide by age. The excerpt
-      used excludes Project Gutenberg's own header and footer, which are the only parts of that
-      file carrying the Project Gutenberg trademark licence.
-    where: "meta.yaml datasets; lesson.py section 1 (the corpus) and the CORPUS docstring."
-    source_url: https://www.gutenberg.org/ebooks/1041
-    source_title: "Project Gutenberg — Shakespeare's Sonnets by William Shakespeare, eBook #1041"
-    source_kind: primary (the distributor's own catalogue record for the file used)
-    quote: "Public domain in the USA."
-    accessed: 2026-09-16
-    corroborating_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
-    corroborating_note: >-
-      The plain-text file itself was fetched at authoring time and its header read. It records
-      'Title: Shakespeare's Sonnets', 'Author: William Shakespeare', 'Release date: September 1,
-      1997 [eBook #1041]'. The text between the START and END markers is the Shakespeare work;
-      only that region was used, and only its first 5988 characters.
-
-  - id: scaled-dot-product-attention
-    claim: >-
-      Scaled dot-product attention — computing the dot products of a query with all keys,
-      dividing each by the square root of the key dimension d_k, and applying a softmax to
-      obtain weights over the values — was introduced in "Attention Is All You Need" by
-      Vaswani, Shazeer, Parmar, Uszkoreit, Jones, Gomez, Kaiser and Polosukhin, submitted to
-      arXiv on 12 June 2017. The 1/sqrt(d_k) factor is not decoration: the paper's stated
-      reason is that for large d_k the dot products grow large in magnitude and push the
-      softmax into a region where its gradients are extremely small.
-    where: >-
-      lesson.py section 5 (scaled scores and the causal mask), the attention_forward docstring
-      where SCALE is defined as 1/sqrt(D_MODEL), and self-check question 4.
-    source_url: https://arxiv.org/abs/1706.03762
-    source_title: "Vaswani et al., Attention Is All You Need (arXiv:1706.03762)"
-    source_kind: primary (the paper itself)
-    quote: "For large values of d_k, the dot products grow large in magnitude, pushing the softmax function into regions where it has extremely small gradients."
-    accessed: 2026-09-16
-    corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
-    corroborating_note: >-
-      Section 3.2.1 gives the attention function as softmax(Q K^T / sqrt(d_k)) V. The abstract
-      page confirms the title, the full author list and the June 2017 submission date.
-
-  - id: causal-masking-before-softmax
-    claim: >-
-      The same paper implements the auto-regressive constraint inside scaled dot-product
-      attention by masking out — specifically, by setting to negative infinity — all values in
-      the INPUT of the softmax that correspond to illegal connections, so that a position
-      cannot attend to positions after it.
-    where: >-
-      lesson.py section 5 (why the mask goes before the softmax, not after it), the
-      attention_forward docstring, common mistake 3, and self-check question 2.
-    source_url: https://arxiv.org/abs/1706.03762
-    source_title: "Vaswani et al., Attention Is All You Need (arXiv:1706.03762), section 3.2.3"
-    source_kind: primary (the paper itself)
-    quote: "We implement this inside of scaled dot-product attention by masking out (setting to -inf) all values in the input of the softmax which correspond to illegal connections."
-    accessed: 2026-09-16
-    corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
-    corroborating_note: >-
-      Read from the rendered full text of section 3.2.3, which states that this preserves the
-      auto-regressive property by preventing positions from attending to subsequent positions.
-
-  - id: adam-identity
-    claim: >-
-      Adam, the first-order optimiser used by this lesson's training loop, is the algorithm
-      introduced in "Adam: A Method for Stochastic Optimization" by Diederik P. Kingma and
-      Jimmy Ba, submitted to arXiv in December 2014 and published at ICLR 2015. It maintains
-      running estimates of the first and second moments of the gradient and applies a bias
-      correction to each.
-    where: "lesson.py section 11 (the optimiser is not the lesson), the adam_step docstring."
-    source_url: https://arxiv.org/abs/1412.6980
-    source_title: "Kingma and Ba, Adam: A Method for Stochastic Optimization (arXiv:1412.6980)"
-    source_kind: primary (the paper's arXiv record)
-    quote: "We introduce Adam, an algorithm for first-order gradient-based optimization of stochastic objective functions, based on adaptive estimates of lower-order moments."
-    accessed: 2026-09-16
-    note: >-
-      DELIBERATELY NOT CLAIMED: the specific constants this lesson uses for beta1, beta2 and
-      epsilon are NOT presented as the paper's recommended defaults. At authoring time the
-      sentence stating those defaults could not be read from a primary source (the ar5iv
-      rendering returned only a navigation page and the PDF text could not be extracted), so
-      the lesson names them as its own chosen hyperparameters and claims nothing about what the
-      paper recommends. If that sentence is later verified, this note is where to record it.
-    corroborating_url: https://arxiv.org/abs/1412.6980
-    corroborating_note: >-
-      The ICLR 2015 half of this claim was confirmed independently at review on 2026-09-16
-      from the arXiv record's own comments field, which reads verbatim: "Published as a
-      conference paper at the 3rd International Conference for Learning Representations,
-      San Diego, 2015". The submission date on that record is 22 Dec 2014, consistent with
-      "December 2014" above. The beta1/beta2/epsilon defaults remain deliberately unclaimed.
-
-  - id: mlp-parameter-share
-    claim: >-
-      In a standard transformer block the position-wise feed-forward sub-layer holds roughly
-      two thirds of the block's parameters. "Attention Is All You Need" sizes its base model
-      with d_model = 512 and inner feed-forward dimensionality d_ff = 2048, so the two
-      feed-forward matrices carry 2 * d_model * d_ff = 2,097,152 weights against the four
-      attention projections' 4 * d_model^2 = 1,048,576 — exactly a 2:1 split, hence two
-      thirds of 3,145,728. The word "roughly" is doing real work: the share moves with the
-      d_ff/d_model ratio an implementation chooses, and biases and norms are excluded.
-    where: "lesson.py section 17, the 'The MLP sub-layer' bullet."
-    source_url: https://arxiv.org/abs/1706.03762
-    source_title: "Vaswani et al., Attention Is All You Need (arXiv:1706.03762), section 3.3 and Table 3"
-    source_kind: primary (the paper itself)
-    quote: "d_model = 512, d_ff = 2048"
-    accessed: 2026-09-16
-    corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
-    corroborating_note: >-
-      Added at independent review on 2026-09-16. The bullet was previously the one sentence of
-      prose in this lesson making a quantitative statement about models other than the one the
-      student builds, and it carried no source. The arithmetic above is stated here rather than
-      printed by the notebook because it describes an architecture this lesson does not build,
-      so there is no cell that could compute it honestly.
-
-# --- reviewer verification, 2026-09-16 -----------------------------------------------------
-# Every claim above was re-checked against its primary source at review, independently of the
-# author's fetches:
-#   corpus-public-domain          gutenberg.org/ebooks/1041 returns Title "Shakespeare's
-#                                 Sonnets", Author "Shakespeare, William (1564-1616)", eBook
-#                                 #1041, release date September 1 1997, and copyright status
-#                                 "Public domain in the USA." VERIFIED, quote exact.
-#   scaled-dot-product-attention  arxiv.org/abs/1706.03762 confirms the title, the eight
-#                                 authors in the stated order and the 12 June 2017 v1 date;
-#                                 the rendered full text gives section 3.2.1's sentence
-#                                 verbatim as quoted. VERIFIED.
-#   causal-masking-before-softmax section 3.2.3's sentence reads verbatim as quoted, modulo
-#                                 the source's typographic minus sign in "-inf". VERIFIED.
-#   adam-identity                 the abstract's first sentence matches the quote verbatim,
-#                                 and the ICLR 2015 line is corroborated above. VERIFIED.
-#
-# No claim in this lesson was found unsupported, overstated or stale as of 2026-09-16.
-#
-# One assertion that was NOT a sourced claim was found to be FALSE and has been removed from
-# lesson.py, solutions/ and tests/: the prose stated that masking with -1e9 rather than
-# -np.inf leaves future attention weights of "~1e-40" and so leaks gradient through a
-# connection that should not exist. Measured, float64 np.exp underflows to exactly 0.0 below
-# about -744.4, so A(-1e9) is bit-identical to A(-inf) — max absolute difference 0.000e+00 —
-# and three check messages were telling students to look for a symptom that cannot occur.
-# Section 5 now measures a sweep of sentinels instead (-1e9 and -1e3 leak exactly 0; -100
-# leaks 4.33e-44; -50 leaks 2.24e-22; -30 leaks 1.09e-13), so the real cliff is shown rather
-# than asserted, and every figure in that passage is computed by the cell the student runs.
-
-# --- second independent review, 2026-09-16 -------------------------------------------------
-# Sources re-fetched at this review, independently again: gutenberg.org/ebooks/1041 returns
-# "Shakespeare's Sonnets", "Shakespeare, William, 1564-1616", eBook 1041, released Sep 1 1997,
-# copyright status "Public domain in the USA." — quote exact. arxiv.org/abs/1706.03762 returns
-# the title, the eight authors in the stated order and a 12 June 2017 v1 date; the rendered
-# full text gives section 3.2.1's and section 3.2.3's sentences verbatim as quoted, and
-# section 3.3 / Table 3 give d_model = 512 and d_ff = 2048, which is the new
-# mlp-parameter-share claim above. All four pre-existing claims VERIFIED and unchanged.
-#
-# The rubric in tests/test_lesson.py was mutation-tested against 32 broken implementations of
-# the reference solution. Four of them scored a full 40/40 and were rubric defects; each is
-# now caught:
-#   1. cross_entropy written as -log(softmax(logits)[target]). Every stability case in the
-#      rubric shifted all logits together, and softmax is shift-stable, so nothing failed.
-#      The real failure is a confidently WRONG prediction, where the target's probability
-#      underflows to 0.0 and log(0) is -inf. test_cross_entropy_survives_huge_logits now
-#      scores logits [0, 1000] against target 0 and requires a finite 1000.0 nats.
-#   2. attention_forward caching Q under "K" and K under "Q". Q @ K^T is symmetric in which
-#      is which, so the forward pass was bit-perfect; and the backward tests deliberately
-#      build their own canonical cache, so nothing read the student's labels at all. A
-#      student scored 40/40 with a model whose every query/key gradient was wrong.
-#   3. attention_forward caching "mask": None. The contract test checked only that the key
-#      was present. Exercise 5 indexes that mask, so the student's own backward pass would
-#      raise. test_attention_cache_contract now verifies the CONTENTS of X, Wq, Wk, Wv, Q, K,
-#      V and mask, not just their presence and shapes.
-#   4. make_batch with an upper bound of len(data) - context_len - 1 whose ValueError is
-#      swallowed by a try/except returning a default. The off-by-one bound was previously
-#      caught only because it CRASHED on the deliberately tight 20-character corpus; catching
-#      the exception restored a silently wrong answer at full marks. The rubric now measures
-#      reach positively: over 240 draws from a 12-character corpus at context_len 10 the
-#      start positions seen must be exactly {0, 1}, so a bound one short is caught by the
-#      window it never draws rather than by an exception it may not raise.
-# The reference solution still scores 40/40 after all four fixes.
-#
-# Two mutants survive and are EQUIVALENT, not defects — both were measured, not argued:
-#   * masking with a -1e9 sentinel instead of -np.inf. max|A(-inf) - A(-1e9)| = 0.000e+00 in
-#     float64, exactly as the note above records. The lesson teaches this explicitly in
-#     section 5 and in common mistake 3, so the rubric accepting it is correct behaviour.
-#   * dropping the np.where(mask, d_scores, 0.0) line from attention_backward. A is exactly
-#     0.0 at masked positions, so d_scores = A * (dA - (dA*A).sum(-1)) is already 0 there;
-#     max|masked - unmasked| = 0.000e+00. The line is defensive, not load-bearing.
-# The remaining 26 mutants were caught, scoring 21/40 to 38/40 — partial credit throughout,
-# and in every case the failing check's message named the actual mistake.
+- id: corpus-public-domain
+  claim: 'The text used as the training corpus is an excerpt of Shakespeare''s Sonnets, taken from Project
+    Gutenberg eBook #1041. Project Gutenberg records this eBook''s copyright status as "Public domain
+    in the USA.", and the author, William Shakespeare, is recorded there with the dates 1564-1616, so
+    the work is long out of copyright worldwide by age. The excerpt used excludes Project Gutenberg''s
+    own header and footer, which are the only parts of that file carrying the Project Gutenberg trademark
+    licence.'
+  where: meta.yaml datasets; lesson.py section 1 (the corpus) and the CORPUS docstring.
+  source_url: https://www.gutenberg.org/ebooks/1041
+  source_title: 'Project Gutenberg — Shakespeare''s Sonnets by William Shakespeare, eBook #1041'
+  source_kind: primary (the distributor's own catalogue record for the file used)
+  quote: Public domain in the USA.
+  accessed: 2026-09-16
+  corroborating_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
+  corroborating_note: 'The plain-text file itself was fetched at authoring time and its header read. It
+    records ''Title: Shakespeare''s Sonnets'', ''Author: William Shakespeare'', ''Release date: September
+    1, 1997 [eBook #1041]''. The text between the START and END markers is the Shakespeare work; only
+    that region was used, and only its first 5988 characters.'
+- id: scaled-dot-product-attention
+  claim: 'Scaled dot-product attention — computing the dot products of a query with all keys, dividing
+    each by the square root of the key dimension d_k, and applying a softmax to obtain weights over the
+    values — was introduced in "Attention Is All You Need" by Vaswani, Shazeer, Parmar, Uszkoreit, Jones,
+    Gomez, Kaiser and Polosukhin, submitted to arXiv on 12 June 2017. The 1/sqrt(d_k) factor is not decoration:
+    the paper''s stated reason is that for large d_k the dot products grow large in magnitude and push
+    the softmax into a region where its gradients are extremely small.'
+  where: lesson.py section 5 (scaled scores and the causal mask), the attention_forward docstring where
+    SCALE is defined as 1/sqrt(D_MODEL), and self-check question 4.
+  source_url: https://arxiv.org/abs/1706.03762
+  source_title: Vaswani et al., Attention Is All You Need (arXiv:1706.03762)
+  source_kind: primary (the paper itself)
+  quote: For large values of d_k, the dot products grow large in magnitude, pushing the softmax function
+    into regions where it has extremely small gradients.
+  accessed: 2026-09-16
+  corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
+  corroborating_note: Section 3.2.1 gives the attention function as softmax(Q K^T / sqrt(d_k)) V. The
+    abstract page confirms the title, the full author list and the June 2017 submission date.
+- id: causal-masking-before-softmax
+  claim: The same paper implements the auto-regressive constraint inside scaled dot-product attention
+    by masking out — specifically, by setting to negative infinity — all values in the INPUT of the softmax
+    that correspond to illegal connections, so that a position cannot attend to positions after it.
+  where: lesson.py section 5 (why the mask goes before the softmax, not after it), the attention_forward
+    docstring, common mistake 3, and self-check question 2.
+  source_url: https://arxiv.org/abs/1706.03762
+  source_title: Vaswani et al., Attention Is All You Need (arXiv:1706.03762), section 3.2.3
+  source_kind: primary (the paper itself)
+  quote: We implement this inside of scaled dot-product attention by masking out (setting to -inf) all
+    values in the input of the softmax which correspond to illegal connections.
+  accessed: 2026-09-16
+  corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
+  corroborating_note: Read from the rendered full text of section 3.2.3, which states that this preserves
+    the auto-regressive property by preventing positions from attending to subsequent positions.
+- id: adam-identity
+  claim: 'Adam, the first-order optimiser used by this lesson''s training loop, is the algorithm introduced
+    in "Adam: A Method for Stochastic Optimization" by Diederik P. Kingma and Jimmy Ba, submitted to arXiv
+    in December 2014 and published at ICLR 2015. It maintains running estimates of the first and second
+    moments of the gradient and applies a bias correction to each.'
+  where: lesson.py section 11 (the optimiser is not the lesson), the adam_step docstring.
+  source_url: https://arxiv.org/abs/1412.6980
+  source_title: 'Kingma and Ba, Adam: A Method for Stochastic Optimization (arXiv:1412.6980)'
+  source_kind: primary (the paper's arXiv record)
+  quote: We introduce Adam, an algorithm for first-order gradient-based optimization of stochastic objective
+    functions, based on adaptive estimates of lower-order moments.
+  accessed: 2026-09-16
+  note: 'DELIBERATELY NOT CLAIMED: the specific constants this lesson uses for beta1, beta2 and epsilon
+    are NOT presented as the paper''s recommended defaults. At authoring time the sentence stating those
+    defaults could not be read from a primary source (the ar5iv rendering returned only a navigation page
+    and the PDF text could not be extracted), so the lesson names them as its own chosen hyperparameters
+    and claims nothing about what the paper recommends. If that sentence is later verified, this note
+    is where to record it.'
+  corroborating_url: https://arxiv.org/abs/1412.6980
+  corroborating_note: 'The ICLR 2015 half of this claim was confirmed independently at review on 2026-09-16
+    from the arXiv record''s own comments field, which reads verbatim: "Published as a conference paper
+    at the 3rd International Conference for Learning Representations, San Diego, 2015". The submission
+    date on that record is 22 Dec 2014, consistent with "December 2014" above. The beta1/beta2/epsilon
+    defaults remain deliberately unclaimed.'
+- id: mlp-parameter-share
+  claim: 'In a standard transformer block the position-wise feed-forward sub-layer holds roughly two thirds
+    of the block''s parameters. "Attention Is All You Need" sizes its base model with d_model = 512 and
+    inner feed-forward dimensionality d_ff = 2048, so the two feed-forward matrices carry 2 * d_model
+    * d_ff = 2,097,152 weights against the four attention projections'' 4 * d_model^2 = 1,048,576 — exactly
+    a 2:1 split, hence two thirds of 3,145,728. The word "roughly" is doing real work: the share moves
+    with the d_ff/d_model ratio an implementation chooses, and biases and norms are excluded.'
+  where: lesson.py section 17, the 'The MLP sub-layer' bullet.
+  source_url: https://arxiv.org/abs/1706.03762
+  source_title: Vaswani et al., Attention Is All You Need (arXiv:1706.03762), section 3.3 and Table 3
+  source_kind: primary (the paper itself)
+  quote: d_model = 512, d_ff = 2048
+  accessed: 2026-09-16
+  corroborating_url: https://ar5iv.labs.arxiv.org/html/1706.03762
+  corroborating_note: Added at independent review on 2026-09-16. The bullet was previously the one sentence
+    of prose in this lesson making a quantitative statement about models other than the one the student
+    builds, and it carried no source. The arithmetic above is stated here rather than printed by the notebook
+    because it describes an architecture this lesson does not build, so there is no cell that could compute
+    it honestly.

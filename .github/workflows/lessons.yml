@@ -23,7 +23,7 @@ jobs:
             programmes
             flagships
       - run: |
-          leaked=$(git ls-files | grep -E '^(lessons/[^/]+|flagships/[^/]+/lessons/[^/]+|programmes/[^/]+/lessons/[^/]+)/(solutions|tests|authoring)/' || true)
+          leaked=$(git ls-files | grep -E '(^|/)(solutions|tests|authoring)/' | grep -v '^tools/lesson_template/' || true)
           if [ -n "$leaked" ]; then echo "answers committed to the public repository:"; echo "$leaked"; exit 1; fi
           echo "no answers committed"
 

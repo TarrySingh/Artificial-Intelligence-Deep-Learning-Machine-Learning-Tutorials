@@ -1,177 +1,37 @@
 id: P03-L02-sensor-physics
-title: Build the measurement chain between a machine and its features, and catch it misreporting a component by 150% without a single wrong-looking line in the spectrum
+title: Build the measurement chain between a machine and its features, and catch it misreporting a component
+  by 150% without a single wrong-looking line in the spectrum
 track: P03
 programme: predictive-maintenance
-flagship:               # none: this lesson feeds module 3 of its own programme
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: null
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
-  - P03-L01-alarm-economics
+- T00-L01-the-8gb-track
+- P03-L01-alarm-economics
 objectives:
-  - "Implement an amplitude-scaled one-sided spectrum, including the two bins that must not be doubled, and read a component's amplitude off it"
-  - "Compute the frequency a tone folds to when it is undersampled, and identify an aliased component by intersecting candidate sets across three sampling rates"
-  - "Implement a cascaded one-pole low-pass, derive its gain and phase from its own difference equation, and measure both against a tone"
-  - "Quantise acceleration through a sensor sensitivity and a bipolar ADC range, and measure why clipping costs more than four extra bits can buy"
-  - "Explain, from the measured velocity RMS under three orderings, why the high-pass belongs after the integration and not before it"
+- Implement an amplitude-scaled one-sided spectrum, including the two bins that must not be doubled, and
+  read a component's amplitude off it
+- Compute the frequency a tone folds to when it is undersampled, and identify an aliased component by
+  intersecting candidate sets across three sampling rates
+- Implement a cascaded one-pole low-pass, derive its gain and phase from its own difference equation,
+  and measure both against a tone
+- Quantise acceleration through a sensor sensitivity and a bipolar ADC range, and measure why clipping
+  costs more than four extra bits can buy
+- Explain, from the measured velocity RMS under three orderings, why the high-pass belongs after the integration
+  and not before it
 datasets:
-  - name: synthetic-vibration-record
-    kind: synthetic
-    description: "2 s of single-channel acceleration at 51200 Hz (102400 samples): four tones at 25, 50, 425 and 5545 Hz, a 0.015 g DC bias and seeded Gaussian noise, generated in lesson.py by synthesise_acceleration(seed=20260916); an optional impulsive shock is added for the ADC section only"
-    generator: "lesson.py :: synthesise_acceleration"
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    downloads: false
-points: 123        # = sum of RUBRIC points in tests/test_lesson.py
-# Why the data is synthetic, recorded here because gate 11 is about honesty rather than about
-# having a URL: this lesson is entirely about the gap between what a signal IS and what a
-# measurement chain REPORTS, and that gap is only visible when the truth is known. A real
-# vibration corpus arrives already conditioned - somebody else chose its sampling rate, its
-# anti-alias corner and its input range, and those choices are exactly what is being taught.
-# The generator is in the notebook, is seeded, and is read by the student before it is used.
-# MODULES.md names the real corpora the later modules move onto.
-#
-# DEVIATION FROM MODULES.md, declared per the brief. The module spec describes "Python + one
-# C exercise", the C exercise being a fixed-point IIR high-pass measured against a float64
-# reference. This build is Python only. The quantisation half of that idea is kept and is
-# graded - g_to_counts / counts_to_g, the ADC range sweep, and the measured finding that a
-# 16-bit converter on a clipped range is an order of magnitude worse than a 12-bit converter
-# on a range that fits - but the fixed-point arithmetic itself is not here. It belongs with
-# module 7, which is already specified as Python + C and already builds an inference path
-# twice to measure the disagreement; a fixed-point filter is the same exercise on the same
-# hardware argument. Everything else in the module spec is built: the known signal, the
-# undersampled alias identified by frequency, the anti-alias filter priced in amplitude AND
-# phase, the integration to velocity with the DC ramp and its high-pass, and the windowing
-# amplitude error.
-#
-# Design notes for a reviewer:
-#
-# * Every number in the prose is printed by the notebook. The three that carry the lesson:
-#   at 2560 Hz the 425 Hz gear line reads 0.7500 g against a true 0.300 g (+150%), because
-#   the 5545 Hz resonance folds to EXACTLY 425 Hz and adds in phase; with the anti-alias
-#   filter it reads 0.2182 g (-27%); divided by the gain the student predicts in exercise 6
-#   it reads 0.2997 g (-0.1%).
-# * The 2560 Hz record is the pedagogical centre and it is deliberately the one with NO
-#   visible artefact. Three lines, all at frequencies the machine really produces, one of
-#   them 150% too big. Section 5's detective work therefore finds nothing at 2560 Hz, says
-#   so, and identifies the intruder from the other two rates before returning to explain the
-#   first. A spectrum that looks right is not evidence.
-# * The ADC sweep's headline is measured, not asserted: 16 bits on +-0.25 V scores 18.17 mg
-#   of error against 12 bits on +-1.00 V at 1.41 mg, because thirteen samples clip. The RMS
-#   column moves 0.15% while the crest factor falls from 10.35 to 4.21, which is the reason
-#   the lesson tells module 3 that shape features are the ones that notice.
-# * The integration section's result is counter-intuitive and is the reason the section
-#   exists: integrate-only lands 514% high, high-passing the ACCELERATION first lands 333%
-#   high, and integrating before high-passing lands within 0.7% of the velocity the
-#   generator implies. The filter's own start-up transient is low-frequency energy and
-#   integration is a 1/f amplifier.
-# * lowpass_response is graded as the response of the DIFFERENCE EQUATION, not of the RC
-#   circuit it is named after. CORRECTED BY THE REVIEWER, 2026-09-16: this note previously
-#   said "within 3% of the gain at the corner and 6% wrong about the delay". Neither figure
-#   was computed anywhere and neither matched this chain. Measured on FC_AA = 1024 Hz,
-#   FS_TRUE = 51200 Hz, AA_STAGES = 4, the analogue formula is wrong about the gain by
-#   -0.02%, -0.26% and -1.05% at fc/4, fc and 2fc, and wrong about the delay by +6.70%,
-#   +8.50% and +12.50% at the same three frequencies. Section 7 now PRINTS that table from
-#   the student's own lowpass_response instead of the prose naming a percentage. The trap is
-#   unchanged and is sharper than the old note claimed: the gain is nearly right everywhere,
-#   so the number a student would spot-check is the one that does not catch the mistake.
-# * The 5545 Hz row of the gain/lag table is kept even though the measurement and the
-#   prediction disagree, because they disagree by 180.50 us against a period of 180.34 us.
-#   A single-frequency phase measurement is only ever known modulo one period; the notebook
-#   prints both numbers and the difference, and says which question each answers.
-#
-# Mutation testing of the rubric, 2026-09-16. Fifteen plausible wrong implementations were
-# built from the reference solution in a temporary directory, one break each, and graded.
-# All fifteen were caught, and every one kept partial credit rather than collapsing to zero
-# (scores 88%-98%). Nothing in the lesson directory was mutated.
-#
-#   amplitude_spectrum doubling DC and Nyquist 97% · coherent gain as window.sum() 94% ·
-#   alias via `f % fs` 93% · candidate list keeping only the k*fs + f_a branch 96% ·
-#   low-pass state started at 0 rather than x[0] 93% · cascade faked by moving the corner to
-#   fc*stages 88% · lowpass_response using the analogue 1/sqrt(1+(f/fc)^2) 93% · the
-#   cascade's total phase wrapped back into (-pi, pi] 97% · lag sign flipped 93% ·
-#   np.hanning (the symmetric window) 97% · ADC clipped symmetrically to +-half 97% · ADC
-#   range read as unipolar 97% · high-pass state started at x[0] 93% · integration by the
-#   rectangular rule 97% · peak_in_band returning the index 98%.
-#
-# A sixteenth run was a deliberate CONTROL: one_pole_lowpass rewritten as a Python-list loop
-# with the coefficient computed as -expm1(-2*pi*fc/fs) instead of 1 - exp(...) — a correct
-# answer of a different shape. It still scores 100%, so the rubric grades the behaviour the
-# docstrings ask for and not one particular way of writing it.
-#
-# Three of the fifteen are caught by exactly one case each, and those cases exist for them:
-# `test_one_pole_lowpass_initial_state` is the only one a zero-started filter fails on the
-# values (its step response and its causality are both still perfect);
-# `test_lowpass_response_matches_the_filter` is the only one that rejects the analogue
-# formula, which is within 1.1% of the gain everywhere in this chain's passband; and
-# `test_lowpass_response_cascade_and_wrapping` is the only one that notices a wrapped total
-# phase, which is invisible below half a cycle of delay.
-#
-# Gate 3 measured, not assumed: the longest run of consecutive prose before the next runnable
-# cell is 37 non-blank lines (the five-question self-check), inside the ~40 the gate allows.
-# Two runnable cells were added late specifically to break a 73-line run: the measured
-# modulus-versus-fold comparison after the common-mistakes list, and the end-to-end chain
-# that prints the band-energy table module 3 starts from. Every demonstration that depends on
-# student code is wrapped in _try, so a notebook full of unfilled stubs still imports, still
-# grades, and still prints a hint per exercise — tools/grade.py scores the student file at
-# 0/123 with a TODO row for every one of the 33 rubric entries rather than crashing at
-# import. No prose in lesson.py points at a path under solutions/.
-#
-# ---------------------------------------------------------------------------------------
-# INDEPENDENT REVIEW, 2026-09-16. All four gates re-run from scratch: execute PASS
-# (0.8 s / 88 MiB against a 90 s cpu8 budget), grade --solution 123/123, grade (student
-# stubs) 0/123, jupytext converts. 32 fresh mutants were built from the reference in a
-# temporary directory outside the lesson - 29 breaking, 3 written to be equivalent - and
-# graded. Independently of the author's own 15.
-#
-# THREE RUBRIC DEFECTS FOUND AND FIXED, one root cause. `np.allclose` BROADCASTS, so
-# `np.allclose(np.zeros(0), [100.0])` is True: every hidden case that compared a result
-# against a ONE-element expectation also accepted an EMPTY result. Three degenerate-case
-# checks were blind in exactly that way, and three mutants scored a clean 100% through them:
-#   * candidate_true_frequencies with `value < f_max` instead of `<= f_max` - the inclusive
-#     f_max edge, the one behaviour the `tight` case existed to pin. 100% -> 96%.
-#   * integrate_trapezoid returning an empty array for a record of fewer than two samples.
-#     100% -> 97%.
-#   * hann_window(1) returning an empty array. 100% -> 97%.
-# Each case now asserts `np.shape` before the values, with a message naming the mistake.
-# The reference still scores 123/123 and all 29 breaking mutants now fail, every one with
-# partial credit (88%-98%, no collapse to zero).
-#
-# TWO SURVIVORS PROVEN EQUIVALENT rather than written up as defects:
-#   * one_pole_lowpass writing each stage in place over its own working copy. Within a
-#     stage sample i is read before it is written, so the recursion is unchanged; measured
-#     max |reference - in-place| = 0.000e+00 at stages 1, 2 and 5 on the rubric's own input,
-#     and the caller's array is still untouched because `signal = x.copy()` precedes it.
-#   * alias_frequency dropping the `abs(f)` and relying on the outer abs of the fold.
-#     np.round is symmetric about zero, so the two agree identically; measured max
-#     disagreement 0.000e+00 over 1e6 frequencies spanning +-4fs at five sampling rates.
-# The author's own expm1 control also still scores 100%, as intended.
-#
-# TWO TRUTH DEFECTS FOUND AND FIXED, both gate-12 (a number typed into prose):
-#   * lesson.py said the analogue formula is "about 6% wrong about the delay" at this
-#     chain's corner. No cell computed it and the real figure is +8.50%. A runnable cell in
-#     section 7 now prints gain and delay, this filter against the RC formula, at fc/4, fc
-#     and 2fc, from the student's own lowpass_response; the prose points at the table and
-#     names no percentage. The design note above is corrected with the measured values.
-#   * claims.yaml justified SENSOR_F_MAX by saying it "only has to exclude 7255 Hz". 7255 Hz
-#     is below 10 kHz and is NOT excluded by it; it is eliminated by the second sampling
-#     rate, folding to 937 Hz rather than 599 Hz in the 2048 Hz record. Corrected, with the
-#     measured range of SENSOR_F_MAX over which the intersection still returns [5545.0].
-#
-# CHECKED AND CLEAN: all three cited sources fetched on 2026-09-16 and each carries its
-# quoted sentence verbatim (BIPM CGPM 3 Resolution 2, PCB 603C01, UC Berkeley EECS 20); the
-# fourth claims.yaml entry is an honest declared omission, not a citation. Both prerequisite
-# ids resolve to real lessons. All five objectives open with a verb and none is "understand".
-# 33 rubric entries summing to the declared 123 points, every one carrying a non-empty hint,
-# smallest 2 and largest 5, so no entry can make the grade all-or-nothing. 12 stubs, each a
-# docstring with a worked example plus `# YOUR CODE HERE` plus `raise NotImplementedError` -
-# no blank cells. No check message in lesson.py is a bare assert. Gate 3 re-measured after
-# the inserted cell: longest prose run still 37 non-blank lines, none over 40. No prose in
-# lesson.py points at a path under solutions/. Deviation from MODULES.md (no C exercise) is
-# declared above with a rationale and is accepted.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review 2026-09-16 - 4 gates re-run green (execute 0.8s/88MiB, solution 123/123, student 0/123, jupytext converts); 32 fresh mutants graded, 29 breaking all caught at 88%-98% with partial credit and 3 survivors proven equivalent by measurement; 3 rubric defects fixed (np.allclose broadcasts, so one-element expectations accepted empty results in candidate_true_frequencies f_max, integrate_trapezoid short records and hann_window(1)); 2 gate-12 truth defects fixed (a typed 6% analogue-delay figure replaced by a printed measured table, and a wrong SENSOR_F_MAX justification in claims.yaml); all 3 cited sources refetched and verbatim"
-
+- name: synthetic-vibration-record
+  kind: synthetic
+  description: '2 s of single-channel acceleration at 51200 Hz (102400 samples): four tones at 25, 50,
+    425 and 5545 Hz, a 0.015 g DC bias and seeded Gaussian noise, generated in lesson.py by synthesise_acceleration(seed=20260916);
+    an optional impulsive shock is added for the ADC section only'
+  generator: 'lesson.py :: synthesise_acceleration'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 123
+status: reviewed
 measured_seconds: 0.8
 measured_peak_mib: 89

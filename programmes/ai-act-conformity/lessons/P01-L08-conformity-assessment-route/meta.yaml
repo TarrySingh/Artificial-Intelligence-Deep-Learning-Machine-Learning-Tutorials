@@ -1,250 +1,42 @@
 id: P01-L08-conformity-assessment-route
-title: Implement Article 43's route decision, the readiness check behind it, and a declaration of conformity that refuses to exist while the pack does not support it
+title: Implement Article 43's route decision, the readiness check behind it, and a declaration of conformity
+  that refuses to exist while the pack does not support it
 track: P01
 programme: ai-act-conformity
-flagship: F09           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F09
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T10-L01-ai-act-conformity-pack
-  - P01-L01-article-12-logging
-  - P01-L02-risk-classification
+- T10-L01-ai-act-conformity-pack
+- P01-L01-article-12-logging
+- P01-L02-risk-classification
 objectives:
-  - "Implement the Annex III point lookup over P01-L02's classification record, and explain why a record whose point cannot be read yields an undetermined route rather than a default one"
-  - "Implement the four standards gaps of Article 43(1) and the route decision over them, and measure the case where two systems share a gap and do not share a route"
-  - "Implement is_substantial_modification() from Article 3(23) and Article 43(4), and count how many changes in a log are substantial and how many of those post-date the assessment on file"
-  - "Implement readiness() on top of P01-L01's completeness checker rather than a second one, separating missing evidence from out-of-date evidence from untraceable evidence"
-  - "Implement the Article 47 declaration and the Article 48 CE marking record, each refusing to exist while the thing before it in the chain does not"
+- Implement the Annex III point lookup over P01-L02's classification record, and explain why a record
+  whose point cannot be read yields an undetermined route rather than a default one
+- Implement the four standards gaps of Article 43(1) and the route decision over them, and measure the
+  case where two systems share a gap and do not share a route
+- Implement is_substantial_modification() from Article 3(23) and Article 43(4), and count how many changes
+  in a log are substantial and how many of those post-date the assessment on file
+- Implement readiness() on top of P01-L01's completeness checker rather than a second one, separating
+  missing evidence from out-of-date evidence from untraceable evidence
+- Implement the Article 47 declaration and the Article 48 CE marking record, each refusing to exist while
+  the thing before it in the chain does not
 datasets:
-  - name: nine fictional AI systems with classification records, change logs and evidence packs
-    kind: synthetic
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    note: >-
-      Nine P01-L02-shaped classification records, nine provider contexts, nine change logs
-      and nine evidence packs of thirteen items each, all built by literal declarations in
-      sections 2, 5, 7 and 8 of lesson.py. Nothing is read from disk, nothing is downloaded
-      and no pseudo-random number is drawn, so two runs agree to the last character. Every
-      defect the data contains - the unreadable Annex III point, the partly-applied
-      standard, the pre-determined change that was never written into the Annex IV point
-      2(f) description, the purpose change after the assessment on file, the planned
-      evidence item, the lapsed review and the pointer to an artefact the pack does not
-      hold - is planted deliberately and documented in the authoring notes below. No real
-      provider, system or notified body is involved, and none of the figures the lesson
-      prints is a claim about any real conformity assessment.
-points: 128             # = sum of RUBRIC points in tests/test_lesson.py
-status: reviewed        # draft | executed | reviewed | shipped
-# Authoring notes, 2026-09-22.
-#
-# All four gates were run from the repo root on the venv interpreter. The measured figures at
-# the foot of this file were written back by tools/execute.py and were not typed.
-#
-# WHAT MODULES.md ASKED FOR (module 8, "The conformity assessment route"). A decision
-# procedure over the module 2 classification record; a readiness check REUSING module 1's
-# completeness checker rather than inventing a second one; the Article 47 declaration and the
-# Article 48 CE marking record generated from the pack; a check that refuses to emit a
-# declaration while any required item is missing; and the trap - a substantial modification
-# resets the route, with a rubric that fails an implementation emitting a declaration for a
-# system whose modification should have sent it back through assessment. All of that is
-# built. The reuse is literal: completeness_report() is P01-L01's function, copied unchanged
-# and given to the student, and readiness() is graded on agreeing with it exactly, including
-# its vacuous coverage of 1.0 when a route requires nothing.
-#
-# DELIBERATE ADDITIONS TO THE SPEC, and why.
-#
-#   * standards_gap() is a separate graded exercise rather than a clause inside
-#     assessment_route(). MODULES.md describes Article 43(1) as "where the provider has
-#     applied harmonised standards"; the article's second subparagraph actually lists four
-#     independent cases, two of which can fire together. Folding them into the route decision
-#     would have hidden the one behaviour a reviewer cares about - that a gap report names
-#     every reason, not the first.
-#   * annex_iii_point() is a separate graded exercise because P01-L02's record does not carry
-#     the point as a field. It carries the area as free text in the q3_annex_iii_area answer,
-#     which is what an interview records. Consuming "its actual record format" therefore
-#     means parsing that field, and the honest consequence - a record whose point cannot be
-#     read routes to "undetermined" rather than to a default - is the lesson's first graded
-#     refusal. The regex is given so the exercise is the traversal and the range check.
-#   * The CE marking exercise implements Article 48(2)'s "only if it can easily be accessed"
-#     as a refusal. MODULES.md asks only for a CE marking record. The refusal is what makes
-#     the record a record of a decision rather than a restatement of the declaration, and it
-#     produces the lesson's closing beat: loan-copilot earns a declaration and still cannot
-#     be marked.
-#   * modification_history() distinguishes "substantial" from "uncovered by the assessment on
-#     file". MODULES.md says a substantial modification resets the route. Taken literally
-#     that makes route_reset identical to "any substantial change", which would tell a
-#     provider who re-assessed after one that they are in the same position as one who did
-#     not. loan-copilot and cv-ranker are in the fixture to make the difference visible: one
-#     substantial change each, and only one reset.
-#
-# THREE READINGS, LABELLED AS READINGS IN THE NOTEBOOK AND IN claims.yaml.
-#
-#   * Article 43(1)(c) bites whenever common specifications exist and were not applied,
-#     independently of whether a harmonised standard was applied. Point (c) refers back to
-#     "the common specifications referred to in point (a)", and point (a) speaks of them
-#     being "not available", so the cross-reference is circular on its face; the lesson reads
-#     (c) as what it literally says. Section 4's prose flags it. The fixture never puts a
-#     harmonised standard and an unapplied common specification together, so the reading
-#     changes no route the notebook prints - it is visible only in the rubric's swept
-#     contexts.
-#   * The intended-purpose limb of Article 3(23) is tested BEFORE Article 43(4)'s
-#     pre-determined-changes carve-out. The carve-out is drafted about "changes to the
-#     high-risk AI system and its performance"; a change of intended purpose is a separate
-#     limb of the 3(23) definition. The lesson's reading is that you cannot pre-declare your
-#     way into a new purpose. It is a reading of where a sentence stops, not a ruling, and
-#     the rubric grades the ordering as this lesson's rule rather than as law.
-#   * A substantial modification dated exactly on assessed_on counts as UNCOVERED. Change
-#     logs have day granularity and a day cannot order two events inside it, so the lesson
-#     takes the reading that leaves the provider re-assessing. That is a modelling choice
-#     about ambiguity; nobody wrote it down.
-#
-# ONE THING I COULD NOT VERIFY, recorded in claims.yaml under not_claimed rather than
-# guessed. Article 43(1)'s third subparagraph puts the market surveillance authority in the
-# notified body's chair for law enforcement, immigration, asylum and Union-institution
-# deployers. Nothing I could find says whether an authority acting in that capacity has an
-# identification number to affix under Article 48(4), or what form it takes. The lesson
-# therefore takes the number from the pack rather than inventing a rule about it, and
-# border-biometrics' pack records one. A reader who knows better should change the fixture,
-# not the code.
-#
-# DEPENDENCIES: standard library only - hashlib, json, re, sys, datetime, typing. No numpy,
-# no pyyaml, no assets directory, no network, no disk reads. The lesson runs offline and two
-# runs agree to the last character.
-#
-# SYNC between lesson.py and the reference implementation is mechanical, not manual: both are
-# GENERATED from one master by substituting the eight stub bodies, so they cannot drift in
-# the prose, the public checks or the fixture. The generator also asserts that the answer key
-# is absent from the student file and that no student-facing comment names a path the student
-# does not receive. The self-check key in lesson.py is salted SHA-256 digests, so no answer
-# is readable off the student's own page, and the five answers are c, b, d, b, c.
-#
-# GATE 12. Every number the notebook prints is computed: the route counts, the gap counts,
-# the per-route evidence counts and their difference, the planted-defect counts, the
-# substantial and uncovered change counts, the declaration and marking counts, and
-# keep_until. The prose names article numbers, which are citations rather than measurements,
-# and every one of them is sourced in claims.yaml. The one comparison the module is built
-# around - two systems, one gap, two routes - is printed by _show_routes() from the student's
-# own implementation rather than asserted in prose.
-#
-# RUBRIC MUTATION TESTING, and what it actually found. 25 plausible-wrong variants of the
-# reference implementation - the mistakes a student makes, one per decision the lesson grades
-# - were built in a temporary directory OUTSIDE the lesson tree and graded through
-# tools/grade.py, alongside THREE differently-shaped RIGHT answers as controls, which must
-# still score 100%: standards_gap rewritten as a table of (id, predicate) pairs; readiness
-# rewritten with set arithmetic and an in_date() predicate instead of two filtered loops; and
-# is_substantial_modification rewritten as an ordered list of rule tuples resolved by next().
-# The harness lives outside this directory and is not shipped; the variants are listed by
-# name in the run output, from "no range check" and "runs 43(1) on every Annex III point" to
-# "issues whenever nothing is blocking".
-#
-# ONE MUTANT SURVIVED the first run at a full 128/128, and it was a real rubric defect:
-# ce_marking_record with its two refusals in the OTHER ORDER - Article 48(2)'s accessibility
-# test before the missing-declaration test. No test handed it a system that would fail both,
-# so the order was unobservable, and a provider with no declaration would have been told
-# about its marking options instead. test_ce_marking_refuses_without_a_declaration now sweeps
-# four systems rather than two, including the digitally-provided one with no machine-readable
-# access, which pins the order.
-#
-# ONE MORE FIXTURE DEFECT was added before the first run rather than after it, and it belongs
-# in this note because it is the same kind of hole. Writing the mutant "readiness uses a
-# second completeness checker keyed on the status field" showed that every pack in the
-# fixture agreed with P01-L01's checker, because no evidence record was marked "present" with
-# an empty document reference. credit-scorer's quality_management_system now is: status
-# "present", document three spaces. That is the subtler of the two ways to be absent, it is
-# exactly what P01-L01's has_value() exists to catch, and without it the whole "reuse the
-# checker you already have" requirement was ungraded.
-#
-# After both fixes: 25 mutants, 25 lost points, scores from 84.4% to 97.7%, every one keeping
-# partial credit on the exercises it had not broken, so no test collapses into
-# all-or-nothing; and all three controls still at 100%. The two lowest scores are the two
-# that break a whole exercise
-# (standards_gap firing only on "none", 84.4%; the route running 43(1) on every Annex III
-# point, 88.3%), which is the shape a rubric with real partial credit should produce.
-#
-# INDEPENDENT REVIEW, 2026-09-23. A second pass re-ran the four gates, re-fetched every URL
-# in claims.yaml and re-graded 44 mutants and 4 differently-shaped right answers through a
-# harness outside this directory. It found four rubric holes the author's own 25-mutant run
-# had not reached, and they are fixed in tests/test_lesson.py:
-#
-#   * assessment_route's `basis` was specified per rule and only checked non-empty, so a
-#     constant "Article 43" scored 128/128. The independent derivation now derives the basis
-#     from the reason and the nine records are required to cite seven different articles.
-#   * modification_history sorted by change_id alone scored 128/128, because the ordering
-#     test's ids happened to sort the same way as its dates. The notebook's own public check
-#     caught this and the rubric did not; the fixture ids now run the other way from the
-#     dates.
-#   * readiness's own `route_reset` key was never asserted, so hard-coding False scored
-#     128/128. It is now graded against the history handed in, including a truthy non-bool.
-#   * declaration_of_conformity's `annex_v_4_conformity` value was specified exactly and
-#     never read, so "conformity declared" scored 128/128. It is now required to name the
-#     Regulation and the route, and to differ between two routes.
-#
-# THREE SURVIVORS WERE PROVED EQUIVALENT rather than patched around, each by sweeping the
-# lesson's own input domain:
-#
-#   * standards_gap returning `gaps` instead of `sorted(gaps)`. The four ids share the prefix
-#     "art43_1_" and differ at the letter a/b/c/d, and the function appends them in that
-#     order, so the append order IS the sorted order for every possible context. 2,547
-#     contexts swept, 0 disagree.
-#   * assessment_route testing "high_risk_annex_i" before "prohibited". Every branch is an
-#     equality test against a distinct literal on ONE string, so at most one can fire and the
-#     order is unobservable. 711 (tier, area, context) triples swept, 0 disagree.
-#   * readiness recomputing `missing` as required - present - out_of_date instead of taking
-#     completeness_report's. out_of_date is drawn only from report["present"], and
-#     required - present is already disjoint from present, so the extra subtraction removes
-#     nothing. 420 (pack, route, defect) cases swept, 0 disagree.
-#
-# After the four fixes: 44 mutants, 41 lost points, 82%-98%, every one keeping partial credit
-# on the exercises it had not broken; the 3 equivalents still at 100% as they must be; and
-# all 4 controls at 100% before and after the rubric change.
-#
-# THE REVIEW ALSO CORRECTED, in lesson.py, solutions/lesson_solution.py and claims.yaml:
-#
-#   * Section 1 named the Annex III points 2 to 8 as "employment, creditworthiness, essential
-#     services, education, law enforcement, migration, justice". Point 2 is CRITICAL
-#     INFRASTRUCTURE, which was missing, and creditworthiness is point 5(b) rather than a
-#     point of its own. In a lesson whose premise is that one digit of Annex III decides the
-#     route, that list has to be right.
-#   * Section 1's prose said "three answers and two non-answers" while the cell below it
-#     printed 3 and 3 - undetermined is the third. Gate 12: the prose now agrees with what
-#     the code prints.
-#   * Three stub docstrings miscounted their own return keys - assessment_route said eight
-#     for nine, readiness eleven for twelve, declaration_of_conformity ten for nine and
-#     called record_hash the eleventh. Each contradicted the public check beneath it.
-#   * The Annex VI claim quoted the Article 3(20) definition of "conformity assessment",
-#     which artificialintelligenceact.eu renders as an inline glossary tooltip inside the
-#     annex text, and attributed it to Annex VI point 1. Replaced with Annex VI point 2's own
-#     words, verified verbatim against the page with tooltips stripped. The claim's substance
-#     was right; only the quotation was not the annex's.
-#   * The Article 43(3) quote_note described the Digital Omnibus amendment as adding
-#     notified-body provisions and a 2028 date. The amendment REPLACES paragraph 3, and the
-#     sentence the claim quotes is part of the replacement - the original required only
-#     points 4.3, 4.4, 4.5 and the fifth paragraph of 4.6 of Annex VII. The Article 17
-#     quality management system assessment is what the amendment added, which is also why the
-#     Annex I route's evidence list asks for it. Noted, with the further subparagraph on a
-#     manufacturer's non-third-party option.
-#   * The lesson flags THREE readings, in sections 4, 6 and 7, and claims.yaml records four
-#     not_claimed entries. The intro pointed at "section 7 and section 9" (section 9 has no
-#     reading), the in-prose numbering skipped section 4's, claims.yaml's header said three
-#     entries of which two were readings, and this note said TWO READINGS. All now agree.
-#
-# All 18 claims were re-fetched on 2026-09-23 and every quote matches the live page verbatim
-# once artificialintelligenceact.eu's inline glossary tooltips are stripped and the
-# whitespace its inline links introduce is normalised. Annex III still has exactly eight
-# numbered points in the order the claim states.
-#
-# OPEN FOR THE OWNER, no file outside this lesson directory was touched:
-#   * programmes/ai-act-conformity/MODULES.md still marks module 8 "SPECIFIED - NOT BUILT"
-#     and its status table still reads "specified" with no measured figures. It should now
-#     read BUILT, cpu8, with the measured seconds and peak MiB at the foot of this file and
-#     "128 pts / 31 cases". The prose section for module 8 is accurate as written; the four
-#     deliberate additions above are a superset of it, not a departure from it.
-#   * The header of MODULES.md says "Four are built" and "lessons/ holds exactly the four
-#     built lessons". Five directories now exist.
-#   * flagship F09 matches the rest of the programme; flagships/ still holds no F09 directory.
-#   * This lesson declares P01-L02 as a prerequisite in addition to T10-L01 and P01-L01,
-#     because section 2 consumes P01-L02's sealed record format and its question trail
-#     verbatim. All three prerequisite directories exist on disk.
-reviewed_by: "independent review 2026-09-23: 4 gates green, 44 mutants / 4 controls, 3 survivors proved equivalent, 4 rubric holes closed, all 18 claims re-fetched"
+- name: nine fictional AI systems with classification records, change logs and evidence packs
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  note: Nine P01-L02-shaped classification records, nine provider contexts, nine change logs and nine
+    evidence packs of thirteen items each, all built by literal declarations in sections 2, 5, 7 and 8
+    of lesson.py. Nothing is read from disk, nothing is downloaded and no pseudo-random number is drawn,
+    so two runs agree to the last character. Every defect the data contains - the unreadable Annex III
+    point, the partly-applied standard, the pre-determined change that was never written into the Annex
+    IV point 2(f) description, the purpose change after the assessment on file, the planned evidence item,
+    the lapsed review and the pointer to an artefact the pack does not hold - is planted deliberately
+    and documented in the authoring notes below. No real provider, system or notified body is involved,
+    and none of the figures the lesson prints is a claim about any real conformity assessment.
+points: 128
+status: reviewed
 measured_seconds: 0.0
 measured_peak_mib: 24

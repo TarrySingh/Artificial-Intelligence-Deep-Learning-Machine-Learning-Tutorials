@@ -13,10 +13,10 @@
 # [![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/model-risk/lessons/P04-L09-streaming-monitor-in-c/lesson.ipynb)
 # [![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials)
 #
-# This lesson needs Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle,
-# Binder and Codespaces already have, and a C or C++ compiler (`clang` or `gcc`). The cell
-# below fetches the files it needs beside it, and does nothing where they are already present.
-# On Kaggle, switch Internet on in the notebook's settings first; Kaggle allows that only for
+# This lesson needs Python 3.11 or newer with numpy, which Colab, Kaggle, Binder and
+# Codespaces already have, and a C or C++ compiler (`clang` or `gcc`). The cell below fetches
+# the files it needs beside it, and does nothing where they are already present. On Kaggle,
+# switch Internet on in the notebook's settings first; Kaggle allows that only for
 # phone-verified accounts.
 
 # %%

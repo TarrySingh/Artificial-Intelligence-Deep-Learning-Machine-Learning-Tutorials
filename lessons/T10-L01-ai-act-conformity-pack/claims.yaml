@@ -1,275 +1,188 @@
-# Every factual claim this lesson makes about the world, with a source and the date the
-# source was read. Numbers and dates a student sees in OUTPUT are computed by the code they
-# run from the rulebook below; they are not typed into prose anywhere in the lesson.
-#
-# This lesson is teaching material about the structure of a regulation.
-# It is not legal advice, and nothing here is a substitute for reading the
-# Official Journal text or taking professional advice on a specific system.
-#
-# SOURCING RULE used here: a `quote` field contains text actually retrieved from
-# `source_url` on the `accessed` date. Where a source could not be retrieved, it is recorded
-# under `authoritative_text_url` with a `retrieval_note` and the claim is carried by sources
-# that were retrieved. No quote in this file is reconstructed from memory or stitched
-# together with ellipses.
 claims:
-  - id: ai-act-entry-into-force-and-general-application
-    claim: >-
-      Regulation (EU) 2024/1689 (the AI Act) entered into force on 1 August 2024 and became
-      applicable on 2 August 2026. That general application date is the one the lesson's
-      rulebook uses as the default date for the Article 50 transparency duties.
-    where: "lesson.py section 1 (the date ladder) and MILESTONES; self-check question 2"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026, with some exceptions"
-    accessed: 2026-09-16
-
-  - id: prohibitions-and-literacy-from-2025-02-02
-    claim: >-
-      The prohibited AI practices (Article 5) and the AI literacy obligation (Article 4)
-      entered into application from 2 February 2025. This is why the lesson's rulebook dates
-      art4_ai_literacy and art5_prohibited_practice to 2025-02-02, and why a "minimal risk"
-      system in the registry still carries one duty rather than none.
-    where: "lesson.py section 1 and OBLIGATIONS; self-check question 2"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "prohibited AI practices and AI literacy obligations entered into application from 2 February 2025"
-    accessed: 2026-09-16
-
-  - id: gpai-obligations-from-2025-08-02
-    claim: >-
-      The governance rules and the obligations for general-purpose AI models became
-      applicable on 2 August 2025. This dates art53_gpai_model in the rulebook.
-    where: "lesson.py section 1 and OBLIGATIONS"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "the governance rules and the obligations for GPAI models became applicable on 2 August 2025"
-    accessed: 2026-09-16
-
-  - id: article-50-applies-from-2026-08-02
-    claim: >-
-      Article 50 of the AI Act applies as from 2 August 2026. Providers and deployers of the
-      systems it covers — interactive systems, synthetic audio/image/video/text, emotion
-      recognition, biometric categorisation and deepfakes — must comply from that date. This
-      dates art50_inform_interaction and the standard case of art50_mark_synthetic.
-    where: "lesson.py section 1, OBLIGATIONS, and exercise 1"
-    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
-    source_title: "European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)"
-    quote: "Article 50 of the AI Act applies as from 2 August 2026."
-    accessed: 2026-09-16
-
-  - id: article-50-2-transitional-to-2026-12-02
-    claim: >-
-      A limited grace period applies to the Article 50(2) marking and detection obligation
-      for AI-generated content, and only for AI systems placed on the market before
-      2 August 2026: providers of those systems must comply only as from 2 December 2026.
-      This is the conditional branch the student must implement in classify(): the date of
-      art50_mark_synthetic depends on the system's placed_on_market field, and the boundary
-      is strict — a system placed on the market ON 2 August 2026 gets no relief.
-    where: "lesson.py exercise 1 (the transitional rule) and the support-copilot fixture"
-    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
-    source_title: "European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)"
-    quote: >-
-      A limited grace period is envisaged only for AI systems placed on the market before
-      2 August 2026 and only as regards the marking and detection obligation for AI-generated
-      content (Article 50(2) of the AI Act). Providers of such systems must comply with those
-      obligations only as from 2 December 2026.
-    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
-    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
-    corroborating_quote: >-
-      shall take the necessary steps in order to comply with Article 50(2) by 2 December 2026
-    accessed: 2026-09-16
-    note: >-
-      Re-checked by the reviewer on 2026-09-16, after the Digital Omnibus entered into force,
-      precisely because secondary commentary claims the Omnibus replaced this fixed cut-off
-      with a dynamic one. The Commission's own Article 50 FAQ, read on that date, still
-      states the 2 August 2026 cut-off and the 2 December 2026 compliance date, and the
-      reproduction of the amending text agrees. The lesson encodes the Commission's wording.
-
-  - id: digital-omnibus-identity-and-publication
-    claim: >-
-      Regulation (EU) 2026/1744 of the European Parliament and of the Council of 8 July 2026
-      amends Regulations (EU) 2024/1689, (EU) 2018/1139 and (EU) 2023/1230 as regards the
-      simplification of the implementation of harmonised rules on artificial intelligence,
-      and is known as the Digital Omnibus on AI. It was published in the Official Journal,
-      L series, on 24 July 2026 under number 2026/1744.
-    where: "lesson.py section 1 (what changed in July 2026)"
-    source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
-    source_title: "NicFab — Digital Omnibus on AI: Regulation (EU) 2026/1744 published in the Official Journal"
-    quote: >-
-      Amending Regulations (EU) 2024/1689, (EU) 2018/1139 and (EU) 2023/1230 as regards the
-      simplification of the implementation of harmonised rules on artificial intelligence
-      (Digital Omnibus on AI)
-    corroborating_source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    corroborating_source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    corroborating_quote: >-
-      This legislative proposal (dubbed as the 'AI Omnibus') was adopted on 19 November 2025,
-      a political agreement was reached on 7 May 2026 and entered into force on 27 July 2026.
-    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
-    eli: http://data.europa.eu/eli/reg/2026/1744/oj
-    retrieval_note: >-
-      The authoritative EUR-Lex text could not be retrieved on 2026-09-16. The HTML view, the
-      plain TXT view and the ELI URL each returned HTTP 202 with a zero-byte body, both
-      through an HTML-to-text fetcher and through a direct HTTP client with a browser user
-      agent. The identity and publication details above therefore rest on the two retrieved
-      sources quoted, which agree. Re-quote from the Official Journal PDF before the lesson
-      ships if a verbatim citation of the enacting text is wanted.
-    accessed: 2026-09-16
-
-  - id: digital-omnibus-entry-into-force-2026-07-27
-    claim: >-
-      The Digital Omnibus on AI entered into force on 27 July 2026, the third day following
-      its publication in the Official Journal of 24 July 2026.
-    where: "lesson.py section 1 (what changed in July 2026) and MILESTONES"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: "entered into force on 27 July 2026"
-    corroborating_source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
-    corroborating_source_title: "NicFab — Digital Omnibus on AI published in the Official Journal"
-    corroborating_quote: "27 July 2026 (the third day following publication)"
-    accessed: 2026-09-16
-
-  - id: annex-iii-high-risk-deferred-to-2027-12-02
-    claim: >-
-      After the Digital Omnibus amendment, the Chapter III duties for AI systems classified
-      as high-risk pursuant to Article 6(2) and Annex III — the stand-alone high-risk
-      systems, in areas such as employment and creditworthiness — apply from 2 December 2027,
-      rather than from the AI Act's original general date. This dates ch3_high_risk_annex_iii
-      in the rulebook.
-    where: "lesson.py section 1, OBLIGATIONS, exercise 1; self-check questions 1 and 2"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: >-
-      Rules for systems used in certain high-risk areas — including biometrics, critical
-      infrastructure, education, employment, migration, asylum and border control — will
-      apply from 2 December 2027
-    quote_note: >-
-      Retrieved in full on 2026-09-16 by the independent reviewer. An earlier version of this
-      entry carried the same sentence with the list of areas elided by the fetcher; the full
-      sentence is quoted above, and it names education and employment, which are the two
-      Annex III areas the shipped registry uses.
-    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
-    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
-    corroborating_quote: "from 2 December 2027 as regards AI systems classified as high-risk"
-    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
-    retrieval_note: >-
-      See the retrieval note on digital-omnibus-identity-and-publication: EUR-Lex returned an
-      empty body for CELEX 32026R1744 on 2026-09-16 on every URL form tried, so this claim
-      carries no verbatim quote of the amending article. It is supported by the European
-      Commission's own statement of the date and by a reproduction of the amending text; the
-      two agree on both the date and the Article 6(2)/Annex III category.
-    accessed: 2026-09-16
-
-  - id: annex-i-high-risk-deferred-to-2028-08-02
-    claim: >-
-      The same Chapter III duties for AI systems classified as high-risk pursuant to
-      Article 6(1) and Annex I — AI embedded as a safety component of a product already
-      covered by EU product-safety law, such as a medical device or machinery — apply from
-      2 August 2028. This dates ch3_high_risk_annex_i in the rulebook, and it is why the
-      lesson makes the Annex I route win when a system is both embedded and an Annex III use
-      case: the two routes carry different dates.
-    where: "lesson.py section 1, OBLIGATIONS, exercise 1; self-check question 4"
-    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
-    source_title: "European Commission, Shaping Europe's digital future — AI Act"
-    quote: >-
-      For systems integrated into products such as lifts or toys, the rules will apply from
-      2 August 2028
-    quote_note: >-
-      Retrieved in full on 2026-09-16 by the independent reviewer, replacing an elided
-      version. Note that the Commission's illustration is lifts and toys; the registry's two
-      Annex I fixtures are a medical device and machinery, which are Annex I product
-      legislation on the same footing. That mapping is the lesson's modelling choice, not a
-      quotation.
-    corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
-    corroborating_source_title: "EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction of the amending text)"
-    corroborating_quote: "from 2 August 2028 as regards AI systems classified as high-risk"
-    authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
-    retrieval_note: >-
-      Same EUR-Lex retrieval failure as above. Supported by the Commission's statement of the
-      date and by a reproduction of the amending text, which agree on both the date and the
-      Article 6(1)/Annex I category.
-    accessed: 2026-09-16
-
-  - id: article-50-not-deferred-by-the-omnibus
-    claim: >-
-      The Digital Omnibus deferred the high-risk timetable; it did not move the application
-      date of Article 50. The European Commission's Article 50 FAQ, read after the Omnibus
-      entered into force, still states the 2 August 2026 date and the single narrow grace
-      period for Article 50(2). This is the misconception the lesson exists to fix:
-      "high-risk was delayed" is not "the AI Act was delayed".
-    where: "lesson.py section 1, section 8 common mistakes, self-check question 2"
-    source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
-    source_title: "European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)"
-    quote: "Article 50 of the AI Act applies as from 2 August 2026."
-    accessed: 2026-09-16
-
-  - id: chapter-iii-requirement-articles
-    claim: >-
-      Most evidence item ids in this lesson are named after the Chapter III articles that
-      require the thing evidenced: Article 9 risk management system, Article 10 data and data
-      governance, Article 11 technical documentation, Article 12 record-keeping, Article 13
-      transparency and provision of information to deployers, Article 14 human oversight,
-      Article 15 accuracy, robustness and cybersecurity, Article 17 quality management
-      system, Article 43 conformity assessment, Article 47 EU declaration of conformity,
-      Article 48 CE marking and Article 49 registration.
-    where: "lesson.py section 3 (HIGH_RISK_CORE_EVIDENCE) and exercise 2"
-    source_url: https://artificialintelligenceact.eu/chapter/3/
-    source_title: "EU Artificial Intelligence Act — Chapter III article list (reproduction of the OJ text)"
-    quote: >-
-      Article 9: Risk Management System; Article 10: Data and Data Governance; Article 11:
-      Technical Documentation; Article 12: Record-Keeping; Article 13: Transparency and
-      Provision of Information to Deployers; Article 14: Human Oversight; Article 15:
-      Accuracy, Robustness and Cybersecurity; Article 17: Quality Management System;
-      Article 43: Conformity Assessment; Article 47: EU Declaration of Conformity;
-      Article 48: CE Marking; Article 49: Registration
-    accessed: 2026-09-16
-    note: >-
-      Secondary source: a reproduction of the Official Journal text, used here only for
-      article numbering and titles, which are stable and cross-checkable against EUR-Lex
-      CELEX 32024R1689.
-
-  - id: post-market-articles-are-chapter-ix
-    claim: >-
-      Two of the evidence ids are named after articles that sit in Chapter IX, not
-      Chapter III: Article 72 on post-market monitoring by providers and the post-market
-      monitoring plan for high-risk AI systems, and Article 73 on the reporting of serious
-      incidents. The lesson groups them with the Chapter III evidence because a reviewer asks
-      for them in the same pack, but they are a different chapter of the Act.
-    where: "lesson.py section 3 (post_market_monitoring_plan, serious_incident_procedure)"
-    source_url: https://artificialintelligenceact.eu/chapter/9/
-    source_title: "EU Artificial Intelligence Act — Chapter IX article list (reproduction of the OJ text)"
-    quote: >-
-      Article 72: Post-Market Monitoring by Providers and Post-Market Monitoring Plan for
-      High-Risk AI Systems; Article 73: Reporting of Serious Incidents
-    accessed: 2026-09-16
-    note: >-
-      Added by the reviewer on 2026-09-16. The previous version of this file asserted the
-      Article 72 and 73 titles under a claim whose only source was the Chapter III page,
-      which does not contain them.
-
-# --- Explicitly NOT claimed ------------------------------------------------------------
-# The mapping from an obligation to a list of evidence items, the precedence order in
-# classify(), and the rule that a prohibited system's only remaining duties are AI literacy
-# and a withdrawal record, are this lesson's MODELLING CHOICES for a teaching exercise. They
-# are labelled as such in lesson.py section 3 and in the classify() docstring. They are not a
-# claim about what any authority would accept, and the lesson says so in its opening cell and
-# again at the end.
-#
-# --- Reviewer verification, 2026-09-16 --------------------------------------------------
-# Re-verified independently of the author against the European Commission's AI Act page and
-# its Article 50 FAQ: entry into force and general application; 2 February 2025; 2 August
-# 2025; 2 August 2026; the 2 December 2026 Article 50(2) grace period and its strict
-# "before 2 August 2026" cut-off; 27 July 2026; 2 December 2027; 2 August 2028. Chapter III
-# and Chapter IX article titles re-verified. Nothing needed correcting on the dates.
-# Outstanding: the authoritative EUR-Lex text of CELEX 32026R1744 was unreachable on this
-# date (HTTP 202, empty body, on all three URL forms and via two different HTTP clients), so
-# no claim in this file quotes it verbatim.
-#
-# --- Second, independent reviewer, 2026-09-16 -------------------------------------------
-# Every source_url in this file re-fetched from scratch. The Commission's AI Act page
-# returned, verbatim and unprompted, all six dates the rulebook encodes (1 August 2024,
-# 2 February 2025, 2 August 2025, 2 August 2026, 2 December 2027, 2 August 2028) and the
-# 27 July 2026 Omnibus entry into force; the Article 50 FAQ returned the 2 August 2026
-# application sentence and the whole grace-period paragraph word for word; the Chapter III
-# page returned all twelve article titles relied on. Two quotes that had been stored with
-# an ellipsis were re-retrieved in full and replaced above. EUR-Lex CELEX 32026R1744 was
-# retried and again returned an empty body, so the retrieval notes stand unchanged.
+- id: ai-act-entry-into-force-and-general-application
+  claim: Regulation (EU) 2024/1689 (the AI Act) entered into force on 1 August 2024 and became applicable
+    on 2 August 2026. That general application date is the one the lesson's rulebook uses as the default
+    date for the Article 50 transparency duties.
+  where: lesson.py section 1 (the date ladder) and MILESTONES; self-check question 2
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: The AI Act entered into force on 1 August 2024 and became applicable on 2 August 2026, with some
+    exceptions
+  accessed: 2026-09-16
+- id: prohibitions-and-literacy-from-2025-02-02
+  claim: The prohibited AI practices (Article 5) and the AI literacy obligation (Article 4) entered into
+    application from 2 February 2025. This is why the lesson's rulebook dates art4_ai_literacy and art5_prohibited_practice
+    to 2025-02-02, and why a "minimal risk" system in the registry still carries one duty rather than
+    none.
+  where: lesson.py section 1 and OBLIGATIONS; self-check question 2
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: prohibited AI practices and AI literacy obligations entered into application from 2 February
+    2025
+  accessed: 2026-09-16
+- id: gpai-obligations-from-2025-08-02
+  claim: The governance rules and the obligations for general-purpose AI models became applicable on 2
+    August 2025. This dates art53_gpai_model in the rulebook.
+  where: lesson.py section 1 and OBLIGATIONS
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: the governance rules and the obligations for GPAI models became applicable on 2 August 2025
+  accessed: 2026-09-16
+- id: article-50-applies-from-2026-08-02
+  claim: Article 50 of the AI Act applies as from 2 August 2026. Providers and deployers of the systems
+    it covers — interactive systems, synthetic audio/image/video/text, emotion recognition, biometric
+    categorisation and deepfakes — must comply from that date. This dates art50_inform_interaction and
+    the standard case of art50_mark_synthetic.
+  where: lesson.py section 1, OBLIGATIONS, and exercise 1
+  source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+  source_title: European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)
+  quote: Article 50 of the AI Act applies as from 2 August 2026.
+  accessed: 2026-09-16
+- id: article-50-2-transitional-to-2026-12-02
+  claim: 'A limited grace period applies to the Article 50(2) marking and detection obligation for AI-generated
+    content, and only for AI systems placed on the market before 2 August 2026: providers of those systems
+    must comply only as from 2 December 2026. This is the conditional branch the student must implement
+    in classify(): the date of art50_mark_synthetic depends on the system''s placed_on_market field, and
+    the boundary is strict — a system placed on the market ON 2 August 2026 gets no relief.'
+  where: lesson.py exercise 1 (the transitional rule) and the support-copilot fixture
+  source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+  source_title: European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)
+  quote: A limited grace period is envisaged only for AI systems placed on the market before 2 August
+    2026 and only as regards the marking and detection obligation for AI-generated content (Article 50(2)
+    of the AI Act). Providers of such systems must comply with those obligations only as from 2 December
+    2026.
+  corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+  corroborating_source_title: EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction
+    of the amending text)
+  corroborating_quote: shall take the necessary steps in order to comply with Article 50(2) by 2 December
+    2026
+  accessed: 2026-09-16
+  note: Re-checked by the reviewer on 2026-09-16, after the Digital Omnibus entered into force, precisely
+    because secondary commentary claims the Omnibus replaced this fixed cut-off with a dynamic one. The
+    Commission's own Article 50 FAQ, read on that date, still states the 2 August 2026 cut-off and the
+    2 December 2026 compliance date, and the reproduction of the amending text agrees. The lesson encodes
+    the Commission's wording.
+- id: digital-omnibus-identity-and-publication
+  claim: Regulation (EU) 2026/1744 of the European Parliament and of the Council of 8 July 2026 amends
+    Regulations (EU) 2024/1689, (EU) 2018/1139 and (EU) 2023/1230 as regards the simplification of the
+    implementation of harmonised rules on artificial intelligence, and is known as the Digital Omnibus
+    on AI. It was published in the Official Journal, L series, on 24 July 2026 under number 2026/1744.
+  where: lesson.py section 1 (what changed in July 2026)
+  source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
+  source_title: 'NicFab — Digital Omnibus on AI: Regulation (EU) 2026/1744 published in the Official Journal'
+  quote: Amending Regulations (EU) 2024/1689, (EU) 2018/1139 and (EU) 2023/1230 as regards the simplification
+    of the implementation of harmonised rules on artificial intelligence (Digital Omnibus on AI)
+  corroborating_source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  corroborating_source_title: European Commission, Shaping Europe's digital future — AI Act
+  corroborating_quote: This legislative proposal (dubbed as the 'AI Omnibus') was adopted on 19 November
+    2025, a political agreement was reached on 7 May 2026 and entered into force on 27 July 2026.
+  authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+  eli: http://data.europa.eu/eli/reg/2026/1744/oj
+  retrieval_note: The authoritative EUR-Lex text could not be retrieved on 2026-09-16. The HTML view,
+    the plain TXT view and the ELI URL each returned HTTP 202 with a zero-byte body, both through an HTML-to-text
+    fetcher and through a direct HTTP client with a browser user agent. The identity and publication details
+    above therefore rest on the two retrieved sources quoted, which agree. Re-quote from the Official
+    Journal PDF before the lesson ships if a verbatim citation of the enacting text is wanted.
+  accessed: 2026-09-16
+- id: digital-omnibus-entry-into-force-2026-07-27
+  claim: The Digital Omnibus on AI entered into force on 27 July 2026, the third day following its publication
+    in the Official Journal of 24 July 2026.
+  where: lesson.py section 1 (what changed in July 2026) and MILESTONES
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: entered into force on 27 July 2026
+  corroborating_source_url: https://www.nicfab.eu/en/posts/digital-omnibus-ai-official-journal/
+  corroborating_source_title: NicFab — Digital Omnibus on AI published in the Official Journal
+  corroborating_quote: 27 July 2026 (the third day following publication)
+  accessed: 2026-09-16
+- id: annex-iii-high-risk-deferred-to-2027-12-02
+  claim: After the Digital Omnibus amendment, the Chapter III duties for AI systems classified as high-risk
+    pursuant to Article 6(2) and Annex III — the stand-alone high-risk systems, in areas such as employment
+    and creditworthiness — apply from 2 December 2027, rather than from the AI Act's original general
+    date. This dates ch3_high_risk_annex_iii in the rulebook.
+  where: lesson.py section 1, OBLIGATIONS, exercise 1; self-check questions 1 and 2
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: Rules for systems used in certain high-risk areas — including biometrics, critical infrastructure,
+    education, employment, migration, asylum and border control — will apply from 2 December 2027
+  quote_note: Retrieved in full on 2026-09-16 by the independent reviewer. An earlier version of this
+    entry carried the same sentence with the list of areas elided by the fetcher; the full sentence is
+    quoted above, and it names education and employment, which are the two Annex III areas the shipped
+    registry uses.
+  corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+  corroborating_source_title: EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction
+    of the amending text)
+  corroborating_quote: from 2 December 2027 as regards AI systems classified as high-risk
+  authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+  retrieval_note: 'See the retrieval note on digital-omnibus-identity-and-publication: EUR-Lex returned
+    an empty body for CELEX 32026R1744 on 2026-09-16 on every URL form tried, so this claim carries no
+    verbatim quote of the amending article. It is supported by the European Commission''s own statement
+    of the date and by a reproduction of the amending text; the two agree on both the date and the Article
+    6(2)/Annex III category.'
+  accessed: 2026-09-16
+- id: annex-i-high-risk-deferred-to-2028-08-02
+  claim: 'The same Chapter III duties for AI systems classified as high-risk pursuant to Article 6(1)
+    and Annex I — AI embedded as a safety component of a product already covered by EU product-safety
+    law, such as a medical device or machinery — apply from 2 August 2028. This dates ch3_high_risk_annex_i
+    in the rulebook, and it is why the lesson makes the Annex I route win when a system is both embedded
+    and an Annex III use case: the two routes carry different dates.'
+  where: lesson.py section 1, OBLIGATIONS, exercise 1; self-check question 4
+  source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+  source_title: European Commission, Shaping Europe's digital future — AI Act
+  quote: For systems integrated into products such as lifts or toys, the rules will apply from 2 August
+    2028
+  quote_note: Retrieved in full on 2026-09-16 by the independent reviewer, replacing an elided version.
+    Note that the Commission's illustration is lifts and toys; the registry's two Annex I fixtures are
+    a medical device and machinery, which are Annex I product legislation on the same footing. That mapping
+    is the lesson's modelling choice, not a quotation.
+  corroborating_source_url: https://artificialintelligenceact.eu/ai-act-explorer/digital-omnibus/
+  corroborating_source_title: EU Artificial Intelligence Act — Digital Omnibus explorer (reproduction
+    of the amending text)
+  corroborating_quote: from 2 August 2028 as regards AI systems classified as high-risk
+  authoritative_text_url: https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744
+  retrieval_note: Same EUR-Lex retrieval failure as above. Supported by the Commission's statement of
+    the date and by a reproduction of the amending text, which agree on both the date and the Article
+    6(1)/Annex I category.
+  accessed: 2026-09-16
+- id: article-50-not-deferred-by-the-omnibus
+  claim: 'The Digital Omnibus deferred the high-risk timetable; it did not move the application date of
+    Article 50. The European Commission''s Article 50 FAQ, read after the Omnibus entered into force,
+    still states the 2 August 2026 date and the single narrow grace period for Article 50(2). This is
+    the misconception the lesson exists to fix: "high-risk was delayed" is not "the AI Act was delayed".'
+  where: lesson.py section 1, section 8 common mistakes, self-check question 2
+  source_url: https://digital-strategy.ec.europa.eu/en/faqs/transparency-obligations-under-article-50-ai-act
+  source_title: European Commission — Transparency obligations under Article 50 of the AI Act (FAQ)
+  quote: Article 50 of the AI Act applies as from 2 August 2026.
+  accessed: 2026-09-16
+- id: chapter-iii-requirement-articles
+  claim: 'Most evidence item ids in this lesson are named after the Chapter III articles that require
+    the thing evidenced: Article 9 risk management system, Article 10 data and data governance, Article
+    11 technical documentation, Article 12 record-keeping, Article 13 transparency and provision of information
+    to deployers, Article 14 human oversight, Article 15 accuracy, robustness and cybersecurity, Article
+    17 quality management system, Article 43 conformity assessment, Article 47 EU declaration of conformity,
+    Article 48 CE marking and Article 49 registration.'
+  where: lesson.py section 3 (HIGH_RISK_CORE_EVIDENCE) and exercise 2
+  source_url: https://artificialintelligenceact.eu/chapter/3/
+  source_title: EU Artificial Intelligence Act — Chapter III article list (reproduction of the OJ text)
+  quote: 'Article 9: Risk Management System; Article 10: Data and Data Governance; Article 11: Technical
+    Documentation; Article 12: Record-Keeping; Article 13: Transparency and Provision of Information to
+    Deployers; Article 14: Human Oversight; Article 15: Accuracy, Robustness and Cybersecurity; Article
+    17: Quality Management System; Article 43: Conformity Assessment; Article 47: EU Declaration of Conformity;
+    Article 48: CE Marking; Article 49: Registration'
+  accessed: 2026-09-16
+  note: 'Secondary source: a reproduction of the Official Journal text, used here only for article numbering
+    and titles, which are stable and cross-checkable against EUR-Lex CELEX 32024R1689.'
+- id: post-market-articles-are-chapter-ix
+  claim: 'Two of the evidence ids are named after articles that sit in Chapter IX, not Chapter III: Article
+    72 on post-market monitoring by providers and the post-market monitoring plan for high-risk AI systems,
+    and Article 73 on the reporting of serious incidents. The lesson groups them with the Chapter III
+    evidence because a reviewer asks for them in the same pack, but they are a different chapter of the
+    Act.'
+  where: lesson.py section 3 (post_market_monitoring_plan, serious_incident_procedure)
+  source_url: https://artificialintelligenceact.eu/chapter/9/
+  source_title: EU Artificial Intelligence Act — Chapter IX article list (reproduction of the OJ text)
+  quote: 'Article 72: Post-Market Monitoring by Providers and Post-Market Monitoring Plan for High-Risk
+    AI Systems; Article 73: Reporting of Serious Incidents'
+  accessed: 2026-09-16
+  note: Added by the reviewer on 2026-09-16. The previous version of this file asserted the Article 72
+    and 73 titles under a claim whose only source was the Chapter III page, which does not contain them.

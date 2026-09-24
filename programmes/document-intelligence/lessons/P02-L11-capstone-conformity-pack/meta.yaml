@@ -1,0 +1,48 @@
+id: P02-L11-capstone-conformity-pack
+title: The capstone conformity pack — a validator that regenerates every figure in an evidence pack from
+  the artefacts behind it
+track: P02
+flagship: ''
+tier: cpu8
+budget_seconds: 180
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- P02-L01-extraction-evaluation
+- P02-L02-layout-reading-order
+- P02-L03-sequence-labelling
+- P02-L04-table-extraction
+- P02-L05-clause-classification-abstention
+- P02-L06-review-queues-real-reviewers
+- P02-L07-slice-discovery
+- P02-L08-pipeline-drift-monitor
+- P02-L09-cost-routing-budget
+- P02-L10-streaming-scanner-in-c
+objectives:
+- Implement a reproduction gate that regenerates every figure in a document from a computed evidence bundle,
+  and refuses the document if any figure's value cannot be found within the precision the document itself
+  claims
+- Implement three independent provenance checks -- a residual-by-class recomputation against the raw records,
+  a cost-figure citation check against a measurement registry, and a threshold-timing check against the
+  real alarm day -- each catching a number that is individually correct but was produced the wrong way
+- Combine all four checks into a single validator with a logical AND, never a majority, and use it as
+  the gate that refuses to render a pack assembled from the harness, slice analysis, drift monitor, cost
+  model and escalation policy of earlier modules
+- Measure, by planting each of this lesson's defects alone in an otherwise clean pack, which of the four
+  checks catches each one, and explain why a reproduction gate cannot catch a figure that is correct for
+  the wrong data
+- Explain why a repair that only makes the validator quieter -- widening a tolerance, loosening a boundary
+  by one step, or dropping a check from the combination -- leaves the pack no more honest, and why the
+  rubric fails each such repair
+datasets:
+- name: synthetic remittance-advice extraction records, drift replay and cost/measurement registry
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  note: 240 documents (4 field types, a 1/3 evaluation split) from build_corpus() on random.Random(20260923);
+    a 300-day CUSUM replay with one injected regression from simulate_quality_series(); a fixed 3-tier
+    cost model and a 4-entry measurement registry. Nothing is read from disk and nothing is downloaded.
+points: 149
+status: reviewed
+measured_seconds: 5.7
+measured_peak_mib: 29

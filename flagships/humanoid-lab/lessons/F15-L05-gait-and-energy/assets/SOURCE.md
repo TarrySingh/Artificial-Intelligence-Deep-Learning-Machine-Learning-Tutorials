@@ -6,7 +6,7 @@
 |---|---|
 | Source | Authored for this lesson by the Synapsa Commons project. Not a download. |
 | Licence | CC BY-NC-SA 4.0 — (c) 2026 RealAI, part of Synapsa Commons — <https://creativecommons.org/licenses/by-nc-sa/4.0/> |
-| Legal code | <https://creativecommons.org/publicdomain/zero/1.0/legalcode> (HTTP 200, checked 2026-09-16) |
+| Legal code | <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode> (checked 2026-09-24) |
 | Retrieved | 2026-09-16 (written, not fetched) |
 | Size | 4,444 bytes |
 | Gated? | No. Nothing to register for, nothing to agree to, no network access required. |

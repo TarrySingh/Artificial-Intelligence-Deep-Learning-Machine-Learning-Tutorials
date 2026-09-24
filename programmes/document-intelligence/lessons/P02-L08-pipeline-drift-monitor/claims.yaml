@@ -1,158 +1,103 @@
-# Every factual claim this lesson makes about the world, with a primary source and the date
-# the source was read. Numbers a student sees in output are computed by the code they run and
-# are therefore not claims; they do not appear here.
-#
-# Every quote below was read on 2026-09-23 on the live page at source_url and appears there
-# word for word, except where quote_context says a symbol is typeset as mathematics on the page
-# and is spelled out here. The Yurdakul and Naranjo PDF was fetched with curl and its text
-# streams decompressed locally; its ligatures ("fi") and dashes are rendered as the letters and
-# the dash they print as.
-#
-# --- deliberate non-claims -----------------------------------------------------------------
-# Recorded here so that a later reader can see they were considered rather than overlooked.
-#
-# * FALSE_PAGE_BUDGET (false pages per quarter), MIN_SHIFT (the smallest rise in the audited
-#   defect rate that must page), AUDIT_DOCS (documents reviewed a day) and DRIFT_FLAG_RATE are
-#   POLICY INPUTS. The notebook labels them as decisions somebody owns, measures what each one
-#   costs, and nowhere says that any standard, regulator or paper sets them.
-# * The three events, the error rates, the supplier shares and the amounts are properties of the
-#   synthetic generator in section 1, which the student reads before running it. Nothing claims
-#   a real pipeline, supplier or model behaves this way.
-# * "Module 1's review queue only looks at the least confident cells" describes the review_queue
-#   of this programme's own module 1, not the world.
 claims:
-  - id: psi-is-a-symmetrised-kl-divergence
-    claim: >-
-      The population stability index can be written as a form of Kullback-Leibler divergence:
-      summing KL(q|p) and KL(p|q) over the same bins gives the symmetric measure
-      sum (p - q) ln(p / q), which is the PSI formula. Section 3 states this and exercise 2's
-      check and the rubric verify that KL(a||e) + KL(e||a) equals PSI on the same floored shares.
-    where: "lesson.py section 3 (exercise 2 prose and docstring); tests/test_lesson.py::test_kl_floored_like_psi"
-    source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
-    source_title: >-
-      Yurdakul and Naranjo — Statistical properties of the population stability index,
-      Journal of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227 (copy
-      hosted by the Department of Statistics, Western Michigan University)
-    quote: >-
-      The PSI can be written as some form of Kullback–Leibler (KL) divergence
-    quote_context: >-
-      Section 2, literature review. The derivation follows on the next page: "we can easily
-      obtain a symmetric measure of divergence by defining" D*(p, q) = D_KL(q|p) + D_KL(p|q),
-      reduced to the sum of (p(x_i) - q(x_i)) times (ln p(x_i) - ln q(x_i)), "which brings us
-      to the formula for the PSI". The formulas are typeset mathematics on the page.
-    accessed: 2026-09-23
-
-  - id: psi-symmetric-only-with-fixed-cutoffs
-    claim: >-
-      PSI is symmetric in its two samples only when the bin cut-off points are fixed in advance;
-      when the cut-offs are percentiles of the base sample, swapping base and target changes the
-      cut-offs and therefore the PSI. The lesson cuts every edge once, on the baseline quarter,
-      and section 4 gives this as the reason.
-    where: "lesson.py section 4 (exercise 3 prose, 'The edges belong to the baseline')"
-    source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
-    source_title: >-
-      Yurdakul and Naranjo — Statistical properties of the population stability index,
-      Journal of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227
-    quote: >-
-      If the base and target populations switch roles, then this changes the cutoff points and
-      consequently the PSI.
-    quote_context: >-
-      The sentence before it reads "Although KL divergence is not symmetric, the PSI is
-      symmetric under the assumption that cutoff values are predetermined."
-    accessed: 2026-09-23
-
-  - id: psi-rule-of-thumb-has-no-error-rate
-    claim: >-
-      A conventional rule of thumb reads PSI of 0.25 and above as a significant change requiring
-      action, and these bands are used without reference to type I or type II error rates. The
-      lesson's PSI_RULE_OF_THUMB pager uses that band, calls it convention, attributes it to no
-      one, and measures what it does on the replay year instead.
-    where: "lesson.py setup cell (PSI_RULE_OF_THUMB) and section 4 (the rule-of-thumb pager)"
-    source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
-    source_title: >-
-      Yurdakul and Naranjo — Statistical properties of the population stability index,
-      Journal of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227
-    quote: >-
-      These benchmarks are used without reference to statistical type I or type II error rates.
-    quote_context: >-
-      The abstract. The sentence before it gives the bands: PSI below 0.10 "little change",
-      0.10 to 0.25 "moderate change", and 0.25 and above "significant change, action required"
-      (the comparison signs are typeset as mathematics). The paper traces the bands to
-      practitioner literature the lesson has not read, so the lesson makes no attribution.
-    accessed: 2026-09-23
-
-  - id: kl-divergence-definition-and-renormalisation
-    claim: >-
-      The relative entropy D = sum(pk * log(pk / qk)) is also known as the Kullback-Leibler
-      divergence; informally it is the excess surprise of someone who believes qk when the truth
-      is pk. SciPy's entropy routine renormalises pk and qk when they do not sum to one. The
-      lesson's kl_divergence computes the same sum with pk the current window's shares and qk the
-      baseline's, and deliberately does NOT renormalise the floored shares, so that
-      KL(a||e) + KL(e||a) equals the floored PSI exactly; section 3 says so.
-    where: "lesson.py section 3 (exercise 2 prose and docstring)"
-    source_url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
-    source_title: "SciPy API reference — scipy.stats.entropy"
-    quote: >-
-      If qk is not None, then compute the relative entropy D = sum(pk * log(pk / qk)). This
-      quantity is also known as the Kullback-Leibler divergence.
-    quote_context: >-
-      The same page continues "This routine will normalize pk and qk if they don't sum to 1."
-      and, under Notes, "Informally, the relative entropy quantifies the expected excess in
-      surprise experienced if one believes the true distribution is qk when it is actually pk."
-    accessed: 2026-09-23
-
-  - id: cusum-tabular-form-and-exceeds-h
-    claim: >-
-      The tabular (spreadsheet) CUSUM for an upward shift is S_hi(i) = max(0, S_hi(i-1) + x_i -
-      mu0 - k) with S_hi(0) = 0, the process is out of control when it exceeds h, and h and k
-      may be expressed in sigma units. Exercise 5 implements exactly this on the standardised
-      proxy, with a strict comparison, and adds a reset after each page.
-    where: "lesson.py section 6 (exercise 5 prose and docstring); tests/test_lesson.py::test_cusum_strict_threshold"
-    source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
-    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts"
-    quote: >-
-      Most users of CUSUM procedures prefer tabular charts over the V-Mask.
-    quote_context: >-
-      The tabular section then says "It is also possible to use sigma units", gives S_hi(i) and
-      S_lo(i) as typeset mathematics, and reads "where S_hi(0) and S_lo(0) are 0. When either
-      S_hi(i) and S_lo(i) exceeds h, the process is out of control." (symbols typeset as
-      mathematics on the page). The reset after a page is this lesson's operational choice —
-      the next page must be earned by new evidence — and is stated as such in the notebook.
-    accessed: 2026-09-23
-
-  - id: cusum-rule-of-thumb-k-half-shift-h-4-or-5
-    claim: >-
-      A general rule of thumb, attributed by NIST to Montgomery, is to choose k as half the shift
-      to be detected and h around 4 or 5. The lesson takes k = MIN_SHIFT / (2 sigma0) from the
-      first half of that rule and replaces the second half with a threshold measured against a
-      false-page budget; section 7 prints the handbook's h values beside it with their measured
-      false-page rates.
-    where: "lesson.py setup cell (ROUND_THRESHOLDS), section 6 (k) and section 7 (threshold table)"
-    source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
-    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts"
-    quote: >-
-      A general rule of thumb (Montgomery) if one chooses to design with the h and k approach,
-      instead of the α and β method illustrated above, is to choose k to be half the δ shift
-      (0.5 in our example) and h to be around 4 or 5.
-    quote_context: >-
-      Under "Rule of thumb for choosing h and k", after "Note:". The symbols h, k, α, β and δ
-      are typeset as mathematics on the page and spelled out here.
-    accessed: 2026-09-23
-
-  - id: cusum-better-than-shewhart-for-small-shifts
-    claim: >-
-      CUSUM charts detect small shifts in a process mean more efficiently than Shewhart charts;
-      NIST's handbook says analysis of average run lengths shows them better for shifts of two
-      sigma or less. Section 6 gives this as the reason the daily proxy is watched with a CUSUM
-      rather than a one-day limit.
-    where: "lesson.py section 6 (exercise 5 prose, first sentence)"
-    source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
-    source_title: "NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts"
-    quote: >-
-      CUSUM charts, while not as intuitive and simple to operate as Shewhart charts, have been
-      shown to be more efficient in detecting small shifts in the mean of a process.
-    quote_context: >-
-      The next sentence: "In particular, analyzing ARL's for CUSUM control charts shows that they
-      are better than Shewhart control charts when it is desired to detect shifts in the mean
-      that are 2 sigma or less."
-    accessed: 2026-09-23
+- id: psi-is-a-symmetrised-kl-divergence
+  claim: 'The population stability index can be written as a form of Kullback-Leibler divergence: summing
+    KL(q|p) and KL(p|q) over the same bins gives the symmetric measure sum (p - q) ln(p / q), which is
+    the PSI formula. Section 3 states this and exercise 2''s check and the rubric verify that KL(a||e)
+    + KL(e||a) equals PSI on the same floored shares.'
+  where: lesson.py section 3 (exercise 2 prose and docstring); tests/test_lesson.py::test_kl_floored_like_psi
+  source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
+  source_title: Yurdakul and Naranjo — Statistical properties of the population stability index, Journal
+    of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227 (copy hosted by the Department
+    of Statistics, Western Michigan University)
+  quote: The PSI can be written as some form of Kullback–Leibler (KL) divergence
+  quote_context: 'Section 2, literature review. The derivation follows on the next page: "we can easily
+    obtain a symmetric measure of divergence by defining" D*(p, q) = D_KL(q|p) + D_KL(p|q), reduced to
+    the sum of (p(x_i) - q(x_i)) times (ln p(x_i) - ln q(x_i)), "which brings us to the formula for the
+    PSI". The formulas are typeset mathematics on the page.'
+  accessed: 2026-09-23
+- id: psi-symmetric-only-with-fixed-cutoffs
+  claim: PSI is symmetric in its two samples only when the bin cut-off points are fixed in advance; when
+    the cut-offs are percentiles of the base sample, swapping base and target changes the cut-offs and
+    therefore the PSI. The lesson cuts every edge once, on the baseline quarter, and section 4 gives this
+    as the reason.
+  where: lesson.py section 4 (exercise 3 prose, 'The edges belong to the baseline')
+  source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
+  source_title: Yurdakul and Naranjo — Statistical properties of the population stability index, Journal
+    of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227
+  quote: If the base and target populations switch roles, then this changes the cutoff points and consequently
+    the PSI.
+  quote_context: The sentence before it reads "Although KL divergence is not symmetric, the PSI is symmetric
+    under the assumption that cutoff values are predetermined."
+  accessed: 2026-09-23
+- id: psi-rule-of-thumb-has-no-error-rate
+  claim: A conventional rule of thumb reads PSI of 0.25 and above as a significant change requiring action,
+    and these bands are used without reference to type I or type II error rates. The lesson's PSI_RULE_OF_THUMB
+    pager uses that band, calls it convention, attributes it to no one, and measures what it does on the
+    replay year instead.
+  where: lesson.py setup cell (PSI_RULE_OF_THUMB) and section 4 (the rule-of-thumb pager)
+  source_url: https://files.wmich.edu/s3fs-public/attachments/u730/2022/PSIfinal.pdf
+  source_title: Yurdakul and Naranjo — Statistical properties of the population stability index, Journal
+    of Risk Model Validation 14(4):89-100, 2020, DOI 10.21314/JRMV.2020.227
+  quote: These benchmarks are used without reference to statistical type I or type II error rates.
+  quote_context: 'The abstract. The sentence before it gives the bands: PSI below 0.10 "little change",
+    0.10 to 0.25 "moderate change", and 0.25 and above "significant change, action required" (the comparison
+    signs are typeset as mathematics). The paper traces the bands to practitioner literature the lesson
+    has not read, so the lesson makes no attribution.'
+  accessed: 2026-09-23
+- id: kl-divergence-definition-and-renormalisation
+  claim: The relative entropy D = sum(pk * log(pk / qk)) is also known as the Kullback-Leibler divergence;
+    informally it is the excess surprise of someone who believes qk when the truth is pk. SciPy's entropy
+    routine renormalises pk and qk when they do not sum to one. The lesson's kl_divergence computes the
+    same sum with pk the current window's shares and qk the baseline's, and deliberately does NOT renormalise
+    the floored shares, so that KL(a||e) + KL(e||a) equals the floored PSI exactly; section 3 says so.
+  where: lesson.py section 3 (exercise 2 prose and docstring)
+  source_url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.entropy.html
+  source_title: SciPy API reference — scipy.stats.entropy
+  quote: If qk is not None, then compute the relative entropy D = sum(pk * log(pk / qk)). This quantity
+    is also known as the Kullback-Leibler divergence.
+  quote_context: The same page continues "This routine will normalize pk and qk if they don't sum to 1."
+    and, under Notes, "Informally, the relative entropy quantifies the expected excess in surprise experienced
+    if one believes the true distribution is qk when it is actually pk."
+  accessed: 2026-09-23
+- id: cusum-tabular-form-and-exceeds-h
+  claim: The tabular (spreadsheet) CUSUM for an upward shift is S_hi(i) = max(0, S_hi(i-1) + x_i - mu0
+    - k) with S_hi(0) = 0, the process is out of control when it exceeds h, and h and k may be expressed
+    in sigma units. Exercise 5 implements exactly this on the standardised proxy, with a strict comparison,
+    and adds a reset after each page.
+  where: lesson.py section 6 (exercise 5 prose and docstring); tests/test_lesson.py::test_cusum_strict_threshold
+  source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
+  source_title: NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts
+  quote: Most users of CUSUM procedures prefer tabular charts over the V-Mask.
+  quote_context: The tabular section then says "It is also possible to use sigma units", gives S_hi(i)
+    and S_lo(i) as typeset mathematics, and reads "where S_hi(0) and S_lo(0) are 0. When either S_hi(i)
+    and S_lo(i) exceeds h, the process is out of control." (symbols typeset as mathematics on the page).
+    The reset after a page is this lesson's operational choice — the next page must be earned by new evidence
+    — and is stated as such in the notebook.
+  accessed: 2026-09-23
+- id: cusum-rule-of-thumb-k-half-shift-h-4-or-5
+  claim: A general rule of thumb, attributed by NIST to Montgomery, is to choose k as half the shift to
+    be detected and h around 4 or 5. The lesson takes k = MIN_SHIFT / (2 sigma0) from the first half of
+    that rule and replaces the second half with a threshold measured against a false-page budget; section
+    7 prints the handbook's h values beside it with their measured false-page rates.
+  where: lesson.py setup cell (ROUND_THRESHOLDS), section 6 (k) and section 7 (threshold table)
+  source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
+  source_title: NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts
+  quote: A general rule of thumb (Montgomery) if one chooses to design with the h and k approach, instead
+    of the α and β method illustrated above, is to choose k to be half the δ shift (0.5 in our example)
+    and h to be around 4 or 5.
+  quote_context: Under "Rule of thumb for choosing h and k", after "Note:". The symbols h, k, α, β and
+    δ are typeset as mathematics on the page and spelled out here.
+  accessed: 2026-09-23
+- id: cusum-better-than-shewhart-for-small-shifts
+  claim: CUSUM charts detect small shifts in a process mean more efficiently than Shewhart charts; NIST's
+    handbook says analysis of average run lengths shows them better for shifts of two sigma or less. Section
+    6 gives this as the reason the daily proxy is watched with a CUSUM rather than a one-day limit.
+  where: lesson.py section 6 (exercise 5 prose, first sentence)
+  source_url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm
+  source_title: NIST/SEMATECH e-Handbook of Statistical Methods, 6.3.2.3 CUSUM Control Charts
+  quote: CUSUM charts, while not as intuitive and simple to operate as Shewhart charts, have been shown
+    to be more efficient in detecting small shifts in the mean of a process.
+  quote_context: 'The next sentence: "In particular, analyzing ARL''s for CUSUM control charts shows that
+    they are better than Shewhart control charts when it is desired to detect shifts in the mean that
+    are 2 sigma or less."'
+  accessed: 2026-09-23

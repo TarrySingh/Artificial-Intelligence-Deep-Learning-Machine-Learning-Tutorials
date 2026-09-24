@@ -1,21 +1,26 @@
 id: T03-L01-bpe-from-scratch
-title: Implement byte-level byte pair encoding from scratch and measure the token tax it imposes on five writing systems
+title: Implement byte-level byte pair encoding from scratch and measure the token tax it imposes on five
+  writing systems
 track: T03
-flagship: F02           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F02
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
+- T00-L01-the-8gb-track
 objectives:
-  - "Implement the four functions of a byte-level BPE trainer — pair counting, deterministic argmax, non-overlapping merge, and the training loop — using only the standard library"
-  - "Implement encode and decode against a trained merge list, and verify losslessness with a round-trip property test over five writing systems"
-  - "Measure tokens, characters and UTF-8 bytes for the same sentence in Latin, Cyrillic, Devanagari, Arabic and Han script, and report the tokens-per-character penalty each one pays"
-  - "Explain why starting from bytes rather than characters removes the unknown token, and what it costs instead"
-  - "Demonstrate that the measured penalty is a property of the training corpus rather than of the algorithm, by retraining the identical code on a balanced corpus and re-measuring"
-datasets: []            # none: the training corpus and every sample sentence are original text embedded in lesson.py, so the lesson runs offline with nothing downloaded and no third-party licence to honour
+- Implement the four functions of a byte-level BPE trainer — pair counting, deterministic argmax, non-overlapping
+  merge, and the training loop — using only the standard library
+- Implement encode and decode against a trained merge list, and verify losslessness with a round-trip
+  property test over five writing systems
+- Measure tokens, characters and UTF-8 bytes for the same sentence in Latin, Cyrillic, Devanagari, Arabic
+  and Han script, and report the tokens-per-character penalty each one pays
+- Explain why starting from bytes rather than characters removes the unknown token, and what it costs
+  instead
+- Demonstrate that the measured penalty is a property of the training corpus rather than of the algorithm,
+  by retraining the identical code on a balanced corpus and re-measuring
+datasets: []
 points: 37
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "independent-review 2026-09-16: mutation-tested the rubric with 22 mutants (5 scored 100% and were fixed: in-place merge, stop rule at <=MIN_COUNT, strict decode, decode swallowing UnicodeDecodeError, token_tax iterating sorted(samples)); 22/22 caught after tightening; all 8 claims.yaml sources re-fetched and verified; claims.yaml where: fields and two lesson.py forward references realigned to the real section numbering; four gates re-run green"
+status: reviewed
 measured_seconds: 2.2
 measured_peak_mib: 24

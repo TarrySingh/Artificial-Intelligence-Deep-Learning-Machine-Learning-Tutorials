@@ -1,146 +1,108 @@
-# Every factual claim this lesson makes about the world, with a primary source and the date
-# the source was read. Numbers a student sees in output — byte counts, token counts,
-# tokens-per-character ratios, the penalty each script pays, the effect of retraining — are
-# computed by the code they run on text shipped inside lesson.py. They are therefore not
-# claims about the world and are deliberately absent from this file.
-#
-# The five sample sentences are renderings of one well-known aphorism, plus a short phrasebook.
-# The lesson does not assert that they are exact translations of one another: it reports
-# tokens-per-character precisely so that the comparison survives the fact that a translated
-# sentence is never the same length as its original. That normalisation is stated in the
-# notebook where the table is printed.
 claims:
-  - id: utf8-one-to-four-octets
-    claim: >-
-      UTF-8 encodes each code point in the U+0000..U+10FFFF range using between one and four
-      octets, with the octet count determined by the code point's numeric value: U+0000..U+007F
-      in one octet, U+0080..U+07FF in two, U+0800..U+FFFF in three, and U+10000..U+10FFFF in
-      four. This is the floor underneath every measurement in the lesson — a tokenizer that has
-      learned nothing about a script can do no better than one token per octet — and it is why
-      Latin text is cheaper in bytes than Cyrillic, Arabic, Devanagari or Han text before any
-      tokenizer is involved at all. The notebook does not ask the student to accept the octet
-      widths: it measures len(s.encode("utf-8")) against len(s) for each sample and prints both.
-    where: "lesson.py section 2 (bytes are not characters) and section 10 (the measured table, tokens==bytes column)"
-    source_url: https://www.rfc-editor.org/rfc/rfc3629
-    source_title: "RFC 3629 — UTF-8, a transformation format of ISO 10646"
-    quote: >-
-      In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16 accessible range) are
-      encoded using sequences of 1 to 4 octets.
-    accessed: 2026-09-16
-
-  - id: bpe-origin-sennrich-2016
-    claim: >-
-      Byte pair encoding was brought to neural machine translation as a word-segmentation
-      method by Rico Sennrich, Barry Haddow and Alexandra Birch in "Neural Machine Translation
-      of Rare Words with Subword Units" (arXiv:1508.07909, v1 submitted 31 August 2015, latest
-      version v5 dated 10 June 2016), which adapts a compression algorithm to subword
-      segmentation and makes open-vocabulary translation possible.
-    where: "lesson.py section 4 (the algorithm, and the rule that makes it reproducible) and the closing section"
-    source_url: https://arxiv.org/abs/1508.07909
-    source_title: "Neural Machine Translation of Rare Words with Subword Units"
-    quote: >-
-      We discuss the suitability of different word segmentation techniques, including simple
-      character n-gram models and a segmentation based on the byte pair encoding compression
-      algorithm.
-    accessed: 2026-09-16
-
-  - id: gpt2-byte-level-bpe
-    claim: >-
-      GPT-2 is tokenised with a byte-level version of byte pair encoding over a vocabulary of
-      50,257 entries. Byte-level here means the merge alphabet is the 256 byte values rather
-      than a set of characters.
-    where: "lesson.py section 3 (why start from bytes) and self-check question 2"
-    source_url: https://huggingface.co/openai-community/gpt2
-    source_title: "openai-community/gpt2 — model card"
-    quote: >-
-      The texts are tokenized using a byte-level version of Byte Pair Encoding (BPE) (for
-      unicode characters) and a vocabulary size of 50,257.
-    accessed: 2026-09-16
-
-  - id: byte-level-avoids-unks
-    claim: >-
-      The stated motivation for working at the byte level in GPT-2's own encoder is avoiding
-      unknown tokens: a vocabulary built over characters would need a very large number of
-      unicode characters to cover its input, so the encoder maps between UTF-8 bytes and
-      unicode strings instead. Because every possible byte value is in the alphabet, a
-      byte-level vocabulary can spell any input at all and never needs to emit an unknown
-      token — which is the property this lesson's exercise 5 verifies by round-tripping five
-      scripts through a vocabulary trained only on English.
-    where: "lesson.py section 3 (why byte-level removes the unknown token), section 9 (exercise 5, the round-trip property), self-check question 2"
-    source_url: https://github.com/openai/gpt-2/blob/master/src/encoder.py
-    source_title: "openai/gpt-2 — src/encoder.py, bytes_to_unicode()"
-    quote: >-
-      This means you need a large # of unicode characters in your vocab if you want to avoid
-      UNKs.
-    quote_context: "docstring of bytes_to_unicode(), which also states: The reversible bpe codes work on unicode strings."
-    accessed: 2026-09-16
-
-  - id: tokenization-cost-varies-by-language
-    claim: >-
-      The number of tokens required to convey the same information differs substantially
-      between languages, and because commercial language-model APIs meter usage in tokens,
-      speakers of many supported languages pay more for equivalent requests while getting
-      worse results. Ahia, Kumar, Gonen, Kasai, Mortensen, Smith and Tsvetkov analysed a
-      commercial API across 22 typologically diverse languages and reported this directly.
-    where: "lesson.py section 10 (the measured tax table) and section 12 (the tax is the corpus, not the algorithm)"
-    source_url: https://arxiv.org/abs/2305.13707
-    source_title: "Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models"
-    quote: >-
-      We show evidence that speakers of a large number of the supported languages are
-      overcharged while obtaining poorer results.
-    accessed: 2026-09-16
-
-  - id: tokenizer-unfairness-three-costs
-    claim: >-
-      The same text translated into different languages can have drastically different
-      tokenization lengths — Petrov, La Malfa, Torr and Bibi report differences of up to 15
-      times — and the consequences are threefold: the cost of accessing commercial language
-      services, processing time and latency, and the amount of content that fits in the
-      model's context. This is the three-part cost the lesson's closing section names.
-      Published at NeurIPS 2023 (arXiv:2305.15425, v1 17 May 2023).
-    where: "lesson.py section 10 (the measured tax table: price, latency, context) and self-check question 4"
-    source_url: https://arxiv.org/abs/2305.15425
-    source_title: "Language Model Tokenizers Introduce Unfairness Between Languages"
-    quote: >-
-      The same text translated into different languages can have drastically different
-      tokenization lengths, with differences up to 15 times in some cases.
-    accessed: 2026-09-16
-
-  - id: commercial-apis-meter-tokens
-    claim: >-
-      Commercial language-model APIs are priced per token, with separate input and output
-      rates quoted per million tokens, and their context limits are stated in tokens as well.
-      Anthropic's published pricing table bills "Base input tokens" and "Output tokens" in
-      units its own note defines as millions of tokens, and the same page describes the
-      context window in tokens. This is what turns a tokenizer's behaviour into a bill: the
-      token count the student measures in this lesson is the unit of account.
-    where: "lesson.py section 10 (why a token count is a price) and self-check question 4"
-    source_url: https://platform.claude.com/docs/en/about-claude/pricing
-    source_title: "Pricing — Claude Platform documentation"
-    quote: "MTok = Million tokens."
-    quote_context: >-
-      Explanatory note under the model pricing table, whose columns are "Base input tokens"
-      and "Output tokens". The same page's long-context section refers to "the full 1M token
-      context window", stating a context limit in tokens.
-    accessed: 2026-09-16
-
-  - id: hf-tokenizers-is-rust-and-bytelevel
-    claim: >-
-      The HuggingFace `tokenizers` library — the trainer behind most published BPE
-      vocabularies, and the independent implementation this lesson checks the student's
-      trainer against — attributes its training and tokenisation speed to a Rust
-      implementation, and ships a ByteLevel pre-tokenizer that encodes each byte value to a
-      unique visible character, giving an alphabet of exactly 256 characters. That 256-symbol
-      alphabet is the same starting point the student's own trainer uses.
-    where: "lesson.py section 11 (checking your trainer against a real one)"
-    source_url: https://huggingface.co/docs/tokenizers/en/api/pre-tokenizers
-    source_title: "Pre-tokenizers — HuggingFace tokenizers documentation"
-    quote: >-
-      Since the ByteLevel works as its name suggests, at the byte level, it encodes each byte
-      value to a unique visible character. This means that there is a total of 256 different
-      characters composing this alphabet.
-    quote_context: >-
-      The Rust attribution is from the project README at https://github.com/huggingface/tokenizers,
-      read the same day: "Extremely fast (both training and tokenization), thanks to the Rust
-      implementation."
-    accessed: 2026-09-16
+- id: utf8-one-to-four-octets
+  claim: 'UTF-8 encodes each code point in the U+0000..U+10FFFF range using between one and four octets,
+    with the octet count determined by the code point''s numeric value: U+0000..U+007F in one octet, U+0080..U+07FF
+    in two, U+0800..U+FFFF in three, and U+10000..U+10FFFF in four. This is the floor underneath every
+    measurement in the lesson — a tokenizer that has learned nothing about a script can do no better than
+    one token per octet — and it is why Latin text is cheaper in bytes than Cyrillic, Arabic, Devanagari
+    or Han text before any tokenizer is involved at all. The notebook does not ask the student to accept
+    the octet widths: it measures len(s.encode("utf-8")) against len(s) for each sample and prints both.'
+  where: lesson.py section 2 (bytes are not characters) and section 10 (the measured table, tokens==bytes
+    column)
+  source_url: https://www.rfc-editor.org/rfc/rfc3629
+  source_title: RFC 3629 — UTF-8, a transformation format of ISO 10646
+  quote: In UTF-8, characters from the U+0000..U+10FFFF range (the UTF-16 accessible range) are encoded
+    using sequences of 1 to 4 octets.
+  accessed: 2026-09-16
+- id: bpe-origin-sennrich-2016
+  claim: Byte pair encoding was brought to neural machine translation as a word-segmentation method by
+    Rico Sennrich, Barry Haddow and Alexandra Birch in "Neural Machine Translation of Rare Words with
+    Subword Units" (arXiv:1508.07909, v1 submitted 31 August 2015, latest version v5 dated 10 June 2016),
+    which adapts a compression algorithm to subword segmentation and makes open-vocabulary translation
+    possible.
+  where: lesson.py section 4 (the algorithm, and the rule that makes it reproducible) and the closing
+    section
+  source_url: https://arxiv.org/abs/1508.07909
+  source_title: Neural Machine Translation of Rare Words with Subword Units
+  quote: We discuss the suitability of different word segmentation techniques, including simple character
+    n-gram models and a segmentation based on the byte pair encoding compression algorithm.
+  accessed: 2026-09-16
+- id: gpt2-byte-level-bpe
+  claim: GPT-2 is tokenised with a byte-level version of byte pair encoding over a vocabulary of 50,257
+    entries. Byte-level here means the merge alphabet is the 256 byte values rather than a set of characters.
+  where: lesson.py section 3 (why start from bytes) and self-check question 2
+  source_url: https://huggingface.co/openai-community/gpt2
+  source_title: openai-community/gpt2 — model card
+  quote: The texts are tokenized using a byte-level version of Byte Pair Encoding (BPE) (for unicode characters)
+    and a vocabulary size of 50,257.
+  accessed: 2026-09-16
+- id: byte-level-avoids-unks
+  claim: 'The stated motivation for working at the byte level in GPT-2''s own encoder is avoiding unknown
+    tokens: a vocabulary built over characters would need a very large number of unicode characters to
+    cover its input, so the encoder maps between UTF-8 bytes and unicode strings instead. Because every
+    possible byte value is in the alphabet, a byte-level vocabulary can spell any input at all and never
+    needs to emit an unknown token — which is the property this lesson''s exercise 5 verifies by round-tripping
+    five scripts through a vocabulary trained only on English.'
+  where: lesson.py section 3 (why byte-level removes the unknown token), section 9 (exercise 5, the round-trip
+    property), self-check question 2
+  source_url: https://github.com/openai/gpt-2/blob/master/src/encoder.py
+  source_title: openai/gpt-2 — src/encoder.py, bytes_to_unicode()
+  quote: 'This means you need a large # of unicode characters in your vocab if you want to avoid UNKs.'
+  quote_context: 'docstring of bytes_to_unicode(), which also states: The reversible bpe codes work on
+    unicode strings.'
+  accessed: 2026-09-16
+- id: tokenization-cost-varies-by-language
+  claim: The number of tokens required to convey the same information differs substantially between languages,
+    and because commercial language-model APIs meter usage in tokens, speakers of many supported languages
+    pay more for equivalent requests while getting worse results. Ahia, Kumar, Gonen, Kasai, Mortensen,
+    Smith and Tsvetkov analysed a commercial API across 22 typologically diverse languages and reported
+    this directly.
+  where: lesson.py section 10 (the measured tax table) and section 12 (the tax is the corpus, not the
+    algorithm)
+  source_url: https://arxiv.org/abs/2305.13707
+  source_title: Do All Languages Cost the Same? Tokenization in the Era of Commercial Language Models
+  quote: We show evidence that speakers of a large number of the supported languages are overcharged while
+    obtaining poorer results.
+  accessed: 2026-09-16
+- id: tokenizer-unfairness-three-costs
+  claim: 'The same text translated into different languages can have drastically different tokenization
+    lengths — Petrov, La Malfa, Torr and Bibi report differences of up to 15 times — and the consequences
+    are threefold: the cost of accessing commercial language services, processing time and latency, and
+    the amount of content that fits in the model''s context. This is the three-part cost the lesson''s
+    closing section names. Published at NeurIPS 2023 (arXiv:2305.15425, v1 17 May 2023).'
+  where: 'lesson.py section 10 (the measured tax table: price, latency, context) and self-check question
+    4'
+  source_url: https://arxiv.org/abs/2305.15425
+  source_title: Language Model Tokenizers Introduce Unfairness Between Languages
+  quote: The same text translated into different languages can have drastically different tokenization
+    lengths, with differences up to 15 times in some cases.
+  accessed: 2026-09-16
+- id: commercial-apis-meter-tokens
+  claim: 'Commercial language-model APIs are priced per token, with separate input and output rates quoted
+    per million tokens, and their context limits are stated in tokens as well. Anthropic''s published
+    pricing table bills "Base input tokens" and "Output tokens" in units its own note defines as millions
+    of tokens, and the same page describes the context window in tokens. This is what turns a tokenizer''s
+    behaviour into a bill: the token count the student measures in this lesson is the unit of account.'
+  where: lesson.py section 10 (why a token count is a price) and self-check question 4
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: Pricing — Claude Platform documentation
+  quote: MTok = Million tokens.
+  quote_context: Explanatory note under the model pricing table, whose columns are "Base input tokens"
+    and "Output tokens". The same page's long-context section refers to "the full 1M token context window",
+    stating a context limit in tokens.
+  accessed: 2026-09-16
+- id: hf-tokenizers-is-rust-and-bytelevel
+  claim: The HuggingFace `tokenizers` library — the trainer behind most published BPE vocabularies, and
+    the independent implementation this lesson checks the student's trainer against — attributes its training
+    and tokenisation speed to a Rust implementation, and ships a ByteLevel pre-tokenizer that encodes
+    each byte value to a unique visible character, giving an alphabet of exactly 256 characters. That
+    256-symbol alphabet is the same starting point the student's own trainer uses.
+  where: lesson.py section 11 (checking your trainer against a real one)
+  source_url: https://huggingface.co/docs/tokenizers/en/api/pre-tokenizers
+  source_title: Pre-tokenizers — HuggingFace tokenizers documentation
+  quote: Since the ByteLevel works as its name suggests, at the byte level, it encodes each byte value
+    to a unique visible character. This means that there is a total of 256 different characters composing
+    this alphabet.
+  quote_context: 'The Rust attribution is from the project README at https://github.com/huggingface/tokenizers,
+    read the same day: "Extremely fast (both training and tokenization), thanks to the Rust implementation."'
+  accessed: 2026-09-16

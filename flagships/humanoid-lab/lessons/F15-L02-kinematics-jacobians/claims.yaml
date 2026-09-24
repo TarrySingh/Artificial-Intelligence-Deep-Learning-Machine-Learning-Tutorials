@@ -1,229 +1,168 @@
-# Gate 12. Every claim this lesson makes about the world outside its own measurements.
-#
-# Numbers a student SEES IN OUTPUT — the singular values at the home pose, the gap between
-# mj_jacBody and mj_jacSite, the finite-difference agreement at each step size, the residuals
-# for the reachable and unreachable targets, the joint velocity the undamped step asks for —
-# are all computed by the code they run. They are measurements, not claims, and they are
-# deliberately absent from this file.
-#
-# What IS here: MuJoCo's documented semantics for every function the lesson calls, the field
-# comments for every mjData array it reads, and the two 1986 papers the damped least-squares
-# step comes from.
 claims:
-
-  # --- what MuJoCo's Jacobian functions are documented to do ---------------------------
-
-  - id: mj-jac-is-the-end-effector-jacobian
-    claim: >-
-      MuJoCo documents mj_jac as computing an end-effector kinematic Jacobian describing the
-      local linear relationship between the degrees-of-freedom and a given point, and states
-      that each component (translational jacp, rotational jacr) is a 3-by-nv matrix. The
-      columns are therefore indexed by DEGREE OF FREEDOM, not by joint and not by qpos slot,
-      which is the distinction section 5 of this lesson is built on.
-    where: "lesson.py section 5 (what a Jacobian column means) and the analytic_jacobian exercise in section 6"
-    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
-    source_kind: primary (MuJoCo's own API reference)
-    quote: >-
-      This function computes an end-effector kinematic Jacobian, describing the local linear
-      relationship between the degrees-of-freedom and a given point.
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. The same page states "Each component is a 3-by-nv matrix" and that
-      passing NULL for either pointer skips that part of the computation. The lesson passes
-      None for jacr throughout and only ever builds the translational half.
-
-  - id: mj-jac-variants-are-the-same-call-at-a-different-point
-    claim: >-
-      mj_jacBody, mj_jacBodyCom and mj_jacSite are not different algorithms. MuJoCo's API
-      reference states that these variants call mj_jac internally with the centre of the body,
-      geom or site. The three therefore differ only in the POINT they are evaluated at, which
-      is why they return three different translational Jacobians for one rigid hand whose
-      joint chain is identical.
-    where: "lesson.py section 3 (three points on one rigid body) and section 6, where the check compares the student's mj_jac call against mj_jacSite"
-    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
-    source_kind: primary (MuJoCo's own API reference)
-    quote: >-
-      This and the remaining variants of the Jacobian function call mj_jac internally, with
-      the center of the body, geom or site.
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. The lesson does not rest on this citation alone: section 6 measures
-      mj_jac(point=site position, body=site's body) against mj_jacSite and asserts they agree
-      to the last bit, and section 3 measures how far apart the three variants are.
-
-  - id: mj-compos-maps-motion-dofs-to-the-com-frame
-    claim: >-
-      mj_comPos is documented as mapping inertias and motion dofs to a global frame centred at
-      the centre of mass. The per-dof motion axes it produces live in mjData.cdof, documented
-      in MuJoCo's own header as the "com-based motion axis of each dof (rot:lin)", an nv-by-6
-      array. Those axes are the raw material of every Jacobian, which is why a Jacobian
-      requested after mj_kinematics alone is not merely inaccurate.
-    where: "lesson.py section 6 (the run-cell that calls mj_kinematics alone) and common mistakes"
-    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
-    source_kind: primary (MuJoCo's own API reference)
-    quote: "Map inertias and motion dofs to global frame centered at CoM."
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. The consequence is measured, never asserted: the notebook resets a
-      fresh mjData, calls ONLY mj_kinematics, asks for mj_jacSite, and prints the resulting
-      maximum absolute entry alongside the site position — which is already correct. What the
-      student sees is that one derived quantity is ready and the other is not, and the
-      printed verdict is computed from the measured array rather than typed.
-
-  - id: mj-forward-and-mj-kinematics
-    claim: >-
-      MuJoCo documents mj_forward as "Forward dynamics: same as mj_step but do not integrate
-      in time", and mj_kinematics as "Run forward kinematics". mj_forward therefore runs the
-      whole position stage (and more) without advancing the clock, which is what this lesson
-      needs: it sets qpos, refreshes derived quantities, and never steps time.
-    where: "lesson.py section 1 (forward kinematics is a stage, not a function) and every exercise docstring"
-    source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
-    source_kind: primary (MuJoCo's own API reference)
-    quote: "Forward dynamics: same as mj_step but do not integrate in time."
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16; both one-line descriptions appear verbatim on the API reference
-      page and match the docstrings carried by the installed mujoco 3.13.0 Python bindings.
-
-  - id: forward-kinematics-runs-before-everything-else
-    claim: >-
-      MuJoCo's computation chapter states that before the other position-stage computations it
-      applies forward kinematics, which computes the global position and orientation of all
-      spatial objects as well as the joint axes. Writing to qpos therefore changes nothing a
-      student can read until that stage runs again.
-    where: "lesson.py section 1, where the notebook writes qpos and reads back a stale site position before calling mj_forward"
-    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
-    source_kind: primary (MuJoCo documentation, Computation chapter)
-    quote: >-
-      Before any of these computations we apply forward kinematics, which computes the global
-      position and orientation of all spatial objects as well as the joint axes.
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. Section 1 demonstrates the consequence directly rather than citing
-      it: it writes a new qpos, prints the unchanged site position, calls mj_forward, and
-      prints the changed one.
-
-  # --- the mjData fields this lesson reads, quoted from MuJoCo's own header -------------
-
-  - id: mjdata-frame-fields
-    claim: >-
-      MuJoCo's mjdata.h documents xpos as the "Cartesian position of body frame" (nbody x 3),
-      xipos as the "Cartesian position of body com" (nbody x 3), and site_xpos as "Cartesian
-      site position" (nsite x 3). These are three different arrays holding three different
-      points, which is the basis of this lesson's frames section: the hand's frame origin, the
-      hand's centre of mass and the palm site are not the same place.
-    where: "lesson.py sections 2, 3 and 4 (body_world_position, the three-points table, site_world_position) and the common-mistakes list"
-    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/include/mujoco/mjdata.h
-    source_kind: primary (the engine's own public header)
-    quote: "mjtNum* xipos;             // Cartesian position of body com                   (nbody x 3)"
-    accessed: 2026-09-16
-    verified: >-
-      Checked twice on 2026-09-16, and the two copies agree line for line: the vendored header
-      at include/mujoco/mjdata.h inside the installed mujoco 3.13.0 package, and the upstream
-      file at the URL above. Also confirmed there: qpos "// position (nq x 1)", subtree_com
-      "// center of mass of each subtree (nbody x 3)" and cdof "// com-based motion axis of
-      each dof (rot:lin) (nv x 6)". The header carries the Apache-2.0 notice and the
-      "Copyright 2021 DeepMind Technologies Limited" line.
-
-  - id: nq-exceeds-nv-with-quaternions
-    claim: >-
-      MuJoCo's computation chapter states that the number of position coordinates nq is larger
-      than the number of degrees of freedom nv whenever quaternions are used to represent 3D
-      orientations, and that velocities live in the tangent space. This is why perturbing
-      qpos[i] to finite-difference dof i is a privilege of an all-hinge model and not a
-      general technique.
-    where: "lesson.py section 9 (the ball-joint model) and the finite_difference_jacobian docstring warning"
-    source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
-    source_kind: primary (MuJoCo documentation, Computation chapter)
-    quote: >-
-      The number of position coordinates nq is larger than the number of degrees of freedom nv
-      whenever quaternions are used to represent 3D orientations
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. The lesson asserts nothing here either: section 9 compiles a
-      four-element MJCF string containing one ball joint and prints its nq and nv, next to
-      this model's own, so the inequality is observed rather than quoted.
-
-  - id: site-is-fixed-to-its-body
-    claim: >-
-      MuJoCo's modeling chapter states that an element defined within a body is fixed to the
-      local frame of that body and always moves with it, and that positions and orientations
-      of elements in the kinematic tree are expressed in local coordinates relative to the
-      body that contains them. The palm site is therefore rigidly attached to the hand, which
-      is precisely why its Jacobian shares every joint axis with the hand's and still differs.
-    where: "lesson.py section 3 (three points, one body) and section 4 (site_world_position)"
-    source_url: https://mujoco.readthedocs.io/en/stable/modeling.html
-    source_kind: primary (MuJoCo documentation, Modeling chapter)
-    quote: "fixed to the local frame of that body and always moves with it"
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16. The same chapter states that positions and orientations of elements
-      defined in the kinematic tree are expressed in local coordinates, "relative to the parent
-      body for bodies, and relative to the body that contains the element for geoms, joints,
-      sites, cameras and lights".
-
-  # --- where the damped least-squares step comes from ----------------------------------
-
-  - id: dls-wampler-1986
-    claim: >-
-      The damped least-squares formulation of manipulator inverse kinematics — replacing the
-      Jacobian pseudo-inverse with a solve of (J J^T + lambda^2 I) — was published by C. W.
-      Wampler in "Manipulator Inverse Kinematic Solutions Based on Vector Formulations and
-      Damped Least-Squares Methods", IEEE Transactions on Systems, Man and Cybernetics, 1986.
-    where: "lesson.py section 10 (where this step comes from) and self-check question 4"
-    source_url: https://doi.org/10.1109/TSMC.1986.289285
-    source_kind: primary (the paper itself, addressed by its DOI)
-    quote: "Manipulator Inverse Kinematic Solutions Based on Vector Formulations and Damped Least-Squares Methods"
-    accessed: 2026-09-16
-    verified: >-
-      Title, sole author (C. Wampler), year 1986 and venue (IEEE Transactions on Systems, Man
-      and Cybernetics) confirmed on 2026-09-16 against the Semantic Scholar bibliographic
-      record for DOI 10.1109/TSMC.1986.289285. The IEEE Xplore page for the article returned
-      an empty body to an unauthenticated fetch on the same date, so the publisher's own page
-      could not be read; only the bibliographic facts above are claimed, and no sentence of
-      the paper is quoted or paraphrased.
-
-  - id: dls-nakamura-hanafusa-1986
-    claim: >-
-      The same year, Y. Nakamura and H. Hanafusa published "Inverse kinematic solutions with
-      singularity robustness for robot manipulator control" (DOI 10.1115/1.3143764, 1986),
-      which introduced the singularity-robust inverse as an alternative to the Jacobian
-      pseudo-inverse. The two 1986 papers are the standard joint citation for the step this
-      lesson implements.
-    where: "lesson.py section 10 (where this step comes from)"
-    source_url: https://doi.org/10.1115/1.3143764
-    source_kind: primary (the paper itself, addressed by its DOI)
-    quote: "Inverse kinematic solutions with singularity robustness for robot manipulator control"
-    accessed: 2026-09-16
-    verified: >-
-      Title, authors (Yoshihiko Nakamura, H. Hanafusa) and year 1986 confirmed on 2026-09-16
-      against the Semantic Scholar bibliographic record for DOI 10.1115/1.3143764. The ASME
-      Digital Collection page returned HTTP 403 to an unauthenticated fetch on the same date,
-      and the record carried no abstract, so nothing beyond the bibliographic facts is
-      claimed. Stephen Buss's widely-cited 2004 survey of these methods was also sought as a
-      freely-readable secondary reference; the PDF at mathweb.ucsd.edu failed certificate
-      verification on the access date and is therefore not cited.
-    note: >-
-      WHY THE LESSON DOES NOT LEAN ON THESE CITATIONS. Everything the student is asked to
-      believe about damping is measured in section 11 on the shipped model: with lambda = 0 the
-      normal equations at the home pose are singular and NumPy raises; a ten-thousandth of a
-      radian off that pose, the undamped step asks for a joint velocity of order 10^2 rad
-      while the damped step stays near zero. The citations record where the idea comes from,
-      not why it works here.
-
-  # --- the toolchain licence ------------------------------------------------------------
-
-  - id: mujoco-licence
-    claim: >-
-      MuJoCo is distributed under the Apache License, Version 2.0, so it is free to use,
-      including commercially, with no registration and no licence key. Its headers carry the
-      same notice: "Copyright 2021 DeepMind Technologies Limited / Licensed under the Apache
-      License, Version 2.0".
-    where: "meta.yaml datasets; the lesson's claim that its whole toolchain is ungated"
-    source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
-    source_kind: primary (the project's own LICENSE file)
-    quote: "Apache License"
-    accessed: 2026-09-16
-    verified: >-
-      Fetched 2026-09-16; the file is the Apache License, Version 2.0. The vendored header
-      include/mujoco/mjdata.h in the installed package carries the matching per-file notice.
+- id: mj-jac-is-the-end-effector-jacobian
+  claim: MuJoCo documents mj_jac as computing an end-effector kinematic Jacobian describing the local
+    linear relationship between the degrees-of-freedom and a given point, and states that each component
+    (translational jacp, rotational jacr) is a 3-by-nv matrix. The columns are therefore indexed by DEGREE
+    OF FREEDOM, not by joint and not by qpos slot, which is the distinction section 5 of this lesson is
+    built on.
+  where: lesson.py section 5 (what a Jacobian column means) and the analytic_jacobian exercise in section
+    6
+  source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+  source_kind: primary (MuJoCo's own API reference)
+  quote: This function computes an end-effector kinematic Jacobian, describing the local linear relationship
+    between the degrees-of-freedom and a given point.
+  accessed: 2026-09-16
+  verified: Fetched 2026-09-16. The same page states "Each component is a 3-by-nv matrix" and that passing
+    NULL for either pointer skips that part of the computation. The lesson passes None for jacr throughout
+    and only ever builds the translational half.
+- id: mj-jac-variants-are-the-same-call-at-a-different-point
+  claim: mj_jacBody, mj_jacBodyCom and mj_jacSite are not different algorithms. MuJoCo's API reference
+    states that these variants call mj_jac internally with the centre of the body, geom or site. The three
+    therefore differ only in the POINT they are evaluated at, which is why they return three different
+    translational Jacobians for one rigid hand whose joint chain is identical.
+  where: lesson.py section 3 (three points on one rigid body) and section 6, where the check compares
+    the student's mj_jac call against mj_jacSite
+  source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+  source_kind: primary (MuJoCo's own API reference)
+  quote: This and the remaining variants of the Jacobian function call mj_jac internally, with the center
+    of the body, geom or site.
+  accessed: 2026-09-16
+  verified: 'Fetched 2026-09-16. The lesson does not rest on this citation alone: section 6 measures mj_jac(point=site
+    position, body=site''s body) against mj_jacSite and asserts they agree to the last bit, and section
+    3 measures how far apart the three variants are.'
+- id: mj-compos-maps-motion-dofs-to-the-com-frame
+  claim: mj_comPos is documented as mapping inertias and motion dofs to a global frame centred at the
+    centre of mass. The per-dof motion axes it produces live in mjData.cdof, documented in MuJoCo's own
+    header as the "com-based motion axis of each dof (rot:lin)", an nv-by-6 array. Those axes are the
+    raw material of every Jacobian, which is why a Jacobian requested after mj_kinematics alone is not
+    merely inaccurate.
+  where: lesson.py section 6 (the run-cell that calls mj_kinematics alone) and common mistakes
+  source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+  source_kind: primary (MuJoCo's own API reference)
+  quote: Map inertias and motion dofs to global frame centered at CoM.
+  accessed: 2026-09-16
+  verified: 'Fetched 2026-09-16. The consequence is measured, never asserted: the notebook resets a fresh
+    mjData, calls ONLY mj_kinematics, asks for mj_jacSite, and prints the resulting maximum absolute entry
+    alongside the site position — which is already correct. What the student sees is that one derived
+    quantity is ready and the other is not, and the printed verdict is computed from the measured array
+    rather than typed.'
+- id: mj-forward-and-mj-kinematics
+  claim: 'MuJoCo documents mj_forward as "Forward dynamics: same as mj_step but do not integrate in time",
+    and mj_kinematics as "Run forward kinematics". mj_forward therefore runs the whole position stage
+    (and more) without advancing the clock, which is what this lesson needs: it sets qpos, refreshes derived
+    quantities, and never steps time.'
+  where: lesson.py section 1 (forward kinematics is a stage, not a function) and every exercise docstring
+  source_url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+  source_kind: primary (MuJoCo's own API reference)
+  quote: 'Forward dynamics: same as mj_step but do not integrate in time.'
+  accessed: 2026-09-16
+  verified: Fetched 2026-09-16; both one-line descriptions appear verbatim on the API reference page and
+    match the docstrings carried by the installed mujoco 3.13.0 Python bindings.
+- id: forward-kinematics-runs-before-everything-else
+  claim: MuJoCo's computation chapter states that before the other position-stage computations it applies
+    forward kinematics, which computes the global position and orientation of all spatial objects as well
+    as the joint axes. Writing to qpos therefore changes nothing a student can read until that stage runs
+    again.
+  where: lesson.py section 1, where the notebook writes qpos and reads back a stale site position before
+    calling mj_forward
+  source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+  source_kind: primary (MuJoCo documentation, Computation chapter)
+  quote: Before any of these computations we apply forward kinematics, which computes the global position
+    and orientation of all spatial objects as well as the joint axes.
+  accessed: 2026-09-16
+  verified: 'Fetched 2026-09-16. Section 1 demonstrates the consequence directly rather than citing it:
+    it writes a new qpos, prints the unchanged site position, calls mj_forward, and prints the changed
+    one.'
+- id: mjdata-frame-fields
+  claim: 'MuJoCo''s mjdata.h documents xpos as the "Cartesian position of body frame" (nbody x 3), xipos
+    as the "Cartesian position of body com" (nbody x 3), and site_xpos as "Cartesian site position" (nsite
+    x 3). These are three different arrays holding three different points, which is the basis of this
+    lesson''s frames section: the hand''s frame origin, the hand''s centre of mass and the palm site are
+    not the same place.'
+  where: lesson.py sections 2, 3 and 4 (body_world_position, the three-points table, site_world_position)
+    and the common-mistakes list
+  source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/include/mujoco/mjdata.h
+  source_kind: primary (the engine's own public header)
+  quote: mjtNum* xipos;             // Cartesian position of body com                   (nbody x 3)
+  accessed: 2026-09-16
+  verified: 'Checked twice on 2026-09-16, and the two copies agree line for line: the vendored header
+    at include/mujoco/mjdata.h inside the installed mujoco 3.13.0 package, and the upstream file at the
+    URL above. Also confirmed there: qpos "// position (nq x 1)", subtree_com "// center of mass of each
+    subtree (nbody x 3)" and cdof "// com-based motion axis of each dof (rot:lin) (nv x 6)". The header
+    carries the Apache-2.0 notice and the "Copyright 2021 DeepMind Technologies Limited" line.'
+- id: nq-exceeds-nv-with-quaternions
+  claim: MuJoCo's computation chapter states that the number of position coordinates nq is larger than
+    the number of degrees of freedom nv whenever quaternions are used to represent 3D orientations, and
+    that velocities live in the tangent space. This is why perturbing qpos[i] to finite-difference dof
+    i is a privilege of an all-hinge model and not a general technique.
+  where: lesson.py section 9 (the ball-joint model) and the finite_difference_jacobian docstring warning
+  source_url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+  source_kind: primary (MuJoCo documentation, Computation chapter)
+  quote: The number of position coordinates nq is larger than the number of degrees of freedom nv whenever
+    quaternions are used to represent 3D orientations
+  accessed: 2026-09-16
+  verified: 'Fetched 2026-09-16. The lesson asserts nothing here either: section 9 compiles a four-element
+    MJCF string containing one ball joint and prints its nq and nv, next to this model''s own, so the
+    inequality is observed rather than quoted.'
+- id: site-is-fixed-to-its-body
+  claim: MuJoCo's modeling chapter states that an element defined within a body is fixed to the local
+    frame of that body and always moves with it, and that positions and orientations of elements in the
+    kinematic tree are expressed in local coordinates relative to the body that contains them. The palm
+    site is therefore rigidly attached to the hand, which is precisely why its Jacobian shares every joint
+    axis with the hand's and still differs.
+  where: lesson.py section 3 (three points, one body) and section 4 (site_world_position)
+  source_url: https://mujoco.readthedocs.io/en/stable/modeling.html
+  source_kind: primary (MuJoCo documentation, Modeling chapter)
+  quote: fixed to the local frame of that body and always moves with it
+  accessed: 2026-09-16
+  verified: Fetched 2026-09-16. The same chapter states that positions and orientations of elements defined
+    in the kinematic tree are expressed in local coordinates, "relative to the parent body for bodies,
+    and relative to the body that contains the element for geoms, joints, sites, cameras and lights".
+- id: dls-wampler-1986
+  claim: The damped least-squares formulation of manipulator inverse kinematics — replacing the Jacobian
+    pseudo-inverse with a solve of (J J^T + lambda^2 I) — was published by C. W. Wampler in "Manipulator
+    Inverse Kinematic Solutions Based on Vector Formulations and Damped Least-Squares Methods", IEEE Transactions
+    on Systems, Man and Cybernetics, 1986.
+  where: lesson.py section 10 (where this step comes from) and self-check question 4
+  source_url: https://doi.org/10.1109/TSMC.1986.289285
+  source_kind: primary (the paper itself, addressed by its DOI)
+  quote: Manipulator Inverse Kinematic Solutions Based on Vector Formulations and Damped Least-Squares
+    Methods
+  accessed: 2026-09-16
+  verified: Title, sole author (C. Wampler), year 1986 and venue (IEEE Transactions on Systems, Man and
+    Cybernetics) confirmed on 2026-09-16 against the Semantic Scholar bibliographic record for DOI 10.1109/TSMC.1986.289285.
+    The IEEE Xplore page for the article returned an empty body to an unauthenticated fetch on the same
+    date, so the publisher's own page could not be read; only the bibliographic facts above are claimed,
+    and no sentence of the paper is quoted or paraphrased.
+- id: dls-nakamura-hanafusa-1986
+  claim: The same year, Y. Nakamura and H. Hanafusa published "Inverse kinematic solutions with singularity
+    robustness for robot manipulator control" (DOI 10.1115/1.3143764, 1986), which introduced the singularity-robust
+    inverse as an alternative to the Jacobian pseudo-inverse. The two 1986 papers are the standard joint
+    citation for the step this lesson implements.
+  where: lesson.py section 10 (where this step comes from)
+  source_url: https://doi.org/10.1115/1.3143764
+  source_kind: primary (the paper itself, addressed by its DOI)
+  quote: Inverse kinematic solutions with singularity robustness for robot manipulator control
+  accessed: 2026-09-16
+  verified: Title, authors (Yoshihiko Nakamura, H. Hanafusa) and year 1986 confirmed on 2026-09-16 against
+    the Semantic Scholar bibliographic record for DOI 10.1115/1.3143764. The ASME Digital Collection page
+    returned HTTP 403 to an unauthenticated fetch on the same date, and the record carried no abstract,
+    so nothing beyond the bibliographic facts is claimed. Stephen Buss's widely-cited 2004 survey of these
+    methods was also sought as a freely-readable secondary reference; the PDF at mathweb.ucsd.edu failed
+    certificate verification on the access date and is therefore not cited.
+  note: 'WHY THE LESSON DOES NOT LEAN ON THESE CITATIONS. Everything the student is asked to believe about
+    damping is measured in section 11 on the shipped model: with lambda = 0 the normal equations at the
+    home pose are singular and NumPy raises; a ten-thousandth of a radian off that pose, the undamped
+    step asks for a joint velocity of order 10^2 rad while the damped step stays near zero. The citations
+    record where the idea comes from, not why it works here.'
+- id: mujoco-licence
+  claim: 'MuJoCo is distributed under the Apache License, Version 2.0, so it is free to use, including
+    commercially, with no registration and no licence key. Its headers carry the same notice: "Copyright
+    2021 DeepMind Technologies Limited / Licensed under the Apache License, Version 2.0".'
+  where: meta.yaml datasets; the lesson's claim that its whole toolchain is ungated
+  source_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  source_kind: primary (the project's own LICENSE file)
+  quote: Apache License
+  accessed: 2026-09-16
+  verified: Fetched 2026-09-16; the file is the Apache License, Version 2.0. The vendored header include/mujoco/mjdata.h
+    in the installed package carries the matching per-file notice.

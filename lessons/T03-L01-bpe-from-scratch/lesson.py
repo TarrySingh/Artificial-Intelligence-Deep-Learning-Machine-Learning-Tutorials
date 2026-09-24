@@ -13,9 +13,8 @@
 # [![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=lessons/T03-L01-bpe-from-scratch/lesson.ipynb)
 # [![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials)
 #
-# This lesson needs Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle,
-# Binder and Codespaces already have. The cell below installs `tokenizers==0.23.2`, and does
-# nothing where they are already present. On Kaggle, switch Internet on in the notebook's
+# This lesson needs Python 3.11 or newer. The cell below installs `tokenizers==0.23.2`, and
+# does nothing where they are already present. On Kaggle, switch Internet on in the notebook's
 # settings first; Kaggle allows that only for phone-verified accounts.
 
 # %%

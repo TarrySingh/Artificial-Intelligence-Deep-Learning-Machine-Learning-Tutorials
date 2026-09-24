@@ -1,41 +1,45 @@
 id: F15-L07-sampling-mpc-in-cpp
-title: Implement the MPPI sampling loop in C++ and measure the rollout throughput a 100 Hz control tick can afford
+title: Implement the MPPI sampling loop in C++ and measure the rollout throughput a 100 Hz control tick
+  can afford
 track: T11
 flagship: F15-humanoid-lab
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+tier: cpu8
 budget_seconds: 120
-language: cpp           # python | c | cpp
+language: cpp
 prerequisites:
-  - F15-L01-first-contact       # mjModel vs mjData, stepping, reading state
-  - F15-L03-pd-control          # the feedback law this lesson shows the limits of
-  - F15-L06-control-loop-in-c   # building against libmujoco from a compiled language
+- F15-L01-first-contact
+- F15-L03-pd-control
+- F15-L06-control-loop-in-c
 objectives:
-  - "Implement the three stages of an MPPI planner in C++ — sample, score and refit — and pass the binary's self-test"
-  - "Measure this machine's rollout throughput in C++ and in Python on identical work, and report the ratio the two loops achieve"
-  - "Compute the sample-and-horizon budget a 100 Hz control tick affords at a measured throughput, and decide whether a configuration is real-time"
-  - "Explain why subtracting the minimum cost before exponentiating is what stops the MPPI weights underflowing to zero"
-  - "Show that scoring a candidate plan leaves the live simulation state untouched, and explain what breaks when it does not"
+- Implement the three stages of an MPPI planner in C++ — sample, score and refit — and pass the binary's
+  self-test
+- Measure this machine's rollout throughput in C++ and in Python on identical work, and report the ratio
+  the two loops achieve
+- Compute the sample-and-horizon budget a 100 Hz control tick affords at a measured throughput, and decide
+  whether a configuration is real-time
+- Explain why subtracting the minimum cost before exponentiating is what stops the MPPI weights underflowing
+  to zero
+- Show that scoring a candidate plan leaves the live simulation state untouched, and explain what breaks
+  when it does not
 datasets:
-  - name: "cartpole.xml — cart-pole MJCF authored for this lesson"
-    licence: "Authored for Synapsa Commons; no third-party rights attach to it. Written against the MJCF schema."
-    url: ""               # none: the file is authored here, ships in assets/, and is never fetched
-    licence_url: "https://mujoco.readthedocs.io/en/stable/XMLreference.html"
-    engine_licence: "MuJoCo itself is Apache-2.0 — https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
-    cached_at: "assets/cartpole.xml"
-    bytes: 2682
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      There is no dataset to download and therefore nothing gated, licensed or registration-
-      walled on any required path. The lesson's only asset is four rigid-body parameters and
-      one actuator, written out in full: no mesh, no include, no file= reference. It runs with
-      the network switched off. Provenance and the reasoning behind each modelling choice are
-      recorded in assets/SOURCE.md; every world-fact that file leans on — the documented
-      default timestep, the integrator list, the absence of a cart-pole in MuJoCo's own
-      model/ tree, and dm_control's cart-pole needing its common/ includes — is sourced in
-      claims.yaml.
+- name: cartpole.xml — cart-pole MJCF authored for this lesson
+  licence: Authored for Synapsa Commons; no third-party rights attach to it. Written against the MJCF
+    schema.
+  url: ''
+  licence_url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+  engine_licence: MuJoCo itself is Apache-2.0 — https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  cached_at: assets/cartpole.xml
+  bytes: 2682
+  retrieved: 2026-09-16
+  gated: false
+  notes: 'There is no dataset to download and therefore nothing gated, licensed or registration- walled
+    on any required path. The lesson''s only asset is four rigid-body parameters and one actuator, written
+    out in full: no mesh, no include, no file= reference. It runs with the network switched off. Provenance
+    and the reasoning behind each modelling choice are recorded in assets/SOURCE.md; every world-fact
+    that file leans on — the documented default timestep, the integrator list, the absence of a cart-pole
+    in MuJoCo''s own model/ tree, and dm_control''s cart-pole needing its common/ includes — is sourced
+    in claims.yaml.'
 points: 53
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review, 2026-09-16 — 25 mutants of the reference solution were graded against the rubric; 5 scored 100% and were fixed by tightening hidden cases (gate 6): refit_mean ignoring the lambda temperature, max_samples and steps_per_tick returned as floats that compare equal to ints, python_rollout_cost returning a numpy scalar, and rollout_budget swallowing ZeroDivisionError behind a zeroed default. Also tightened: the sampling test now pins row-major layout exactly (500x9 against 9x500 from one seed) and pins clamping under sigma=3, having previously mis-credited its full 5 points to a transposed buffer and to an unclamped one. Added the compiled-lesson dyld / make clean warning QUALITY.md requires (gate 5). Prerequisites F15-L01, F15-L03 and F15-L06 all resolve to authored lessons, so the previous pass's open gate-2 note is retired. claims.yaml spot-checked live: arXiv 1509.01149, arXiv 2212.00541 and the mujoco_mpc CrossEntropyPlanner header all resolve and quote verbatim. All four gates re-run green after the changes."
+status: reviewed
 measured_seconds: 4.7
 measured_peak_mib: 123

@@ -1,49 +1,52 @@
 id: F15-L08-sim-to-real-honesty
-title: Measure what a simulator lies about — latency, saturation, noise and mass — then build a domain-randomisation wrapper and show it narrows the held-out gap
+title: Measure what a simulator lies about — latency, saturation, noise and mass — then build a domain-randomisation
+  wrapper and show it narrows the held-out gap
 track: T11
 flagship: F15-humanoid-lab
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+tier: cpu8
 budget_seconds: 300
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - F15-L01-first-contact      # mjModel vs mjData, stepping, measuring instead of assuming
-  - F15-L03-pd-control         # state feedback, gains, why a high gain is not a free lunch
-  - F15-L05-gait-and-energy    # rollouts as the unit of evaluation
+- F15-L01-first-contact
+- F15-L03-pd-control
+- F15-L05-gait-and-energy
 objectives:
-  - "Implement a rollout that injects control latency and sensor noise, and measure how far each one degrades a balancing controller before it topples it"
-  - "Measure the fraction of a rollout spent against the torque limit, and show that MuJoCo clamps a command the controller is never told was clamped"
-  - "Randomise torso mass and joint dry friction and report a controller's survival rate over a held-out parameter set it was never tuned on"
-  - "Implement a domain-randomisation wrapper and measure whether tuning against the randomised ensemble narrows the held-out gap against a nominally-tuned controller"
-  - "Decide from NVIDIA's published requirements whether a named GPU can run Isaac Sim, and state what this course therefore cannot teach"
+- Implement a rollout that injects control latency and sensor noise, and measure how far each one degrades
+  a balancing controller before it topples it
+- Measure the fraction of a rollout spent against the torque limit, and show that MuJoCo clamps a command
+  the controller is never told was clamped
+- Randomise torso mass and joint dry friction and report a controller's survival rate over a held-out
+  parameter set it was never tuned on
+- Implement a domain-randomisation wrapper and measure whether tuning against the randomised ensemble
+  narrows the held-out gap against a nominally-tuned controller
+- Decide from NVIDIA's published requirements whether a named GPU can run Isaac Sim, and state what this
+  course therefore cannot teach
 datasets:
-  - name: "balancer.xml — planar ankle-and-hip balancer"
-    licence: "CC-BY-NC-SA-4.0"
-    url: "https://creativecommons.org/publicdomain/zero/1.0/"
-    licence_url: "https://creativecommons.org/publicdomain/zero/1.0/legalcode"
-    copyright: "Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA 4.0 with the rest of the course"
-    cached_at: "assets/balancer.xml"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Not a download. The model is two capsules, two hinges and two motors, written for this
-      lesson and shipped inside it, so the lesson runs with no network at all. Contacts are
-      disabled and the ankle is a pin joint rather than a foot on a floor; that simplification
-      is itself one of the reality gaps the lesson names and measures. The payoff is a
-      contact-free mj_step of a few microseconds, which is what lets a student run a full
-      randomised study on a laptop CPU instead of reading about one.
-  - name: "MuJoCo 3.13.0 (the physics engine itself)"
-    licence: "Apache-2.0"
-    url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
-    licence_url: "https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE"
-    copyright: "DeepMind Technologies Limited"
-    cached_at: "(installed in the environment; not vendored)"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Free, ungated, commercial use permitted, no registration. Declared here because it is
-      the only third-party dependency on the lesson's required path.
+- name: balancer.xml — planar ankle-and-hip balancer
+  licence: CC-BY-NC-SA-4.0
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+  copyright: Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA
+    4.0 with the rest of the course
+  cached_at: assets/balancer.xml
+  retrieved: 2026-09-16
+  gated: false
+  notes: Not a download. The model is two capsules, two hinges and two motors, written for this lesson
+    and shipped inside it, so the lesson runs with no network at all. Contacts are disabled and the ankle
+    is a pin joint rather than a foot on a floor; that simplification is itself one of the reality gaps
+    the lesson names and measures. The payoff is a contact-free mj_step of a few microseconds, which is
+    what lets a student run a full randomised study on a laptop CPU instead of reading about one.
+- name: MuJoCo 3.13.0 (the physics engine itself)
+  licence: Apache-2.0
+  url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  licence_url: https://raw.githubusercontent.com/google-deepmind/mujoco/main/LICENSE
+  copyright: DeepMind Technologies Limited
+  cached_at: (installed in the environment; not vendored)
+  retrieved: 2026-09-16
+  gated: false
+  notes: Free, ungated, commercial use permitted, no registration. Declared here because it is the only
+    third-party dependency on the lesson's required path.
 points: 34
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review, 2026-09-16 — 28 rubric mutants run; 7 scored 100% and were closed by a new test_rollout_reports_a_fall_honestly row (+2 pts, 32 -> 34) plus exact-RMS and simulated-step-count hidden cases; 6 claims.yaml sources re-fetched against primary pages; the one typed number in prose ('triples the wobble') is now computed by the section 6 sweep"
+status: reviewed
 measured_seconds: 14.7
 measured_peak_mib: 54

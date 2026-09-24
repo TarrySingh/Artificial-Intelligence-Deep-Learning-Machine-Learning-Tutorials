@@ -109,9 +109,12 @@ MEASURE = re.compile(
     # "≈N" is a number DERIVED from this machine's speed (how many samples fit a tick): the
     # lesson marks it so a student knows theirs will differ, and it is masked like a timing.
     r"≈\s*\d[\d,]*(?:\.\d+)?|"
+    # a speed-up or slow-down RATIO measured on this machine ("3.2x"). Only a decimal ratio: an
+    # integer count such as "read 2x" is a deterministic result and must be compared.
+    r"(?<![\w.])\d[\d,]*\.\d+\s*(?:x|×)(?![\w/])|"
     r"(?<![\w.])\d[\d,]*(?:\.\d+)?\s*"
     r"(?:s|ms|us|µs|ns|secs?|seconds?|milliseconds?|microseconds?|nanoseconds?"
-    r"|KiB|MiB|GiB|kB|MB|GB|Hz|kHz|MHz|x|×"
+    r"|KiB|MiB|GiB|kB|MB|GB|Hz|kHz|MHz"
     # rates of THIS machine. Not m/s: a simulated walking speed is a deterministic result.
     r"|(?:B|KB|kB|MB|GB|KiB|MiB|GiB|bytes|steps|it|samples|calls|ticks|rows|records|tokens"
     r"|docs|documents|captures|readings|lines|fields|events|merges|rollouts|symbols)/s"

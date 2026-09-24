@@ -29,6 +29,11 @@ build [0-9]*/
 # ...and duplicates of source files ("lesson 2.py", "README 2.md"), which `git add -A` would
 # otherwise commit. Scoped to the curriculum directories.
 /lessons/**/* [0-9].*
+/lessons/**/* [0-9]
+/programmes/**/* [0-9]
+/flagships/**/* [0-9]
+/tools/**/* [0-9]
+/* [0-9]
 /programmes/**/* [0-9].*
 /flagships/**/* [0-9].*
 /tools/**/* [0-9].*
@@ -53,3 +58,6 @@ tracking_error_curve.png
 /programmes/*/lessons/*/solutions/
 /programmes/*/lessons/*/tests/
 /programmes/*/lessons/*/authoring/
+**/solutions/
+**/authoring/
+/flagships/*/capstone/tests/

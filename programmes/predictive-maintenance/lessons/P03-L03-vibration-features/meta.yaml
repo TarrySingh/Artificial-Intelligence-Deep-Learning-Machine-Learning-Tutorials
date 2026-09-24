@@ -1,178 +1,47 @@
 id: P03-L03-vibration-features
-title: Implement the standard vibration condition indicators and a load-corrected bearing temperature, and measure which of them read the fault and which read the duty point
+title: Implement the standard vibration condition indicators and a load-corrected bearing temperature,
+  and measure which of them read the fault and which read the duty point
 track: P03
 programme: predictive-maintenance
-flagship:               # none: this module feeds the programme's capstone, not a flagship
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: null
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
-  - P03-L01-alarm-economics
+- T00-L01-the-8gb-track
+- P03-L01-alarm-economics
 objectives:
-  - "Implement RMS, crest factor and kurtosis from their definitions, and measure which of the three is invariant to a change of gain"
-  - "Compute a correctly scaled one-sided amplitude spectrum with numpy.fft.rfft and a band-energy feature that satisfies Parseval's identity to 1e-9"
-  - "Measure each feature's separation of healthy from degrading units, and its separation of healthy units at two different loads, with the same rank statistic"
-  - "Remove a bearing temperature's dependence on load and ambient by least squares fitted on known-good units, and measure the residual's detection gain over the raw reading"
-  - "Rank every feature by the money it saves at its own cost-optimal threshold, and explain why that ranking differs from the ranking by separation"
+- Implement RMS, crest factor and kurtosis from their definitions, and measure which of the three is invariant
+  to a change of gain
+- Compute a correctly scaled one-sided amplitude spectrum with numpy.fft.rfft and a band-energy feature
+  that satisfies Parseval's identity to 1e-9
+- Measure each feature's separation of healthy from degrading units, and its separation of healthy units
+  at two different loads, with the same rank statistic
+- Remove a bearing temperature's dependence on load and ambient by least squares fitted on known-good
+  units, and measure the residual's detection gain over the raw reading
+- Rank every feature by the money it saves at its own cost-optimal threshold, and explain why that ranking
+  differs from the ranking by separation
 datasets:
-  - name: synthetic-bearing-bench
-    kind: synthetic
-    description: "480 units x 8192 samples at 8192 Hz (1.000 s captures), half with a seeded outer-race defect, each at a continuous load in [0.10, 0.95], with a matching bearing temperature and ambient; generated in lesson.py by generate_bench(seed=20260916)"
-    generator: "lesson.py :: generate_bench"
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    downloads: false
-  - name: cwru-bearing-zenodo
-    kind: real
-    description: "OPTIONAL follow-on, not on any required path and never touched by the lesson, the tests or the execution gate. Case Western Reserve University seeded-fault bearing accelerometer data (12 kHz fan end, 48 kHz drive end), deposited on Zenodo. The closing section suggests pointing rms, kurtosis and band_energy at it and measuring the load AUC across the four motor loads before believing any fault AUC. Sourced in claims.yaml (cwru-bearing-apparatus, cwru-bearing-zenodo-licence)."
-    licence: "CC BY 4.0 (Creative Commons Attribution 4.0 International, as stated on the Zenodo record)"
-    url: https://zenodo.org/records/10987113
-    downloads: false
-points: 106        # = sum of RUBRIC points in tests/test_lesson.py
-# Why the bench is synthetic, recorded here because gate 11 is about honesty rather than
-# about having a URL: this module's entire claim is that a feature can separate two
-# populations for the wrong reason. Proving that needs ground truth on the CONFOUNDER as well
-# as on the label — the exact load on every unit, the exact severity of every defect, and a
-# healthy population measured at both duty points. No public run-to-failure corpus the author
-# could verify supplies that pairing, which is why the bench is generated and read by the
-# student before it is used. A real, CC-BY-licensed corpus is named above and in the closing
-# section as the place to take the same code next; nothing in this lesson downloads it, and
-# the four gates never touch it.
-#
-# Deviations from MODULES.md's module 3 specification, stated because the brief asks for them
-# to be stated:
-#
-# * BUILT: RMS, crest factor, kurtosis, band energy around shaft orders and around the bearing
-#   resonance, the temperature half (fit the load and ambient dependence, remove it, show the
-#   residual detects what the raw reading does not), and the scoring of every feature with
-#   module 1's cost function to produce a ranking by money saved at each feature's own best
-#   threshold.
-# * NOT BUILT: the envelope spectrum and the order tracking of a run-up. Both are named in
-#   MODULES.md; neither is in the owner's brief for this build, which lists "RMS, kurtosis,
-#   crest factor and a band-energy feature from an FFT they compute with numpy". Each is a
-#   substantial exercise in its own right — an analytic signal built by zeroing the negative
-#   half of an rfft, and a resampling onto a constant-angle axis — and adding them to the ten
-#   stubs already here would have pushed the notebook well past the 75 minutes the header
-#   promises. They are the obvious content of a second vibration module, and the load-AUC
-#   apparatus built here is what would score them.
-# * The lesson's prerequisites are T00-L01 and P03-L01. MODULES.md says module 3 depends on
-#   modules 1 and 2; when this was written P03-L02-sensor-physics did not exist, and a
-#   prerequisite must resolve to a real lesson id. Nothing in this notebook needs it: the
-#   bench is generated above Nyquist with no aliasing and no filtering, and says so.
-#   REVIEWER, 2026-09-16: P03-L02-sensor-physics now exists at status `executed`, so the
-#   omission's stated reason has expired. Left as it stands rather than changed, because
-#   adding a prerequisite is a curriculum decision and not a review finding: the gate-2
-#   requirement (ids that resolve, and a student who has done them can finish unaided) holds
-#   either way, since this lesson assumes the measurement chain did not lie and says so in
-#   section 1. The owner may want to add it to match MODULES.md once P03-L02 is reviewed.
-#
-# Design notes for a reviewer:
-#
-# * Every number in the prose is printed by the notebook. The measured results on this bench
-#   are: fault AUC / load AUC of rms 0.664 / 0.998, crest_factor 0.941 / 0.496, kurtosis
-#   0.949 / 0.484, band_energy(defect) 0.887 / 1.000, band_fraction(defect) 0.988 / 0.487,
-#   band_fraction(shaft) 0.182 / 0.500, temperature raw 0.594 / 0.959, temperature residual
-#   0.949 / 0.475. The confounded comparison (healthy at high load against degrading at low
-#   load) takes rms to 0.049 — it ranks the healthy machines as the sicker ones — and leaves
-#   kurtosis at 0.943.
-# * Load on this bench is a PURE GAIN, applied to noise, shaft harmonics and defect impacts
-#   alike. That is what makes the dimensionless features exactly blind to it and the
-#   dimensional ones exactly fooled, and it is stated in the generator's own prose. A real
-#   duty-point change is not purely multiplicative, which is the reason the temperature half
-#   exists: there the confounder is additive in two variables and has to be regressed out
-#   rather than cancelled.
-# * The bench is 50% faulty and a fleet is not. `cheapest_alarm` therefore takes a prevalence
-#   and a fleet size and rebuilds the counts from rates, and the rubric grades that the
-#   threshold moves when the prevalence does. A student who prices at the bench's own base
-#   rate gets an alarm far too eager, and section 11 says so.
-# * The ranking by money is not the ranking by separation — two of eight positions differ on
-#   this bench — and the notebook prints both orderings side by side rather than asserting it.
-#
-# Mutation testing of the rubric, 2026-09-16. Fourteen plausible wrong implementations were
-# built from the reference solution in a temporary directory, one break each, and graded.
-# All fourteen were caught, and every one kept partial credit rather than collapsing to zero:
-#
-#   rms via np.std 89% · crest peak from np.max not np.abs 97% · kurtosis returning excess
-#   90% · kurtosis with a ddof=1 variance 92% · spectrum missing the factor of 2 80% · DC bin
-#   doubled with the rest 87% · Nyquist halved unconditionally 92% · band power without the
-#   halving 88% · closed upper band edge 96% · fraction divided by rms instead of rms**2 91% ·
-#   AUC counting ties as wins 95% · cheapest_alarm without the inf candidate 96% ·
-#   cheapest_alarm charging the unplanned price to the false alarms 85% · fit_load_model
-#   ignoring fit_rows 96%.
-#
-# A fifteenth run was a deliberate CONTROL: separation_auc rewritten as a rank sum (a
-# scipy-free Mann-Whitney U via np.argsort, with averaged ranks inside tied groups) — a
-# correct answer of a completely different shape. It still scores 106/106, so the rubric
-# grades the behaviour the docstrings ask for and not one particular way of writing it.
-#
-# Five of the fourteen are caught by exactly one rubric case, and each of those cases exists
-# for that mistake and for nothing else:
-#   * test_amplitude_spectrum_odd_length — for odd n there is no Nyquist bin, and every
-#     even-length case in the lesson passes whether the guard is there or not. (Parseval's
-#     odd-n cases catch it too, which is the point of grading an identity.)
-#   * test_fit_load_model_uses_fit_rows_only — nothing else in the lesson can tell a masked
-#     fit from an unmasked one.
-#   * test_crest_factor_uses_absolute_peak, test_band_energy_half_open and
-#     test_cheapest_alarm_never_alarm_and_ties, each the sole case for its own rule.
-# test_kurtosis_uses_population_variance was written as a sixth such case and turned out not
-# to be unique: test_kurtosis_values grades the same four-sample input, so the ddof mutant
-# loses both. It is kept because it names the mistake in its failure message.
-#
-# Independent review, 2026-09-16. All four gates re-run from scratch by the reviewer, then
-# fourteen fresh breaking mutants built from the reference in a temporary directory outside
-# the lesson — one break each, in the families the brief names — plus one correct-but-
-# differently-shaped control. Three of the fourteen SURVIVED at 106/106 and were confirmed
-# non-equivalent by measurement, not by argument:
-#
-#   * fit_load_model guarding `n_fit < 4` instead of `< 3`. Three rows determine a three-
-#     parameter plane exactly; the mutant raises ValueError on a fit the reference completes
-#     as [5.0, 2.0, 0.5]. No rubric case fitted exactly three rows, because
-#     test_fit_load_model_validates_rows only ever handed in ILLEGAL masks (2 rows and 0).
-#   * cheapest_alarm guarding `not 0.0 < prevalence < 1.0` instead of `<=`. The mutant raises
-#     on prevalence 0.0 and 1.0, where the reference returns (2.0, 0.0) and a finite threshold
-#     at 1000.0. Same shape of gap: an interval was only ever probed from outside.
-#   * cheapest_alarm dropping np.unique and the ascending sort, scoring candidates in the
-#     caller's order. The cheapest COST is unchanged, so nothing looks wrong, but on a tie the
-#     mutant ships the higher of two equally cheap thresholds. Measured: 3 disagreements in
-#     the first 508 random small cases (~1 in 170), e.g. healthy [1, 3], degrading [5, 2],
-#     prices (10, 60, 50) at 50% of 100 — reference 2.0, mutant 5.0, both costed 1750.
-#
-# Each was fixed by extending the case that already owned the rule — the point total is
-# unchanged at 106 and partial credit is preserved — and all fourteen mutants now fail with
-# partial credit (81-98%) while the reference and the control both still score 106/106:
-#   rms as mean-absolute 81% · AUC sign flip 83% · crest without return 85% · spectrum
-#   returning the uncorrected amp 87% · band_energy averaging its bins 88% · kurtosis
-#   numerator uncentred 90% · band lower edge strict 92% · AUC ties floored by integer
-#   division 95% · band_energy caching on a mutable default 96% · unsorted candidates 96% ·
-#   AUC near-ties inside a 1e-2 tolerance 97% · fit_rows off-by-one 98% · prevalence interval
-#   strict 98% · prevalence ValueError swallowed into 0.5 98%.
-#
-# Verified true rather than merely green: every figure in the design notes above and in the
-# solution's self-check answers was re-measured from the executed notebook (rms 0.664/0.998,
-# band_energy(defect) 0.887/1.000 falling to 0.552 confounded, rms to 0.049, kurtosis
-# 0.949/0.484, band_fraction(defect) 0.988/0.487, temperature 0.594/0.959 raw against
-# 0.949/0.475 residual, b2 = 1.00, 2 of 8 positions differing between the two orderings).
-# All five claims.yaml sources were re-fetched on 2026-09-16 and support their claims; the
-# Zenodo record still reads CC BY 4.0 and the CWRU page still gives 0-3 hp, i.e. the four
-# motor loads the closing section names.
-#
-# One reviewer note the gates cannot see and that was NOT changed: self-check question 4
-# option (b) types the figure 1.000 into student-facing prose. It is correct — the section 9
-# scorecard prints band_energy(defect)'s load AUC as exactly 1.000 before the student reaches
-# the question — but it is a typed number rather than a generated one, and if the bench seed
-# ever moves the distractor goes stale silently.
-#
-# Gate 3 measured, not assumed: the longest run of consecutive prose before the next runnable
-# cell is 28 non-blank lines (the header; the reviewer's re-measurement puts the section 15
-# self-check at 20). Both are inside the ~40 the gate allows. Every
-# demonstration that depends on student code is wrapped in _try, and the tables that read
-# _VALUES check _have_values() first, so a notebook full of unfilled stubs still imports,
-# still grades, and still prints a hint per exercise — tools/grade.py scores the student file
-# at 0/106 with a TODO row for every one of the 29 rubric entries rather than crashing at
-# import.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review 2026-09-16 — 4 gates re-run green (106/106 solution, 0/106 student, execute PASS, jupytext converts); 14 fresh breaking mutants graded, 3 survived at 100% and were confirmed non-equivalent by measurement (fit_load_model n_fit<4, prevalence interval made strict, cheapest_alarm candidates unsorted), all 3 fixed by extending the case that owned the rule and now fail at 98/98/96% with every mutant scoring 81-98% and the correct-but-different rank-sum control still 106/106; claims re-fetched and supported; prose figures re-measured against executed output; open note: self-check Q4 types the figure 1.000 rather than generating it"
-
+- name: synthetic-bearing-bench
+  kind: synthetic
+  description: 480 units x 8192 samples at 8192 Hz (1.000 s captures), half with a seeded outer-race defect,
+    each at a continuous load in [0.10, 0.95], with a matching bearing temperature and ambient; generated
+    in lesson.py by generate_bench(seed=20260916)
+  generator: 'lesson.py :: generate_bench'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+- name: cwru-bearing-zenodo
+  kind: real
+  description: OPTIONAL follow-on, not on any required path and never touched by the lesson, the tests
+    or the execution gate. Case Western Reserve University seeded-fault bearing accelerometer data (12
+    kHz fan end, 48 kHz drive end), deposited on Zenodo. The closing section suggests pointing rms, kurtosis
+    and band_energy at it and measuring the load AUC across the four motor loads before believing any
+    fault AUC. Sourced in claims.yaml (cwru-bearing-apparatus, cwru-bearing-zenodo-licence).
+  licence: CC BY 4.0 (Creative Commons Attribution 4.0 International, as stated on the Zenodo record)
+  url: https://zenodo.org/records/10987113
+  downloads: false
+points: 106
+status: reviewed
 measured_seconds: 0.9
 measured_peak_mib: 221

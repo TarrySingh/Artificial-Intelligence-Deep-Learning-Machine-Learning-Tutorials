@@ -13,8 +13,7 @@
 # [![Open in Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/document-intelligence/lessons/P02-L10-streaming-scanner-in-c/lesson.ipynb)
 # [![Open in Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials)
 #
-# This lesson needs Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle,
-# Binder and Codespaces already have, and a C or C++ compiler (`clang` or `gcc`). The cell
+# This lesson needs Python 3.11 or newer, and a C or C++ compiler (`clang` or `gcc`). The cell
 # below fetches the files it needs beside it, and does nothing where they are already present.
 # On Kaggle, switch Internet on in the notebook's settings first; Kaggle allows that only for
 # phone-verified accounts.
@@ -141,7 +140,8 @@ GROWTH_SIZES = (4 << 20, 32 << 20, 128 << 20, 512 << 20)
 
 print("python", sys.version.split()[0], "·", platform.machine(), platform.system())
 print("source", C_SRC.relative_to(LESSON_ROOT))
-_paths = subprocess.run(["make", "-C", str(LESSON_ROOT), f"PYTHON={sys.executable}", "paths"],
+_paths = subprocess.run(["make", "--no-print-directory", "-C", str(LESSON_ROOT),
+                         f"PYTHON={sys.executable}", "paths"],
                         capture_output=True, text=True)
 print(_paths.stdout.strip() or _paths.stderr.strip())
 
@@ -250,7 +250,8 @@ def build_c(force: bool = False) -> Path:
     if shutil.which("make") is None:
         raise RuntimeError("no `make` on PATH — this lesson needs make and a C11 compiler")
     proc = subprocess.run(
-        ["make", "-C", str(LESSON_ROOT), f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
+        ["make", "--no-print-directory", "-C", str(LESSON_ROOT),
+         f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
          f"BIN={C_BIN.relative_to(LESSON_ROOT)}", "all"],
         capture_output=True, text=True,
     )
@@ -523,7 +524,8 @@ def c_selftest() -> str:
     """`make test` — your binary checking its own four functions. Returns its output."""
     build_c()
     proc = subprocess.run(
-        ["make", "-C", str(LESSON_ROOT), f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
+        ["make", "--no-print-directory", "-C", str(LESSON_ROOT),
+         f"SRC={C_SRC.relative_to(LESSON_ROOT)}",
          f"BIN={C_BIN.relative_to(LESSON_ROOT)}", "test"],
         capture_output=True, text=True,
     )
@@ -907,7 +909,7 @@ def _check_throughput() -> None:
           "to it")
     print(f"python        {report['py_seconds']:.3f} s  ({report['py_mb_s']:.1f} MB/s)")
     print(f"c             {report['c_seconds']:.3f} s  ({report['c_mb_s']:.1f} MB/s)")
-    print(f"speedup       {report['speedup']:.0f}x on this machine, on identical answers")
+    print(f"speedup       ≈{report['speedup']:.0f}x on this machine, on identical answers")
 
 
 if __name__ == "__main__":
@@ -923,15 +925,46 @@ if __name__ == "__main__":
 #
 # The unit of `ru_maxrss` is not the same on every platform, so this lesson does not name it —
 # it measures it, in a separate process that touches a known number of bytes.
+#
+# "Its own" takes one precaution on Linux, where a launched process starts out carrying the
+# high-water mark of whatever launched it: started from a large notebook kernel, the smallest
+# program reports the kernel's size. So every process below that reports a peak forks once,
+# from something small, before it counts. `in_fresh_child` in `lesson.c` says why that works.
 
 # %%
 def rss_scale() -> int:
-    """Bytes per unit of ru_maxrss on this machine, measured rather than assumed."""
+    """Bytes per unit of ru_maxrss on this machine, measured rather than assumed.
+
+    A MEASUREMENT, so it is printed with `≈`: the counter also moves for whatever else the
+    probe process touches, so the reading lands near its unit rather than on it, and not in
+    the same place on every machine. Anything that DECIDES with it goes through
+    `rss_unit()`, which rounds it to a unit the platform documents.
+    """
     probe = run_c(["rssunit"])
     delta = probe["rss_after_raw"] - probe["rss_before_raw"]
     if delta <= 0:
         raise RuntimeError("the RSS calibration saw no change; cannot convert peak RSS")
     return round(probe["probe_bytes"] / delta)
+
+
+# ru_maxrss is counted in bytes on macOS and in KiB on Linux (claims.yaml, id
+# ru-maxrss-unit-is-platform-specific), so the only decision the probe has to support is
+# WHICH of the two this machine uses. They are a factor of 1024 apart and the probe lands
+# close to one of them, so the nearer one on a ratio scale is the same answer on every run.
+_KNOWN_RSS_UNITS = (1, 1024)
+
+
+def rss_unit(measured: int | None = None) -> int:
+    """Bytes per unit of ru_maxrss on THIS platform: 1 or 1024, never a raw reading.
+
+    A DECISION taken from `rss_scale()`'s measurement by rounding it to the nearer known
+    unit, so it is the same on every run however the measurement moves. Pass a measurement
+    to classify it, or nothing to take a fresh one.
+    """
+    if measured is None:
+        measured = rss_scale()
+    reading = max(measured, 1)    # a rounded byte-unit reading could be 0; never divide by it
+    return min(_KNOWN_RSS_UNITS, key=lambda unit: max(reading / unit, unit / reading))
 
 
 NOTEBOOK_PATH = HERE / ("lesson_solution.py" if IS_REFERENCE else "lesson.py")
@@ -942,10 +975,16 @@ def python_peak_rss(snippet: str, path: Path) -> dict:
 
     A fresh process per measurement is the point: `ru_maxrss` is a high-water mark that never
     comes down, so two ways of reading a file measured in one process would both report the
-    larger of the two.
+    larger of the two. Fresh has to mean fresh on Linux too, where the interpreter launched
+    here starts out at THIS process's mark: so it forks at once, the child does the work and
+    reports, and the parent only passes the child's exit status on.
     """
     code = (
-        "import importlib.util, resource, sys, time\n"
+        "import os, sys\n"
+        "pid = os.fork()\n"
+        "if pid:\n"
+        "    sys.exit(os.waitstatus_to_exitcode(os.waitpid(pid, 0)[1]))\n"
+        "import importlib.util, resource, time\n"
         "from pathlib import Path\n"
         "spec = importlib.util.spec_from_file_location('lesson', %r)\n"
         "lesson = importlib.util.module_from_spec(spec); spec.loader.exec_module(lesson)\n"
@@ -973,7 +1012,7 @@ def python_peak_rss(snippet: str, path: Path) -> dict:
 def memory_report(nbytes: int = RACE_BYTES) -> list:
     """Three ways to read one export, each process reporting its own peak RSS."""
     path = generate_export(nbytes)
-    scale = rss_scale()
+    scale = rss_unit()
     rows = [("c, streaming", c_scan_file(path)["peak_rss_raw"])]
     rows.append(("python, streaming",
                  python_peak_rss("result = lesson.py_scan_file(path)", path)["peak_rss_raw"]))
@@ -992,7 +1031,10 @@ def _show_memory() -> None:
               "interpreter, and there is no such file beside this notebook. Run this section "
               "from a clone of the repository to measure all three rows.")
         return
-    print(f"ru_maxrss unit measured as {rss_scale()} byte(s) per unit\n")
+    measured = rss_scale()
+    unit = "bytes" if rss_unit(measured) == 1 else "KiB"
+    print(f"ru_maxrss unit measured as ≈{measured} byte(s) per unit, so read as {unit}: "
+          "the nearer of the two units it is documented in\n")
     print(f"{'how the export was read':<32} {'peak RSS':>15}")
     for row in memory_report():
         print(f"{row['how']:<32} {row['peak_mib']:11.1f} MiB")
@@ -1015,7 +1057,7 @@ if __name__ == "__main__":
 # %%
 def growth_report(sizes=GROWTH_SIZES) -> list:
     """Scan increasingly large generated exports; report throughput and peak RSS for each."""
-    scale = rss_scale()
+    scale = rss_unit()
     rows = []
     for nbytes in sizes:
         result = c_bench(nbytes)
@@ -1042,8 +1084,9 @@ def _check_constant_memory() -> None:
     for row in rows:
         print(f"{row['mib']:11.0f} {row['records']:10d} {row['seconds']:7.3f} s "
               f"{row['mb_s']:6.0f} MB/s {row['peak_mib']:8.2f} MiB")
-    print(f"\nData up {rows[-1]['mib'] / rows[0]['mib']:.0f}x, peak RSS up "
-          f"{grew:.2f} MiB. Read the last column DOWN, not across: that flatness is the")
+    # The size of the move, not its sign: a flat peak lands a page higher or lower run to run.
+    print(f"\nData up {rows[-1]['mib'] / rows[0]['mib']:.0f}x, peak RSS moved "
+          f"{abs(grew):.2f} MiB. Read the last column DOWN, not across: that flatness is the")
     print("whole claim. An export that does not fit in memory is not a different problem for")
     print("this program, it is the same problem for longer.")
 

@@ -1,0 +1,29 @@
+claims:
+- id: claude-token-character-ratio
+  claim: 'Anthropic''s own glossary states a rule of thumb relating characters to tokens for Claude: a
+    token approximately represents 3.5 English characters. This lesson''s estimate_tokens (exercise 3)
+    uses exactly this ratio (CHARS_PER_TOKEN = 3.5) as its documented approximation, rather than the pinned
+    tokenizers package, and states why in section 6''s markdown.'
+  where: lesson.py section 6 (the estimate_tokens rationale) and exercise 3 (CHARS_PER_TOKEN)
+  source_url: https://platform.claude.com/docs/en/resources/glossary
+  source_title: Anthropic. Glossary. Claude Docs (platform.claude.com).
+  quote: For Claude, a token approximately represents 3.5 English characters, though the exact number
+    can vary depending on the language used.
+  quote_context: Glossary entry "Tokens" (the last entry on the page), second sentence (re-read by the
+    reviewer on 2026-09-23)
+  accessed: 2026-09-23
+- id: rag-context-window-retrieval-at-runtime
+  claim: Anthropic's own glossary describes retrieval-augmented generation as passing retrieved documents
+    into the model's context window, with retrieval happening at the moment a query is sent — the reason
+    this lesson's every exercise is about what reaches that window and at what token cost, without ever
+    calling a model to generate from it.
+  where: lesson.py section 1 (why this lesson never calls a language model)
+  source_url: https://platform.claude.com/docs/en/resources/glossary
+  source_title: Anthropic. Glossary. Claude Docs (platform.claude.com).
+  quote: In RAG, a language model is augmented with an external knowledge base or a set of documents that
+    is passed into the context window. The data is retrieved at runtime when a query is sent to the model,
+    although the model itself does not necessarily retrieve the data (but can with tool use and a retrieval
+    function).
+  quote_context: Glossary entry "RAG (Retrieval augmented generation)", second and third sentences of
+    the entry's body (re-read by the reviewer on 2026-09-23)
+  accessed: 2026-09-23

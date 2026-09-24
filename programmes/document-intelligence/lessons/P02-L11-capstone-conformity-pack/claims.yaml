@@ -1,0 +1,35 @@
+claims:
+- id: leakage-recurring-not-rare
+  claim: A survey of the literature in research fields that adopted machine learning found data-leakage
+    errors in 17 fields, and sorted leakage into a taxonomy running from textbook errors to open research
+    problems. This lesson's second planted defect (a residual-error table computed on the training split
+    and labelled as the evaluation split) is a textbook instance, planted on purpose so a check built
+    for it can catch it.
+  where: lesson.py section 1
+  source_url: https://arxiv.org/abs/2207.07048
+  source_title: Kapoor and Narayanan -- Leakage and the Reproducibility Crisis in ML-based Science (arXiv
+    2207.07048, submitted 14 Jul 2022)
+  quote: Specifically, through a survey of literature in research communities that adopted ML methods,
+    we find 17 fields where errors have been found, collectively affecting 329 papers and in some cases
+    leading to wildly overoptimistic conclusions. Based on our survey, we present a fine-grained taxonomy
+    of 8 types of leakage that range from textbook errors to open research problems.
+  quote_context: abstract, verbatim in the fetched text of the arXiv abstract page (re-checked by the
+    independent reviewer)
+  accessed: 2026-09-23
+- id: model-cards-case-for-documentation
+  claim: 'The case for a released model being accompanied by documentation of its measured performance
+    characteristics, on named data, rather than an unmeasured assertion of quality, is the original case
+    made for model cards. This lesson''s conformity pack is a small instance of that same document shape:
+    what a pipeline does, how it was measured, on what data, its residual error by class, its oversight
+    and its cost -- each figure required to trace to a computed result rather than to a person''s say-so.'
+  where: lesson.py section 1
+  source_url: https://arxiv.org/abs/1810.03993
+  source_title: Mitchell, Wu, Zaldivar, Barnes, Vasserman, Hutchinson, Spitzer, Raji and Gebru -- Model
+    Cards for Model Reporting (arXiv 1810.03993v2, revised 14 Jan 2019)
+  quote: Trained machine learning models are increasingly used to perform high-impact tasks in areas such
+    as law enforcement, medicine, education, and employment. In order to clarify the intended use cases
+    of machine learning models and minimize their usage in contexts for which they are not well suited,
+    we recommend that released models be accompanied by documentation detailing their performance characteristics.
+  quote_context: abstract, verbatim in the fetched text of the arXiv abstract page (re-checked by the
+    independent reviewer)
+  accessed: 2026-09-23

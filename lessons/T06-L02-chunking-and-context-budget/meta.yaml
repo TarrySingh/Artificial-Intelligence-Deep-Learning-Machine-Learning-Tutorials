@@ -1,0 +1,29 @@
+id: T06-L02-chunking-and-context-budget
+title: Chunking and the context budget — measure evidence coverage, not chunk hits
+track: T06
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T06-L01-retrieval-from-scratch
+objectives:
+- Implement fixed-size chunking with a token-overlap window and structure-aware chunking that groups paragraphs
+  under a token budget with a heading-merge rule and an over-budget fallback
+- Implement an approximate, documented token-budget counter and measure how far it drifts from a real
+  subword tokenizer trained, offline, on this lesson's own corpus
+- Implement greedy, budget-constrained context assembly that skips instead of stopping on an oversized
+  candidate and de-duplicates overlapping chunks before spending budget on them
+- Implement evidence coverage — whether a query's gold evidence span is fully contained in the assembled
+  context — and distinguish it from a chunk-level retrieval hit
+- Measure, on a corpus with planted evidence spans of varying length, how chunk size and overlap trade
+  evidence coverage against token cost, and choose a chunking policy from the measured curve
+datasets:
+- name: T06-L02 synthetic incident-report corpus (eight planted facts, varying evidence-span length)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 144
+status: reviewed
+measured_seconds: 0.2
+measured_peak_mib: 43

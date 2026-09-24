@@ -1,270 +1,45 @@
 id: P01-L05-human-oversight
-title: Turn the Article 14 human-oversight duty into measured baselines an inspector can re-run, and a gate that enforces them
+title: Turn the Article 14 human-oversight duty into measured baselines an inspector can re-run, and a
+  gate that enforces them
 track: P01
 programme: ai-act-conformity
-flagship: F09           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F09
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T10-L01-ai-act-conformity-pack
-  - P01-L01-article-12-logging
+- T10-L01-ai-act-conformity-pack
+- P01-L01-article-12-logging
 objectives:
-  - "Implement a decision view that folds module 1's chained log in sequence order and keeps the duplicate verifier entries a deduplicating fold destroys"
-  - "Implement override rate overall, per reviewer and per model recommendation, and explain why an undecided, an unscored and an unreviewed decision each leave the denominator by a different door"
-  - "Implement a time-to-decision distribution that separates a clock that stepped backwards from a reviewer who was too fast, and explain why abs() on the first invents the second"
-  - "Implement an automation-bias curve and separate a reviewer whose override rate collapses from one whose rate merely declines, using each reviewer's own minimum detectable difference"
-  - "Implement the Article 14(5) four-eyes check as a count of distinct natural persons and measure how many decisions a length test would have passed, then implement oversight_gate(), the control that enforces it, and report every decision it would have blocked with each reason it failed on rather than only the first"
+- Implement a decision view that folds module 1's chained log in sequence order and keeps the duplicate
+  verifier entries a deduplicating fold destroys
+- Implement override rate overall, per reviewer and per model recommendation, and explain why an undecided,
+  an unscored and an unreviewed decision each leave the denominator by a different door
+- Implement a time-to-decision distribution that separates a clock that stepped backwards from a reviewer
+  who was too fast, and explain why abs() on the first invents the second
+- Implement an automation-bias curve and separate a reviewer whose override rate collapses from one whose
+  rate merely declines, using each reviewer's own minimum detectable difference
+- Implement the Article 14(5) four-eyes check as a count of distinct natural persons and measure how many
+  decisions a length test would have passed, then implement oversight_gate(), the control that enforces
+  it, and report every decision it would have blocked with each reason it failed on rather than only the
+  first
 datasets:
-  - name: loan-copilot synthetic Article 12 event log
-    kind: synthetic
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    note: >-
-      5418 chained log entries over 1361 decisions, built in section 2 from a single numpy
-      Generator seed (20260922) in module 1's exact log shape. Nothing is read from disk and
-      nothing is downloaded, so the lesson runs offline and two runs agree to the last digit.
-      Every defect it contains — the twelve decisions signed twice by one person, the
-      nineteen signed once where Article 14(5) needs two, the eight never verified at all,
-      the eleven out-of-scope decisions with no verifier, the fourteen reviewed under the
-      plausibility floor, the three whose clock stepped backwards, the seven that never
-      closed, the five with no model recommendation, the sixteen where the submitter signed
-      their own case, and the three verification pairs recorded out of timestamp order — is
-      planted deliberately and listed in the open inside _build_stream(). No real applicant
-      data is involved, no real reviewer is named, and none of the figures the lesson prints
-      is a claim about any real credit portfolio or any real person's review behaviour.
-points: 100             # = sum of RUBRIC points in tests/test_lesson.py
-status: reviewed        # draft | executed | reviewed | shipped
-# Authoring notes, 2026-09-22.
-#
-# All four gates run from the repo root on the venv interpreter. The measured figures below
-# were written back by tools/execute.py and were not typed.
-#
-# WHAT MODULES.md ASKED FOR. Module 5, "Human oversight as a measurable property": read the
-# verifier_ids field module 1's log already records; compute override rate by outcome, time to
-# decision, four-eyes compliance where the two-person rule applies, and automation bias as the
-# override rate against the model's own confidence; then implement oversight_gate(), which
-# blocks an action lacking its required verifications, and run it over the log to find the
-# decisions it would have blocked. Artefact: an oversight plan with measured baselines and a
-# gate that enforces it. All of that is built here, in six exercises across seven stubs.
-#
-# WHAT WAS DONE DELIBERATELY DIFFERENTLY, AND WHY.
-#
-#   * A SEVENTH STUB THE SPEC DID NOT NAME: decision_view(). The spec's four measurements all
-#     start from one row per decision, and without a shared fold each exercise would rebuild
-#     it, four times, differently. Making the fold the first graded exercise is also where
-#     module 1's two lessons land — order by seq and never by ts, and keep the raw record —
-#     so the prerequisite is used rather than merely cited.
-#   * "OVERRIDE RATE BY OUTCOME" IS KEYED ON THE MODEL'S RECOMMENDATION, not on the recorded
-#     outcome. Keyed on the outcome, "the override rate of approve" means the rate at which
-#     reviewers overrode INTO approve, which is a different quantity with the same name. The
-#     rubric has a hand-built case that separates them, because the fixture alone cannot.
-#   * THE STATUS LADDER HAS FOUR RUNGS, NOT TWO. MODULES.md describes automation bias as a
-#     single number. A single number cannot tell a reviewer who is right to trust a confident
-#     model apart from one who has stopped reading. So the verdict is: insufficient_support,
-#     then confidence_independent (signed sensitivity below this reviewer's own detectable
-#     floor), then automation_bias (declines AND lands at or under HIGH_CONFIDENCE_FLOOR),
-#     then confidence_sensitive. u:ines and u:marlies in the fixture decline by a similar
-#     amount and land in different places, which is the whole distinction made visible. The
-#     middle rung is deliberately NOT called "independent": see the mutation-testing note
-#     below for why, and for the blind spot the name would otherwise have hidden.
-#   * THE SENSITIVITY IS SIGNED. A reviewer who overrides MORE as the model grows confident is
-#     not showing automation bias; comparing |sensitivity| files them as if they were. The
-#     rubric has a hand-built reviewer of exactly that shape.
-#   * THE TWO-PERSON RULE APPLIES TO PART OF THE LOG. Article 14(5) binds the Annex III point
-#     1(a) systems. The fictional loan-copilot is a credit scorer, so the lesson gives it a
-#     remote biometric onboarding path and marks 273 of its 1361 decisions as in scope. A
-#     lesson that applied 14(5) to every decision would have taught the commonest reading
-#     error in the article.
-#   * THREE DUTIES ARE DECLARED UNMEASURABLE. Article 14(4)(a), (c) and (e) — monitoring,
-#     interpretation tools, the stop button — are interface properties a log cannot see. They
-#     are in the DUTIES table with an empty mark, and the artefact carries a not_measured
-#     list, because an oversight plan that claims to have measured the stop button has not
-#     been read by anybody.
-#   * TIME TO DECISION IS LABELLED A PROXY. It is the closest a log gets to Article 26(2)'s
-#     competence duty and it is not that duty. Section 5 says so before the exercise starts.
-#   * SELF-VERIFICATION IS THE LESSON'S OWN RULE. "Separately verified" is hard to read as
-#     satisfied by the person who submitted the case, but the Act does not say so in terms.
-#     The POLICY dict labels which of its four fields come from Article 14(5) and which are
-#     the deployer's choice.
-#
-# DATA. Synthetic, generated in-lesson from one seed, declared above with the programme's
-# standard licence line. Dependencies: stdlib plus numpy. No pyyaml, no assets directory, no
-# network, no disk reads. Gate 11 is satisfied trivially because nothing is fetched. No
-# public human-oversight or reviewer-behaviour data set was put on the required path, and
-# none is cited as an optional extension either: every corpus of real reviewer decisions the
-# author could identify is either behind a registration wall or contains personal data about
-# named reviewers, which is the wrong thing to hand a student for a bias probe.
-#
-# GATE 12. Every figure in the prose is printed by the code. The markdown carries no measured
-# number at all: the duty counts, the decision counts, the in-scope count, every rate, every
-# median, the four-eyes reason counts, the detectable floors and the blocked counts are all
-# computed and printed. Two places that looked like exceptions were changed during authoring
-# and are recorded here because they are exactly the gate-12 failure mode: section 6 said
-# "1088 decisions passed the two-person rule", which is a typed count, and the common-mistakes
-# list said "ten points means something different across 60 decisions and across 600", which
-# is a quantitative claim with no computation behind it. The first is now qualitative; the
-# second is now a printed demo above automation_bias that computes the detectable floor at two
-# sample sizes and the factor between them, and the prose points at that output. The four
-# threshold constants in the opening disclaimer (30 decisions, 10 seconds, 5 %, and the
-# 95 %/80 % quantile pair) are declared modelling choices defined in the setup cell, not
-# measurements, and the setup cell prints what the two quantiles integrate to.
-#
-# SYNC between lesson.py and solutions/lesson_solution.py is mechanical, not manual: the
-# solution is GENERATED from the notebook by substituting the seven stub bodies, so the two
-# cannot drift in the prose, the public checks or the fixture. The solution additionally
-# carries a banner cell and section 11a, the self-check answers. The self-check key in
-# lesson.py is salted SHA-256 digests, so no answer is readable off the student's own page.
-# The five answers are b, c, b, a, c — not all the same letter, and not a run.
-#
-# RUBRIC DESIGN. Exercises 2 to 6 are graded against the rubric file's OWN reference fold,
-# not against the student's decision_view, so a broken exercise 1 costs four points rather
-# than a hundred. That is what partial credit means in a lesson whose first exercise
-# everything else consumes.
-#
-# MUTATION TESTING, run through tools/grade.py from temporary copies of the whole lesson made
-# OUTSIDE the lesson tree. 20 plausible-wrong variants of the reference solution, plus THREE
-# controls that are differently-shaped RIGHT answers and must still score 100%.
-#
-# The first run caught 17 of 20. THREE mutants scored a full 100/100 and each was a real
-# rubric defect, not an equivalent implementation:
-#
-#   * `fast` computed with <= instead of <. No decision in the log lands exactly on the
-#     10-second floor, and the two "floor_seconds is a parameter" probes used 0 and a
-#     billion, where the two comparisons also agree. test_time_floor_is_the_parameter now
-#     runs a hand-built pair — one 10-second and one 9-second decision against a 10-second
-#     floor — where they do not.
-#   * A FIXED ten-point threshold in place of each reviewer's own detectable difference. In
-#     the fixture every sensitivity that clears its floor also clears 0.10 and every one that
-#     does not, does not, so the two agreed on all five reviewers; the hand-built curves were
-#     all 200 decisions a side, where they agree too.
-#     test_bias_separates_collapse_from_decline now adds two reviewers that separate them in
-#     opposite directions: 40 decisions a side with a 15-point decline, where the honest floor
-#     is larger than 0.10 and the constant publishes noise; and 1000 a side with a 7-point
-#     decline, where the honest floor is smaller and the constant discards a real finding.
-#   * The status ladder with the LEVEL tested before the SENSITIVITY. Nothing in the fixture
-#     or in the hand-built cases had a high-confidence rate under the floor AND a sensitivity
-#     under its own detectable difference, so the two orders never disagreed.
-#     test_bias_findings_order_and_a_clean_verdict now holds a reviewer who overrides 3 % of
-#     low-confidence and 2 % of high-confidence scores: their rate does not respond to the
-#     model at all, so it is not automation bias.
-#
-# That third mutant also exposed a NAMING defect rather than only a rubric one. The status was
-# called "independent", which reads in an artefact as a clean bill of health, and the reviewer
-# just described — a uniform two-per-cent rubber stamp — would have carried it. The status is
-# now "confidence_independent", which says only what it means; the docstring states why the
-# sensitivity is tested first; and both the common-mistakes list and the answer to self-check
-# question 5 say in terms that this label is not a pass, and that the finding against such a
-# reviewer is the LEVEL in override_rates, read alongside it.
-#
-# After the three fixes: 20 mutants, 20 caught (scores 87 % to 98 %), 0 survivors, and all
-# three controls still 100 %. Every losing mutant kept partial credit on the exercises it had
-# not broken, so no test collapsed into all-or-nothing. The three controls are: one computing
-# the low/high halves by summing the per-bin tallies rather than by a second accumulator; one
-# building the view from a reversed single scan grouped by decision_id and a generic payload
-# walk rather than an explicit field list; one implementing four_eyes_report's reason ladder
-# as a table lookup on (distinct, total) rather than as an if/elif chain.
-#
-# NO MUTANT SURVIVED, so nothing here is claimed as equivalent.
-#
-# INDEPENDENT REVIEW, 2026-09-23. A second agent re-ran all four gates and wrote 34 FRESH
-# mutants plus 5 differently-shaped right answers, without reusing the author's set above.
-# 27 were caught first time. SEVEN scored a full 100/100 — so the "20 caught, 0 survivors"
-# line above describes the author's own 20 mutants and NOT the rubric's real coverage. Six of
-# the seven were genuine rubric holes and are now fixed; the seventh is proved equivalent.
-#
-# All six holes were the SAME SHAPE, and it is worth naming because the author swept for it
-# once and stopped: a clause stated in a docstring that NO decision in the fixture can reach,
-# so only a hand-built case could ever have caught it. The author found this for `fast <
-# floor` and fixed that one; the siblings were left standing.
-#
-#   * decision_view's "None, '' or [] never overwrite" rule. The fixture contains zero empty
-#     scalar payload values (measured: 1361 real, 0 empty across all six scalar fields), and
-#     the hand-built case WROTE submitted_by: "" but never asserted on it. A guard of
-#     `is not None` scored 100%. Now asserted for "" and [] as well as None.
-#   * decision_view's "empty strings dropped" rule for verifier_ids. Zero empty ids in the
-#     fixture, no hand-built case. A blank id counted as a natural person is how a
-#     single-signer decision passes a two-person rule. Now covered.
-#   * four_eyes_report's scope test against a record with NO identification_basis. Every one
-#     of the 1361 records has a real basis, so nothing pinned down the missing one. Pulling it
-#     into scope reports 14(5) violations against decisions the article never reached.
-#   * automation_bias's `confidence >= split`. No record sits exactly on CONFIDENCE_SPLIT, so
-#     `>` scored 100% — and the split is a BIN EDGE, so `>` also makes per_bin and the halves
-#     contradict each other. The new case asserts both.
-#   * automation_bias's `high_rate <= high_confidence_floor`. No reviewer lands exactly on the
-#     floor, so `<` scored 100%, clearing the one reviewer sitting precisely on the line.
-#   * oversight_gate's documented default of ONE verifier for a basis the policy does not
-#     mention. The existing case used an unknown basis WITH a verifier, where a default of 1
-#     and a default of 0 agree. With no verifier they do not, and 0 makes the gate fail OPEN
-#     on a brand-new product line. Now covered.
-#
-# THE ONE SURVIVOR IS EQUIVALENT, AND THIS IS THE PROOF, NOT AN ASSERTION. Swapping
-# four_eyes_report's `distinct == 0` and `len(ids) >= 2` rungs changes nothing, because
-# len(set(ids)) == 0 if and only if len(ids) == 0, so the two guards are mutually exclusive
-# and their order is unobservable. Checked exhaustively over all 364 lists of length 0-5 from
-# a 3-symbol alphabet (0 disagreements; longer lists are isomorphic, since the ladder reads
-# only |set(ids)| and len(ids)), over all 1361 records of this lesson's own log (0
-# disagreements), and by enumerating the lists that satisfy both guards at once (there are
-# none). The docstring's "precedence order" is a readability claim, not a behavioural one.
-# NO RUBRIC CHANGE WAS MADE FOR IT.
-#
-# TWO DEFECTS THE MUTANTS DID NOT FIND, both found by re-measuring what the prose asserts:
-#   * min_detectable_difference's worked example printed 0.1214. The function returns
-#     0.12131219852604949, which rounds to 0.1213. A student running the example to check the
-#     helper would have seen a mismatch and suspected their own environment. Fixed in BOTH
-#     lesson.py and solutions/lesson_solution.py. Every other worked example in every stub
-#     docstring was re-executed against the live fixture and is correct.
-#   * test_view_durations compared floats with a 1e-9 window. Subtracting two POSIX
-#     timestamps near 1.8e9 loses about 5e-8 of a second, so that window accepted datetime
-#     subtraction and NOTHING else — a rubric that takes one implementation. Widened to 1e-6,
-#     which is still orders of magnitude tighter than any sign or rounding error.
-#
-# AFTER THE FIXES: 34 mutants, 33 caught (87%-98%, every one losing only the points of the
-# exercise it broke, so partial credit survived), 1 proved equivalent. All 5 controls still
-# score 100% — a generic payload-walk fold, override_rates via Counter and comprehensions,
-# four_eyes_report as a table lookup, time_to_decision with a hand-rolled linear percentile,
-# and all four swapped in together. Gates re-run: execute PASS, solution 100%, stubs 0%.
-#
-# WHAT THE REVIEW CHECKED AND FOUND CLEAN. Gate 12: every digit in the markdown is a list
-# number, a section number, an Article reference or a DECLARED modelling constant that the
-# setup cell defines and the opening disclaimer labels as a choice — no measured result is
-# typed. Longest prose run before a runnable cell: 34 lines. All 7 stubs carry a docstring, a
-# Returns line, a worked example and `# YOUR CODE HERE` — none is a bare `pass`. No objective
-# says "understand". Both prerequisites resolve on disk (lessons/T10-L01-ai-act-conformity-pack
-# and programmes/ai-act-conformity/lessons/P01-L01-article-12-logging). Self-check answers are
-# b, c, b, a, c — not all one letter and not a run — and lesson.py carries only salted
-# digests. No prose anywhere points a student at a path under solutions/.
-#
-# SOURCES RE-VERIFIED 2026-09-23, every URL re-fetched. Article 14(1), 14(3) opening,
-# 14(4)(b), (d), (e), both subparagraphs of 14(5), Annex III point 1 chapeau and point (a),
-# and Article 26(2) all appear VERBATIM on the cited pages; euaiact.com still carries the
-# publisher statement quoted for Article 14, and ai-act-law.eu still carries no amendment
-# marker on it. The currency claim was the one most likely to have rotted and it holds:
-# Regulation (EU) 2026/1744 (the Digital Omnibus on AI) is real, in force 27 July 2026, and a
-# THIRD source the lesson does not cite — artificialintelligenceact.eu's omnibus explorer —
-# independently confirms it amends Article 10 and inserts Article 4a while leaving Article 14
-# untouched. That is exactly what claims.yaml says. No source had drifted.
-#
-# OPEN FOR THE OWNER, NO ACTION TAKEN HERE. MODULES.md still marks module 5
-# "SPECIFIED — NOT BUILT" and its status table shows four built modules; this lesson makes it
-# five. The status row should become a BUILT row reading "<measured_seconds> s ·
-# <measured_peak_mib> MiB · 100 pts / 26 cases", with both figures taken from the foot of THIS
-# file rather than from this sentence, since execute.py rewrites them on every run. The module
-# 5 section heading should lose its SPECIFIED marker and gain the lesson path
-# `lessons/P01-L05-human-oversight` and its two prerequisites. The MODULES.md preamble
-# sentence "Nine modules. **Four are built.**" needs the same update — and by the time this
-# was written, P01-L06, P01-L07 and P01-L08 existed on disk too, built concurrently by other
-# agents, so the count is the owner's to recount rather than any one agent's to guess.
-# Nothing in MODULES.md was edited. T10-L01's assets/systems.yaml still carries
-# human_oversight_plan with status "planned" for several fictional systems; that is that
-# lesson's fixture and was deliberately left alone.
-#
-# ONE SIDE EFFECT OUTSIDE THIS DIRECTORY, REPORTED RATHER THAN HIDDEN. Running
-# tools/verify_all.py to confirm this lesson does not break the repo recompiled the C lessons'
-# binaries, because tools/execute.py deletes compiled artefacts before gating a `language: c`
-# lesson by design. That left build artefacts modified under
-# programmes/document-intelligence/lessons/P02-L10-streaming-scanner-in-c/build/. No source
-# file outside this directory was edited.
-reviewed_by: "independent review 2026-09-23: 4 gates re-run, 34 fresh mutants (33 caught, 1 proved equivalent), 5 controls at 100%, 6 rubric holes + 2 prose defects fixed, all 9 claims.yaml sources re-fetched and verbatim"
+- name: loan-copilot synthetic Article 12 event log
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  note: 5418 chained log entries over 1361 decisions, built in section 2 from a single numpy Generator
+    seed (20260922) in module 1's exact log shape. Nothing is read from disk and nothing is downloaded,
+    so the lesson runs offline and two runs agree to the last digit. Every defect it contains — the twelve
+    decisions signed twice by one person, the nineteen signed once where Article 14(5) needs two, the
+    eight never verified at all, the eleven out-of-scope decisions with no verifier, the fourteen reviewed
+    under the plausibility floor, the three whose clock stepped backwards, the seven that never closed,
+    the five with no model recommendation, the sixteen where the submitter signed their own case, and
+    the three verification pairs recorded out of timestamp order — is planted deliberately and listed
+    in the open inside _build_stream(). No real applicant data is involved, no real reviewer is named,
+    and none of the figures the lesson prints is a claim about any real credit portfolio or any real person's
+    review behaviour.
+points: 100
+status: reviewed
 measured_seconds: 0.3
 measured_peak_mib: 42

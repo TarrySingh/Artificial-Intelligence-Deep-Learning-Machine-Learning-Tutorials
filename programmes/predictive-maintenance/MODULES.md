@@ -6,7 +6,7 @@
 
 | # | Module | Status | Lesson | Language | Measured | Rubric |
 |---|---|---|---|---|---|---|
-| 1 | Alarm economics | **built** | `P03-L01-alarm-economics` | python | 0.6 s · 190 MiB | 79 pts / 22 cases |
+| 1 | Alarm economics | **built** | `P03-L01-alarm-economics` | python | 0.8 s · 192 MiB | 79 pts / 22 cases |
 | 2 | Sensor physics and signal conditioning | **built** | `P03-L02-sensor-physics` | python | 0.8 s · 89 MiB | 123 pts / 33 cases |
 | 3 | Feature engineering for vibration and temperature | **built** | `P03-L03-vibration-features` | python | 0.9 s · 221 MiB | 106 pts / 29 cases |
 | 4 | Labelling run-to-failure data | **built** | `P03-L04-labelling-run-to-failure` | python | 1.0 s · 119 MiB | 113 pts / 29 cases |

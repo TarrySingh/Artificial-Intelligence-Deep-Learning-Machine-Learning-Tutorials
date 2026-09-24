@@ -1,0 +1,148 @@
+claims:
+- id: bm25-idf-basic-weight-formula
+  claim: Robertson and Zaragoza's relevance-feedback-free term weight — what this lesson implements as
+    bm25_idf — is w_i^IDF = log((N - n_i + 0.5) / (n_i + 0.5)) (their equation 3.3), where N is the size
+    of the collection and n_i the number of documents containing term i. It is obtained from the Robertson/Spärck
+    Jones weight by setting R = r_i = 0, and the survey calls it a close approximation to classical idf.
+  where: lesson.py section 3 (the idf formula) and exercise 2 (bm25_idf)
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: The resulting formula is a close approximation to classical idf (it can be made closer still
+    by a slight modification of the model [47])
+  quote_context: Section 3.1, immediately before equation (3.3), page 349
+  accessed: 2026-09-23
+- id: rsj-pseudo-count-avoids-infinities
+  claim: 'The 0.5 terms in the Robertson/Spärck Jones weight (and so in the idf above) are a small pseudo-count
+    added to the simple ratio estimates. One reason the survey gives is practical: a ratio of probabilities
+    inside a log can otherwise yield positive or negative infinities. Without them, a term in every document
+    (n_i = N) would give log(0) and a term in no document would divide by zero; with them, both stay finite
+    — the edge case this lesson''s exercise 2 grades.'
+  where: lesson.py exercise 2 (bm25_idf's docstring and check), self-check question 1
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: A very obvious practical reason is that the combination of a ratio of probabilities and a log
+    function may yield (positive or negative) infinities as estimates.
+  quote_context: Section 3.1, the paragraph before equation (3.2), page 348; the same paragraph goes on
+    to 'a small pseudo-count of frequency 0.5'
+  accessed: 2026-09-23
+- id: bm25-full-scoring-function-and-defaults
+  claim: 'The classic BM25 term weight combines the saturating term-frequency function with soft document-length
+    normalisation: tf / (k1*((1-b) + b*dl/avdl) + tf) times the term''s RSJ weight (the idf above when
+    there is no relevance information), with dl the document''s length and avdl the collection''s average;
+    the document score is the sum over query terms. The survey reports that experiments suggest values
+    such as 0.5 < b < 0.8 and 1.2 < k1 < 2 are reasonably good in many circumstances — this lesson''s
+    defaults, k1 = 1.2 and b = 0.75, sit inside those ranges.'
+  where: lesson.py section 3 (the score formula) and exercise 2 (bm25_score and its k1/b defaults)
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: This is the classic BM25 term-weighting and document-scoring function. [...] values such as 0.5
+    < b < 0.8 and 1.2 < k1 < 2 are reasonably good in many circumstances.
+  quote_context: Section 3.4.5 after equation (3.15), page 360, and Section 3.5, pages 360-361 (the second
+    sentence runs across the page break)
+  accessed: 2026-09-23
+- id: bm25-k1-plus-one-variant
+  claim: Some published versions of BM25 multiply the saturation function by (k1 + 1). The factor is the
+    same for every term and does not change the ranking, which is why this lesson's rubric accepts bm25_score
+    in either form.
+  where: lesson.py exercise 2 (bm25_score's docstring)
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: A common variant is to add a (k1 + 1) component to the numerator of the saturation function.
+    This is the same for all terms, and therefore does not affect the ranking produced.
+  quote_context: Section 3.5.1, Some Variations on BM25, page 361
+  accessed: 2026-09-23
+- id: bm25-query-term-frequency-linear
+  claim: 'The original BM25 saturated within-query term frequency (qtf) with its own k3 constant, but
+    experiments found that unimportant, leading to a score linear in qtf: a word repeated in the query
+    counts as that many separate terms. This lesson''s bm25_score multiplies each term''s contribution
+    by its qtf rather than deduplicating the query.'
+  where: lesson.py section 3 (qtf in the score formula), exercise 2, and the common-mistakes entry on
+    deduplicating query terms
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: However, experiments suggested that the saturation effect for qtf was unimportant, leading to
+    a formula which was linear in qtf. In other words, one could simply treat multiple occurrences of
+    a term in the query as different terms.
+  quote_context: Section 3.5.1, Some Variations on BM25, page 361
+  accessed: 2026-09-23
+- id: bm25-removing-the-zeros
+  claim: 'BM25''s derivation rewrites the score so that only query terms present in a document contribute,
+    a step the survey says is sometimes referred to as "removing the zeros" and calls crucial for efficient
+    implementation with inverted indices: a document that contains no query term never needs scoring at
+    all. This lesson''s bm25_rank reproduces that by removing documents that score exactly zero, rather
+    than ranking the whole corpus.'
+  where: lesson.py section 4 and exercise 3 (bm25_rank), and the common-mistakes entry on scoring a document
+    that shares nothing with the query
+  source_url: https://www.staff.city.ac.uk/~sbrp622/papers/foundations_bm25_review.pdf
+  source_title: 'Robertson, S. & Zaragoza, H. (2009). The Probabilistic Relevance Framework: BM25 and
+    Beyond. Foundations and Trends in Information Retrieval, 3(4), 333-389.'
+  quote: This fits very well with the sparseness of the document-term matrix — we have no need to calculate
+    scores of any document that contains no query terms. Indeed, this is a highly desirable property for
+    a scoring function to be used in an inverted-file-based document retrieval system, since it means
+    that we can easily calculate the score of all documents with non-zero scores by merging the inverted
+    lists of the query terms.
+  quote_context: Section 2.4.2, page 345; the name 'removing the zeros' is introduced on page 344 ('an
+    arithmetic trick (sometimes referred to as removing the zeros)')
+  accessed: 2026-09-23
+- id: reciprocal-rank-fusion-formula-and-k
+  claim: Reciprocal rank fusion scores each document d by the sum, over the input rankings r, of 1 / (k
+    + r(d)), where r(d) is d's rank in that ranking; the authors fixed k = 60 during a pilot investigation
+    and did not alter it during subsequent validation, and report that RRF consistently equalled or bettered
+    the other methods they tried. This lesson's reciprocal_rank_fusion implements that formula with k
+    = 60 as its default.
+  where: lesson.py section 8, exercise 7 (reciprocal_rank_fusion) and RRF_K
+  source_url: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+  source_title: Cormack, G.V., Clarke, C.L.A. & Buettcher, S. (2009). Reciprocal Rank Fusion outperforms
+    Condorcet and individual Rank Learning Methods. Proceedings of SIGIR '09.
+  quote: where k = 60 was fixed during a pilot investigation and not altered during subsequent validation.
+  quote_context: Section 1, page 1, the sentence completing the RRFscore formula
+  accessed: 2026-09-23
+- id: rrf-k-mitigates-outlier-rankings
+  claim: The authors describe RRF's constant k as mitigating the impact of high rankings by outlier systems
+    — the reason, in this lesson's common-mistakes section, that k is not a cosmetic scale factor once
+    two or more rankings are fused.
+  where: 'lesson.py section 12 (common mistakes: treating RRF''s k as a cosmetic scale) and its demo'
+  source_url: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+  source_title: Cormack, G.V., Clarke, C.L.A. & Buettcher, S. (2009). Reciprocal Rank Fusion outperforms
+    Condorcet and individual Rank Learning Methods. Proceedings of SIGIR '09.
+  quote: The constant k mitigates the impact of high rankings by outlier systems.
+  quote_context: Section 1, page 1, right-hand column
+  accessed: 2026-09-23
+- id: lsa-truncated-svd-technique
+  claim: 'Latent semantic analysis builds its retrieval space with singular-value decomposition: a large
+    term-by-document matrix is decomposed into a set of (in the original paper) around 100 orthogonal
+    factors from which the original matrix can be approximated by linear combination, and documents and
+    queries are compared inside that reduced space. This lesson''s truncated_svd and build_dense_index
+    implement the same construction (numpy''s SVD, truncated to a chosen rank k) as its dense retriever,
+    with no external model.'
+  where: lesson.py section 6, exercise 5 (truncated_svd) and exercise 6 (build_dense_index)
+  source_url: https://www.cs.jhu.edu/~jason/600.665/deerwester.pdf
+  source_title: Deerwester, S., Dumais, S.T., Furnas, G.W., Landauer, T.K. & Harshman, R. (1990). Indexing
+    by Latent Semantic Analysis. Journal of the American Society for Information Science, 41(6), 391-407.
+  quote: The particular technique used is singular-value decomposition, in which a large term by document
+    matrix is decomposed into a set of ca. 100 orthogonal factors from which the original matrix can be
+    approximated by linear combination.
+  quote_context: 'Abstract, page 391 (scanned PDF: ''or-thogonal'' is hyphenated across a line break in
+    the original)'
+  accessed: 2026-09-23
+- id: lsa-indirect-association-property
+  claim: 'Because latent semantic indexing arranges its space to reflect the major associative patterns
+    in the term-document data, a term that does not appear in a document can still end up close to it
+    — so retrieval can succeed on a query that shares no literal term with the document it finds. This
+    lesson''s corpus is built to show exactly that: each paraphrase query shares no token with its target,
+    and only the subject''s bridge documents, which use both vocabularies, link the two.'
+  where: lesson.py section 1 (the bridge documents) and section 7's exact-vs-paraphrase demo
+  source_url: https://www.cs.jhu.edu/~jason/600.665/deerwester.pdf
+  source_title: Deerwester, S., Dumais, S.T., Furnas, G.W., Landauer, T.K. & Harshman, R. (1990). Indexing
+    by Latent Semantic Analysis. Journal of the American Society for Information Science, 41(6), 391-407.
+  quote: Singular-value decomposition allows the arrangement of the space to reflect the major associative
+    patterns in the data, and ignore the smaller, less important influences. As a result, terms that did
+    not actually appear in a document may still end up close to the document, if that is consistent with
+    the major patterns of association in the data.
+  quote_context: Introduction, page 391, right-hand column
+  accessed: 2026-09-23

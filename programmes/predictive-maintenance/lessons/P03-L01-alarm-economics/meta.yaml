@@ -1,135 +1,35 @@
 id: P03-L01-alarm-economics
-title: Set an alarm threshold from what failures and false alarms cost, and measure how far that is from the accuracy-optimal one
+title: Set an alarm threshold from what failures and false alarms cost, and measure how far that is from
+  the accuracy-optimal one
 track: P03
 programme: predictive-maintenance
-flagship:               # none: this lesson opens a programme, not a flagship
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: null
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
+- T00-L01-the-8gb-track
 objectives:
-  - "Implement a causal degradation feature (burst RMS, causal rolling median, per-machine baseline) that never reads a sample from the future"
-  - "Implement classify_outcomes so a failing machine counts as caught only when the alarm leaves at least LEAD_HOURS to act"
-  - "Sweep thresholds to produce ROC and precision/recall curves from one set of counts, and measure the area under the ROC curve"
-  - "Implement expected_cost over planned interventions, missed failures and false alarms, and locate the cost-optimal threshold"
-  - "Explain, from the measured gap between the cost-optimal and accuracy-optimal thresholds, why a threshold cannot be inherited from a model, a vendor default or another plant"
+- Implement a causal degradation feature (burst RMS, causal rolling median, per-machine baseline) that
+  never reads a sample from the future
+- Implement classify_outcomes so a failing machine counts as caught only when the alarm leaves at least
+  LEAD_HOURS to act
+- Sweep thresholds to produce ROC and precision/recall curves from one set of counts, and measure the
+  area under the ROC curve
+- Implement expected_cost over planned interventions, missed failures and false alarms, and locate the
+  cost-optimal threshold
+- Explain, from the measured gap between the cost-optimal and accuracy-optimal thresholds, why a threshold
+  cannot be inherited from a model, a vendor default or another plant
 datasets:
-  - name: synthetic-fleet-run-to-failure
-    kind: synthetic
-    description: "300 machines x 360 hourly vibration bursts of 64 samples, 18 run-to-failure, generated in lesson.py by generate_fleet(seed=20260916)"
-    generator: "lesson.py :: generate_fleet"
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    downloads: false
-points: 79         # = sum of RUBRIC points in tests/test_lesson.py
-# Why the data is synthetic, recorded here because gate 11 is about honesty rather than about
-# having a URL: this lesson grades threshold logic against ground truth, which needs known
-# failure hours, known defect onsets and a controlled base rate. Every public run-to-failure
-# corpus the author could verify (NASA's C-MAPSS turbofan sets, for instance) supplies labels
-# but not the reason a given unit was labelled, so a student could not tell a bug in their own
-# lead-time accounting from a quirk of the data. The generator is in the notebook, is seeded,
-# and is read by the student before it is used. MODULES.md names the real datasets the later
-# modules move onto.
-#
-# Design notes for a reviewer:
-#
-# * The result the lesson is built around is a measured one, not an assertion: on this fleet
-#   the cost-optimal threshold is 1.50 and the accuracy-optimal one 2.80, costing 2.71x as
-#   much while scoring 4.3 accuracy points higher and accepting 7 more unplanned failures.
-#   Section 9 re-runs the same counts under three cost models and the threshold moves to
-#   1.15, 1.50 and 2.80. Nothing in the prose quotes a figure the notebook does not print.
-# * The cost-optimal point deliberately still misses two failures. That is the second half of
-#   the lesson: "catch everything" is not the objective either, and the notebook says which
-#   failures are given up and why.
-# * A detector this simple (one threshold on one scalar) is the point. Nothing about a model
-#   can be blamed for the gap, and the ROC AUC the student computes (0.947) is printed so the
-#   claim "the detector is good" is a measurement.
-# * The lesson's own null detector is printed rather than argued: a detector that never
-#   alarms scores 0.9400 against the cost-optimal threshold's 0.9233 — it BEATS the useful
-#   one on accuracy while costing 5.1x as much — and the verdict sentence is computed from
-#   those two numbers, so it cannot go stale if the fleet is ever retuned.
-#
-# Mutation testing of the rubric, 2026-09-16. Fourteen plausible wrong implementations were
-# built from the reference solution, one break each, and graded; all fourteen were caught, and
-# every one kept partial credit rather than collapsing to zero (scores 82%-97%):
-#
-#   rms via np.std 85% · centred smoothing window 89% · rolling mean instead of median 94% ·
-#   window not validated 97% · baseline taken from the smoothed series 96% · alarm on > rather
-#   than >= 94% · argmax without the any() guard 82% · lead time ignored entirely 89% · lead
-#   time compared with > 89% · roc_points returning (tpr, fpr) 86% · precision 0.0 when
-#   nothing is flagged 96% · cost charging the true negatives 82% · cost maximised instead of
-#   minimised 87% · OperatingPoint.counts left as the whole sweep 87%.
-#
-# A fifteenth run was a deliberate CONTROL: causal_rolling_median rewritten with
-# numpy.lib.stride_tricks.sliding_window_view plus an explicit growing-window head — a
-# correct answer of a completely different shape. It still scores 100%, so the rubric grades
-# the behaviour the docstrings ask for and not one particular way of writing it.
-#
-# Two of the fourteen were caught only because a case exists for them and for nothing else:
-# `test_causal_median_is_causal` (which changes the tail of the input and re-reads the head)
-# is the only case that a centred window fails on values a growing window happens to match,
-# and `test_health_index_baseline` (named `..._baseline_is_raw` until the independent review
-# below) is the only case where a smoothed baseline and a raw one differ. Both are documented
-# as deliberate in the rubric's module docstring.
-#
-# Gate 3 measured, not assumed: the longest run of consecutive prose before the next runnable
-# cell is 32 non-blank lines (the self-check quiz plus the handover preamble), inside the ~40
-# the gate allows. Every demonstration that depends on student code is wrapped in _try, so a
-# notebook full of unfilled stubs still imports, still grades, and still prints a hint per
-# exercise — tools/grade.py scores the student file at 0/79 with a TODO row for every one of
-# the 22 rubric entries rather than crashing at import.
-#
-# Open for the owner: programmes/ held no programme before this one, so there is no house
-# precedent for a programme-level claims.yaml. One is written at the programme root and the
-# README cites it by relative path; if a different convention lands later, that file moves
-# without touching the lesson.
-#
-# Independent review, 2026-09-23. All six gate commands re-run before and after: reference
-# 79/79, stub 0/79 with every row TODO, py311 + py312 notebook runs green, completed output
-# identical across both, notebook in sync, 0.6 s. Rubric mutation-tested with 91 plausible
-# wrong implementations built outside the lesson tree from the reference, including a sweep
-# that moved every validation guard and boundary comparison one step each way. As shipped,
-# 14 scored 79/79. Nine of them exposed eight rubric holes, now closed; each of the nine now
-# loses only its own row (75-77 of 79):
-#   * health_index baseline taken as a MEAN (moved the counts at 32 of 61 thresholds on the
-#     lesson's own fleet) and over hours [0, baseline_hours] inclusive (6 of 61) — new cases
-#     in test_health_index_baseline (a shock inside the window; a level change one hour after);
-#   * health_index rejecting baseline_hours=1, the smallest valid value;
-#   * causal_rolling_median accepting window=2.5 silently, which the docstring forbids;
-#   * classify_outcomes treating a failure at hour 0 as a survivor (fail_hour > 0, and the
-#     same bug written fail_hour >= 1);
-#   * pr_points reporting recall 1.0 for a fleet with no failures, against its docstring;
-#   * sweep_thresholds returning float64 counts (np.zeros pre-allocation) or plain lists,
-#     against "integer arrays" and its own docstring example's .tolist().
-#   A ninth was the other way round: a CORRECT solution whose SCENARIO had been edited, as
-#   section 7 invites ("here to be edited"), lost the 5 points of test_the_gap_is_real with a
-#   hint about a bug it did not have. The integration test now pins the fleet, feature
-#   settings, grid and prices from the rubric's own constants.
-#   Five survivors are equivalent over the lesson's input domain, each proved by measurement:
-#   the health_index guard without its int() clause (identical for every baseline_hours 1..360;
-#   the docstring promises ValueError only for "not positive"); sweep_thresholds sorting its
-#   grid (every grid the lesson, its checks and the rubric pass is strictly ascending); ties
-#   broken by lowest threshold VALUE rather than index (the docstring equates the two on an
-#   ascending grid; identical on 3 scenarios x 2 objectives); the length check applied to tp
-#   alone (every Counts that reaches best_operating_point has four equal-length fields); and
-#   OperatingPoint.index as np.int64 (compares, indexes and formats identically).
-#   Three right answers of different shapes (vectorised with sliding_window_view and a
-#   normalise-then-smooth health index; plain Python loops throughout; masked-min and lexsort
-#   idioms) score 79/79 before and after, and print output identical to the reference.
-# Also fixed: "section 6 puts a price on it" (pricing is section 7) and "section 7 is about
-# why" (sections 8 and 10); the claim that the four prices are "not within an order of
-# magnitude of each other" (planned 9,000 and false alarm 6,000 are); "twenty planned
-# interventions", a ratio of the prices the student is told to edit, now printed by the gap
-# cell; the typed 94% / 96% / 6% in section 10 and self-check 2 (the accuracy-optimal point
-# measures 96.7%, not 96%); self-check answer 5 claimed section 9 runs "exactly" a ten-fold
-# rise (it runs 6.7x); the closing paragraph gave module 6's lesson to module 5; one pseudo-
-# quotation in claims.yaml made verbatim. Both HSE CHIS6 quotes re-fetched and confirmed
-# verbatim. Rubric and check messages that stated only expected-vs-got now name the likely
-# mistake; the burst_rms and pr_points rubric hints no longer contain the solving code.
-# Owner: points and case count are unchanged (79 / 22), so MODULES.md stays accurate.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review 2026-09-23: 91 rubric mutants graded (incl. a one-step sweep of every guard and boundary); 14 scored 100% as shipped, 9 of them exposing 8 rubric holes now closed, 5 proved equivalent by measurement; a correct solution that edited SCENARIO as invited lost 5 pts, fixed by pinning the integration test; 3 differently-shaped right answers 79/79 before and after; 2 HSE quotes re-fetched verbatim; 3 wrong cross-references and 5 typed or wrong numbers in prose fixed; all six gate commands green, 79/79 and 0/79"
-
-measured_seconds: 0.6
-measured_peak_mib: 190
+- name: synthetic-fleet-run-to-failure
+  kind: synthetic
+  description: 300 machines x 360 hourly vibration bursts of 64 samples, 18 run-to-failure, generated
+    in lesson.py by generate_fleet(seed=20260916)
+  generator: 'lesson.py :: generate_fleet'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 79
+status: reviewed
+measured_seconds: 0.8
+measured_peak_mib: 192

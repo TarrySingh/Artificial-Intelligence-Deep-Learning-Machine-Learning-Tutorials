@@ -1,150 +1,23 @@
 id: P02-L02-layout-reading-order
 title: Reconstruct reading order from token geometry, and price what getting it wrong costs downstream
 track: P02
-flagship: ""            # this programme's capstone is specified in MODULES.md, not yet built
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: ''
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T00-L01-the-8gb-track
-  - P02-L01-extraction-evaluation
+- T00-L01-the-8gb-track
+- P02-L01-extraction-evaluation
 objectives:
-  - "Implement find_gaps and xy_cut so a page of token boxes becomes blocks in reading order"
-  - "Implement order_within_block so a block of boxes becomes a token sequence, lines first"
-  - "Implement detect_header_footer so running page furniture never reaches the extractor"
-  - "Measure a reading order two ways — Kendall's tau over tokens and boundary F1 over blocks — and produce a setting where the two disagree"
-  - "Measure, with the P02-L01 scorer, how much field F1 a wrong reading order costs against a gold-order ceiling"
-datasets: []            # none: the corpus is laid out deterministically inside the lesson, and
-                        # every number a student sees is computed by code they run
-points: 94              # = sum of RUBRIC points in tests/test_lesson.py
-# Authored 2026-09-16 as module 2 of the document-intelligence programme. All four gates run
-# from the repo root on the venv interpreter; the measured figures at the foot of this file
-# were written back by tools/execute.py and never typed.
-#
-# LESSON ID. MODULES.md specifies module 2 in full — "Ingestion and layout without a PDF
-# library", the XY-cut / reading-order / header-footer lab, scored with Kendall's tau and a
-# block-level boundary F1, ending on how much field-extraction F1 moves when reading order is
-# wrong — but assigns it no lesson id (its status table carries "—" for modules 2 to 11). The
-# directory therefore follows the house form set by module 1, `P02-L0n-<slug>`, which is also
-# the form the programme README uses when it says a reader will not find `lessons/P02-L02-*`.
-#
-# WHY THE CORPUS IS SYNTHETIC. There is no PDF library and no OCR engine in this environment,
-# so there is nothing to lay out FROM. build_corpus() places token boxes directly, from a
-# fixed seed: 48 documents, 59 pages, 2017 boxes, three layout families (single column, two
-# column, and a page carrying a table), a running header and a boilerplate footer on every
-# page. Every student sees the same geometry and therefore the same numbers.
-#
-# THE ONE DESIGN DECISION WORTH ARGUING WITH. The prose column gap is 50 points and the table
-# column gap is 20, so a single min_gap threshold has to serve both. That is what makes the
-# sweep in section 8 a real measurement rather than a demonstration: the correct window is
-# (20, 38] and the notebook finds it by measuring, not by being told. Those two widths are
-# properties of this corpus and the lesson says so; nothing here claims they are typical.
-#
-# WHAT THE SWEEP ACTUALLY SHOWS (measured, reference implementation):
-#   min_gap   blocks/page   tau     boundary F1   downstream macro F1
-#        8         13.20    1.000         0.277                 1.000
-#       14          8.90    0.929         0.277                 0.946
-#       18          3.08    0.929         0.813                 0.946
-#       24          2.42    1.000         1.000                 1.000
-#       30          2.42    1.000         1.000                 1.000
-#       36          2.42    1.000         1.000                 1.000
-#       44          1.39    1.000         0.390                 1.000
-#       60          1.00    0.901         0.000                 0.745
-# Three scores, three different answers about which setting is best, and only boundary F1 has
-# a single one. That disagreement is the lesson, and test_kendall_tau_and_boundary_f1_disagree
-# grades it. Downstream: gold order 1.000, XY-cut at the default gap 1.000, naive raster order
-# 0.745, gold order with the page furniture left in 0.929.
-#
-# MUTATION TESTING. 14 plausible-wrong variants of the reference solution were built in a
-# scratch directory outside the lesson and graded, plus 4 controls. These are MEASURED scores,
-# not predicted ones. Each mutant loses the points for the behaviour it breaks and keeps the
-# rest, so partial credit survives every one of them:
-#    1. find_gaps comparing with the previous box, not a running max   -> 85/94
-#    2. find_gaps requiring a gap STRICTLY wider than min_gap          -> 90/94
-#    3. xy_cut trying the vertical cut before the horizontal one       -> 89/94
-#    4. xy_cut emitting each band as a block instead of recursing      -> 81/94
-#    5. xy_cut off by one at a band boundary (c < low, not c <= low)   -> 64/94
-#    6. order_within_block comparing with the previous box in the line -> 90/94
-#    7. order_within_block doing no line grouping at all               -> 90/94
-#    8. detect_header_footer keying on raw text (no digit mask)        -> 85/94
-#    9. detect_header_footer dropping the row from the key             -> 90/94
-#   10. detect_header_footer ignoring the band entirely                -> 81/94
-#   11. kendall_tau dividing by n rather than by the pair count        -> 89/94
-#   12. boundary_f1 assuming both partitions are contiguous in `order` -> 90/94
-#   13. boundary_f1 swapping precision and recall                      -> 85/94
-#   14. boundary_f1 returning zeros when neither side has a boundary   -> 90/94
-# Mutants 1, 4, 5, 8, 10 and 13 lose more than their own case is worth, because the three
-# corpus-level cases at the foot of the rubric run the whole pipeline and notice. That is the
-# bug's real blast radius, not a grading accident. Mutant 5 is the instructive one: an off-by-
-# one at the band boundary sends every box into the band before the cut, the region never
-# shrinks, and xy_cut recurses until Python stops it — seven cases go to ERROR and the student
-# still keeps 64 of 94 marks and seven hints, which is what partial credit is for.
-#
-# One mutant I expected to catch turned out to be EQUIVALENT rather than wrong, and was
-# reclassified as a control after checking the argument: assigning a box to a band by its centre
-# instead of its low edge cannot differ, because a gap is empty by construction and no box can
-# straddle one. Writing that down was worth more than a rubric case that pretended otherwise.
-#
-# Four variants are deliberate CONTROLS — differently shaped and equally correct:
-# order_within_block rewritten as an index walk rather than an append loop; kendall_tau
-# vectorised with numpy instead of a double loop; xy_cut assigning bands by centre; find_gaps
-# with an explicit two-key sort. All four score 94/94, so the rubric rejects wrong answers
-# without rejecting right ones it did not expect.
-#
-# ---------------------------------------------------------------------------------------
-# INDEPENDENT REVIEW, 2026-09-16. All four gates re-run from the repo root on the venv
-# interpreter: execute PASS (0.2 s against a 90 s budget; peak RSS is the written-back
-# measured_peak_mib at the foot of this file, and it jitters by a MiB between runs), grade
-# --solution 94/94, grade (student stubs) 0/94, jupytext converts. Prerequisites resolve
-# (lessons/T00-L01-the-8gb-track, programmes/document-intelligence/lessons/
-# P02-L01-extraction-evaluation). The section 8 sweep printed by the reference matches the
-# table above row for row, and the corpus figures (48 / 59 / 2017) match the prose.
-#
-# MUTATION TEST. 21 further variants, written independently of the author's 14 and graded in
-# a scratch directory outside the lesson. 20 were caught; the single 100% survivor is proved
-# equivalent below. Points were NOT added to the rubric — the fixes are extra hidden cases
-# inside existing entries, so the total is still 94 and partial credit still ranges 52-91.
-# Five of the survivors were genuine rubric DEFECTS and are now caught:
-#   * order_within_block using `< LINE_TOL` where the docstring says a new line starts only
-#     MORE than LINE_TOL away. The gap case tests exactly-min_gap; this one did not test
-#     exactly-LINE_TOL.            94/94 -> 90/94
-#   * detect_header_footer using `> need` where the rule is AT LEAST the page fraction. On 5
-#     pages need is exactly 3.0, so a header on 3 of 5 separates the two.  94/94 -> 90/94
-#   * boundary_f1 scoring min(len(pred), len(gold)) instead of the intersection — it counts
-#     boundaries and never asks whether any is in the right PLACE. On pred [[1,2],[3,4]] vs
-#     gold [[1],[2,3],[4]] the reference returns (0,0,0) and this returns (1.0, 0.5, 0.667).
-#                                  94/94 -> 90/94
-#   * kendall_tau validating with len() and set() only. The rubric case labelled "a repeated
-#     id" was [1,1] vs [1,2], which the SET check already rejects, so the duplicate rule was
-#     never exercised; [1,1,2] vs [1,2,2] is the case that needed writing.  94/94 -> 91/94
-#   * order_within_block sorting each line by x alone. Python's sort is stable and the boxes
-#     were pre-sorted by (centre y, x, tid), so the rubric's tie case (identical y) passed
-#     with no tie-break at all; two boxes at one x with centres 2 points apart is the case
-#     that distinguishes them.     94/94 -> 90/94
-# A sixth survivor flipped the header band to `y <= top or y >= bottom`. The docstring said
-# only "lies in the top HF_BAND", which does not settle a centre sitting exactly on the edge,
-# so this was a prose defect rather than a rubric one: the docstring now states the test
-# ("a centre exactly on a band edge is body") and a case holds it.        94/94 -> 90/94
-#
-# ONE SURVIVOR IS EQUIVALENT, not a hole. xy_cut taking its cut points at each gap's LOW edge
-# instead of its high edge still scores 94/94, and it cannot differ: a box before the gap has
-# its low edge strictly below the gap's low edge whenever the box has positive extent along
-# the cut axis, and every token box here does (w = 7 per character, h = 10). Measured rather
-# than argued: identical blocks on all 472 (page, min_gap) pairs of the corpus sweep and on
-# 20,000 random positive-extent box sets. It diverges only on a zero-width box sitting exactly
-# on a gap edge, which this corpus cannot produce, so no rubric case was invented for it.
-#
-# TWO OTHER FIXES the gates could not see. A bare `assert boundary_f1(...) == (1.0, 1.0, 1.0)`
-# in the notebook's own check would have told a student "assertion failed" and nothing else;
-# it now names the mistake, and the check gained the misaligned-boundary case as well.
-# claims.yaml: all four sources fetched and the quotes confirmed verbatim; the Kendall's tau
-# line is section 5.2 of the v3 HTML, not 4.2 as recorded, and that is corrected in place.
-#
-# NOT FIXED, for the owner: MODULES.md still says module 2 is "specified", with no directory,
-# and tells a reader they will not find `lessons/P02-L02-*`. That is now false. Per the brief
-# the status table is the owner's to update centrally, so this review did not touch it.
-# ---------------------------------------------------------------------------------------
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "Independent review 2026-09-16 — four gates re-run (execute PASS 0.2 s, solution 94/94, stubs 0/94, jupytext OK); 21 mutants graded, 20 caught, 1 proved equivalent by measurement; 5 rubric defects and 1 prose defect fixed without changing the 94-point total; all four claims re-fetched and verified verbatim."
+- Implement find_gaps and xy_cut so a page of token boxes becomes blocks in reading order
+- Implement order_within_block so a block of boxes becomes a token sequence, lines first
+- Implement detect_header_footer so running page furniture never reaches the extractor
+- Measure a reading order two ways — Kendall's tau over tokens and boundary F1 over blocks — and produce
+  a setting where the two disagree
+- Measure, with the P02-L01 scorer, how much field F1 a wrong reading order costs against a gold-order
+  ceiling
+datasets: []
+points: 94
+status: reviewed
 measured_seconds: 0.2
 measured_peak_mib: 31

@@ -1,108 +1,80 @@
-# Every factual claim this lesson makes about the world, with a primary source and the date
-# the source was read. Numbers a student sees in output are computed by the code they run and
-# are therefore not claims; they do not appear here.
-#
-# This lesson is about measurement, so the standard it holds itself to is the one it teaches:
-# where documentation and the machine disagree (see ru-maxrss-unit-macos below), the notebook
-# calibrates against a known allocation rather than repeating either.
 claims:
-  - id: tracemalloc-traces-python-allocations
-    claim: >-
-      The tracemalloc module traces memory blocks allocated by Python. It therefore reports
-      only on allocations that pass through Python's own allocators, which is why the memory
-      this lesson maps with mmap is invisible to it while the operating system still charges
-      the process for every resident page.
-    where: "lesson.py section 1 (two honest tools that disagree) and self-check question 2"
-    source_url: https://docs.python.org/3/library/tracemalloc.html
-    source_title: "Python documentation — tracemalloc: Trace memory allocations"
-    quote: "The tracemalloc module is a debug tool to trace memory blocks allocated by Python."
-    accessed: 2026-09-16
-
-  - id: tracemalloc-peak-and-reset
-    claim: >-
-      tracemalloc.get_traced_memory() returns the current size and the peak size of traced
-      memory blocks as a tuple (current, peak), and tracemalloc.reset_peak(), added in Python
-      3.9, sets the recorded peak back to the current size. While tracing is running the peak
-      is cumulative, so without a reset a later small call inherits an earlier large one's
-      figure. What the rubric grades is that behaviour rather than the particular call: an
-      implementation that stops tracing after each call begins the next one from zero and is
-      equally correct. Verified on 2026-09-16 on the lesson's own interpreter — start() while
-      already tracing leaves the recorded peak untouched; stop() then start() clears it.
-    where: "lesson.py section 2 (exercise 1 requirements, _check_measure small-allocation case); tests/test_lesson.py::test_measure_peak_resets_between_calls"
-    source_url: https://docs.python.org/3/library/tracemalloc.html
-    source_title: "Python documentation — tracemalloc: Trace memory allocations"
-    quote: >-
-      Get the current size and peak size of memory blocks traced by the tracemalloc module as
-      a tuple: (current: int, peak: int).
-    accessed: 2026-09-16
-
-  - id: perf-counter-is-monotonic
-    claim: >-
-      time.perf_counter() is a clock with the highest available resolution for measuring a
-      short duration and includes time elapsed during sleep; on CPython it uses the same clock
-      as time.monotonic() and cannot go backwards. This is why it, and not the wall clock, is
-      what measure() is required to use. The lesson does not ask a student to take this on
-      trust: the setup cell prints time.get_clock_info("perf_counter").monotonic on the
-      machine the notebook is running on.
-    where: "lesson.py setup cell (clock print), section 2 (traps), section 7 (common mistakes)"
-    source_url: https://docs.python.org/3/library/time.html
-    source_title: "Python documentation — time: Time access and conversions"
-    quote: >-
-      On CPython, use the same clock as time.monotonic() and is a monotonic clock, i.e. a clock
-      that cannot go backwards.
-    quote_context: "CPython implementation detail, under time.perf_counter()"
-    accessed: 2026-09-16
-
-  - id: time-time-can-go-backwards
-    claim: >-
-      time.time() returns the time as a number of seconds since the epoch and normally returns
-      non-decreasing values, but it can return a lower value than a previous call if the system
-      clock has been set back between the two calls. A duration computed from it can therefore
-      come out negative, which is the trap exercise 1 is graded against and the first entry in
-      the lesson's common-mistakes list.
-    where: "lesson.py setup cell (clock print), section 7 (common mistakes); tests/test_lesson.py::test_measure_uses_a_monotonic_clock"
-    source_url: https://docs.python.org/3/library/time.html
-    source_title: "Python documentation — time: Time access and conversions"
-    quote: >-
-      While this function normally returns non-decreasing values, it can return a lower value
-      than a previous call if the system clock has been set back between the two calls.
-    quote_context: "under time.time()"
-    accessed: 2026-09-16
-
-  - id: ru-maxrss-unit-linux
-    claim: >-
-      The Linux getrusage(2) manual page documents ru_maxrss as the maximum resident set size
-      used, expressed in kibibytes. This is the divisor the lesson uses on non-Darwin
-      platforms.
-    where: "lesson.py setup cell (RU_MAXRSS_DIVISOR)"
-    source_url: https://man7.org/linux/man-pages/man2/getrusage.2.html
-    source_title: "getrusage(2) — Linux manual page"
-    quote: "This is the maximum resident set size used (in KiB)."
-    accessed: 2026-09-16
-
-  - id: ru-maxrss-unit-macos
-    claim: >-
-      The macOS and FreeBSD getrusage(2) manual pages both document ru_maxrss as the maximum
-      resident set size utilized, expressed in kilobytes. The lesson records what the manual
-      pages say and does not assert what any kernel actually returns: the notebook calibrates
-      the divisor against an allocation of known size on the machine it is running on, and
-      prints a verdict that depends on the measured error rather than a fixed sentence. That
-      calibration is the only statement about this a student is asked to accept.
-    where: "lesson.py setup cell comment and section 1 (conditional calibration verdict)"
-    source_url: https://man.freebsd.org/cgi/man.cgi?query=getrusage&sektion=2
-    source_title: "getrusage(2) — FreeBSD manual page (also carried by macOS)"
-    quote: "the maximum resident set size utilized (in kilobytes)."
-    accessed: 2026-09-16
-
-  - id: numpy-allocations-are-traced
-    claim: >-
-      NumPy's data allocation routines carry Python tracemalloc tracking hooks and NumPy
-      places its CPU memory allocations into the np.lib.tracemalloc_domain domain. A numpy
-      array's buffer is therefore visible to tracemalloc, so "it is a C library, so
-      tracemalloc cannot see it" is not a sound rule — the lesson's blind spot is demonstrated
-      with mmap, which genuinely bypasses Python's allocators, rather than with numpy.
-    where: "the worked solution's self-check answer 2"
-    source_url: https://numpy.org/doc/stable/reference/c-api/data_memory.html
-    source_title: "NumPy C-API — Memory management in NumPy"
-    quote: "NumPy places its CPU memory allocations into the np.lib.tracemalloc_domain domain."
-    accessed: 2026-09-16
+- id: tracemalloc-traces-python-allocations
+  claim: The tracemalloc module traces memory blocks allocated by Python. It therefore reports only on
+    allocations that pass through Python's own allocators, which is why the memory this lesson maps with
+    mmap is invisible to it while the operating system still charges the process for every resident page.
+  where: lesson.py section 1 (two honest tools that disagree) and self-check question 2
+  source_url: https://docs.python.org/3/library/tracemalloc.html
+  source_title: 'Python documentation — tracemalloc: Trace memory allocations'
+  quote: The tracemalloc module is a debug tool to trace memory blocks allocated by Python.
+  accessed: 2026-09-16
+- id: tracemalloc-peak-and-reset
+  claim: 'tracemalloc.get_traced_memory() returns the current size and the peak size of traced memory
+    blocks as a tuple (current, peak), and tracemalloc.reset_peak(), added in Python 3.9, sets the recorded
+    peak back to the current size. While tracing is running the peak is cumulative, so without a reset
+    a later small call inherits an earlier large one''s figure. What the rubric grades is that behaviour
+    rather than the particular call: an implementation that stops tracing after each call begins the next
+    one from zero and is equally correct. Verified on 2026-09-16 on the lesson''s own interpreter — start()
+    while already tracing leaves the recorded peak untouched; stop() then start() clears it.'
+  where: lesson.py section 2 (exercise 1 requirements, _check_measure small-allocation case); tests/test_lesson.py::test_measure_peak_resets_between_calls
+  source_url: https://docs.python.org/3/library/tracemalloc.html
+  source_title: 'Python documentation — tracemalloc: Trace memory allocations'
+  quote: 'Get the current size and peak size of memory blocks traced by the tracemalloc module as a tuple:
+    (current: int, peak: int).'
+  accessed: 2026-09-16
+- id: perf-counter-is-monotonic
+  claim: 'time.perf_counter() is a clock with the highest available resolution for measuring a short duration
+    and includes time elapsed during sleep; on CPython it uses the same clock as time.monotonic() and
+    cannot go backwards. This is why it, and not the wall clock, is what measure() is required to use.
+    The lesson does not ask a student to take this on trust: the setup cell prints time.get_clock_info("perf_counter").monotonic
+    on the machine the notebook is running on.'
+  where: lesson.py setup cell (clock print), section 2 (traps), section 7 (common mistakes)
+  source_url: https://docs.python.org/3/library/time.html
+  source_title: 'Python documentation — time: Time access and conversions'
+  quote: On CPython, use the same clock as time.monotonic() and is a monotonic clock, i.e. a clock that
+    cannot go backwards.
+  quote_context: CPython implementation detail, under time.perf_counter()
+  accessed: 2026-09-16
+- id: time-time-can-go-backwards
+  claim: time.time() returns the time as a number of seconds since the epoch and normally returns non-decreasing
+    values, but it can return a lower value than a previous call if the system clock has been set back
+    between the two calls. A duration computed from it can therefore come out negative, which is the trap
+    exercise 1 is graded against and the first entry in the lesson's common-mistakes list.
+  where: lesson.py setup cell (clock print), section 7 (common mistakes); tests/test_lesson.py::test_measure_uses_a_monotonic_clock
+  source_url: https://docs.python.org/3/library/time.html
+  source_title: 'Python documentation — time: Time access and conversions'
+  quote: While this function normally returns non-decreasing values, it can return a lower value than
+    a previous call if the system clock has been set back between the two calls.
+  quote_context: under time.time()
+  accessed: 2026-09-16
+- id: ru-maxrss-unit-linux
+  claim: The Linux getrusage(2) manual page documents ru_maxrss as the maximum resident set size used,
+    expressed in kibibytes. This is the divisor the lesson uses on non-Darwin platforms.
+  where: lesson.py setup cell (RU_MAXRSS_DIVISOR)
+  source_url: https://man7.org/linux/man-pages/man2/getrusage.2.html
+  source_title: getrusage(2) — Linux manual page
+  quote: This is the maximum resident set size used (in KiB).
+  accessed: 2026-09-16
+- id: ru-maxrss-unit-macos
+  claim: 'The macOS and FreeBSD getrusage(2) manual pages both document ru_maxrss as the maximum resident
+    set size utilized, expressed in kilobytes. The lesson records what the manual pages say and does not
+    assert what any kernel actually returns: the notebook calibrates the divisor against an allocation
+    of known size on the machine it is running on, and prints a verdict that depends on the measured error
+    rather than a fixed sentence. That calibration is the only statement about this a student is asked
+    to accept.'
+  where: lesson.py setup cell comment and section 1 (conditional calibration verdict)
+  source_url: https://man.freebsd.org/cgi/man.cgi?query=getrusage&sektion=2
+  source_title: getrusage(2) — FreeBSD manual page (also carried by macOS)
+  quote: the maximum resident set size utilized (in kilobytes).
+  accessed: 2026-09-16
+- id: numpy-allocations-are-traced
+  claim: NumPy's data allocation routines carry Python tracemalloc tracking hooks and NumPy places its
+    CPU memory allocations into the np.lib.tracemalloc_domain domain. A numpy array's buffer is therefore
+    visible to tracemalloc, so "it is a C library, so tracemalloc cannot see it" is not a sound rule —
+    the lesson's blind spot is demonstrated with mmap, which genuinely bypasses Python's allocators, rather
+    than with numpy.
+  where: the worked solution's self-check answer 2
+  source_url: https://numpy.org/doc/stable/reference/c-api/data_memory.html
+  source_title: NumPy C-API — Memory management in NumPy
+  quote: NumPy places its CPU memory allocations into the np.lib.tracemalloc_domain domain.
+  accessed: 2026-09-16

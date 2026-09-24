@@ -1,299 +1,40 @@
 id: P03-L07-ot-network-deployment
-title: Deploy one inference path twice — in C inside a fixed arena and in numpy in float64 — measure what the register map costs that the arithmetic does not, and move a week of readings across an outage exactly once
+title: Deploy one inference path twice — in C inside a fixed arena and in numpy in float64 — measure what
+  the register map costs that the arithmetic does not, and move a week of readings across an outage exactly
+  once
 track: P03
 programme: predictive-maintenance
-flagship:               # none: this module feeds the programme's capstone, not a flagship
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: null
+tier: cpu8
 budget_seconds: 120
-language: c             # python | c | cpp
+language: c
 prerequisites:
-  - T00-L01-the-8gb-track      # declared budgets, stubs, public checks, the rubric shape
-  - P03-L01-alarm-economics    # the health index, the threshold and what an alarm costs
-  - P03-L06-thresholds-from-distributions   # the operating point this module has to deploy
+- T00-L01-the-8gb-track
+- P03-L01-alarm-economics
+- P03-L06-thresholds-from-distributions
 objectives:
-  - "Implement a fixed-arena allocator in C that aligns, refuses rather than overruns, and hands out nothing once start-up is over"
-  - "Implement a Modbus RTU frame decoder that rejects a damaged frame without half-filling the caller's struct"
-  - "Implement the health index twice — in Q16.16 integers in C and in float64 in numpy — and measure both the disagreement between them and how many alarm decisions change, and in which direction, because the threshold is not representable on the wire"
-  - "Implement a store-and-forward buffer that neither loses nor duplicates a reading across a link outage, and measure how many hours of plant it holds"
-  - "Explain, from a measured comparison, why a one-way data diode forces drift detection to be unsupervised, and implement the signal that survives it"
+- Implement a fixed-arena allocator in C that aligns, refuses rather than overruns, and hands out nothing
+  once start-up is over
+- Implement a Modbus RTU frame decoder that rejects a damaged frame without half-filling the caller's
+  struct
+- Implement the health index twice — in Q16.16 integers in C and in float64 in numpy — and measure both
+  the disagreement between them and how many alarm decisions change, and in which direction, because the
+  threshold is not representable on the wire
+- Implement a store-and-forward buffer that neither loses nor duplicates a reading across a link outage,
+  and measure how many hours of plant it holds
+- Explain, from a measured comparison, why a one-way data diode forces drift detection to be unsupervised,
+  and implement the signal that survives it
 datasets:
-  - name: synthetic-modbus-capture-and-outage-script
-    kind: synthetic
-    description: "13,440 Modbus RTU register-read frames (80 machines x 168 hourly polls x 32 registers, 927,360 bytes) with 14 frames deliberately corrupted, plus four scripted link scenarios, generated at run time in lesson.c by capture_build() and mirrored in numpy by build_capture(), both seeded 20260922"
-    generator: "lesson.c :: capture_build / lesson.py :: build_capture"
-    licence: "not applicable - generated at run time by the lesson itself"
-    url: ""
-    downloads: false
-points: 114        # = sum of RUBRIC points in tests/test_lesson.py
-# Build notes, 2026-09-22/23. All four gates were run from the repository root on the venv
-# interpreter; the measured figures at the foot were written back by tools/execute.py and
-# never typed.
-#
-# WHAT THE SPEC ASKED FOR. MODULES.md module 7 specifies: the inference path implemented
-# twice with the agreement between them measured, a fixed memory budget with no heap
-# allocation after start-up, a store-and-forward buffer that survives an outage without
-# losing or duplicating a reading, a quantified cost for a one-way data diode, a STORED
-# protocol trace rather than a socket, tier cpu8, C plus Python. All of it is here:
-#
-#   * TWO PATHS. q_health() in Q16.16 integers in lesson.c against float_health() in float64
-#     in numpy, over the same 13,426 readings, with the disagreement decomposed into an
-#     ARITHMETIC gap (truncation in the accumulator, the integer square root and the divide)
-#     and a WIRE gap (the Q8.8 register the value is published in). The lesson's own measured
-#     result is that the second is 250 times the first, which is the argument the module
-#     exists to make: the register map costs more than the arithmetic.
-#   * NO HEAP AFTER START-UP. gw_alloc() is a bump allocator over a 40,960-byte static arena;
-#     gw_freeze() closes the door and every later request returns NULL and is counted. The
-#     four exercise functions sit between `#define malloc gw_no_malloc_in_the_gateway` and
-#     its #undef, so a student who reaches for malloc gets a LINK error naming the reason.
-#     Start-up takes 38,080 of 40,960 bytes and the binary prints
-#     `alloc_after_freeze=0` on every scenario; the rubric asserts that it is 0 four times.
-#   * EXACTLY ONCE. sf_push refuses rather than overwriting, and a refused reading does not
-#     consume a sequence number, so the delivered sequence stays contiguous; sf_take is a
-#     PEEK, so a lost acknowledgement re-offers the batch; the historian's last_seq is what
-#     turns at-least-once delivery into exactly-once. Both failure modes are graded on their
-#     own rubric rows against a Python reference ring that replays the same link script.
-#   * THE DIODE. Section 11 prints one table: the same week, the same register, and the only
-#     thing that changes is whether anything is allowed back. 2,774 labels a week on a
-#     bidirectional link and 0 across the diode; the supervised signal is nan rather than
-#     small, and PSI on the published feature is identical in both rows.
-#   * A STORED TRACE. The capture is synthesised at start-up into a static buffer and
-#     replayed. No socket call appears anywhere in the lesson, and the buffer is deliberately
-#     OUTSIDE the arena, because it stands in for the wire: the gateway holds one frame.
-#
-# DELIBERATE DEPARTURES, all three recorded because a reader of MODULES.md will notice them:
-#
-#   1. PREREQUISITES, and a note for the owner about ORDERING. MODULES.md and the authoring
-#      brief both name module 6, P03-L06-thresholds-from-distributions, as this module's
-#      dependency. When this lesson was started there was no directory for it on disk, so the
-#      first draft declared only T00-L01 and P03-L01 and recorded module 6 as a forward
-#      reference, because QUALITY.md gate 2 requires prerequisite ids to resolve to lessons a
-#      student can actually do first. Module 6 appeared on disk, complete and with
-#      status: executed, while this lesson was being gated — it is being built in parallel —
-#      so it is now declared. VERIFIED at the time of writing: the directory exists, its
-#      meta.yaml carries id: P03-L06-thresholds-from-distributions, and it uses the same seed
-#      convention (20260922). NOT VERIFIED: nothing in this lesson has been run against
-#      module 6's code, and nothing in it depends on module 6 having been done — the coupling
-#      is one number and it is a stated scenario input here, exactly the way P03-L01's three
-#      prices are stated inputs there. OWNER ACTION: if module 6's id or directory name
-#      changes before it ships, this prerequisite line has to change with it.
-#      One vocabulary note, because the two modules are adjacent and could be read as
-#      disagreeing: module 6's deliverable is an intervention TIME against an RUL
-#      distribution, not a threshold on a health index. The number this module deploys is a
-#      health-index threshold of module 1's kind, and section 1's comment says so rather than
-#      crediting it to module 6.
-#   2. FIXED POINT RATHER THAN FLOAT32. The brief offered either. Q16.16 with an integer
-#      square root was chosen because it makes the disagreement EXPLAINABLE rather than
-#      merely present: every step truncates towards zero, so the deployed answer is provably
-#      never above the float64 one, and the lesson can grade that one-directional property
-#      (n_wire_only == 0 is a rubric-adjacent assertion in the notebook and a measured 0 in
-#      the output). A float32 path would have given a gap that wanders in both directions and
-#      a student could only have described it, not derived it.
-#   3. THE THRESHOLD IS WHERE THE DECISIONS CHANGE, NOT THE ARITHMETIC. The first design put
-#      the threshold at 1.50 and measured zero changed alarms — which turned out to be the
-#      most interesting result in the lesson and is now section 8's argument: 1.50 is exactly
-#      384/256, and quantisation cannot change a >= decision at a threshold that sits ON the
-#      quantisation grid. The shipped threshold, 1.4732, does not, and 165 readings change.
-#      Section 8 prints both facts and the fix (snap the threshold to the grid at
-#      commissioning and write down which way you rounded).
-#
-# DATA. Synthetic, generated at run time from seed 20260922 by the same integer arithmetic in
-# both languages, and declared above as kind: synthetic. Gate 11 is vacuous here: nothing is
-# downloaded and nothing is gated. The reason it is synthetic rather than a real capture is
-# the lesson's own thesis — to measure a disagreement between two implementations you must be
-# certain both were handed identical bytes, and a recorded pcap gives you no way to prove
-# that the numpy side reconstructed it correctly. The two sides are checked against each
-# other on every run, byte for byte on 64 frames and on two whole-capture checksums, and the
-# notebook does that BEFORE it compares anything else. A real trace would also have to carry
-# a licence and a provenance chain for plant data, which is not a thing this lesson could
-# ship offline.
-#
-# NUMBERS (gate 12). Nothing a student reads is typed. The arena high-water mark, the 38.4
-# hours of outage the buffer buys, both gaps and the 250x ratio between them, the two
-# neighbouring wire values either side of the threshold, the effective threshold and its
-# +0.228%, the 165 changed decisions and the 0 in the other direction, the seven machines
-# whose first alarm moved and by how many hours, every store-and-forward total in the
-# four-scenario table, the 2,774 labels and both population stability indices are all
-# printed by code the student runs. The rubric's expected values come from references
-# implemented in tests/test_lesson.py — an integer q_health in exact Python, a reference ring
-# replaying the same link script, a reference PSI and a reference float health — never from
-# the lesson's own helpers and never from a number in this file.
-#
-# THE MEASURED RESULT, on the shipped seed (reproduced here so a future editor can tell at a
-# glance whether a change moved it): 13,426 of 13,440 frames decode; the arithmetic gap peaks
-# at 1.559e-05 against one Q16.16 step of 1.526e-05, and the wire gap at 3.906e-03, which is
-# 250x larger; every deployed reading is at or below the float64 one; the threshold 1.4732
-# becomes 1.4765625 on the wire (+0.228%), 165 readings alarm in float64 and not on the wire
-# and 0 the other way, and 7 of the 40 machines that alarm at all have their first alarm
-# arrive 1 to 2 hours late. The 36-hour outage peaks at 2,957 records, 96.3% of the buffer,
-# and loses nothing; the 100-hour outage refuses 5,000 readings at the door and still
-# delivers the 8,426 it accepted exactly once each; four lost hours of acknowledgements
-# produce 256 duplicate offers, all rejected by the historian. PSI against a quiet window is
-# 0.005701 and against a 1% recalibration 0.165272, a factor of 29.
-#
-# BUILD FLAGS. -ffp-contract=off and -fno-fast-math are in CFLAGS with a comment saying why.
-# The gateway's own arithmetic is integer and cannot be affected, but the lesson's whole
-# output is a comparison against a float64 reference, and a compiler free to fuse or
-# reassociate would make that reference a moving target between machines. The Makefile probes
-# for -lm by linking a trivial program through mktemp rather than naming a platform.
-#
-# THE COMPILED-LESSON TRAP (QUALITY.md). Section 12 carries the make clean warning and
-# lesson.c repeats it in its own header. This binary links only the system maths library, so
-# no absolute virtualenv path is baked into it and the dyld half of the trap cannot bite; the
-# stale-timestamp half still can, because a binary that arrives with a copied directory is
-# newer than the .c beside it. The mutation harness hit exactly that on its first run and now
-# deletes both binaries before every build, which is the same thing tools/execute.py does.
-#
-# GATE 3, measured rather than estimated: 15 markdown cells and 30 cells in all, every
-# markdown cell followed immediately by something that runs, and the longest prose block is
-# 21 non-blank lines (the title cell) against a ~40-line ceiling.
-#
-# GATE 7. lesson.py and lesson.c are GENERATED from authoring/lesson.master.{py,c} by
-# authoring/generate.py, which also emits the two reference files, so the student file and
-# the reference cannot drift outside the nine exercise bodies. The generator refuses to write
-# if any student-facing line names a path the student does not receive, and refuses if the
-# self-check letters appear in the student file. Both checks pass; grep confirms zero
-# occurrences of either string in lesson.py. The self-check answers live behind salted
-# SHA-256 digests, so the marker still names the section that settles each wrong question
-# without publishing the four letters. authoring/ is not copied by
-# tools/build_student_bundle.py, which takes only a named list of files plus assets/.
-#
-# MUTATION TESTING, 2026-09-23. 35 plausible-wrong mutants and 9 controls, built in a scratch
-# directory OUTSIDE the repository and graded through tools/grade.py --solution. All 35
-# mutants are caught, scoring 31% to 96% — never 0 and never 100, so partial credit survives
-# every one — and all 9 controls score 100%. The controls are correct answers written
-# differently: gw_alloc aligning by division instead of by mask, gw_alloc computing the
-# remaining space explicitly, frame_decode assembling the checksum with a multiply instead of
-# a shift, q_health multiplying by 65536 instead of shifting, sf_ack written as a bounded for
-# loop, sf_take copying with two memcpys around the wrap, float_health summing and dividing
-# instead of calling np.mean, agreement_report counting the two directions with Python lists,
-# and psi summing with a comprehension and math.log.
-#
-# SIX RUBRIC DEFECTS FOUND BY THE FIRST MUTATION PASS, all fixed before this file was
-# written. Each one scored a full 100% and each is a mistake a student would plausibly make:
-#   * gw_alloc writing the aligned base back BEFORE deciding whether the request fits. The
-#     probe's refusal case happened to start from a cursor that was already 8-aligned, so the
-#     padding it ate was zero. There is now a second refusal case from an unaligned cursor.
-#   * gw_alloc never updating g_arena_peak. Nothing graded the high-water mark at all,
-#     although the notebook prints it twice. The rubric now asserts that after start-up the
-#     peak equals the cursor and is non-zero.
-#   * q_health rounding the mean instead of truncating it. Rounding only changes the integer
-#     square root when it carries the value across a perfect square, which on real bursts
-#     happens about once in five million readings — so 13,426 readings of real capture never
-#     separated the two. There are now two constructed cases that do, one for the mean and
-#     one for the final divide, and the hint explains the arithmetic.
-#   * agreement_report rounding the effective threshold to nearest instead of taking the
-#     ceiling. The only case in the rubric was 1.55, whose fraction is above a half, where
-#     round and ceil agree. The lesson's own threshold, 1.4732, is now a graded case.
-#   * agreement_report reporting a SIGNED mean. Every gap in this lesson has the same sign,
-#     because the deployed path only ever truncates downwards, so the two means are equal on
-#     every real input. There is now a constructed pair whose differences cancel.
-#   * agreement_report using a strict `>` against the threshold. The plant's rule is `>=`,
-#     and a strict comparison silently narrows the operating point by one representable step.
-#     The only edge case in the rubric had both sides on the threshold, where the two agree.
-#     There is now a case with one side exactly on it.
-#
-# The mutants that mattered most, of the 35:
-#   * sf_take popping instead of peeking (81%). It is the natural way to write a queue and it
-#     passes every clean-link scenario; it only fails when an acknowledgement is lost, which
-#     is why the lostack scenario exists and why duplicates are graded as a positive number
-#     rather than as an absence.
-#   * sf_push overwriting when full (82%), which is the default behaviour of nearly every
-#     ring buffer ever written, and sf_push consuming a sequence number on a refusal (82%),
-#     which makes a refusal at the door indistinguishable from a loss in transit.
-#   * q_health with an int32_t accumulator (82%) and with the shift done in 32 bits (82%).
-#     Both wrap silently, both give plausible-looking numbers on mid-scale bursts, and both
-#     are caught by the full-scale probe rather than by the capture.
-#   * psi deriving its bins from the CURRENT window (89%) — the one mistake that makes a
-#     drift statistic stop being able to see drift, and the reason the rubric checks that
-#     psi(a, b) and psi(b, a) differ.
-#   * sf_ack dropping a fixed count (31%, the lowest of the 35) because it takes the whole
-#     store-and-forward half of the rubric down with it, which is the right shape.
-#
-# WHAT I COULD NOT VERIFY, stated plainly rather than glossed:
-#   * The two Modbus specifications are behind www.modbus.org/file/secure/ URLs which
-#     returned the PDFs without credentials on the access date but are not guaranteed to be
-#     stable links; the quotes in claims.yaml were extracted from the PDFs themselves, and
-#     claims.yaml records the one transcription decision (this PDF's font maps the hyphen in
-#     "low-order" and "16-bit" to byte 0x96, so a raw extraction shows an en-dash).
-#   * Whether the arithmetic-to-wire ratio of 250x is representative of real gateways is NOT
-#     claimed anywhere. It is a property of this lesson's chosen Q16.16 and Q8.8 formats, and
-#     claims.yaml says so under non-claim 2.
-#   * The lesson has only been executed on macOS on Apple Silicon with clang 21 and numpy
-#     2.5.3. Nothing in it is endianness-dependent by construction — every multi-byte value
-#     is assembled a byte at a time — but that has not been demonstrated on a big-endian
-#     machine, because there was not one to hand.
-# ---------------------------------------------------------------------------------------
-# INDEPENDENT REVIEW, 2026-09-23. Everything above was re-measured rather than taken on
-# trust. All four gates were re-run from the repository root: execute.py PASS, the reference
-# 114/114 (100%), the student file 0/114 with every row TODO, and lesson.py converts to a
-# 30-cell notebook. The measured figures at the foot were written back by execute.py.
-#
-# MUTATION TESTING, independently: 44 mutants and 9 controls, staged OUTSIDE the repository
-# and graded through tools/grade.py --solution. Four mutants scored a full 100% and all four
-# were rubric defects rather than equivalent programs; each was proved non-equivalent on
-# input the stubs' own stated contract admits, and the rubric was tightened until each is
-# caught losing only the row it breaks:
-#   * frame_decode comparing the byte count with `>` instead of `!=`. The only case in the
-#     rubric had a byte count that was too BIG. A byte count that is too SMALL, in a frame
-#     whose checksum is valid, was accepted and a register the device never declared was
-#     published. cmd_decode now builds that frame and the rubric grades rc_bytecount_small
-#     and that the refusal leaves *out alone.
-#   * agreement_report taking worst_index from the SIGNED difference. Every gap on this
-#     lesson's own week runs one way, because the deployed path only truncates downwards, so
-#     argmax(a - b) and argmax(|a - b|) agreed on every graded input. There is now a case
-#     whose largest gap runs the other way.
-#   * agreement_report omitting the shape check entirely. The only mismatch in the rubric was
-#     (3,) against (4,), which numpy refuses to broadcast and therefore raises ValueError for
-#     free. (4,) against (1,) broadcasts silently; it is now graded.
-#   * psi flooring only the CURRENT proportions. Every reference window in the rubric was a
-#     dense normal sample with no empty bin, so flooring p was a no-op. A reference with a
-#     gap in the middle and a current window that lands in the gap returns inf without it;
-#     that case is now in both the rubric and the notebook's public check.
-# The remaining 40 mutants all lose points (54% to 96%), none scores 0, and each loses the
-# rows it broke. The 9 controls are correct answers written differently — gw_alloc aligning
-# by remainder and computing the space left explicitly, frame_decode assembling bytes with a
-# multiply into a local Frame, q_health multiplying by 65536, sf_take copying with two
-# memcpys around the wrap and sf_ack as a bounded for loop, float_health summing squares and
-# dividing by n, float_health with einsum, agreement_report written with Python lists and
-# loops, agreement_report taking the mean with a naive Python sum, and psi binning with
-# np.digitize and summing with math.log — and all 9 score 100% both before and after the
-# rubric changes.
-#
-# THREE DEFECTS THE GATES CANNOT SEE, found by reading and fixed here:
-#   * EXERCISE 2's worked example was arithmetically WRONG. It gave the valid empty frame as
-#     {0x01, 0x04, 0x00, 0x31, 0xCA}; CRC-16/MODBUS of {0x01, 0x04, 0x00} is 0xC022, so those
-#     bytes decode to FD_CRC, not FD_OK. A student testing their decoder against the worked
-#     example would have concluded their own code was broken. It now reads 0x22, 0xC0.
-#   * The two overflow magnitudes in EXERCISE 3's comment were both wrong and disagreed with
-#     what the lesson itself prints: "about 2.1e14, nine and a half times what an int32_t
-#     holds" (the true figure for a FULL-SCALE burst is 9.0e15, about four million times) and
-#     "rms_q << 16 is about 1.7e11 for a full-scale burst" (1.1e12). Section 5's cell now
-#     PRINTS both ratios before it checks anything, the prose no longer names them, and the
-#     C comment's figures were corrected to match.
-#   * Gate 12: "3072 records", "38.4 hours of this plant" and "the buffer holds 38.4 hours"
-#     were typed into section 12's prose and into self-check question 2, although section 1
-#     computes and prints that figure. Both now point at the printed number instead. The same
-#     pass removed "your health index is out by a factor of three" from section 4, which was
-#     an unmeasured generalisation; 4660 and 13330 stay, because they are the decimal reading
-#     of two hex literals on the page.
-#
-# SOURCES, all three re-fetched on 2026-09-23 and every quote re-checked against the live
-# page. All three URLs still serve the documents named, at the byte sizes the author saw, and
-# all three quotes appear verbatim. The transcription note in claims.yaml is accurate: this
-# reviewer's own extraction of modbusoverserial.pdf shows 0x96 for the hyphen in "16-bit" and
-# 0x92 for the apostrophe in "1's", exactly as recorded. NIST SP 800-82r3's Appendix E.1.2
-# paragraph and the glossary entry for "data diode" both match word for word. OWNER NOTE, on
-# currency rather than accuracy: NIST released SP 800-82r4 as an INITIAL PUBLIC DRAFT with
-# comments open to 30 November 2026. r3 remains the final publication and the citation is
-# correct today; when r4 is finalised this claim needs re-checking.
-#
-# STILL OPEN, and not this lesson's to fix: gates 13 and 14. There is no committed
-# lesson.ipynb, no progressive <details> hints, no progress board, and the foot of the file
-# calls sys.exit under _IS_MAIN, which is a traceback in a notebook kernel. NONE of the 26
-# lessons in programmes/ satisfies gates 13 or 14 — this is a repository-wide piece of work
-# for tools/notebooks.py and a shared lesson template, and doing it here alone would put this
-# lesson out of shape with every other one. OWNER ACTION.
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "independent review 2026-09-23: all four gates re-run; 44 mutants and 9 controls graded out-of-tree; 4 rubric defects found by mutants and fixed; 3 defects found by reading and fixed (a wrong CRC in a worked example, two wrong overflow magnitudes, gate-12 numbers typed into prose); all 3 sources re-fetched and every quote verified verbatim; gates 13 and 14 remain open repository-wide"
+- name: synthetic-modbus-capture-and-outage-script
+  kind: synthetic
+  description: 13,440 Modbus RTU register-read frames (80 machines x 168 hourly polls x 32 registers,
+    927,360 bytes) with 14 frames deliberately corrupted, plus four scripted link scenarios, generated
+    at run time in lesson.c by capture_build() and mirrored in numpy by build_capture(), both seeded 20260922
+  generator: 'lesson.c :: capture_build / lesson.py :: build_capture'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 114
+status: reviewed
 measured_seconds: 1.0
 measured_peak_mib: 78

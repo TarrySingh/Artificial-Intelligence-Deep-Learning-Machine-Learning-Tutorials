@@ -156,8 +156,10 @@ def launcher(d: Path, src: str) -> str:
         f"(https://codespaces.new/{LAUNCH_REPO})\n"
     )
     compiled = any(s.startswith("lesson.") and s != "lesson.h" for s in sibs)
-    needs = ("Python 3.11 or newer with numpy and matplotlib, which Colab, Kaggle, Binder and "
-             "Codespaces already have" + (", and a C or C++ compiler (`clang` or `gcc`)" if compiled else ""))
+    base = [p for p in ("numpy", "matplotlib") if p in third_party(src)]
+    needs = ("Python 3.11 or newer" + (f" with {' and '.join(base)}, which Colab, Kaggle, Binder and "
+             "Codespaces already have" if base else "")
+             + (", and a C or C++ compiler (`clang` or `gcc`)" if compiled else ""))
     about = f"This lesson needs {needs}."
     if pkgs or sibs:
         what = " and ".join(x for x in (

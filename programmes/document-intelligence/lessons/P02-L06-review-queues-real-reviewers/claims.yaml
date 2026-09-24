@@ -1,131 +1,92 @@
-# Every factual claim this lesson makes about the world, with a primary source and the date
-# the source was read. Numbers a student sees in output are computed by the code they run and
-# are therefore not claims; they do not appear here.
-#
-# NOT CLAIMS, and deliberately absent: every reviewer parameter (accuracy, fatigue, floor,
-# minutes per item, the rubber-stamp share, reviewer B's habit), every queue parameter
-# (INTAKE_MINUTES, SLA_MINUTES, BREAK_MINUTES, the shift lengths, BREACH_TARGET) and both
-# escalation constants (RUBBER_STAMP_CONF, FOUR_EYES_TYPES). The notebook labels each of them
-# as a parameter of this simulation or a policy choice, and says in so many words that none is
-# a claim about how accurate or how fast real people review documents, or about anybody's
-# service levels. The ceiling relation kappa_ceiling = sqrt(kappa) is not a claim either: it is
-# derived in section 10 under assumptions the notebook states (independent mistakes, similar
-# reviewers), and then MEASURED against the simulation's truth in the cell after it, together
-# with a demonstration of what happens when the independence assumption fails.
 claims:
-  - id: cohens-kappa-definition
-    claim: >-
-      Cohen's kappa is (p_o - p_e) / (1 - p_e), where p_o is the observed agreement between two
-      annotators and p_e the agreement expected if both assigned labels at random, estimated
-      from each annotator's OWN label frequencies (a per-annotator empirical prior). This is
-      the formula `chance_agreement` and `cohens_kappa` implement, and the per-annotator prior
-      is why chance agreement multiplies A's share of a label by B's share of it rather than
-      squaring a pooled share.
-    where: "lesson.py section 5 (exercise 2 preamble and docstrings); tests/test_lesson.py::test_chance_agreement_by_label, ::test_kappa_chance_level"
-    source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
-    source_title: "scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score"
-    quote: >-
-      where p_o is the empirical probability of agreement on the label assigned to any sample
-      (the observed agreement ratio), and p_e is the expected agreement when both annotators
-      assign labels randomly. p_e is estimated using a per-annotator empirical prior over the
-      class labels
-    quote_context: >-
-      First paragraph of the function's description, directly after the displayed formula
-      kappa = (p_o - p_e) / (1 - p_e). The page typesets p_o and p_e as math; the quote spells
-      them out. Read from the live HTML on the access date, with markup stripped.
-    accessed: 2026-09-23
-
-  - id: kappa-reads-one-zero-and-below
-    claim: >-
-      Kappa's maximum means complete agreement, its minimum complete disagreement, and 0.0
-      means no agreement beyond chance — which is why the lesson grades kappa 1.0 for identical
-      labels, 0.0 at chance level, and a negative value, unclamped, for systematic disagreement.
-    where: "lesson.py section 5 (exercise 2 preamble and cohens_kappa docstring); tests/test_lesson.py::test_kappa_can_be_negative"
-    source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
-    source_title: "scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score"
-    quote: >-
-      The maximum value means complete agreement; the minimum value means complete
-      disagreement; 0.0 indicates no agreement beyond what would be expected by chance.
-    quote_context: "the Returns entry for kappa, which gives the range as -1.0 to 1.0"
-    accessed: 2026-09-23
-
-  - id: kappa-is-cohen-1960
-    claim: >-
-      The statistic is Cohen's, introduced in J. Cohen (1960), "A coefficient of agreement for
-      nominal scales", Educational and Psychological Measurement 20(1):37-46. The lesson names
-      Cohen 1960 as the origin and cites scikit-learn's reference page for the formula, because
-      the journal's own page (https://doi.org/10.1177/001316446002000104) returned HTTP 403 to
-      an automated fetch on the access date and could not be read.
-    where: "lesson.py section 5 (exercise 2 preamble)"
-    source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
-    source_title: "scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score, References"
-    quote: >-
-      J. Cohen (1960). “A coefficient of agreement for nominal scales”. Educational and
-      Psychological Measurement 20(1):37-46.
-    quote_context: "References, entry [1], linking to the DOI above"
-    accessed: 2026-09-23
-
-  - id: undefined-kappa-is-nan
-    claim: >-
-      When kappa is undefined, scikit-learn's implementation returns nan by default rather than
-      a number. The lesson's `cohens_kappa` follows the same convention for the case p_e = 1
-      (both reviewers gave one and the same label to everything), and its docstring explains
-      why 1.0 would be dishonest there.
-    where: "lesson.py section 5 (cohens_kappa docstring); tests/test_lesson.py::test_kappa_undefined_single_label"
-    source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
-    source_title: "scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score, parameter replace_undefined_by"
-    quote: >-
-      Sets the return value when the metric is undefined.
-    quote_context: >-
-      The parameter replace_undefined_by is documented as "np.nan, float in [-1.0, 1.0],
-      default=np.nan", with the option "np.nan to return np.nan"; marked "Added in version 1.9".
-      The lesson does not claim scikit-learn's undefined cases are exactly its own — the page
-      words them in terms of its `labels` parameter — only the nan convention.
-    accessed: 2026-09-23
-
-  - id: automation-bias-in-article-14
-    claim: >-
-      The EU AI Act names over-reliance on a system's output as "automation bias" in the
-      operative text of Article 14(4)(b), and requires that a high-risk system be provided to
-      its deployer so that the natural persons assigned to oversee it are enabled, as
-      appropriate and proportionate, to remain aware of that tendency. The lesson uses this as
-      the motivation for the rubber-stamp guard in its escalation policy; it does not claim that
-      the guard satisfies the Article, or that any particular document pipeline is high risk.
-    where: "lesson.py section 8 (exercise 4 preamble, rule 2)"
-    source_url: https://artificialintelligenceact.eu/article/14/
-    source_title: "EU Artificial Intelligence Act, Article 14: Human Oversight (AI Act Explorer)"
-    quote: >-
-      to remain aware of the possible tendency of automatically relying or over-relying on the
-      output produced by a high-risk AI system (automation bias), in particular for high-risk AI
-      systems used to provide information or recommendations for decisions to be taken by
-      natural persons;
-    quote_context: >-
-      Article 14(4)(b). The chapeau of 14(4) reads, on the same page: "For the purpose of
-      implementing paragraphs 1, 2 and 3, the high-risk AI system shall be provided to the
-      deployer in such a way that natural persons to whom human oversight is assigned are
-      enabled, as appropriate and proportionate:". The Explorer renders definitions of "AI
-      system" and "deployer" as hover tooltips inside the paragraph; the quote is the visible
-      text with the tooltips removed. The official text is Regulation (EU) 2024/1689 at
-      https://eur-lex.europa.eu/eli/reg/2024/1689/oj.
-    accessed: 2026-09-23
-
-  - id: scotts-pi-pools-the-coders
-    claim: >-
-      Scott's pi estimates chance agreement from ONE distribution over the categories, pooled
-      across both coders, where Cohen's kappa uses a separate prior for each coder. The grader's
-      hints name the pooled-marginal mistake "Scott's pi" for that reason: it is a real, older
-      coefficient, not Cohen's kappa computed wrongly, and it differs from kappa only when the
-      two coders' marginals differ.
-    where: "tests/test_lesson.py module docstring, ::test_chance_agreement_by_label and ::test_kappa_chance_level (failure hints)"
-    source_url: https://aclanthology.org/J08-4004.pdf
-    source_title: "R. Artstein and M. Poesio (2008), Inter-Coder Agreement for Computational Linguistics, Computational Linguistics 34(4):555-596 (reference [2] on the scikit-learn page above)"
-    quote: >-
-      the observed proportion of items assigned to category k by both coders
-    quote_context: >-
-      Section 2.4.2, headed "A Single Distribution: π", which introduces the coefficient as "an
-      idea first proposed by Scott (1955)" and defines its prior this way; section 2.4.3, headed
-      "Individual Coder Distributions: κ", says Cohen's κ "assumes that random assignment of
-      categories to items is governed by prior distributions that are unique to each coder".
-      Read from the PDF's text layer on the access date; the PDF sets "first" and
-      "coefficient" with fi/ffi ligatures, which the quotes here spell out.
-    accessed: 2026-09-23
+- id: cohens-kappa-definition
+  claim: Cohen's kappa is (p_o - p_e) / (1 - p_e), where p_o is the observed agreement between two annotators
+    and p_e the agreement expected if both assigned labels at random, estimated from each annotator's
+    OWN label frequencies (a per-annotator empirical prior). This is the formula `chance_agreement` and
+    `cohens_kappa` implement, and the per-annotator prior is why chance agreement multiplies A's share
+    of a label by B's share of it rather than squaring a pooled share.
+  where: lesson.py section 5 (exercise 2 preamble and docstrings); tests/test_lesson.py::test_chance_agreement_by_label,
+    ::test_kappa_chance_level
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score
+  quote: where p_o is the empirical probability of agreement on the label assigned to any sample (the
+    observed agreement ratio), and p_e is the expected agreement when both annotators assign labels randomly.
+    p_e is estimated using a per-annotator empirical prior over the class labels
+  quote_context: First paragraph of the function's description, directly after the displayed formula kappa
+    = (p_o - p_e) / (1 - p_e). The page typesets p_o and p_e as math; the quote spells them out. Read
+    from the live HTML on the access date, with markup stripped.
+  accessed: 2026-09-23
+- id: kappa-reads-one-zero-and-below
+  claim: Kappa's maximum means complete agreement, its minimum complete disagreement, and 0.0 means no
+    agreement beyond chance — which is why the lesson grades kappa 1.0 for identical labels, 0.0 at chance
+    level, and a negative value, unclamped, for systematic disagreement.
+  where: lesson.py section 5 (exercise 2 preamble and cohens_kappa docstring); tests/test_lesson.py::test_kappa_can_be_negative
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score
+  quote: The maximum value means complete agreement; the minimum value means complete disagreement; 0.0
+    indicates no agreement beyond what would be expected by chance.
+  quote_context: the Returns entry for kappa, which gives the range as -1.0 to 1.0
+  accessed: 2026-09-23
+- id: kappa-is-cohen-1960
+  claim: The statistic is Cohen's, introduced in J. Cohen (1960), "A coefficient of agreement for nominal
+    scales", Educational and Psychological Measurement 20(1):37-46. The lesson names Cohen 1960 as the
+    origin and cites scikit-learn's reference page for the formula, because the journal's own page (https://doi.org/10.1177/001316446002000104)
+    returned HTTP 403 to an automated fetch on the access date and could not be read.
+  where: lesson.py section 5 (exercise 2 preamble)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score, References
+  quote: J. Cohen (1960). “A coefficient of agreement for nominal scales”. Educational and Psychological
+    Measurement 20(1):37-46.
+  quote_context: References, entry [1], linking to the DOI above
+  accessed: 2026-09-23
+- id: undefined-kappa-is-nan
+  claim: When kappa is undefined, scikit-learn's implementation returns nan by default rather than a number.
+    The lesson's `cohens_kappa` follows the same convention for the case p_e = 1 (both reviewers gave
+    one and the same label to everything), and its docstring explains why 1.0 would be dishonest there.
+  where: lesson.py section 5 (cohens_kappa docstring); tests/test_lesson.py::test_kappa_undefined_single_label
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: scikit-learn 1.9.1 API reference — sklearn.metrics.cohen_kappa_score, parameter replace_undefined_by
+  quote: Sets the return value when the metric is undefined.
+  quote_context: The parameter replace_undefined_by is documented as "np.nan, float in [-1.0, 1.0], default=np.nan",
+    with the option "np.nan to return np.nan"; marked "Added in version 1.9". The lesson does not claim
+    scikit-learn's undefined cases are exactly its own — the page words them in terms of its `labels`
+    parameter — only the nan convention.
+  accessed: 2026-09-23
+- id: automation-bias-in-article-14
+  claim: The EU AI Act names over-reliance on a system's output as "automation bias" in the operative
+    text of Article 14(4)(b), and requires that a high-risk system be provided to its deployer so that
+    the natural persons assigned to oversee it are enabled, as appropriate and proportionate, to remain
+    aware of that tendency. The lesson uses this as the motivation for the rubber-stamp guard in its escalation
+    policy; it does not claim that the guard satisfies the Article, or that any particular document pipeline
+    is high risk.
+  where: lesson.py section 8 (exercise 4 preamble, rule 2)
+  source_url: https://artificialintelligenceact.eu/article/14/
+  source_title: 'EU Artificial Intelligence Act, Article 14: Human Oversight (AI Act Explorer)'
+  quote: to remain aware of the possible tendency of automatically relying or over-relying on the output
+    produced by a high-risk AI system (automation bias), in particular for high-risk AI systems used to
+    provide information or recommendations for decisions to be taken by natural persons;
+  quote_context: 'Article 14(4)(b). The chapeau of 14(4) reads, on the same page: "For the purpose of
+    implementing paragraphs 1, 2 and 3, the high-risk AI system shall be provided to the deployer in such
+    a way that natural persons to whom human oversight is assigned are enabled, as appropriate and proportionate:".
+    The Explorer renders definitions of "AI system" and "deployer" as hover tooltips inside the paragraph;
+    the quote is the visible text with the tooltips removed. The official text is Regulation (EU) 2024/1689
+    at https://eur-lex.europa.eu/eli/reg/2024/1689/oj.'
+  accessed: 2026-09-23
+- id: scotts-pi-pools-the-coders
+  claim: 'Scott''s pi estimates chance agreement from ONE distribution over the categories, pooled across
+    both coders, where Cohen''s kappa uses a separate prior for each coder. The grader''s hints name the
+    pooled-marginal mistake "Scott''s pi" for that reason: it is a real, older coefficient, not Cohen''s
+    kappa computed wrongly, and it differs from kappa only when the two coders'' marginals differ.'
+  where: tests/test_lesson.py module docstring, ::test_chance_agreement_by_label and ::test_kappa_chance_level
+    (failure hints)
+  source_url: https://aclanthology.org/J08-4004.pdf
+  source_title: R. Artstein and M. Poesio (2008), Inter-Coder Agreement for Computational Linguistics,
+    Computational Linguistics 34(4):555-596 (reference [2] on the scikit-learn page above)
+  quote: the observed proportion of items assigned to category k by both coders
+  quote_context: 'Section 2.4.2, headed "A Single Distribution: π", which introduces the coefficient as
+    "an idea first proposed by Scott (1955)" and defines its prior this way; section 2.4.3, headed "Individual
+    Coder Distributions: κ", says Cohen''s κ "assumes that random assignment of categories to items is
+    governed by prior distributions that are unique to each coder". Read from the PDF''s text layer on
+    the access date; the PDF sets "first" and "coefficient" with fi/ffi ligatures, which the quotes here
+    spell out.'
+  accessed: 2026-09-23

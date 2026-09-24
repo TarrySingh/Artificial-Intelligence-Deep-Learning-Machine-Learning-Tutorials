@@ -125,6 +125,7 @@ import io
 import sys
 import time
 import traceback
+from fractions import Fraction
 from typing import Any, Callable, NamedTuple
 
 import numpy as np
@@ -976,13 +977,29 @@ COUNTS: Counts | None = None
 _FOR_CURVES = ("exercise 3", "exercise 6", "exercise 7", "exercise 8")
 
 
+def _roc_auc(fpr: np.ndarray, tpr: np.ndarray) -> float:
+    """Trapezoidal area under the ROC curve through your own points, the same on every machine.
+
+    The points are walked left to right by false-positive rate and, where several thresholds
+    share one fpr, up that vertical run by true-positive rate: the order a falling threshold
+    visits them. Sorting on fpr alone is not enough. This sweep has thresholds that tie on fpr
+    while tpr still differs, `np.argsort` leaves the order inside a tie to whichever sort the
+    platform's numpy dispatches to, and which end of the run meets the next point moves the
+    area by enough to change the third decimal printed below. Each float point is also an
+    exact fraction, so the sum is done exactly and rounded to a float once, at the end.
+    """
+    points = sorted((Fraction(float(x)), Fraction(float(y)))
+                    for x, y in zip(np.ravel(fpr), np.ravel(tpr)))
+    return float(sum((x1 - x0) * (y0 + y1) / 2
+                     for (x0, y0), (x1, y1) in zip(points, points[1:])))
+
+
 def _plot_curves() -> None:
     global COUNTS
     COUNTS = sweep_thresholds(HEALTH, FAIL_HOUR, THRESHOLDS)
     fpr, tpr = roc_points(COUNTS)
     rec, prec = pr_points(COUNTS)
-    order = np.argsort(fpr)
-    auc = float(np.trapezoid(np.asarray(tpr)[order], np.asarray(fpr)[order]))
+    auc = _roc_auc(fpr, tpr)
     fig, axes = plt.subplots(1, 2, figsize=(9.5, 3.6))
     axes[0].plot([0, 1], [0, 1], ls=":", color="0.6", lw=1)
     axes[0].plot(fpr, tpr, marker="o", ms=2.5, lw=1.2)

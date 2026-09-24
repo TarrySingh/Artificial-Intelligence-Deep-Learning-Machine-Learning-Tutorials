@@ -1,107 +1,27 @@
 id: P01-L01-article-12-logging
-title: Build the append-only, tamper-evident audit trail an Article 12 record-keeping duty implies, and the completeness checker that inspects it
+title: Build the append-only, tamper-evident audit trail an Article 12 record-keeping duty implies, and
+  the completeness checker that inspects it
 track: P01
 programme: ai-act-conformity
-flagship: F09           # flagship id this lesson feeds, or empty
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+flagship: F09
+tier: cpu8
 budget_seconds: 90
-language: python        # python | c | cpp
+language: python
 prerequisites:
-  - T10-L01-ai-act-conformity-pack
+- T10-L01-ai-act-conformity-pack
 objectives:
-  - "Implement a canonical serialisation and an append-only hash chain so any edit, reorder or deletion inside a log is detectable"
-  - "Implement verify_chain() so it names the first entry that breaks, and explain why a published head hash catches a whole-tail rewrite that internal consistency never will"
-  - "Implement a retention check reporting what may be purged, what must be kept, and which sequence numbers have already been deleted"
-  - "Reconstruct one inference decision end to end in sequence order, including the deployment event the decision depends on"
-  - "Implement completeness_report() so it names the required fields a reconstructed decision is missing, and justify why that field list is a modelling choice"
-datasets: []            # none: the event stream is constructed inside lesson.py, nothing is read from disk or downloaded
-points: 58              # = sum of RUBRIC points in tests/test_lesson.py
-status: reviewed        # draft | executed | reviewed | shipped
-# Authoring notes, 2026-09-16.
-#
-# All four gates run from the repo root on the venv interpreter. The measured figures below
-# were written back by tools/execute.py and were not typed.
-#
-# Relationship to the prerequisite: T10-L01 produces an evidence table in which
-# "automatic_logging_design" is one boolean per system. This lesson is the object behind that
-# boolean and deliberately repeats none of T10-L01's material — no classify(), no obligation
-# cumulation, no evidence-status rules. The one overlap is the date ladder, and it is narrowed
-# here to the three rungs that decide when Article 12 binds, with the counts computed rather
-# than typed.
-#
-# Dependencies: stdlib plus numpy. No pyyaml (unlike T10-L01), no assets directory, no network,
-# no disk reads, so datasets: [] is not a dodge — the event stream is built in lesson.py from
-# offsets against AS_OF, and the two match scores come from a seeded numpy Generator, so two
-# runs agree to the last digit.
-#
-# Honesty note carried in the lesson itself: Article 12(3)'s four-item minimum is written for
-# the Annex III point 1(a) remote biometric identification systems, and the lesson's fictional
-# system scores credit applications. Section 6 says so in full and labels each of the eight
-# required fields with where it came from, including the two that are the lesson's own choice.
-# Presenting that list as "the requirement" would have been the easy, wrong lesson.
-#
-# Rubric mutation testing. 21 plausible-wrong variants of the reference solution were built
-# outside the lesson tree and graded through tools/grade.py, plus one CONTROL that is a
-# differently-shaped RIGHT answer (canonical_bytes with ensure_ascii=True) and must still score
-# 100%, so the rubric is not over-fitted to one implementation.
-#
-# The FIRST run found two real rubric defects, both of which scored a full 58/58:
-#
-#   * A verifier with NO sequence-contiguity check at all. Deleting an entry also breaks the
-#     link, so the prev_hash check caught it anyway — and the assertion only required the word
-#     "seq" in the reason, which "prev_hash at seq N ..." happens to contain. The contract now
-#     names three distinct words ("sequence", "prev_hash", "entry_hash"), each reason may carry
-#     only its own, and the deletion case asserts the gap is blamed on the numbering rather than
-#     on the link. This is a real requirement, not a wording fetish: a gap and a forgery send an
-#     inspector to two different places.
-#   * missing_seq computed as range(len(log)) instead of range(max(seq) + 1). The two entries
-#     the old test removed both happened to fall below len(log), so it passed. A case that
-#     removes entries from NEAR the end — shortening the list past the second gap — now
-#     distinguishes them.
-#
-# After both fixes: 22 of 22 behaved as intended. All 21 breaking variants lost points (scores
-# 69% to 95%), every one kept partial credit on the exercises it had not broken, and the control
-# still scored 100%. The variants were: a digest over the event alone; a digest over
-# event+prev_hash but not seq; a canonical form built with str(sorted(...)); sort_keys omitted;
-# verify_chain skipping the entry_hash recomputation; verify_chain with no anchor branch;
-# verify_chain reporting a seq for a head mismatch; verify_chain with no seq check; a gap blamed
-# on the link; retention comparing >= instead of > at the floor; retention taking oldest/newest
-# from log[0] and log[-1]; missing_seq off len(log); reconstruct_decision sorting by ts;
-# reconstruct_decision skipping the deployment-context pass; reconstruct_decision adding every
-# deployment in the log; completeness_report testing `if not value`, which throws away a
-# recorded outcome of 0; completeness_report reading only the payload; completeness_report
-# stopping at the first entry that mentions a field; coverage as a percentage; decision_id read
-# unconditionally off trace[0]; and append_event not appending in place.
-#
-# Sync: lesson.py and solutions/lesson_solution.py were diffed line by line and differ only
-# inside the six stub bodies, plus a self-check answer section appended to the solution that
-# has no counterpart in the student file. The self-check key in lesson.py is salted SHA-256
-# digests, so the answers are not readable off the student's own page.
-#
-# Open for the owner: this is the first lesson under programmes/, so the P01 track id and the
-# `programme:` key are new. tools/execute.py's read_meta regex only matches `^([a-z_]+):`, so
-# `programme:` parses fine and is ignored by the gate. flagship F09 matches T10-L01's, which is
-# the flagship this programme feeds; flagships/ still holds no F09 directory. Also:
-# tools/build_student_bundle.py has not been run against a lesson under programmes/ — the
-# bundle builder was written when every lesson lived in lessons/, and its path handling has not
-# been checked for this depth. That is a tools/ question and out of scope for this lesson.
-#
-# Independent review, 2026-09-23 — corrections to the notes above, re-measured, not assumed:
-#
-#   * "22 of 22 behaved as intended" did not survive re-measurement. 73 mutants were rebuilt
-#     outside the tree; 32 scored 58/58 against the rubric as shipped. 11 are proven
-#     equivalent over the lesson's own input domain. The other 21 were rubric gaps, now closed
-#     (tests/test_lesson.py docstring lists the added cases). The author's "digest without
-#     seq" variant only lost points because it was applied to append_event alone; written
-#     consistently in both functions, as a student would, it scored full marks.
-#   * The completeness tests fed completeness_report the student's OWN reconstruct_decision
-#     output, so an exercise-4 mistake also cost up to 9 points on exercise 5. They now grade
-#     on the rubric's independent re-derivation of each trace.
-#   * "differ only inside the six stub bodies" is not true of the current files: the gate-14
-#     hint blocks exist in lesson.py only. That is harmless and was left alone.
-#   * claims.yaml carried five quotes that are not verbatim on the live pages, and the prose
-#     said the Omnibus "moved neither Article 50", which its own prerequisite contradicts.
-#     Both are corrected; see the claims.yaml footer.
-reviewed_by: "independent review 2026-09-23: all 6 gates re-run (100%/0%, py311+py312 portable, completed output identical); 73 rubric mutants, 32 scored 58/58 as shipped, 11 proven equivalent by measurement over the lesson's domain, 21 real gaps closed across 14 rubric defects (documented canonical bytes and SHA-256 digest recipe, relink at index 0, replayed entry, anchor checked before the walk, one-entry anchor, floor+1 day, as_of and minimum_days arguments ignored, purge of the oldest seqs, seqs vs list positions, rollback deployment and version from any entry, coverage over the required argument, reason words not exclusive) plus exercise-5 tests decoupled from the student's reconstruct; 3 differently-shaped right answers 58/58 before and after; rubric hint that was the literal canonical_bytes solution rewritten in words; every claims URL re-fetched: 5 non-verbatim quotes fixed (Art 12(2), 19, 26(6), both Omnibus explorer dates), EUR-Lex text now retrieved and quoted, unsourced 'Omnibus moved neither Article 50' prose corrected with a new Art 50(2) transitional claim; typed 'nine' and 'two' now computed, a false newest_ts check message fixed, system_id relabelled as the modelling choice section 6 says it is"
+- Implement a canonical serialisation and an append-only hash chain so any edit, reorder or deletion inside
+  a log is detectable
+- Implement verify_chain() so it names the first entry that breaks, and explain why a published head hash
+  catches a whole-tail rewrite that internal consistency never will
+- Implement a retention check reporting what may be purged, what must be kept, and which sequence numbers
+  have already been deleted
+- Reconstruct one inference decision end to end in sequence order, including the deployment event the
+  decision depends on
+- Implement completeness_report() so it names the required fields a reconstructed decision is missing,
+  and justify why that field list is a modelling choice
+datasets: []
+points: 58
+status: reviewed
 measured_seconds: 0.1
 measured_peak_mib: 34

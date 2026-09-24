@@ -1,40 +1,43 @@
 id: T03-L02-bpe-merge-loop-in-cpp
-title: Implement the BPE merge loop in C++ and measure the speedup over the Python trainer on one identical corpus
+title: Implement the BPE merge loop in C++ and measure the speedup over the Python trainer on one identical
+  corpus
 track: T03
 flagship: F02
-tier: cpu8              # phone | browser | cpu8 | free-gpu | gpu24 | gpu80 | multi-gpu | api
+tier: cpu8
 budget_seconds: 120
-language: cpp           # python | c | cpp
+language: cpp
 prerequisites:
-  - T03-L01-bpe-from-scratch
+- T03-L01-bpe-from-scratch
 objectives:
-  - "Implement the four-function BPE merge loop in C++ — pair counting, deterministic argmax, in-place merge, training loop — using only std:: containers"
-  - "Measure the naive rescan's wall-clock cost in Python and in C++ on one identical corpus, and report the speedup this machine produces"
-  - "Show that the C++ merge list is identical to the Python trainer's, and name the tie-break rule that makes that reproducibility possible"
-  - "Explain why the speedup is a constant factor rather than an asymptotic one, and what would have to change to bend the curve"
-  - "State which language each production tokenizer is actually written in, and what that does and does not change about the systems-language argument"
+- 'Implement the four-function BPE merge loop in C++ — pair counting, deterministic argmax, in-place merge,
+  training loop — using only std:: containers'
+- Measure the naive rescan's wall-clock cost in Python and in C++ on one identical corpus, and report
+  the speedup this machine produces
+- Show that the C++ merge list is identical to the Python trainer's, and name the tie-break rule that
+  makes that reproducibility possible
+- Explain why the speedup is a constant factor rather than an asymptotic one, and what would have to change
+  to bend the curve
+- State which language each production tokenizer is actually written in, and what that does and does not
+  change about the systems-language argument
 datasets:
-  - name: "CPython 3.12 standard library source (12 modules, concatenated)"
-    licence: "Python Software Foundation License Version 2"
-    url: "https://github.com/python/cpython/tree/3.12/Lib"
-    direct_file_url: "https://raw.githubusercontent.com/python/cpython/3.12/Lib/argparse.py"
-    licence_url: "https://docs.python.org/3/license.html"
-    copyright: "Python Software Foundation"
-    cached_at: "assets/corpus.txt"
-    bytes: 239997
-    sha256: "2560537a8c746bfb81bbcaa7f65e1d029a93fcc619c654370d150111982b98aa"
-    built_from: "CPython 3.12.13 local install (sysconfig stdlib path)"
-    retrieved: 2026-09-16
-    gated: false
-    notes: >-
-      Built by assets/make_corpus.py from the Python installation already on the machine, so
-      nothing is downloaded on any run and every student trains on a byte-identical file —
-      which is what makes a merge list a testable object rather than a machine-dependent one.
-      Source code is a deliberate choice of text: repeated identifiers and indentation give
-      the first few dozen merges real structure to find. Provenance and the regeneration
-      command are in assets/SOURCE.md.
+- name: CPython 3.12 standard library source (12 modules, concatenated)
+  licence: Python Software Foundation License Version 2
+  url: https://github.com/python/cpython/tree/3.12/Lib
+  direct_file_url: https://raw.githubusercontent.com/python/cpython/3.12/Lib/argparse.py
+  licence_url: https://docs.python.org/3/license.html
+  copyright: Python Software Foundation
+  cached_at: assets/corpus.txt
+  bytes: 239997
+  sha256: 2560537a8c746bfb81bbcaa7f65e1d029a93fcc619c654370d150111982b98aa
+  built_from: CPython 3.12.13 local install (sysconfig stdlib path)
+  retrieved: 2026-09-16
+  gated: false
+  notes: 'Built by assets/make_corpus.py from the Python installation already on the machine, so nothing
+    is downloaded on any run and every student trains on a byte-identical file — which is what makes a
+    merge list a testable object rather than a machine-dependent one. Source code is a deliberate choice
+    of text: repeated identifiers and indentation give the first few dozen merges real structure to find.
+    Provenance and the regeneration command are in assets/SOURCE.md.'
 points: 28
-status: reviewed        # draft | executed | reviewed | shipped
-reviewed_by: "independent review 2026-09-16: 18 rubric mutants run, 15 caught, 2 defects fixed (apply_merge's returned length was never asserted; no case pinned the count == kMinCount boundary of the stop rule), 1 equivalent mutant documented; 5 claims re-verified against primary sources; corpus sha256 re-checked; make clean / dyld warning added to common mistakes"
+status: reviewed
 measured_seconds: 10.0
 measured_peak_mib: 119
