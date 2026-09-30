@@ -1,0 +1,265 @@
+claims:
+- id: mcp-current-revision-2026-07-28
+  claim: On the date this lesson was authored, the Model Context Protocol's current (not draft, not a
+    past "Final") revision was 2026-07-28, not the 2025-06-18 or 2025-11-25 revisions an author might
+    otherwise assume without checking.
+  where: lesson.py section 1 (why this lesson names an exact revision instead of assuming one)
+  source_url: https://modelcontextprotocol.io/specification/versioning
+  source_title: Model Context Protocol -- Versioning
+  quote: The current protocol version is 2026-07-28.
+  quote_context: The 'Revisions' section, the sentence after the Draft/Current/Final definitions
+  accessed: 2026-09-23
+- id: mcp-legacy-era-cutoff-2025-11-25
+  claim: The CURRENT (2026-07-28) revision's own versioning page defines "Legacy" as every protocol version
+    that negotiates a session with an initialize handshake, and names 2025-11-25 as the last such revision
+    -- the boundary this lesson uses to justify implementing 2025-11-25 rather than the newer per-request
+    scheme.
+  where: lesson.py section 1 and meta.yaml (which exact revision this lesson implements, and why)
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning
+  source_title: 'Model Context Protocol 2026-07-28 -- Base Protocol: Versioning (Terminology)'
+  quote: 'Legacy: protocol versions that establish a session with an initialize handshake (2025-11-25
+    and earlier).'
+  quote_context: The 'Terminology' section's three bullet definitions (Modern / Legacy / Dual-era)
+  accessed: 2026-09-23
+- id: mcp-stdio-framing
+  claim: Over the stdio transport, MCP messages are individual JSON-RPC requests, notifications or responses,
+    delimited by newlines, and a message must never contain an embedded newline -- the exact rule this
+    lesson's encode_message and decode_message implement as the wire's line-framing.
+  where: lesson.py exercise 1 (encode_message) and exercise 2 (decode_message)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+  source_title: 'Model Context Protocol 2025-11-25 -- Transports: stdio'
+  quote: Messages are delimited by newlines, and MUST NOT contain embedded newlines.
+  quote_context: The bulleted list describing the stdio transport
+  accessed: 2026-09-23
+- id: mcp-stdio-stdout-must-not-carry-non-mcp-bytes
+  claim: A stdio MCP server must never write anything to its stdout that is not itself a valid MCP message
+    -- the rule this lesson's server subprocess satisfies by redirecting every ordinary print() from its
+    own tutorial cells to stderr for as long as it is running in server mode, so only framed JSON-RPC
+    lines ever reach the pipe the client reads.
+  where: lesson.py setup cell (the --serve-mcp stdout/stderr swap), section 12's bootstrap and generated-script
+    prelude, and the server loop
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+  source_title: 'Model Context Protocol 2025-11-25 -- Transports: stdio'
+  quote: The server MUST NOT write anything to its stdout that is not a valid MCP message.
+  quote_context: The bulleted list describing the stdio transport
+  accessed: 2026-09-23
+- id: jsonrpc-2-0-message-must-be-utf8
+  claim: MCP requires every JSON-RPC message to be UTF-8 encoded, which is why this lesson's encode_message
+    always returns bytes produced by an explicit .encode("utf-8") rather than relying on a platform default.
+  where: lesson.py exercise 1 (encode_message)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+  source_title: Model Context Protocol 2025-11-25 -- Transports
+  quote: MCP uses JSON-RPC to encode messages. JSON-RPC messages MUST be UTF-8 encoded.
+  quote_context: The opening two sentences of the Transports page
+  accessed: 2026-09-23
+- id: mcp-request-id-rules
+  claim: 'An MCP request must carry a string-or-integer id, and unlike base JSON-RPC that id must never
+    be null -- the rule this lesson''s check_request_shape enforces on top of ordinary JSON-RPC shape
+    checking, and which a plain id-is-absent-means-notification test would miss (an explicit `"id": null`
+    is invalid here, not a quiet notification).'
+  where: lesson.py exercise 3 (check_request_shape)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic
+  source_title: 'Model Context Protocol 2025-11-25 -- Base Protocol: Requests'
+  quote: Requests MUST include a string or integer ID. Unlike base JSON-RPC, the ID MUST NOT be null.
+  quote_context: The 'Requests' subsection, the two MUST bullets under the request schema
+  accessed: 2026-09-23
+- id: mcp-notification-must-not-include-id
+  claim: An MCP notification is identified structurally by the absence of an id field, and its receiver
+    must never send a response to it -- the rule that makes "id" in msg, not the method name string, the
+    correct test for whether dispatch owes a reply.
+  where: lesson.py exercise 6 (dispatch, the notification branch) and the conformance harness
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic
+  source_title: 'Model Context Protocol 2025-11-25 -- Base Protocol: Notifications'
+  quote: Notifications are sent from the client to the server or vice versa, as a one-way message. The
+    receiver MUST NOT send a response. [...] Notifications MUST NOT include an ID.
+  quote_context: The 'Notifications' subsection
+  accessed: 2026-09-23
+- id: mcp-initialize-version-negotiation-rule
+  claim: In the initialize handshake, if the server supports the client's requested protocol version it
+    MUST echo that same version back; otherwise it MUST respond with another version it does support,
+    which SHOULD be its latest -- a response to initialize, i.e. a successful InitializeResult. This is
+    the rule this lesson's negotiate_version and dispatch implement. (The same page also shows an example
+    error for a version mismatch that implementations should be prepared to handle -- see mcp-lifecycle-unsupported-version-error-example
+    -- and 2026-07-28 made an error the mandated answer, which is why a student who has read the newer
+    revision is likely to answer with an error here.)
+  where: lesson.py exercise 4 (negotiate_version) and the conformance harness's wrong-version case
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25 -- Lifecycle: Version Negotiation'
+  quote: If the server supports the requested protocol version, it MUST respond with the same version.
+    Otherwise, the server MUST respond with another protocol version it supports. This SHOULD be the latest
+    version supported by the server.
+  quote_context: The 'Version Negotiation' subsection
+  accessed: 2026-09-23
+- id: mcp-client-should-disconnect-on-unacceptable-version
+  claim: If a client receives an initialize response naming a protocol version it does not itself support,
+    it should disconnect rather than continue -- the client-side half of version negotiation this lesson's
+    accept_negotiated_version implements as a raised exception.
+  where: lesson.py exercise 5 (accept_negotiated_version)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25 -- Lifecycle: Version Negotiation'
+  quote: If the client does not support the version in the server’s response, it SHOULD disconnect.
+  quote_context: The 'Version Negotiation' subsection, final bullet
+  accessed: 2026-09-23
+- id: mcp-tools-error-two-mechanisms
+  claim: 'MCP tool calls report failure through two genuinely different mechanisms: a Protocol Error is
+    a standard JSON-RPC error for an unknown tool or a malformed request (one that fails to satisfy the
+    tools/call request''s own schema); a Tool Execution Error is reported INSIDE a successful JSON-RPC
+    result, as content with isError:true, for an input validation failure or a business-logic failure
+    of the tool itself. This lesson''s dispatch keeps these on separate code paths on purpose: an unknown
+    tool name or a tools/call missing its required "name" is a protocol error; a tool argument that fails
+    the TOOL''s OWN schema (lesson 1''s validate_args) comes back as isError:true instead.'
+  where: lesson.py exercise 6 (dispatch, the tools/call branch)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25 -- Server: Tools (Error Handling)'
+  quote: 'Tools use two error reporting mechanisms: Protocol Errors: Standard JSON-RPC errors for issues
+    like: Unknown tools Malformed requests (requests that fail to satisfy CallToolRequest schema) Server
+    errors Tool Execution Errors: Reported in tool results with isError: true: API failures Input validation
+    errors (e.g., date in wrong format, value out of range) Business logic errors'
+  quote_context: The 'Error Handling' section's two-mechanism list; each item is its own list entry on
+    the page
+  accessed: 2026-09-23
+- id: mcp-tools-unknown-tool-example
+  claim: 'The specification''s own worked example of a protocol error for an unrecognised tool name uses
+    JSON-RPC code -32602 with the message "Unknown tool: invalid_tool_name" -- this lesson''s dispatch
+    reproduces that exact code and message shape (substituting the real tool name) for a tools/call naming
+    a tool outside the registry.'
+  where: lesson.py exercise 6 (dispatch, the tools/call branch, unknown-tool case)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25 -- Server: Tools (Error Handling)'
+  quote: '{ "jsonrpc": "2.0", "id": 3, "error": { "code": -32602, "message": "Unknown tool: invalid_tool_name"
+    } }'
+  quote_context: The 'Example protocol error' JSON block
+  accessed: 2026-09-23
+- id: jsonrpc-2-0-error-id-must-be-null
+  claim: 'Base JSON-RPC 2.0 (which MCP requires every message to follow) says that when a server cannot
+    determine a request''s id at all -- a parse error, or a request too malformed to read an id from --
+    the response''s id member must be null. This is why this lesson''s handle_line always answers a JSON
+    parse failure, or a request shape so broken no usable id can be recovered, with "id": null rather
+    than guessing or omitting the field.'
+  where: lesson.py exercise 7 (handle_line, the parse-error and invalid-request branches)
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification, section 5 (Response object)
+  quote: If there was an error in detecting the id in the Request object (e.g. Parse error/Invalid Request),
+    it MUST be Null.
+  quote_context: Section 5, the description of the 'id' member of a Response object
+  accessed: 2026-09-23
+- id: jsonrpc-2-0-reserved-error-codes
+  claim: 'Base JSON-RPC 2.0 reserves -32700 "Parse error", -32600 "Invalid Request", -32601 "Method not
+    found" and -32602 "Invalid params" -- the four codes this lesson names as PARSE_ERROR, INVALID_REQUEST,
+    METHOD_NOT_FOUND and INVALID_PARAMS: a line that will not parse, a parsed message that is not a valid
+    request, a method this server does not implement, and a tools/call whose params are wrong.'
+  where: lesson.py section 2 (the four error-code constants), exercise 6 (dispatch) and exercise 7 (handle_line)
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification, section 5.1 (Error object)
+  quote: -32700 Parse error Invalid JSON was received by the server. An error occurred on the server while
+    parsing the JSON text. -32600 Invalid Request The JSON sent is not a valid Request object. -32601
+    Method not found The method does not exist / is not available. -32602 Invalid params Invalid method
+    parameter(s).
+  quote_context: Section 5.1's reserved pre-defined error code table
+  accessed: 2026-09-23
+- id: mcp-2026-07-28-per-request-scheme
+  claim: 'The 2026-07-28 revision has no initialize handshake: every request carries its own protocol
+    version, servers must implement a server/discover RPC, and optional extensions are negotiated through
+    capabilities -- the changes lesson.py section 1, section 11 and self-check question 4 describe.'
+  where: lesson.py section 1, section 11 and self-check question 4
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning
+  source_title: 'Model Context Protocol 2026-07-28 -- Base Protocol: Versioning'
+  quote: There is no negotiation handshake. Every request carries its protocol version, and the server
+    accepts or rejects each request independently [...] Servers MUST implement server/discover. [...]
+    Clients and servers can negotiate support for optional extensions beyond the core protocol.
+  quote_context: The page's opening paragraph, then 'Protocol Version Negotiation', then 'Extension Negotiation'
+  accessed: 2026-09-23
+- id: mcp-lifecycle-unsupported-version-error-example
+  claim: The same 2025-11-25 lifecycle page that states the MUST rule for version negotiation also asks
+    implementations to be prepared to handle a protocol version mismatch, and gives an example initialization
+    error with code -32602 and message "Unsupported protocol version" -- so "there is no error for an
+    unsupported version in this revision" would be false; lesson.py exercise 4 says a robust client handles
+    both shapes while the server it builds follows the MUST rule.
+  where: lesson.py exercise 4 prose and self-check answer 1
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25 -- Lifecycle: Error Handling'
+  quote: 'Implementations SHOULD be prepared to handle these error cases: Protocol version mismatch [...]
+    Example initialization error: [...] "code": -32602, "message": "Unsupported protocol version",'
+  quote_context: The 'Error Handling' section at the foot of the page and its JSON example
+  accessed: 2026-09-23
+- id: mcp-initialize-result-carries-capabilities
+  claim: The server's answer to initialize must carry its own capabilities and information, which is why
+    dispatch's initialize result includes capabilities and serverInfo.
+  where: lesson.py exercise 6 (dispatch, initialize branch)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25 -- Lifecycle: Initialization'
+  quote: 'The server MUST respond with its own capabilities and information:'
+  quote_context: The 'Initialization' subsection, before the example InitializeResult
+  accessed: 2026-09-23
+- id: mcp-tools-capability-must-be-declared
+  claim: A server that offers tools must declare the tools capability, which is why the initialize result's
+    capabilities contain a "tools" entry.
+  where: lesson.py exercise 6 (dispatch, initialize branch, and its check)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25 -- Server: Tools (Capabilities)'
+  quote: 'Servers that support tools MUST declare the tools capability:'
+  quote_context: The 'Capabilities' section
+  accessed: 2026-09-23
+- id: mcp-ping-must-respond-empty
+  claim: Either side may send ping, and the receiver must answer promptly with an empty result -- which
+    is why dispatch answers ping with {} rather than Method not found, and why the conformance harness
+    uses a ping as its end-of-response sentinel over the pipe.
+  where: lesson.py exercise 6 (dispatch), the conformance harness and section 12
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/ping
+  source_title: 'Model Context Protocol 2025-11-25 -- Utilities: Ping'
+  quote: 'The receiver MUST respond promptly with an empty response:'
+  quote_context: The 'Behavior Requirements' section
+  accessed: 2026-09-23
+- id: mcp-response-id-matches-request
+  claim: A result response must carry the same id as the request it answers -- the rule mcp_call enforces
+    on every call.
+  where: lesson.py exercise 8 (mcp_call)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic
+  source_title: 'Model Context Protocol 2025-11-25 -- Base Protocol: Result Responses'
+  quote: Result responses MUST include the same ID as the request they correspond to.
+  quote_context: The 'Result Responses' subsection
+  accessed: 2026-09-23
+- id: mcp-error-response-id-when-unreadable
+  claim: MCP 2025-11-25's own rule for error responses makes the id optional when it could not be read
+    from a malformed request (the schema on the same page types it as id?), where base JSON-RPC 2.0 requires
+    null -- which is why handle_line's checks and the rubric accept either a null or an absent id there.
+  where: lesson.py exercise 7 (handle_line) prose and checks
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic
+  source_title: 'Model Context Protocol 2025-11-25 -- Base Protocol: Error Responses'
+  quote: Error responses MUST include the same ID as the request they correspond to (except in error cases
+    where the ID could not be read due a malformed request).
+  quote_context: The 'Error Responses' subsection, under the error response schema
+  accessed: 2026-09-23
+- id: mcp-clients-should-support-stdio
+  claim: The specification asks clients to support the stdio transport whenever possible, the transport
+    this lesson implements.
+  where: lesson.py section 11 (Streamable HTTP out of scope)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+  source_title: Model Context Protocol 2025-11-25 -- Transports
+  quote: Clients SHOULD support stdio whenever possible.
+  quote_context: The paragraph listing the two standard transports
+  accessed: 2026-09-23
+- id: mcp-stdio-auth-from-environment
+  claim: Implementations using stdio should not follow MCP's HTTP authorization framework and should take
+    credentials from the environment instead.
+  where: lesson.py section 11 (auth out of scope)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic
+  source_title: 'Model Context Protocol 2025-11-25 -- Base Protocol: Auth'
+  quote: Implementations using an HTTP-based transport SHOULD conform to this specification, whereas implementations
+    using STDIO transport SHOULD NOT follow this specification, and instead retrieve credentials from
+    the environment.
+  quote_context: The 'Auth' subsection
+  accessed: 2026-09-23
+- id: mcp-feature-families
+  claim: MCP servers may offer resources, prompts and tools; clients may offer sampling, roots and elicitation,
+    each a server-initiated request -- the families section 11 lists as out of scope apart from tools.
+  where: lesson.py section 11
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25
+  source_title: 'Model Context Protocol 2025-11-25 -- Specification overview: Features'
+  quote: 'Servers offer any of the following features to clients: Resources: Context and data, for the
+    user or the AI model to use Prompts: Templated messages and workflows for users Tools: Functions for
+    the AI model to execute Clients may offer the following features to servers: Sampling: Server-initiated
+    agentic behaviors and recursive LLM interactions Roots: Server-initiated inquiries into URI or filesystem
+    boundaries to operate in Elicitation: Server-initiated requests for additional information from users'
+  quote_context: The 'Features' section; each feature is its own list entry on the page
+  accessed: 2026-09-23

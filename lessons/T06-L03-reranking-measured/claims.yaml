@@ -1,0 +1,54 @@
+claims:
+- id: ranknet-pairwise-cross-entropy-cost
+  claim: RankNet models the posterior probability P_ij that document i should be ranked above document
+    j as a logistic function of the difference in the model's own outputs, o_ij = f(x_i) - f(x_j), and
+    trains that model with the cross-entropy cost C_ij = -Pbar_ij * log(P_ij) - (1 - Pbar_ij) * log(1
+    - P_ij), where Pbar_ij is the desired (target) posterior for the pair. This lesson's train_pairwise_ranknet
+    implements the hard-label reduction of exactly this cost (Pbar_ij = 1 for every graded pair, i.e.
+    i strictly preferred to j), which the paper itself reduces to C_ij = -Pbar_ij*o_ij + log(1 + exp(o_ij)).
+  where: lesson.py section on RankNet's pairwise loss, and exercise 4 (train_pairwise_ranknet)
+  source_url: https://www.microsoft.com/en-us/research/wp-content/uploads/2005/08/icml_ranking.pdf
+  source_title: Burges, C., Shaked, T., Renshaw, E., Lazier, A., Deeds, M., Hamilton, N. & Hullender,
+    G. (2005). Learning to Rank using Gradient Descent. Proceedings of the 22nd International Conference
+    on Machine Learning (ICML '05).
+  quote: Define oi ≡ f(xi) and oij ≡ f(xi) − f(xj). We will use the cross entropy cost function Cij ≡
+    C(oij) = −P̄ij log Pij − (1 − P̄ij) log(1 − Pij) [...] where the map from outputs to probabilities
+    are modeled using a logistic function [...] Pij ≡ e^oij / (1 + e^oij) [...] Cij then becomes Cij =
+    −P̄ij oij + log(1 + e^oij)
+  quote_context: Section 3, 'A Probabilistic Ranking Cost Function', equations (1), (2) and (3), page
+    3 of the PDF. The prose is verbatim from the PDF's text layer; its subscripts and superscripts (o_ij,
+    P_ij, e^(o_ij)) are flattened onto one line here, as the text layer itself flattens them. Re-read
+    by the reviewer on 2026-09-23.
+  accessed: 2026-09-23
+- id: ranknet-trains-on-pairs-within-a-query
+  claim: RankNet's approach trains on pairs of examples to learn a ranking function, following Herbrich
+    et al. (2000); because the data is partitioned by query (only documents returned for the SAME query
+    are ranked against each other), a pair is only ever drawn from one query's own results. This lesson's
+    train_pairwise_ranknet builds pairs only within a query's own candidates (grouped by query_ids), never
+    across two queries.
+  where: lesson.py exercise 4 (train_pairwise_ranknet), the requirement that pairs never cross a query
+    boundary
+  source_url: https://www.microsoft.com/en-us/research/wp-content/uploads/2005/08/icml_ranking.pdf
+  source_title: Burges, C., Shaked, T., Renshaw, E., Lazier, A., Deeds, M., Hamilton, N. & Hullender,
+    G. (2005). Learning to Rank using Gradient Descent. Proceedings of the 22nd International Conference
+    on Machine Learning (ICML '05).
+  quote: Only those documents returned for a given query are to be ranked against each other. Thus, rather
+    than consisting of a single set of objects to be ranked amongst each other, the data is instead partitioned
+    by query. In this paper we propose a new approach to this problem. Our approach follows (Herbrich
+    et al., 2000) in that we train on pairs of examples to learn a ranking function
+  quote_context: 'Section 1, Introduction, page 1 of the PDF: one contiguous passage, in the source''s
+    own order (the reviewer replaced an earlier quote that joined its last sentence to its first with
+    ''[...]'' in reverse order). Re-read by the reviewer on 2026-09-23.'
+  accessed: 2026-09-23
+- id: reciprocal-rank-fusion-k-60-default
+  claim: Reciprocal rank fusion's authors fixed its constant k at 60 during a pilot investigation and
+    did not alter it during subsequent validation — the value this lesson's given hybrid_rank uses as
+    RRF_K, carried unchanged from T06-L01.
+  where: lesson.py section 1 (RRF_K, the given first-stage hybrid retriever)
+  source_url: https://plg.uwaterloo.ca/~gvcormac/cormacksigir09-rrf.pdf
+  source_title: Cormack, G.V., Clarke, C.L.A. & Buettcher, S. (2009). Reciprocal Rank Fusion outperforms
+    Condorcet and individual Rank Learning Methods. Proceedings of SIGIR '09.
+  quote: where k = 60 was fixed during a pilot investigation and not altered during subsequent validation.
+  quote_context: Section 1, page 1, the sentence completing the RRFscore formula. Re-read by the reviewer
+    on 2026-09-23.
+  accessed: 2026-09-23

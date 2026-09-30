@@ -1,0 +1,31 @@
+id: T06-L03-reranking-measured
+title: Reranking, and what it costs — nDCG and MRR gains, the depth curve, and the test-leakage trap
+track: T06
+flagship: ''
+tier: cpu8
+budget_seconds: 150
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T06-L01-retrieval-from-scratch
+- T06-L02-chunking-and-context-budget
+objectives:
+- Implement query-term coverage and term-proximity features over a first-stage candidate pool, and combine
+  them with the candidates' own BM25 score, dense cosine and first-stage ranks into one feature matrix
+- Implement a pointwise logistic-regression reranker and a pairwise RankNet-style reranker, both trained
+  by full-batch gradient descent from numpy alone
+- Measure nDCG@10 and MRR gains of each reranker over the first-stage ranking, with paired bootstrap confidence
+  intervals over queries
+- Measure the rerank-depth curve — quality against how many first-stage candidates are reranked — and
+  the wall-clock cost that buys, printed with its unit
+- Detect, with a tripwire the notebook prints rather than a written assertion, whether a model-selection
+  step read the held-out test queries, and measure how much a reranker chosen by peeking at test overstates
+  its gain relative to queries never touched during selection
+datasets:
+- name: T06-L03 synthetic reranking corpus (20 planted topics, four train/val/test/fresh query splits)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 157
+status: reviewed
+measured_seconds: 1.4
+measured_peak_mib: 41

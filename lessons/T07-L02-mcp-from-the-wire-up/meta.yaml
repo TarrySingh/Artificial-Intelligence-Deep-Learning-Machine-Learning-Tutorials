@@ -1,0 +1,34 @@
+id: T07-L02-mcp-from-the-wire-up
+title: The Model Context Protocol, from the wire up
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T07-L01-agent-loop-from-scratch
+objectives:
+- Implement JSON-RPC 2.0 message framing for the stdio transport (single-line UTF-8 JSON, one newline-delimited
+  message per line) as the specification defines it, in both directions, with a typed error for a line
+  that is not JSON
+- Implement the initialize handshake's protocol-version negotiation on both sides, including the case
+  where the client's requested version is unsupported and the server answers, as its MUST rule requires,
+  with a version it does support inside a successful result
+- 'Implement ping, tools/list and tools/call over T07-L01''s own tool registry, distinguishing a JSON-RPC
+  protocol error (an unknown tool, a malformed request) from a tool execution error reported inside a
+  successful result with isError: true'
+- Implement the client's request/response call with id matching enforced on every call, and use it to
+  perform the handshake and walk T07-L01's chain task to completion over a real local server subprocess
+- 'Verify, with a given data-driven conformance harness, that the server handles seven required wire behaviours
+  — malformed JSON, an unknown method, an unsupported protocol version, a tools/call without a name, a
+  notification that must get no response, an explicit id: null, and ping — both in-process and over the
+  subprocess''s real stdin/stdout'
+datasets:
+- name: T07-L02 demo chain task (reuses T07-L01's synthetic lookup-chain generator, one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 348
+status: reviewed
+measured_seconds: 0.3
+measured_peak_mib: 33

@@ -15,12 +15,19 @@ For every lesson directory under lessons/, flagships/*/lessons/ and programmes/*
   gate 6     tools/grade.py --solution   -> the reference implementation scores 100%
   gate 4     tools/grade.py              -> the student file does NOT score 100% (stubs are real)
   gate 7     jupytext --to ipynb         -> the source converts to a student notebook
+  gate T     (checked inside structure()) timer guards: in lesson.py, solutions/lesson_solution.py and tests/test_lesson.py, any
+             code that arms SIGALRM must save the timer already running (signal.getitimer) and, in a
+             `finally`, re-arm it with its time left AND its interval; it must never switch the timer
+             off with a literal `setitimer(ITIMER_REAL, 0...)` nor use signal.alarm (which cannot
+             restore an interval), and what its SIGALRM handler raises must derive from BaseException,
+             not Exception. A guard that cancels an outer timer silently disables tools/grade.py's
+             per-row time limit and any harness alarm. The canonical guard is in tools/lesson_template.
 Gates 13-14 are tools/notebooks.py --check and tools/verify_portable.py. What no tool can judge --
 whether an objective is measurable, whether a hint is specific, whether a claim's quote is on the
 live page, whether a number in the prose was typed -- is the independent reviewer's, recorded in
 each lesson's meta.yaml. Exits non-zero if any lesson fails any gate.
 """
-import re, subprocess, sys
+import ast, builtins, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -105,7 +112,84 @@ def structure(d: Path, known: set) -> list:
                 continue
             if not (str(c.get("source_url", "")).startswith("http") and c.get("accessed")):
                 bad.append(f"g12: claim {c.get('id', '?')} lacks a source URL or access date")
+    bad += timer_guards(d)
     return bad
+
+
+TIMER_FILES = ("lesson.py", "solutions/lesson_solution.py", "tests/test_lesson.py")
+
+
+def _call_name(node) -> str:
+    f = node.func if isinstance(node, ast.Call) else None
+    return f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else ""
+
+
+def _mentions_sigalrm(node) -> bool:
+    return any(isinstance(n, (ast.Attribute, ast.Name)) and "SIGALRM" in (getattr(n, "attr", "") or getattr(n, "id", ""))
+               for n in ast.walk(node))
+
+
+def _derives_from_base_only(name: str, classes: dict, seen=()) -> bool:
+    """True if the exception class `name` derives from BaseException but not from Exception."""
+    if name in classes and name not in seen:
+        return all(_derives_from_base_only(b.id if isinstance(b, ast.Name) else "?", classes, seen + (name,))
+                   for b in classes[name].bases) and bool(classes[name].bases)
+    obj = getattr(builtins, name, None)
+    return isinstance(obj, type) and issubclass(obj, BaseException) and not issubclass(obj, Exception)
+
+
+def timer_guards(d: Path) -> list:
+    """Gate T: a SIGALRM guard must restore the timer it found, and raise a BaseException."""
+    bad = []
+    for rel in TIMER_FILES:
+        f = d / rel
+        if not f.exists():
+            continue
+        src = f.read_text()
+        if not re.search(r"setitimer|\balarm\s*\(|SIGALRM", src):
+            continue
+        tree = ast.parse(src)
+        classes = {n.name: n for n in ast.walk(tree) if isinstance(n, ast.ClassDef)}
+        funcs = {n.name: n for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        # units: every top-level function or class, and the module's own statements
+        units = [n for n in tree.body if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))]
+        loose = ast.Module(body=[n for n in tree.body if n not in units], type_ignores=[])
+        for unit in units + [loose]:
+            where = f"{rel}:{getattr(unit, 'name', '<module>')}"
+            calls = [n for n in ast.walk(unit) if isinstance(n, ast.Call)]
+            arms = [c for c in calls if _call_name(c) == "setitimer"]
+            if any(_call_name(c) == "alarm" and isinstance(c.func, ast.Attribute) for c in calls):
+                bad.append(f"gT: {where} uses signal.alarm, which cannot restore an outer interval timer")
+            for c in arms:
+                t = c.args[1] if len(c.args) > 1 else None
+                if isinstance(t, ast.Constant) and not t.value:
+                    bad.append(f"gT: {where} line {c.lineno} switches the timer off (setitimer(..., 0)) "
+                               "instead of re-arming the timer that was running before")
+            if arms:
+                saved = any(_call_name(c) == "getitimer" for c in calls)
+                restored = any(isinstance(n, ast.Try) and any(
+                    _call_name(c) == "setitimer" and (len(c.args) >= 3 or any(isinstance(a, ast.Starred) for a in c.args))
+                    and not isinstance(c.args[1] if len(c.args) > 1 else None, ast.Constant)
+                    for stmt in n.finalbody for c in ast.walk(stmt) if isinstance(c, ast.Call))
+                    for n in ast.walk(unit))
+                if not saved:
+                    bad.append(f"gT: {where} arms a timer without saving the one already running (signal.getitimer)")
+                if not restored:
+                    bad.append(f"gT: {where} never re-arms the previous timer, with its time left and its "
+                               "interval, in a finally")
+            # what each SIGALRM handler raises must be a BaseException, never an Exception
+            for c in calls:
+                if _call_name(c) == "signal" and len(c.args) == 2 and _mentions_sigalrm(c.args[0]) \
+                        and isinstance(c.args[1], ast.Name) and c.args[1].id in funcs:
+                    handler = funcs[c.args[1].id]
+                    for r in ast.walk(handler):
+                        if isinstance(r, ast.Raise) and r.exc is not None:
+                            e = r.exc.func if isinstance(r.exc, ast.Call) else r.exc
+                            name = e.id if isinstance(e, ast.Name) else ast.unparse(e)
+                            if not _derives_from_base_only(name, classes):
+                                bad.append(f"gT: {where} SIGALRM handler {handler.name} raises {name}, which "
+                                           "an `except Exception:` can swallow; derive it from BaseException")
+    return sorted(set(bad))
 
 
 def main() -> int:

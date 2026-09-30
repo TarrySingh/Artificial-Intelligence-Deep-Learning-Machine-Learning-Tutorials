@@ -133,6 +133,8 @@ def readme_region() -> str:
     rows.append(f"| `lessons/` — track lessons | {ok} | — |")
     for prog in sorted(ROOT.glob("programmes/*/")):
         r = programme_rows(prog)
+        if not any(x[3] != "—" for x in r):
+            continue                     # no lesson of this programme is listed yet: it is not listed either
         b = sum(x[2] == "**built**" for x in r)
         total += sum(x[3] != "—" for x in r)
         rows.append(f"| `programmes/{prog.name}` | {b} of {len(r)} | {len(r) - b} |")

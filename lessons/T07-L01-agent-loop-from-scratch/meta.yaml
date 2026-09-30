@@ -1,0 +1,29 @@
+id: T07-L01-agent-loop-from-scratch
+title: The agent loop from scratch, and why reliability compounds
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a JSON-Schema-style argument validator, by hand, and a tool registry that turns an unknown
+  tool name or a malformed call into a returned error rather than an exception
+- Implement capped, seeded exponential backoff with full jitter and a retry wrapper that retries only
+  transient tool failures, never a malformed call
+- Implement the agent loop itself, with a step budget, a cost budget and a stuck-loop detector as its
+  explicit stop conditions
+- Measure success rate against task length over a seeded suite of synthetic tasks, with a bootstrap confidence
+  interval, a cost-per-success figure and a failure taxonomy
+- Fit the measured success-rate-versus-length curve against p^n and measure how much each guardrail --
+  validation, retries, budget -- moves success rate and cost
+datasets:
+- name: T07-L01 synthetic tool-call chains (lookup chains of controlled length, seeded fault and transient-failure
+    injection)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 240
+status: reviewed
+measured_seconds: 0.2
+measured_peak_mib: 65

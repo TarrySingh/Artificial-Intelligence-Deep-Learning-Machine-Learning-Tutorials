@@ -1,0 +1,102 @@
+claims:
+- id: json-schema-type-keyword
+  claim: 'JSON Schema''s `type` keyword is the mechanism this lesson''s validate_args borrows (as a documented
+    subset, implemented by hand, with no jsonschema package) to say what shape an argument must have:
+    the specification''s own reference describes it as fundamental to JSON Schema because it specifies
+    the data type a schema should expect, and lists array, boolean, null, numeric types, object and string
+    among its basic types.'
+  where: lesson.py exercise 1 (validate_args) and the TOOL_SCHEMAS this lesson defines
+  source_url: https://json-schema.org/understanding-json-schema/reference/type
+  source_title: 'Understanding JSON Schema — Type-specific keywords: type'
+  quote: The type keyword is fundamental to JSON Schema because it specifies the data type that a schema
+    should expect.
+  quote_context: Opening paragraph of the 'type' reference page
+  accessed: 2026-09-23
+- id: rfc8259-json-booleans-are-not-numbers
+  claim: In JSON a boolean is its own primitive type, separate from a number, so `true` is never an integer
+    however Python happens to treat `True` (where `isinstance(True, int)` holds). This is why this lesson's
+    validate_args rejects a bool wherever a schema asks for "integer" or "number".
+  where: lesson.py exercise 1 (validate_args, its bool special case) and the common-mistakes section
+  source_url: https://www.rfc-editor.org/rfc/rfc8259.txt
+  source_title: RFC 8259 — The JavaScript Object Notation (JSON) Data Interchange Format, section 1
+  quote: JSON can represent four primitive types (strings, numbers, booleans, and null) and two structured
+    types (objects and arrays).
+  quote_context: Section 1, Introduction, second paragraph
+  accessed: 2026-09-23
+- id: json-schema-required-keyword
+  claim: 'JSON Schema''s `required` keyword names which of an object''s declared properties must be present;
+    by default none of them are. This lesson''s validate_args implements the same rule for a tool call''s
+    arguments: a property named in a schema''s "required" list that is absent from the call is a validation
+    error, not a crash.'
+  where: lesson.py exercise 1 (validate_args, the 'required' branch) and its check's missing-argument
+    case
+  source_url: https://json-schema.org/understanding-json-schema/reference/object
+  source_title: 'Understanding JSON Schema — object: Required Properties'
+  quote: By default, the properties defined by the properties keyword are not required. However, one can
+    provide a list of required properties using the required keyword. The required keyword takes an array
+    of zero or more strings. Each of these strings must be unique.
+  quote_context: The 'Required Properties' section of the 'object' reference page
+  accessed: 2026-09-23
+- id: json-schema-enum-keyword
+  claim: JSON Schema's `enum` keyword restricts a value to a fixed, non-empty set of allowed values. This
+    lesson's validate_args implements the same restriction for any tool argument whose schema carries
+    an "enum" list, rejecting a call whose value is not one of the listed options.
+  where: lesson.py exercise 1 (validate_args, the 'enum' branch)
+  source_url: https://json-schema.org/understanding-json-schema/reference/enum
+  source_title: Understanding JSON Schema — Enumerated values
+  quote: The enum keyword is used to restrict a value to a fixed set of values. It must be an array with
+    at least one element, where each element is unique.
+  quote_context: Opening paragraph of the 'enum' reference page
+  accessed: 2026-09-23
+- id: aws-capped-exponential-backoff
+  claim: 'Capped exponential backoff is the standard response to a client whose call failed and needs
+    to retry without hammering the thing it called: after each unsuccessful attempt, a client multiplies
+    its backoff by a constant, up to a fixed maximum. This lesson''s backoff_delay implements the same
+    cap — min(cap, base * 2**attempt) — as the ceiling on how long a single retry may wait (a number the
+    lesson computes and sums, but never sleeps for; episode cost is counted in attempts, not seconds).'
+  where: lesson.py exercise 3 (backoff_delay) and its BASE_DELAY / CAP_DELAY constants
+  source_url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+  source_title: AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015)
+  quote: Capped exponential backoff means that clients multiply their backoff by a constant after each
+    attempt, up to some maximum value.
+  quote_context: The 'Adding Backoff' section, the sentence introducing the capped-backoff formula
+  accessed: 2026-09-23
+- id: aws-sdks-build-backoff-and-jitter-into-retries
+  claim: Exponential backoff with jitter is not only an article's recommendation but the retry behaviour
+    most AWS SDKs ship with, which is why this lesson calls it the usual fix for a transient failure.
+  where: lesson.py section 5 (exercise 3's introduction)
+  source_url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+  source_title: AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015; update May
+    2023)
+  quote: Most AWS SDKs now support exponential backoff and jitter as part of their retry behavior when
+    using standard or adaptive modes.
+  quote_context: The 'Update (May 2023)' note at the top of the post
+  accessed: 2026-09-23
+- id: aws-full-jitter-randomises-the-whole-interval
+  claim: Plain capped exponential backoff still produces clusters of retries arriving together, because
+    every client that failed at the same moment backs off by the same amount; the fix is jitter — randomising
+    the sleep rather than only lengthening it. The article calls the algorithm that randomises the ENTIRE
+    interval, from zero up to the capped exponential value, "Full Jitter". This lesson's backoff_delay
+    implements exactly that algorithm (never a fixed delay plus a small random wobble), seeded so a lesson
+    run is reproducible.
+  where: lesson.py exercise 3 (backoff_delay) and its docstring's 'full jitter' name
+  source_url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+  source_title: AWS Architecture Blog — Exponential Backoff And Jitter (Marc Brooker, 2015)
+  quote: The solution isn’t to remove backoff. It’s to add jitter. [...] There are a few ways to implement
+    these timed backoff loops. Let’s call the algorithm above “Full Jitter”, and consider two alternatives.
+  quote_context: The 'Adding Jitter' section and the paragraph immediately after it naming the algorithm
+  accessed: 2026-09-23
+- id: metr-success-probability-fitted-against-task-length
+  claim: METR characterises a model not by a single pass/fail score but by fitting a curve of success
+    probability against human task length, per model, and reading off the length at which a chosen success
+    probability (50% in their headline figure) is reached — the same shape of question this lesson's fit_reliability
+    answers for its own synthetic harness, substituting a closed-form p^n fit for their logistic one because
+    this lesson's task length is a count of discrete steps, not a continuous duration.
+  where: lesson.py section 13 (exercise 9's introduction), beside this lesson's own measured-vs-predicted
+    table
+  source_url: https://metr.org/blog/2025-03-19-measuring-ai-ability-to-complete-long-tasks/
+  source_title: METR — Measuring AI Ability to Complete Long Software Tasks (2025-03-19)
+  quote: For each model, we can fit a logistic curve to predict model success probability using human
+    task length.
+  quote_context: The paragraph introducing how time horizon is computed from a fitted curve
+  accessed: 2026-09-23
