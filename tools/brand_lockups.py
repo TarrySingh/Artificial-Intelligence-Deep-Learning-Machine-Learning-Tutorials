@@ -89,8 +89,8 @@ def draw(name, fonts, ink, blue, saffron, stroke, bg=None):
     print(f"  wrote brand/{name}.png  ({round(W) * 2} x {H * 2} px)")
 
 
-COURSES = ("EU AI Act conformity", "Model risk", "Predictive maintenance",
-           "Document intelligence", "Humanoid lab")
+COURSES = ("EU AI Act", "Model risk", "Maintenance", "Documents",
+           "RAG", "AI agents", "Humanoid lab")
 
 
 def measure(s, prop, size):

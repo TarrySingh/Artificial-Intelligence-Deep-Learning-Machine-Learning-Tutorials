@@ -66,7 +66,7 @@ New lessons three times a week, every Monday, Wednesday and Friday. Watch or sta
 
 ```mermaid
 timeline
-    September 2026 : Document intelligence for regulated operations, and retrieval and RAG begins
+    September 2026 : Document intelligence for regulated operations, retrieval and RAG, and the agents track begins
     October 2026 : AI agents and the protocols they speak, AI for science, serving models on modest hardware, post-training from scratch, and evaluating across languages
     November 2026 : A new industry programme on evidence-based credit decisions
     December 2026 : Deeper courses in the industries we already cover
