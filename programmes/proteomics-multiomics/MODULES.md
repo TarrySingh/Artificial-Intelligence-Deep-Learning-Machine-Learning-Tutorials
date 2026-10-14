@@ -135,7 +135,7 @@ A MetaboLights study enters only as an optional, licensed extract through the da
 README; a record's licence is read from the record (`metabolights-record-licence-field`) and no
 extract is committed before that.
 
-As built, the lesson has nine exercises: m/z clustering into mass traces, peak picking with a
+As designed, the lesson has nine exercises: m/z clustering into mass traces, peak picking with a
 signal-to-noise rule and a prominence rule (without which a steady background ion yields dozens of
 false peaks), one-to-one matching across runs, retention-time warping, isotope grouping, adduct
 grouping, neutral mass, annotation at the four MSI levels, and scoring. Level 1 rests on an
