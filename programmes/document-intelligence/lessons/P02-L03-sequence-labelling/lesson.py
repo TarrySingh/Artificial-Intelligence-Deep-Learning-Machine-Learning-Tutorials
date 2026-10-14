@@ -84,19 +84,6 @@ for _name in COMMONS_SIBLINGS:
 print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fetched else ""))
 # --- END COMMONS LAUNCHER ---
 
-# ---
-# jupyter:
-#   jupytext:
-#     text_representation:
-#       extension: .py
-#       format_name: percent
-#       format_version: '1.3'
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
 # %% [markdown]
 # # P02-L03-sequence-labelling · From rules to a tagger
 #
@@ -128,6 +115,24 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 4. Implement the structured perceptron update, including the transition half that most
 #    people forget.
 # 5. Score the tagger with module 1's harness and name the field types it actually improved.
+
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`, `P02-L02`
+#
+# **This lesson assumes you can already:**
+#
+# - build and update a dict from string keys to numbers, with dict.get or collections.defaultdict
+# - explain how a linear classifier scores an input as the sum of the weights of the features it has, and picks the highest-scoring class
+# - write a regular expression for a simple pattern such as a date or an amount
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Speech and Language Processing, chapter: Sequence Labeling for Parts of Speech and Named Entities](https://web.stanford.edu/~jurafsky/slp3/18.pdf) · Jurafsky and Martin (Stanford; free drafts) · *free* — sections 18.3 (BIO tagging of spans), 18.5 (feature-based CRF taggers) and 18.4 (Viterbi decoding), the ideas behind decode_spans, token_features and viterbi_decode
+# - [Speech and Language Processing, appendix: Hidden Markov Models](https://web.stanford.edu/~jurafsky/slp3/A.pdf) · Jurafsky and Martin (Stanford; free drafts) · *free* — section A.4, the Viterbi algorithm worked as a trellis of best-path scores, the table that viterbi_decode fills in
+# - [Discriminative Training Methods for Hidden Markov Models: Theory and Experiments with Perceptron Algorithms](https://aclanthology.org/W02-1001/) · Michael Collins (EMNLP 2002; ACL Anthology) · *free* — the structured perceptron: decode with Viterbi, then add the gold sequence's features and subtract the predicted one's, the update of perceptron_update (see 'A New Estimation Method')
 
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.

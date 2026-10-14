@@ -1,0 +1,332 @@
+claims:
+- id: genai-conventions-moved-repo
+  claim: 'The OpenTelemetry GenAI semantic conventions no longer live in the main semantic-conventions
+    repository: the OpenTelemetry documentation says they moved to their own repository, which is the
+    one this lesson pins.'
+  where: lesson.py section 1 (the pinned-version cell) and the meta.yaml header
+  source_url: https://opentelemetry.io/docs/specs/semconv/gen-ai/
+  source_title: 'OpenTelemetry docs: Moved: Generative AI semantic conventions'
+  quote: GenAI semantic conventions have moved to the OpenTelemetry GenAI semantic conventions repository
+  quote_context: The notice at the top of the page that used to hold the conventions
+  accessed: 2026-10-02
+- id: genai-conventions-no-release
+  claim: As of the access date the OpenTelemetry GenAI semantic-conventions repository has published no
+    release, so there is no version number to pin and this lesson pins a commit instead.
+  where: lesson.py section 1 (the pinned-version cell and the sentence under it)
+  source_url: https://github.com/open-telemetry/semantic-conventions-genai/releases
+  source_title: 'open-telemetry/semantic-conventions-genai: Releases'
+  quote: There aren’t any releases here
+  quote_context: The empty state of the repository's Releases page (the apostrophe is the page's own)
+  accessed: 2026-10-02
+- id: genai-conventions-status-development
+  claim: At the pinned commit the GenAI agent-span conventions are marked with the status Development,
+    which is why the lesson pins them and says 'as of' rather than treating them as settled.
+  where: lesson.py section 1
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Semantic Conventions for GenAI
+    agent and framework spans'
+  quote: '**Status**: [Development][DocumentStatus]'
+  quote_context: Second line of the document; raw markdown of the file at the pinned commit
+  accessed: 2026-10-02
+- id: invoke-agent-internal-span-description
+  claim: The conventions define an invoke_agent span for a GenAI agent invoked within the same process,
+    which is what the T07 agent loop is.
+  where: lesson.py section 6 (run_agent_loop's root span)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Invoke agent internal span'
+  quote: Describes GenAI agent invocation within the same process.
+  quote_context: First sentence of the section 'Invoke agent internal span'
+  accessed: 2026-10-02
+- id: invoke-agent-internal-span-name
+  claim: The in-process invoke_agent span is named 'invoke_agent {gen_ai.agent.name}' when the agent name
+    is available.
+  where: lesson.py section 6 (run_agent_loop's root span) and AGENT_NAME
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Invoke agent internal span'
+  quote: '**Span name** SHOULD be `invoke_agent {gen_ai.agent.name}` if `gen_ai.agent.name` is readily
+    available.'
+  quote_context: Section 'Invoke agent internal span'
+  accessed: 2026-10-02
+- id: invoke-agent-internal-span-kind
+  claim: The in-process invoke_agent span SHOULD have kind INTERNAL.
+  where: lesson.py section 6 (run_agent_loop's root span)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Invoke agent internal span'
+  quote: '**Span kind** SHOULD be `INTERNAL`.'
+  quote_context: Section 'Invoke agent internal span'; the same sentence appears in the other span sections
+  accessed: 2026-10-02
+- id: execute-tool-span-name
+  claim: The conventions name a tool-execution span 'execute_tool {gen_ai.tool.name}' and set gen_ai.operation.name
+    to execute_tool.
+  where: lesson.py exercise 2 (traced_call) and exercise 1 (tool_span_attributes)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: '**Span name** SHOULD be `execute_tool {gen_ai.tool.name}`.'
+  quote_context: Section 'Execute tool span'
+  accessed: 2026-10-02
+- id: execute-tool-span-operation-name
+  claim: For a tool-execution span the convention's value for gen_ai.operation.name is execute_tool.
+  where: lesson.py exercise 1
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: '`gen_ai.operation.name` SHOULD be `execute_tool`.'
+  quote_context: Section 'Execute tool span', first paragraph
+  accessed: 2026-10-02
+- id: execute-tool-span-kind-internal
+  claim: A tool-execution span SHOULD have kind INTERNAL, which OTLP encodes as the integer 1.
+  where: lesson.py exercise 2 (SPAN_KIND_INTERNAL)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: '**Span kind** SHOULD be `INTERNAL`.'
+  quote_context: Section 'Execute tool span'; the same sentence appears in the other span sections
+  accessed: 2026-10-02
+- id: tool-call-arguments-opt-in
+  claim: 'The tool call arguments attribute (gen_ai.tool.call.arguments) is Opt-In: it is not recorded
+    unless the application asks for it, which is why this lesson leaves it off and only prices it.'
+  where: lesson.py section 12 (overhead) and its prose
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: '`Opt-In` | any | Parameters passed to the tool call.'
+  quote_context: The gen_ai.tool.call.arguments row of the Execute tool span attribute table
+  accessed: 2026-10-02
+- id: tool-call-arguments-may-be-sensitive
+  claim: The conventions warn that the tool call arguments attribute may contain sensitive information.
+  where: lesson.py section 12 prose
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: This attribute may contain sensitive information.
+  quote_context: Note [6] on gen_ai.tool.call.arguments, shown as a warning
+  accessed: 2026-10-02
+- id: sampling-attributes-at-span-creation
+  claim: The agent-span conventions say the attributes that can be important for sampling decisions, including
+    gen_ai.operation.name and gen_ai.agent.name, should be provided when the span is created.
+  where: lesson.py section 6 (root span attributes passed at creation)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Create agent span'
+  quote: 'SHOULD be provided **at span creation time** (if provided at all):'
+  quote_context: After the attribute table of the Create agent span; the list names gen_ai.agent.name
+    and gen_ai.operation.name
+  accessed: 2026-10-02
+- id: error-type-low-cardinality
+  claim: 'error.type is a low-cardinality identifier, not a free-text message: it should match the provider''s
+    error code, the canonical exception name, or another low-cardinality identifier.'
+  where: lesson.py exercise 1 (the error.type classification) and common mistakes
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Create agent span (note [3])'
+  quote: The `error.type` SHOULD match the error code returned by the Generative AI provider or the client
+    library, the canonical name of exception that occurred, or another low-cardinality error identifier.
+  quote_context: Note [3] on error.type
+  accessed: 2026-10-02
+- id: error-type-other-fallback
+  claim: The conventions define _OTHER as the fallback value of error.type when the instrumentation has
+    no more specific one.
+  where: lesson.py exercise 1 (the fallback branch)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Create agent span'
+  quote: '`_OTHER` | A fallback error value to be used when the instrumentation doesn''t define a custom
+    value.'
+  quote_context: The table of well-known error.type values
+  accessed: 2026-10-02
+- id: gen-ai-usage-input-tokens
+  claim: The GenAI conventions have an attribute gen_ai.usage.input_tokens for the tokens in a model call's
+    input, which is where a token-priced cost would come from; this lesson has no model call, so its cost
+    is counted in tool-call attempts.
+  where: lesson.py section 2 prose
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-agent-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Invoke agent client span'
+  quote: The number of tokens used in the GenAI input (prompt).
+  quote_context: Description column of the gen_ai.usage.input_tokens row
+  accessed: 2026-10-02
+- id: recording-errors-retried-not-recorded
+  claim: Errors that were retried or handled, letting the operation complete, should not be recorded on
+    the spans that describe that operation; a step that timed out and then succeeded has no error.
+  where: lesson.py exercise 1, exercise 2, common mistakes, self-check question 3
+  source_url: https://opentelemetry.io/docs/specs/semconv/general/recording-errors/
+  source_title: 'OpenTelemetry semantic conventions: Recording errors'
+  quote: Errors that were retried or handled (allowing an operation to complete gracefully) SHOULD NOT
+    be recorded on spans or metrics that describe this operation.
+  quote_context: Section 'What constitutes an error'
+  accessed: 2026-10-02
+- id: recording-errors-status-unset-on-success
+  claim: A span whose operation ended without errors must leave its status code unset; success is not
+    recorded as an explicit OK.
+  where: lesson.py exercise 2 and common mistakes
+  source_url: https://opentelemetry.io/docs/specs/semconv/general/recording-errors/
+  source_title: 'OpenTelemetry semantic conventions: Recording errors'
+  quote: Span Status Code MUST be left unset if the instrumented operation has ended without any errors.
+  quote_context: Section 'Recording errors on spans'
+  accessed: 2026-10-02
+- id: trace-api-status-description-error-only
+  claim: In the OpenTelemetry trace API a status description may only be used with the Error status code.
+  where: lesson.py Span.set_status
+  source_url: https://opentelemetry.io/docs/specs/otel/trace/api/
+  source_title: 'OpenTelemetry Tracing API: Set Status'
+  quote: Description MUST only be used with the Error StatusCode value.
+  quote_context: Section 'Set Status'
+  accessed: 2026-10-02
+- id: trace-api-ok-means-validated
+  claim: The Ok status code means a person or operator validated that the operation completed successfully;
+    instrumentation does not set it on its own.
+  where: lesson.py exercise 2 prose
+  source_url: https://opentelemetry.io/docs/specs/otel/trace/api/
+  source_title: 'OpenTelemetry Tracing API: Set Status'
+  quote: The operation has been validated by an Application developer or Operator to have completed successfully.
+  quote_context: The definition of the Ok StatusCode in the 'Set Status' section
+  accessed: 2026-10-02
+- id: otlp-json-hex-ids
+  claim: In OTLP/JSON the trace id and span id are written as hex strings, not base64.
+  where: lesson.py section 3 prose and Span.trace_id / span_id
+  source_url: https://opentelemetry.io/docs/specs/otlp/
+  source_title: 'OpenTelemetry Protocol (OTLP) Specification 1.11.0: JSON Protobuf Encoding'
+  quote: The traceId and spanId byte arrays are represented as case-insensitive hex-encoded strings
+  quote_context: First deviation listed under 'JSON Protobuf Encoding'
+  accessed: 2026-10-02
+- id: otlp-json-enum-integers
+  claim: In OTLP/JSON enum fields such as a span's kind are written as integers, never as names.
+  where: lesson.py to_otlp_json (kind and status code as integers)
+  source_url: https://opentelemetry.io/docs/specs/otlp/
+  source_title: 'OpenTelemetry Protocol (OTLP) Specification 1.11.0: JSON Protobuf Encoding'
+  quote: Values of enum fields MUST be encoded as integer values.
+  quote_context: Second deviation listed under 'JSON Protobuf Encoding'
+  accessed: 2026-10-02
+- id: otlp-json-int64-decimal-strings
+  claim: In OTLP/JSON 64-bit integers are written as decimal strings, and a receiver must accept either
+    a number or a string when decoding.
+  where: lesson.py exercises 3 and 4, common mistakes, self-check question 1
+  source_url: https://opentelemetry.io/docs/specs/otlp/
+  source_title: 'OpenTelemetry Protocol (OTLP) Specification 1.11.0: JSON Protobuf Encoding'
+  quote: 64-bit integer numbers in JSON-encoded payloads are encoded as decimal strings, and either numbers
+    or strings are accepted when decoding.
+  quote_context: The note that follows the list of deviations; it quotes the protobuf JSON mapping
+  accessed: 2026-10-02
+- id: otlp-spec-version
+  claim: The OTLP specification this lesson's payload shape follows is version 1.11.0, as of the access
+    date.
+  where: lesson.py section 1 (the pinned-version cell)
+  source_url: https://opentelemetry.io/docs/specs/otlp/
+  source_title: OpenTelemetry Protocol (OTLP) Specification
+  quote: OTLP Specification 1.11.0
+  quote_context: The page title
+  accessed: 2026-10-02
+- id: otlp-trace-id-16-bytes
+  claim: In OTLP a trace id is a 16-byte array, which OTLP/JSON writes as 32 hex characters.
+  where: lesson.py section 3 prose and Span.trace_id
+  source_url: https://raw.githubusercontent.com/open-telemetry/opentelemetry-proto/v1.11.0/opentelemetry/proto/trace/v1/trace.proto
+  source_title: 'opentelemetry-proto v1.11.0: trace.proto, message Span'
+  quote: The ID is a 16-byte array.
+  quote_context: Comment on the trace_id field of message Span
+  accessed: 2026-10-02
+- id: otlp-span-id-8-bytes-root-parent-empty
+  claim: In OTLP a span id is an 8-byte array (16 hex characters), and a root span has an empty parent
+    span id, which is why this lesson's encoder leaves parentSpanId out for a root.
+  where: lesson.py section 3 prose, Span.span_id and span_to_otlp
+  source_url: https://raw.githubusercontent.com/open-telemetry/opentelemetry-proto/v1.11.0/opentelemetry/proto/trace/v1/trace.proto
+  source_title: 'opentelemetry-proto v1.11.0: trace.proto, message Span'
+  quote: The `span_id` of this span's parent span. If this is a root span, then this field must be empty.
+    The ID is an 8-byte array.
+  quote_context: Comment on the parent_span_id field, which the file wraps across two comment lines; span_id
+    is described the same way
+  accessed: 2026-10-02
+- id: otlp-span-kind-internal-is-1
+  claim: SPAN_KIND_INTERNAL has the numeric value 1 in the OTLP schema.
+  where: lesson.py SPAN_KIND_INTERNAL
+  source_url: https://raw.githubusercontent.com/open-telemetry/opentelemetry-proto/v1.11.0/opentelemetry/proto/trace/v1/trace.proto
+  source_title: 'opentelemetry-proto v1.11.0: trace.proto, enum SpanKind'
+  quote: SPAN_KIND_INTERNAL = 1;
+  quote_context: The SpanKind enum
+  accessed: 2026-10-02
+- id: otlp-status-code-values
+  claim: The OTLP status codes are UNSET = 0, OK = 1 and ERROR = 2.
+  where: lesson.py STATUS_UNSET, STATUS_OK, STATUS_ERROR
+  source_url: https://raw.githubusercontent.com/open-telemetry/opentelemetry-proto/v1.11.0/opentelemetry/proto/trace/v1/trace.proto
+  source_title: 'opentelemetry-proto v1.11.0: trace.proto, message Status'
+  quote: STATUS_CODE_ERROR = 2;
+  quote_context: The StatusCode enum, after STATUS_CODE_UNSET = 0 and STATUS_CODE_OK = 1 (the file aligns
+    the equals signs with spaces)
+  accessed: 2026-10-02
+- id: protobuf-json-omits-defaults
+  claim: Protobuf's JSON mapping omits fields that hold their default value by default, so an OTLP/JSON
+    span may lack a status, a status code or a parent span id.
+  where: lesson.py section 10 prose and exercise 5
+  source_url: https://protobuf.dev/programming-guides/json/
+  source_title: 'Protocol Buffers documentation: ProtoJSON Format'
+  quote: Fields that don’t support presence and that have their default value are omitted by default in
+    JSON output
+  quote_context: The 'Always emit fields without presence' option; the apostrophe is the page's own
+  accessed: 2026-10-02
+- id: otel-sdk-onend-after-span-ended
+  claim: The SDK calls a span processor's OnEnd after a span has ended, so exporters see spans in the
+    order they end, children before their parent.
+  where: lesson.py section 3 prose and self-check question 4
+  source_url: https://opentelemetry.io/docs/specs/otel/trace/sdk/
+  source_title: 'OpenTelemetry Tracing SDK: Span processor'
+  quote: OnEnd is called after a span is ended (i.e., the end timestamp is already set).
+  quote_context: The OnEnd(Span) subsection of 'Span processor'
+  accessed: 2026-10-02
+- id: otel-custom-attribute-prefix
+  claim: OpenTelemetry recommends prefixing an application-specific attribute name with the application's
+    own name, and not using an existing OpenTelemetry namespace as the prefix; this lesson's own attributes
+    use the prefix 'commons.'.
+  where: lesson.py exercise 1 prose and tool_span_attributes
+  source_url: https://opentelemetry.io/docs/specs/semconv/general/naming/
+  source_title: 'OpenTelemetry semantic conventions: Naming'
+  quote: It is not recommended to use existing OpenTelemetry semantic convention namespace as a prefix
+    for a new company- or application-specific attribute name.
+  quote_context: The third option under 'Recommendations for application developers'
+  accessed: 2026-10-02
+- id: langfuse-accepts-otlp
+  claim: Langfuse accepts traces over OTLP on an /api/public/otel endpoint.
+  where: lesson.py section 9 prose
+  source_url: https://langfuse.com/integrations/native/opentelemetry
+  source_title: 'Langfuse documentation: OpenTelemetry endpoint'
+  quote: Langfuse can receive traces on the /api/public/otel (OTLP) endpoint.
+  quote_context: Opening statement of the 'OpenTelemetry endpoint' section
+  accessed: 2026-10-02
+- id: phoenix-accepts-otlp
+  claim: Arize Phoenix accepts traces over the OpenTelemetry protocol (OTLP).
+  where: lesson.py section 9 prose
+  source_url: https://arize.com/docs/phoenix/tracing/llm-traces
+  source_title: 'Arize Phoenix documentation: Tracing'
+  quote: Phoenix accepts traces over the OpenTelemetry protocol (OTLP)
+  quote_context: The introductory paragraph of the tracing overview
+  accessed: 2026-10-02
+- id: otel-python-with-block-closes-span
+  claim: In the OpenTelemetry Python API, `with tracer.start_as_current_span(...)` closes the span when
+    the block ends; the optional SDK cell in section 14 relies on it.
+  where: lesson.py section 14 (optional SDK cell)
+  source_url: https://opentelemetry.io/docs/languages/python/instrumentation/
+  source_title: 'OpenTelemetry Python instrumentation guide: Creating spans'
+  quote: When the 'with' block goes out of scope, 'span' is closed for you
+  quote_context: Comment in the first code example of 'Creating spans'
+  accessed: 2026-10-02
+- id: otel-python-simple-span-processor
+  claim: In the OpenTelemetry Python SDK, SimpleSpanProcessor passes ended spans directly to the configured
+    SpanExporter; the optional SDK cell in section 14 uses that.
+  where: lesson.py section 14 (optional SDK cell)
+  source_url: https://opentelemetry-python.readthedocs.io/en/latest/sdk/trace.export.html
+  source_title: 'OpenTelemetry Python SDK reference: opentelemetry.sdk.trace.export'
+  quote: SimpleSpanProcessor is an implementation of SpanProcessor that passes ended spans directly to
+    the configured SpanExporter
+  quote_context: Docstring of SimpleSpanProcessor
+  accessed: 2026-10-02
+- id: genai-core-conventions-version-linked
+  claim: The pinned GenAI documents link to version v1.44.0 of the core OpenTelemetry semantic conventions
+    for the shared attributes and rules (span status, error.type), which is the core version this lesson
+    prints alongside the pinned commit.
+  where: lesson.py section 1 (the pinned-version cell, core_conventions)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: '**Span status** SHOULD follow the [Recording Errors](https://github.com/open-telemetry/semantic-conventions/blob/v1.44.0/docs/general/recording-errors.md)
+    document.'
+  quote_context: Raw markdown of the file at the pinned commit; the core repository's release tag v1.44.0
+    is in the link
+  accessed: 2026-10-02
+- id: execute-tool-tool-type-function
+  claim: The conventions define a gen_ai.tool.type attribute for the type of tool used by an agent, with
+    the well-known value function, which this lesson puts on every execute_tool span.
+  where: lesson.py exercise 1 (tool_span_attributes)
+  source_url: https://raw.githubusercontent.com/open-telemetry/semantic-conventions-genai/e57c543b4889619eb2a05702471937db5119165d/docs/gen-ai/gen-ai-spans.md
+  source_title: 'OpenTelemetry GenAI semantic conventions (pinned commit): Execute tool span'
+  quote: Type of the tool utilized by the agent [5] | `function`; `extension`; `datastore`
+  quote_context: The gen_ai.tool.type row of the Execute tool span attribute table (raw markdown)
+  accessed: 2026-10-02

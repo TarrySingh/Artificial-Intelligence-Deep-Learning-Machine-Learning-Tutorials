@@ -1,0 +1,72 @@
+claims:
+- id: recency-exponential-decay
+  claim: 'Park et al. (2023) score a memory''s recency as an exponential decay function over the number
+    of sandbox game hours since it was last retrieved, with a decay factor of 0.995. This lesson''s recency_score
+    (exercise 5) uses the same form, `recency = decay ** elapsed`, with two stated differences: elapsed
+    time is counted in interaction TURNS since the memory was last STATED (this lesson has no clock, and
+    reading the store never refreshes a memory), and DECAY = 0.99 per turn is a teaching choice, not the
+    paper''s value.'
+  where: lesson.py exercise 5 (recency_score) and its DECAY constant
+  source_url: https://arxiv.org/abs/2304.03442
+  source_title: 'Park, J. S., O''Brien, J., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023).
+    Generative Agents: Interactive Simulacra of Human Behavior. Proceedings of the 36th Annual ACM Symposium
+    on User Interface Software and Technology (UIST ''23).'
+  quote: In our implementation, we treat recency as an exponential decay function over the number of sandbox
+    game hours since the memory was last retrieved. Our decay factor is 0.995.
+  quote_context: Section 4.1, 'Retrieval', the paragraph defining the recency score. Re-read on the arXiv
+    HTML rendering (arxiv.org/html/2304.03442) on the access date below.
+  accessed: 2026-09-24
+- id: importance-poignancy-scale
+  claim: Park et al. (2023) score a memory's importance ("poignancy") by asking a language model to output
+    an integer on a 1-to-10 scale, where 1 is purely mundane (e.g. brushing teeth, making a bed) and 10
+    is extremely poignant (e.g. a break-up, a college acceptance). This lesson's importance_oracle (given)
+    stands in for that language-model call — this repository's environment has no LLM access on any path
+    — with a deterministic, hand-authored 1-10 base importance per tracked fact (a home city at 8.5, a
+    coffee order at 3.0) instead, so the same event always scores the same on any machine.
+  where: lesson.py, importance_oracle() and the SLOTS table's base_importance values
+  source_url: https://arxiv.org/abs/2304.03442
+  source_title: 'Park, J. S., O''Brien, J., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023).
+    Generative Agents: Interactive Simulacra of Human Behavior. Proceedings of the 36th Annual ACM Symposium
+    on User Interface Software and Technology (UIST ''23).'
+  quote: On the scale of 1 to 10, where 1 is purely mundane (e.g., brushing teeth, making bed) and 10
+    is extremely poignant (e.g., a break up, college acceptance), rate the likely poignancy
+  quote_context: Section 4.1, 'Retrieval', the prompt template given to the language model for the importance
+    score. Re-read on the arXiv HTML rendering on the access date below.
+  accessed: 2026-09-24
+- id: relevance-embedding-cosine
+  claim: Park et al. (2023) score a memory's relevance to the current situation as the cosine similarity
+    between the memory's own text embedding and the query's text embedding. This lesson's relevance term
+    inside retrieve_top_k (exercise 6) is exactly this — a single cosine between a query embedding and
+    each candidate memory's embedding — using a plain L2-normalised TF-IDF vector (`embed`, given) rather
+    than a language-model embedding, for the same no-LLM-access reason as the importance claim above.
+  where: lesson.py exercise 6 (retrieve_top_k), the relevance array
+  source_url: https://arxiv.org/abs/2304.03442
+  source_title: 'Park, J. S., O''Brien, J., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023).
+    Generative Agents: Interactive Simulacra of Human Behavior. Proceedings of the 36th Annual ACM Symposium
+    on User Interface Software and Technology (UIST ''23).'
+  quote: we use the language model to generate an embedding vector of the text description of each memory.
+    Then, we calculate relevance as the cosine similarity between the memory's embedding vector and the
+    query memory's embedding vector.
+  quote_context: Section 4.1, 'Retrieval', the paragraph defining the relevance score. Re-read on the
+    arXiv HTML rendering on the access date below.
+  accessed: 2026-09-24
+- id: retrieval-score-combination
+  claim: 'Park et al. (2023) combine the three normalised scores into one retrieval score as a weighted
+    sum with all weights (alphas) set to 1: score = alpha_recency * recency + alpha_importance * importance
+    + alpha_relevance * relevance, after min-max scaling each of the three raw scores to the range [0,
+    1]. This lesson''s retrieve_top_k (exercise 6) implements exactly this: `_minmax` (given) scales each
+    of the three arrays over the candidate pool being scored, and the graded exercise sums the three scaled
+    arrays with equal weight, with no extra weighting term.'
+  where: lesson.py exercise 6 (retrieve_top_k) and the given _minmax helper
+  source_url: https://arxiv.org/abs/2304.03442
+  source_title: 'Park, J. S., O''Brien, J., Cai, C. J., Morris, M. R., Liang, P., & Bernstein, M. S. (2023).
+    Generative Agents: Interactive Simulacra of Human Behavior. Proceedings of the 36th Annual ACM Symposium
+    on User Interface Software and Technology (UIST ''23).'
+  quote: 'To calculate the final retrieval score, we normalize the recency, relevance, and importance
+    scores to the range of [0,1] using min-max scaling. The retrieval function scores all memories as
+    a weighted combination of the three elements: [...] In our implementation, all αs are set to 1.'
+  quote_context: Section 4.1, 'Memory and Retrieval', the Retrieval paragraph defining the combined score.
+    The [...] elides the displayed equation, score = α_recency·recency + α_importance·importance + α_relevance·relevance,
+    which is typeset maths rather than text. Re-read on the arXiv HTML rendering (arxiv.org/html/2304.03442v2)
+    on the access date below; 'αs' is the page's own rendering, a maths α followed by a plain s.
+  accessed: 2026-09-24

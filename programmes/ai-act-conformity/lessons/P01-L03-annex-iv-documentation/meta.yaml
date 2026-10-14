@@ -21,6 +21,43 @@ objectives:
   each refusal is waiting for
 - Implement staleness_report() and explain why a content digest, not a modification time, decides whether
   a section has drifted
+before_you_start:
+  assumed:
+  - write Python functions over nested dicts and lists, including looking a value up without raising when
+    a key is missing
+  - compute the SHA-256 digest of some text with hashlib and say what two equal digests tell you
+  - say, for an ML system you know, what its intended purpose, training data and evaluation metrics are
+  resources:
+  - title: 'AI Act Annex IV: Technical documentation'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/annex-4
+    kind: free
+    why: the nine numbered points the lesson's schema is built from; read points 2 (development and validation),
+      3 (monitoring and oversight) and 4 (performance metrics) first
+  - title: 'AI Act Article 11: Technical documentation'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-11
+    kind: free
+    why: paragraph 1, the duty to draw the documentation up before placement and keep it up to date, which
+      is the staleness check in exercise 6
+  - title: Model Cards for Model Reporting
+    by: Mitchell et al. (FAT* 2019, arXiv)
+    url: https://arxiv.org/abs/1810.03993
+    kind: free
+    why: 'a worked example of structured model documentation: intended use, evaluation data and metrics,
+      which map onto Annex IV''s points 2 to 4'
+  - title: Datasheets for Datasets
+    by: Gebru et al. (arXiv)
+    url: https://arxiv.org/abs/1803.09010
+    kind: free
+    why: 'the dataset-side counterpart: the motivation, composition and collection questions behind Annex
+      IV''s data requirements in point 2'
+  - title: 'The EU Artificial Intelligence Act: A Commentary'
+    by: Michèle Finck (Oxford University Press, 2026)
+    url: https://academic.oup.com/oxford-law-pro/book/62212
+    kind: paid
+    why: 'per the publisher an article-by-article commentary; its contents page was not checkable, so
+      no entry numbers are given: look up Article 11 and Annex IV for a lawyer''s reading'
 datasets: []
 synthetic_data: All ten source artefacts — the model registry, dataset manifest, validation report, control
   design, event log design, metrics, risk register, change log, standards record and post-market plan

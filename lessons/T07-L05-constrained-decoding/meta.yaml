@@ -1,0 +1,68 @@
+id: T07-L05-constrained-decoding
+title: 'Build a JSON-schema constrained decoder: a token mask over a BPE vocabulary, and a measurement
+  of what it does to the output distribution'
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T03-L01-bpe-from-scratch
+- T07-L01-agent-loop-from-scratch
+objectives:
+- Implement a compiler from a small JSON-schema subset to a byte-level state machine, one that rejects
+  the keywords it cannot enforce instead of silently ignoring them
+- 'Implement the token mask: for a machine state, the BPE tokens whose whole byte string keeps the machine
+  alive, with end-of-sequence allowed only in an accepting state'
+- Implement masked sampling and the constrained generation loop over a token n-gram model trained in this
+  lesson
+- Measure the valid-output rate of unconstrained sampling, of sampling with retries and of masked decoding,
+  and the tokens each spends per valid output
+- Measure how far masked decoding shifts the output distribution away from sampling with rejection, from
+  the mask masses along each sampled path
+before_you_start:
+  assumed:
+  - read a regular expression with character classes, alternation and repetition, and say which strings
+    it matches
+  - explain that a language model gives a probability to every token in its vocabulary and that sampling
+    picks one in proportion to those probabilities
+  - read a JSON Schema using type, properties, required and enum, and say which documents it accepts
+  resources:
+  - title: Efficient Guided Generation for Large Language Models
+    by: Willard and Louf (arXiv)
+    url: https://arxiv.org/abs/2307.09702
+    kind: free
+    why: 'section 3, Iterative FSM Processing and Indexing: generation as transitions of a finite-state
+      machine, with a precomputed map from machine states to the vocabulary tokens allowed next'
+  - title: Regular-expression derivatives reexamined
+    by: Owens, Reppy and Turon (Journal of Functional Programming)
+    url: https://www.khoury.northeastern.edu/home/turon/re-deriv.pdf
+    kind: free
+    why: Brzozowski derivatives, the technique section 3's given state machine uses to step a regular
+      expression one byte at a time
+  - title: 'Models of Computation, lecture 2: Regular Languages'
+    by: Jeff Erickson (University of Illinois)
+    url: https://jeffe.cs.illinois.edu/teaching/algorithms/models/02-regular.pdf
+    kind: free
+    why: '2.1 to 2.3 on languages and regular expressions, and 2.8, Not Every Language is Regular: why
+      a schema without recursion is a regular language and unbounded nesting is not'
+  - title: 'Speech and Language Processing, chapter 3: N-gram Language Models'
+    by: Jurafsky and Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/3.pdf
+    kind: free
+    why: n-gram models and sampling sentences from a language model, the toy model section 2 trains and
+      masks
+  - title: JSON Schema reference (formerly Understanding JSON Schema)
+    by: JSON Schema project
+    url: https://json-schema.org/understanding-json-schema/reference
+    kind: free
+    why: 'the pages on type, object properties and required, and enum: the subset of keywords exercise
+      1 compiles to a regular expression'
+datasets:
+- name: T07-L05 synthetic JSON corpus (tool-call documents, some deliberately sloppy, from a fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 86
+status: reviewed
+measured_seconds: 5.4
+measured_peak_mib: 45

@@ -11,8 +11,13 @@ typed -- is checked by an independent reviewer and recorded in the lesson's `met
 
 1. **Objectives** — 3-5 measurable objectives in `meta.yaml`, each starting with a verb
    ("implement", "measure", "explain why"). No objective may be "understand X".
-2. **Prerequisites** — explicit lesson ids. A student who has done the prerequisites can
-   finish this lesson without reaching for anything else.
+2. **Prerequisites and background** — explicit lesson ids. A student who has done the
+   prerequisites can finish this lesson without reaching for anything else. A "Before you
+   start" box (`before_you_start` in `meta.yaml`, written into the notebook by
+   `tools/notebooks.py --inject`) names 2-5 things the lesson assumes you can already do, and
+   2-5 places to learn them online: free first, paid books after, each a direct link with a
+   one-clause reason. Links are checked by `tools/check_resources.py`; a reviewer confirms each
+   one is really free (or really paid) and covers what is claimed.
 3. **Interleaving** — no more than 40 lines of prose (non-blank markdown lines, hint blocks
    included) before the next thing the student runs.
    Concept, then immediately a cell they execute or edit.

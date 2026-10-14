@@ -19,6 +19,44 @@ objectives:
   instead
 - Demonstrate that the measured penalty is a property of the training corpus rather than of the algorithm,
   by retraining the identical code on a balanced corpus and re-measuring
+before_you_start:
+  assumed:
+  - write Python functions with loops, tuples and dicts (collections.Counter is enough) and build a new
+    list instead of editing one you are looping over
+  - say how a Python str differs from bytes, and convert between them with .encode and .decode
+  - write an assert-based round-trip test of the form decode(encode(x)) == x
+  - say in one sentence what a tokenizer does for a language model
+  resources:
+  - title: Unicode HOWTO
+    by: Python Software Foundation
+    url: https://docs.python.org/3/howto/unicode.html
+    kind: free
+    why: code points versus bytes and how UTF-8 spends one to four bytes per character, the starting point
+      of section 2 and of the token tax
+  - title: 'Speech and Language Processing, chapter 2: Words and Tokens'
+    by: Jurafsky and Martin
+    url: https://web.stanford.edu/~jurafsky/slp3/2.pdf
+    kind: free
+    why: the free draft textbook; section 2.3 on Unicode, code points and UTF-8, then section 2.4 on byte-pair
+      encoding training and encoding, with byte-level BPE in 2.4.3
+  - title: Let's build the GPT Tokenizer
+    by: Andrej Karpathy (YouTube)
+    url: https://www.youtube.com/watch?v=zduSFxRajkE
+    kind: free
+    why: 'from 00:14:56 to 00:57:36: Unicode and UTF-8, counting pairs, merging the most common pair,
+      the training loop, then decode and encode, the steps of exercises 1 to 5'
+  - title: Neural Machine Translation of Rare Words with Subword Units
+    by: Sennrich, Haddow and Birch
+    url: https://arxiv.org/abs/1508.07909
+    kind: free
+    why: 'section 3.2 and its Algorithm 1: the original count-pairs, merge-the-most-frequent loop in a
+      few lines of Python; it starts from characters, where this lesson starts from bytes'
+  - title: Build a Large Language Model (From Scratch)
+    by: Sebastian Raschka (Manning)
+    url: https://www.manning.com/books/build-a-large-language-model-from-scratch
+    kind: paid
+    why: chapter 2, Working with text data; section 2.5 uses GPT-2's byte pair encoding through the tiktoken
+      library rather than training one, a useful contrast with this lesson
 datasets: []
 points: 37
 status: reviewed

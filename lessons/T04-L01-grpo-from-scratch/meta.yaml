@@ -1,0 +1,71 @@
+id: T04-L01-grpo-from-scratch
+title: Build GRPO from scratch in numpy, and measure its traps - zero-variance groups, length and standard-deviation
+  normalisation, group size, and a reward hack
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a small autoregressive softmax policy with a hand-derived backward pass and prove the gradient
+  against central finite differences, block by block
+- Implement group sampling, a program-checked verifier with a separate format reward, the group-relative
+  advantage with its epsilon and its zero-variance case, the clipped surrogate objective, the k3 KL estimator
+  and three length normalisations
+- Implement a GRPO update over several epochs per batch and a training loop that reproduces a learning
+  curve on a verifiable-reward task
+- Measure, over a fixed set of seeds with Student-t intervals, reward against step, the fraction of zero-variance
+  groups as training progresses, and the effect of dropping the standard-deviation normalisation, of the
+  length normalisation and of the group size
+- Measure a reward hack against a verifier with a loophole, and explain what this toy does not show about
+  real reasoning models
+before_you_start:
+  assumed:
+  - write Python functions over numpy arrays and index them with integer arrays and boolean masks
+  - differentiate a composition of functions with the chain rule, and say what softmax and the log of
+    a softmax output are
+  - say what a probability distribution over next tokens is, and draw a sample from one with numpy
+  - compute a mean and a standard deviation, and say what a 95% interval around a mean over several runs
+    claims
+  resources:
+  - title: 'Spinning Up in Deep RL: Part 3, Intro to Policy Optimization'
+    by: OpenAI (Joshua Achiam)
+    url: https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html
+    kind: free
+    why: derives the simplest policy gradient, the expected grad-log-prob lemma and why a baseline leaves
+      the gradient unbiased, the idea GRPO's group mean puts to use
+  - title: Policy Gradient Algorithms
+    by: Lilian Weng
+    url: https://lilianweng.github.io/posts/2018-04-08-policy-gradient/
+    kind: free
+    why: REINFORCE, advantages and baselines, then PPO's clipped objective, which is the surrogate the
+      lesson clips
+  - title: Dive into Deep Learning, section 4.1 Softmax Regression
+    by: Zhang, Lipton, Li and Smola
+    url: https://d2l.ai/chapter_linear-classification/softmax-regression.html
+    kind: free
+    why: derives the gradient of the softmax cross-entropy loss with respect to the logits (softmax minus
+      one-hot), the building block of the hand-derived backward pass
+  - title: 'DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models'
+    by: Shao et al. (arXiv)
+    url: https://arxiv.org/abs/2402.03300
+    kind: free
+    why: 'section 4.1 introduces GRPO: the group-relative advantage, the clipped objective and the KL
+      penalty that the exercises implement'
+  - title: OpenIntro Statistics
+    by: Diez, Cetinkaya-Rundel and Barr
+    url: https://www.openintro.org/book/os/
+    kind: free
+    why: chapter 7 covers the t-distribution and confidence intervals for a mean, the Student-t interval
+      the lesson puts around a mean over seeds
+datasets:
+- name: T04-L01 synthetic sum-to-target task (a prompt is a target integer; completions are digit sequences
+    checked by a program; every completion is sampled from the policy the lesson trains, from fixed seeds)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 263
+status: reviewed
+measured_seconds: 12.2
+measured_peak_mib: 74

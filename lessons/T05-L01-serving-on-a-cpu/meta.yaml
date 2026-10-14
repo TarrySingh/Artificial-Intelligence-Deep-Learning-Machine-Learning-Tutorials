@@ -1,0 +1,61 @@
+id: T05-L01-serving-on-a-cpu
+title: Serve a small transformer on a CPU the way an inference engine does - a KV cache and static batching,
+  with the operation, memory and latency accounting that shows what each buys
+track: T05
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T03-L03-nanolm-cpu-slice
+objectives:
+- Implement greedy generation without a cache as the reference, and a KV-cached decoder that produces
+  identical tokens and logits within a stated tolerance
+- Derive and implement exact integer formulas for multiply-adds per generated token and for KV-cache bytes,
+  and verify both against counts and array sizes the running code measures
+- Implement left-padded static batching with a padding mask and per-row position ids, and measure how
+  many requests change their output when either one is wrong
+- Compute static batching's padding and idle waste, and its time to first token, inter-token latency and
+  throughput in logical steps, from an arrival schedule
+- Measure the wall-clock speed-up of the cache at four sequence lengths, printed with units and labelled
+  machine-dependent, next to the exactly counted operation ratio it approximates
+before_you_start:
+  assumed:
+  - write Python functions with loops and index and slice numpy arrays, including with boolean masks
+  - predict the shape that a numpy matmul or broadcast of batched arrays will return, such as (batch,
+    heads, seq, dim) against (batch, heads, dim, seq)
+  - time a function with time.perf_counter and say why two runs of the same code give different times
+  resources:
+  - title: 'Mastering LLM Techniques: Inference Optimization'
+    by: Shashank Verma and Neal Vaidya (NVIDIA Developer Blog)
+    url: https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/
+    kind: free
+    why: the prefill and decode phases, the KV cache and its size formula in bytes, and batching, the
+      three things the lesson counts and measures
+  - title: Text generation (Transformers documentation)
+    by: Hugging Face
+    url: https://huggingface.co/docs/transformers/llm_tutorial
+    kind: free
+    why: 'the ''Padding side'' pitfall: why a batched prompt must be left-padded, which is the mistake
+      the batching exercise makes you measure'
+  - title: Attention Is All You Need
+    by: Vaswani et al. (arXiv)
+    url: https://arxiv.org/abs/1706.03762
+    kind: free
+    why: section 3.2.1 defines scaled dot-product attention and 3.2.3 the masking (to minus infinity)
+      that stops a token seeing later positions, which attend and the cached decoder both compute
+  - title: Broadcasting (NumPy user guide)
+    by: NumPy developers
+    url: https://numpy.org/doc/stable/user/basics.broadcasting.html
+    kind: free
+    why: the broadcasting rules behind the padding mask and per-row position ids, so a shape error in
+      a batched array is quick to read
+datasets:
+- name: T05-L01 synthetic model weights, prompts and request workloads (seeded numpy draws)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 241
+status: reviewed
+measured_seconds: 2.9
+measured_peak_mib: 99

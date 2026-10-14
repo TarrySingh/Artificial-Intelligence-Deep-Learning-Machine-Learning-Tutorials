@@ -23,6 +23,42 @@ objectives:
   decisions a length test would have passed, then implement oversight_gate(), the control that enforces
   it, and report every decision it would have blocked with each reason it failed on rather than only the
   first
+before_you_start:
+  assumed:
+  - group the events of a log by an id with a dict and read them back in sequence order
+  - describe a set of durations with a median and percentiles, and say why a mean can mislead
+  - say what a rate with a small denominator can and cannot show, in terms of a confidence interval
+  resources:
+  - title: 'AI Act Article 14: Human oversight'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14
+    kind: free
+    why: 'paragraph 4 (the overseer must be able to notice automation bias and to override) and paragraph
+      5 (two-person verification, for remote biometric identification): the duties the lesson measures'
+  - title: 'Automation bias: a systematic review of frequency, effect mediators, and mitigators'
+    by: Goddard, Roudsari and Wyatt (JAMIA 2012, open access on PMC)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3240751/
+    kind: free
+    why: the evidence on how often people defer to automated advice and what changes it, which is what
+      the override-versus-confidence curve is a footprint of
+  - title: The Flaws of Policies Requiring Human Oversight of Government Algorithms
+    by: Ben Green (arXiv, 2021)
+    url: https://arxiv.org/abs/2109.05067
+    kind: free
+    why: why a rule that says a human must oversee does not make oversight happen, the reason the lesson
+      measures baselines instead of accepting an assertion
+  - title: OpenIntro Statistics
+    by: OpenIntro (Diez, Cetinkaya-Rundel, Barr)
+    url: https://www.openintro.org/book/os/
+    kind: free
+    why: 'chapter 6 on the difference of two proportions: the reasoning behind each reviewer''s own minimum
+      detectable difference in the automation-bias exercise'
+  - title: 'The EU Artificial Intelligence Act: A Commentary'
+    by: Michèle Finck (Oxford University Press, 2026)
+    url: https://academic.oup.com/oxford-law-pro/book/62212
+    kind: paid
+    why: 'per the publisher an article-by-article commentary; its contents page was not checkable, so
+      no entry numbers are given: look up Article 14 for a lawyer''s reading'
 datasets:
 - name: loan-copilot synthetic Article 12 event log
   kind: synthetic

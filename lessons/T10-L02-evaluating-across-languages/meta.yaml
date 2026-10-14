@@ -1,0 +1,70 @@
+id: T10-L02-evaluating-across-languages
+title: Build the instruments that evaluate a simulated system across six generated languages, from token
+  fertility and cost per correct answer to item-level and paired bootstrap intervals, aggregation traps,
+  a translation-artefact detector and an items-per-language power curve
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T03-L01-bpe-from-scratch
+objectives:
+- Implement token fertility per word and per character from a byte-level BPE encoder and measure the token
+  tax on six generated scripts, showing why a per-byte figure hides it
+- Implement cost per correct answer and the units-in-window calculation, and measure how the tokenizer's
+  tax and a benchmark's accuracy gap compound
+- Implement percentile bootstrap intervals over items, for one language, for a macro-average by resampling
+  items within each language, and for the difference between two systems paired on the same items, refusing
+  mismatched item sets
+- Measure how macro versus micro aggregation reorders two simulated systems, and flag every language whose
+  interval reaches chance that a headline average would hide
+- Quantify a planted translation artefact with a concept-paired native versus translated comparison, and
+  measure how many items per language stop adjacent languages' ranking from flipping
+before_you_start:
+  assumed:
+  - tell a str from a bytes object in Python, and compute len(text) against len(text.encode('utf-8'))
+  - compute an accuracy as the mean of 0/1 outcomes, and say why a smaller sample makes it less certain
+  - draw random indices from numpy's default_rng and use them to index an array
+  - read a table of per-group results and say which differences you would not trust without an interval
+  resources:
+  - title: Unicode HOWTO
+    by: Python documentation
+    url: https://docs.python.org/3/howto/unicode.html
+    kind: free
+    why: characters, code points and UTF-8 bytes in Python, the reason a per-byte figure hides the token
+      tax that exercise 1 measures per word and per character
+  - title: Language Model Tokenizers Introduce Unfairness Between Languages
+    by: Petrov, La Malfa, Torr and Bibi (arXiv)
+    url: https://arxiv.org/abs/2305.15425
+    kind: free
+    why: 'the paper behind the token-tax and cost-per-language measurements: the same text can need many
+      times more tokens in another language, with cost and context-window consequences'
+  - title: Translation Artifacts in Cross-lingual Transfer Learning
+    by: Artetxe, Labaka and Agirre (arXiv; EMNLP 2020)
+    url: https://arxiv.org/abs/2004.04721
+    kind: free
+    why: 'how translating a training or test set introduces subtle artifacts that change model scores,
+      so translated and native test sets are not interchangeable: the effect exercise 9 plants and detects'
+  - title: With Little Power Comes Great Responsibility
+    by: Card, Henderson, Khandelwal, Jia, Mahowald and Jurafsky (arXiv; EMNLP 2020)
+    url: https://arxiv.org/abs/2010.06595
+    kind: free
+    why: why NLP comparisons are often underpowered, and how many items it takes to detect a real difference,
+      which is the question the items-per-language power curve answers
+  - title: An Introduction to the Bootstrap
+    by: Bradley Efron and R. J. Tibshirani (Chapman & Hall/CRC)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: the standard text on the bootstrap; chapter 6 (the bootstrap estimate of standard error) and
+      chapter 13 (percentile confidence intervals) cover what exercises 3 to 5 compute
+datasets:
+- name: T10-L02 synthetic multilingual benchmark (six generated languages, native and translated items,
+    two systems with planted accuracy)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 154
+status: reviewed
+measured_seconds: 2.3
+measured_peak_mib: 144

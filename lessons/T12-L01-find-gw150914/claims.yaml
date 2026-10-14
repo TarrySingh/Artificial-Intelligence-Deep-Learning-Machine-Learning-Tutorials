@@ -1,0 +1,199 @@
+claims:
+- id: gwosc-licence
+  claim: GWOSC's own data -- including the GW150914 strain files this lesson's asset was built from --
+    is released under the Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+  where: assets/SOURCE.md (licence row) and meta.yaml datasets
+  source_url: https://gwosc.org/acknowledgement/
+  source_title: GWOSC -- Acknowledgement
+  quote: Data from this web site are licensed under a Creative Commons Attribution 4.0 International License.
+  quote_context: Opening sentence under 'How to acknowledge use of this data'; the licence name is a link
+    to https://creativecommons.org/licenses/by/4.0/
+  accessed: 2026-09-24
+- id: gwosc-required-citation
+  claim: For data from Advanced LIGO's first and second observing runs (O1/O2) -- GW150914 is an O1 event
+    -- GWOSC names the O1/O2 open-data release paper as the reference to cite; it is the fourth of the
+    four references on the acknowledgement page (the other three cover later observing runs this lesson
+    does not use).
+  where: assets/SOURCE.md 'Required citation' row
+  source_url: https://gwosc.org/acknowledgement/
+  source_title: GWOSC -- Acknowledgement
+  quote: R. Abbott et al. (LIGO Scientific Collaboration and Virgo Collaboration), "Open data from the
+    first and second observing runs of Advanced LIGO and Advanced Virgo", SoftwareX 13 (2021) 100658
+  quote_context: Fourth of the four references listed after 'please cite one of these references'
+  accessed: 2026-09-24
+- id: gwosc-acknowledgement
+  claim: GWOSC asks that work using its data include a specific acknowledgment paragraph naming the LIGO
+    Scientific Collaboration, the Virgo Collaboration, KAGRA and their funding bodies. assets/SOURCE.md
+    reproduces the whole paragraph verbatim.
+  where: assets/SOURCE.md, 'Required acknowledgement' section
+  source_url: https://gwosc.org/acknowledgement/
+  source_title: GWOSC -- Acknowledgement
+  quote: This research has made use of data or software obtained from the Gravitational Wave Open Science
+    Center (gwosc.org), a service of the LIGO Scientific Collaboration, the Virgo Collaboration, and KAGRA.
+  quote_context: Opening sentence of the paragraph introduced by 'and include the acknowledgment:'; the
+    full paragraph continues on the same page and is reproduced in assets/SOURCE.md
+  accessed: 2026-09-24
+- id: gwosc-event-gps
+  claim: GWOSC's published event time for GW150914 (GWTC-1-confident, version 3) is GPS 1126259462.4,
+    15.4 s after the start (GPS 1126259447) of the 32 s strain files the asset was built from. The asset's
+    event_gps field stores this value.
+  where: assets/gw150914_h1_l1_32s.npz (event_gps), lesson.py T_EVENT, the section 9 demo and the real-data
+    rubric tests
+  source_url: https://gwosc.org/eventapi/html/GWTC-1-confident/GW150914/v3/
+  source_title: GWOSC -- GW150914 event page (GWTC-1-confident, v3)
+  quote: 'GPS: 1126259462.4'
+  quote_context: 'Event summary at the top of the event page; the same value appears as "GPS": 1126259462.4
+    in https://gwosc.org/eventapi/json/GWTC-1-confident/GW150914/v3/'
+  accessed: 2026-09-24
+- id: ligo-event-date
+  claim: The two LIGO detectors observed GW150914 on September 14, 2015 at 09:50:45 UTC.
+  where: lesson.py section 1
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., "Observation of Gravitational Waves from a Binary Black Hole Merger", Phys.
+    Rev. Lett. 116, 061102 (2016)
+  quote: On September 14, 2015 at 09:50:45 UTC the two detectors of the Laser Interferometer Gravitational-Wave
+    Observatory simultaneously observed a transient gravitational-wave signal.
+  quote_context: Abstract, first sentence
+  accessed: 2026-09-24
+- id: ligo-first-direct-detection
+  claim: GW150914 was the first direct detection of gravitational waves, and its source was the inspiral
+    and merger of a pair of black holes.
+  where: lesson.py section 1
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: This is the first direct detection of gravitational waves and the first observation of a binary
+    black hole merger.
+  quote_context: Abstract, last sentence; the third sentence of the abstract describes the waveform as
+    that of 'the inspiral and merger of a pair of black holes'
+  accessed: 2026-09-24
+- id: ligo-signal-sweep
+  claim: GW150914's signal swept upwards in frequency from 35 to 250 Hz.
+  where: lesson.py section 5 (exercise 3 introduction)
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: The signal sweeps upwards in frequency from 35 to 250 Hz with a peak gravitational-wave strain
+    of 1.0 × 10^-21.
+  quote_context: Abstract, second sentence (the arXiv abstract typesets the strain in LaTeX)
+  accessed: 2026-09-24
+- id: ligo-noise-seismic-and-lines
+  claim: LIGO's displacement noise is dominated by seismic noise at low frequencies, and the detectors'
+    noise spectra carry narrow lines including calibration lines and 60 Hz power grid harmonics.
+  where: lesson.py section 3 (exercise 1 introduction) and the PSD demo
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: Narrow-band features include calibration lines (33–38, 330, and 1080 Hz), vibrational modes of
+    suspension fibers (500 Hz and harmonics), and 60 Hz electric power grid harmonics.
+  quote_context: 'Fig. 3 caption, last sentence. For the low-frequency part, Section III (Detectors) reads:
+    ''which is achieved by isolating them from seismic noise (low frequencies) and designing them to have
+    low thermal noise (intermediate frequencies).'''
+  accessed: 2026-09-24
+- id: ligo-discovery-snr
+  claim: The discovery paper's matched-filter analysis -- relativistic waveform templates, not the Newtonian
+    template this lesson builds -- observed GW150914 with a signal-to-noise ratio of 24.
+  where: lesson.py section 1 and the PAPER_SNR constant used in section 12
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: The signal was observed with a matched-filter signal-to-noise ratio of 24 and a false alarm rate
+    estimated to be less than 1 event per 203 000 years, equivalent to a significance greater than 5.1σ.
+  quote_context: Abstract, fourth sentence
+  accessed: 2026-09-24
+- id: ligo-discovery-chirp-mass
+  claim: Estimating the gravitational-wave frequency and its time derivative directly from the visible
+    signal (a DIFFERENT method from this lesson's matched-filter grid search), the discovery paper reports
+    a detector-frame chirp mass of approximately 30 solar masses.
+  where: lesson.py PAPER_CHIRP_MASS_MSUN constant, section 12
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: Estimating f and f˙ from the data in Fig. 1, we obtain a chirp mass of M ≃ 30M⊙, implying that
+    the total mass M = m1 + m2 is ≳70M⊙ in the detector frame.
+  quote_context: Section II (Observation), the paragraph introducing the chirp-mass formula
+  accessed: 2026-09-24
+- id: ligo-arrival-time-difference
+  claim: 'The discovery paper''s own measurement of GW150914''s arrival-time difference between the two
+    LIGO sites: the signal arrived at Livingston first, then at Hanford 6.9(+0.5,-0.4) ms later.'
+  where: lesson.py section 12, compared against this lesson's own measured H1-L1 offset; the real-data
+    rubric test's sign check
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: GW150914 arrived first at L1 and 6.9+0.5−0.4 ms later at H1
+  quote_context: Figure 1 caption, describing the top-row panels
+  accessed: 2026-09-24
+- id: ligo-intersite-propagation
+  claim: A genuine gravitational wave cannot arrive at the Hanford and Livingston sites more than 10 ms
+    apart; the discovery paper calls this the "10-ms intersite propagation time".
+  where: lesson.py exercise 8 (check_light_travel_consistency) and its LIGHT_TRAVEL_S constant
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: Occurring within the 10-ms intersite propagation time, the events have a combined signal-to-noise
+    ratio (SNR) of 24
+  quote_context: Section II (Observation), the sentence that runs on from the paragraph beside Fig. 1
+  accessed: 2026-09-24
+- id: ligo-fig1-bandpass
+  claim: The discovery paper displays GW150914's strain time series band-passed to 35-350 Hz -- the band
+    this lesson's BANDPASS_LOW_HZ / BANDPASS_HIGH_HZ constants use.
+  where: lesson.py, the BANDPASS_LOW_HZ / BANDPASS_HIGH_HZ constants and section 5
+  source_url: https://arxiv.org/abs/1602.03837
+  source_title: Abbott et al., Phys. Rev. Lett. 116, 061102 (2016)
+  quote: For visualization, all time series are filtered with a 35–350 Hz bandpass filter to suppress
+    large fluctuations outside the detectors’ most sensitive frequency band, and band-reject filters to
+    remove the strong instrumental spectral lines seen in the Fig. 3 spectra.
+  quote_context: Figure 1 caption, third sentence
+  accessed: 2026-09-24
+- id: newtonian-chirp-waveform
+  claim: At leading (Newtonian, quadrupole) order, a coalescing binary's gravitational-wave strain is
+    h(t) = A * (pi*f(t))**(2/3) * cos(phase(t)) -- amplitude proportional to frequency to the 2/3 power.
+    build_quadrature_templates' amplitude ~ f**(2/3) envelope is this formula.
+  where: lesson.py, the note above build_quadrature_templates
+  source_url: https://arxiv.org/abs/gr-qc/9508011
+  source_title: 'Balasubramanian, Sathyaprakash & Dhurandhar, "Gravitational waves from coalescing binaries:
+    detection strategies and Monte Carlo estimation of parameters" (1995)'
+  quote: In the restricted post-Newtonian approximation the gravitational waves from a binary system of
+    stars, modeled as point masses orbiting about each other in a circular orbit, induce a strain h(t)
+    at the detector given by h(t) = A(πf(t))^{2/3} cos [φ(t)],
+  quote_context: Section II (Coalescing binary waveforms), equation (2.1) and its introducing sentence
+  accessed: 2026-09-24
+- id: newtonian-chirp-time-formula
+  claim: The same reference gives the Newtonian phase and frequency evolution (its equations 2.3, 2.4
+    and 2.5) in terms of the chirp mass alone; exercises 4 and 5 re-express them in closed form as functions
+    of the time before coalescence.
+  where: lesson.py exercises 4 and 5 (chirp_frequency, chirp_phase)
+  source_url: https://arxiv.org/abs/gr-qc/9508011
+  source_title: Balasubramanian, Sathyaprakash & Dhurandhar (1995)
+  quote: 'The Newtonian part of the phase is characterised by three parameters: (i) the time of arrival
+    ta when the signal first becomes visible in the detector, (ii) the phase Φ of the signal at the time
+    of arrival and (iii) the chirp mass M = (µ^3 M^2)^{1/5}, where µ and M are the reduced and the total
+    mass of the binary, respectively.'
+  quote_context: Section II, the paragraph immediately after equation (2.5), which reads τ0 = 5/256 M^{−5/3}(πfa)^{−8/3}
+  accessed: 2026-09-24
+- id: iau-nominal-gm-sun
+  claim: The product GM_sun is known about five orders of magnitude more precisely than the gravitational
+    constant G on its own, which is why this lesson uses the IAU nominal solar mass parameter rather than
+    separate values of G and the solar mass.
+  where: lesson.py section 2 and the GM_SUN constant
+  source_url: https://arxiv.org/abs/1510.07674
+  source_title: IAU 2015 Resolution B3 on Recommended Nominal Conversion Constants for Selected Solar
+    and Planetary Properties
+  quote: that the universal constant of gravitation G is currently one of the least precisely determined
+    constants, whereas the error in the product GM⊙ is five orders of magnitude smaller (Petit & Luzum
+    2010, and references therein),
+  quote_context: Third 'Noting' clause of the resolution, immediately before 'Recommends'
+  accessed: 2026-09-24
+- id: iau-nominal-gm-sun-value
+  claim: The IAU's nominal solar mass parameter is (GM)_sun^N = 1.3271244 x 10^20 m^3 s^-2, the value
+    of this lesson's GM_SUN constant.
+  where: lesson.py, the GM_SUN constant
+  source_url: https://arxiv.org/abs/1510.07674
+  source_title: IAU 2015 Resolution B3
+  quote: 1 (GM)N⊙ = 1.327 124 4 × 10^20 m3 s−2
+  quote_context: The 'Solar conversion constants' table, fifth row (after the nominal radius, total solar
+    irradiance, luminosity and effective temperature)
+  accessed: 2026-09-24
+- id: si-speed-of-light
+  claim: The speed of light in vacuum is exactly 299 792 458 m/s (a defined value with no uncertainty),
+    the value of this lesson's C_LIGHT constant.
+  where: lesson.py, the C_LIGHT constant
+  source_url: https://physics.nist.gov/cgi-bin/cuu/Value?c
+  source_title: 'NIST -- CODATA value: speed of light in vacuum'
+  quote: Numerical value 299 792 458 m s-1 Standard uncertainty (exact)
+  quote_context: The value table on the page (2022 CODATA recommended values)
+  accessed: 2026-09-24

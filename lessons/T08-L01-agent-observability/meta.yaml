@@ -1,0 +1,61 @@
+id: T08-L01-agent-observability
+title: Instrumenting the agent loop with OpenTelemetry GenAI spans, and a cost-per-task report rebuilt
+  from the spans alone
+track: T08
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T07-L01-agent-loop-from-scratch
+- T07-L03-evaluating-agents
+objectives:
+- Implement the GenAI-convention attributes of a tool-execution span, including the error.type classification
+  and the rule that a step which succeeded leaves its span status unset
+- Instrument the T07-L01 agent loop so each episode is an invoke_agent span with one execute_tool child
+  span per step, without changing a single random draw the agent makes
+- Implement OTLP/JSON attribute encoding and decoding by hand, including the rule that 64-bit integers
+  travel as strings, and export one payload to two local sinks
+- Recompute step counts, tool errors, recoveries and cost per success from the exported spans alone, in
+  any arrival order, and verify they equal T07-L03's trace metrics exactly
+- Measure the instrumentation overhead as spans, attributes and bytes per agent step, and measure how
+  far cost per success drifts when only successful traces are kept
+before_you_start:
+  assumed:
+  - wrap a function call in try/except and a with block, and record or re-raise the exception
+  - read nested JSON (lists of dicts) and group records by a key to total a field
+  - turn two nanosecond timestamps since the Unix epoch into a duration
+  resources:
+  - title: Traces
+    by: OpenTelemetry project
+    url: https://opentelemetry.io/docs/concepts/signals/traces/
+    kind: free
+    why: 'spans, parent and child, attributes and span status (Unset, Ok, Error): the data model section
+      3 and exercise 1 are written in'
+  - title: 'OpenTelemetry GenAI semantic conventions: agent spans (semantic-conventions-genai repository)'
+    by: OpenTelemetry project
+    url: https://github.com/open-telemetry/semantic-conventions-genai/blob/main/docs/gen-ai/gen-ai-agent-spans.md
+    kind: free
+    why: the invoke_agent and execute_tool span definitions, their gen_ai attributes and error.type, which
+      exercises 1 and 2 follow; the old opentelemetry.io page now points here
+  - title: 'OTLP Specification: JSON Protobuf Encoding'
+    by: OpenTelemetry project
+    url: https://opentelemetry.io/docs/specs/otlp/
+    kind: free
+    why: the JSON encoding section, including 64-bit integers carried as decimal strings, which exercises
+      3 and 4 implement by hand
+  - title: OpenTelemetry for Python
+    by: OpenTelemetry project
+    url: https://opentelemetry.io/docs/languages/python/
+    kind: free
+    why: getting started with the real SDK and exporters, for the optional section 14 and for taking this
+      to a real agent
+datasets:
+- name: T08-L01 synthetic tool-call chains (T07-L01's lookup chains of controlled length, seeded fault
+    and transient-failure injection)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 85
+status: reviewed
+measured_seconds: 0.3
+measured_peak_mib: 39

@@ -115,6 +115,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    too small to say — and measure how often the shortcuts block a release in which nothing
 #    changed.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write numpy code that resamples rows with an index array (rng.integers) and reduces along an axis
+# - explain what a confidence interval, a null hypothesis and a p-value are
+# - group records by an attribute with a dict or collections.Counter and count the size of each group
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [An Introduction to Statistical Learning](https://www.statlearning.com/) · James, Witten, Hastie and Tibshirani (Springer; free PDF from the authors) · *free* — the Resampling Methods chapter covers the bootstrap; the Multiple Testing chapter covers family-wise error, Holm and Benjamini-Hochberg (use the 2nd edition or the Python edition)
+# - [Think Stats, 3rd edition](https://allendowney.github.io/ThinkStats/) · Allen B. Downey (free online from the author; Creative Commons, non-commercial) · *free* — chapter 8, Estimation (confidence intervals by resampling), and chapter 9, Hypothesis Testing (p-values by simulation), as runnable Python notebooks
+# - [Automated Data Slicing for Model Validation: A Big data - AI Integration Approach (Slice Finder)](https://arxiv.org/abs/1807.06068) · Chung, Kraska, Polyzotis, Tae and Whang (arXiv) · *free* — finding problematic validation slices with effect size, hypothesis tests and false-discovery control: the problem find_slices and release_decision solve
+# - [statsmodels: multipletests](https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html) · statsmodels developers (official documentation) · *free* — reference implementations of the holm and fdr_bh corrections, to check your Exercise 4 against
+# - [An Introduction to the Bootstrap](https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317) · Efron and Tibshirani (Chapman & Hall / Routledge) · *paid* — the standard text on the bootstrap: percentile intervals and bootstrap hypothesis tests, the ideas behind paired_bootstrap
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

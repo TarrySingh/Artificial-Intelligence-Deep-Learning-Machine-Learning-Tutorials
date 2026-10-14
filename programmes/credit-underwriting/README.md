@@ -1,0 +1,199 @@
+# Credit risk and underwriting ML that survives an audit
+
+**The programme for the people whose model decides who gets credit, and who have to show why.**
+
+A credit model is used three times by three different people: the underwriter who acts on it,
+the accountant who books a loss from it, and the examiner who asks what it was fitted on and
+whether it was ever tested on anything it had not seen. This programme is the analytics all three
+will ask for, built by hand in numpy on a laptop, with every figure computed by code the student
+runs and every claim about the world sourced.
+
+It is not a course in credit policy and it is not a tour of libraries. Every module is a notebook
+that produces evidence: a number with its uncertainty, a table, a generated document, a test that
+fails when the method is wrong. Where the evidence flatters the model, the module measures by how
+much.
+
+---
+
+## Why this programme, and why now
+
+Four things changed or stayed in force, all dated and all as read on 29 September 2026.
+
+**The foundational US model-risk guidance was rewritten in 2026.** On 17 April 2026 the Federal
+Reserve issued SR 26-2, jointly with the FDIC and the OCC. It supersedes and replaces SR 11-7,
+which had stood since 4 April 2011, and SR 21-8 of 9 April 2021, and the Federal Reserve says it
+is expected to be most relevant to banking organisations with over 30 billion dollars in total
+assets. The guidance describes **outcomes analysis** as comparing "model outputs to corresponding
+real-world outcomes" and names back-testing among its forms. For a credit model that comparison is
+the vintage back-test, and it is where this programme begins.
+
+**Credit models in Europe now sit under a second regime, on its own clock.** The EU AI Act entered
+into force on 1 August 2024 and became applicable on 2 August 2026, with exceptions; the AI
+Omnibus, in force since 27 July 2026, extended the rules for high-risk use cases in the sensitive
+areas of Annex III to 2 December 2027. Annex III includes AI systems intended to evaluate the
+creditworthiness of natural persons or establish their credit score, other than those used to
+detect financial fraud. A European lender's scoring model is therefore both a prudential model and
+a high-risk AI system, with different evidence expectations for each.
+
+**Accounting made every credit model a lifetime model.** US CECL measures the allowance as the
+gap between amortised cost and what is expected to be collected, "lifetime credit losses". IFRS 9
+recognises 12-month expected credit loss, the part of the lifetime loss associated with a default
+in the next 12 months, on a loan whose credit risk has not increased significantly, and lifetime
+loss on one whose has. Both need a probability of default with a term structure, under a stated
+macroeconomic scenario. That is module 1.
+
+**Refusing credit comes with a legal duty to say why, whatever the technology.** Regulation B
+requires that the statement of reasons for adverse action "must be specific and indicate the
+principal reason(s)", and says that failing a qualifying score on the creditor's scoring system is
+not enough. The CFPB's Circular 2022-03 applied that to complex algorithms, and the CFPB withdrew
+it, with many other guidance documents, from 12 May 2025; the regulation's own requirement did not
+change. That is module 4.
+
+Every claim in these four paragraphs is sourced, with a primary URL, an access date and a verbatim
+quote, in [`claims.yaml`](claims.yaml). Where a primary text could not be fetched by an automated
+client, the entry says what was read instead.
+
+---
+
+## Who this is for
+
+Job titles, because vagueness wastes people's time.
+
+- **Credit risk modellers** who build PD, LGD and scorecards and are asked to defend them.
+- **Underwriting data scientists** who ship the model that approves and declines.
+- **Decisioning platform engineers** who put a model behind an approve/decline API and have to log
+  what it did.
+- **Fair lending analysts** who must test for disparity without the protected attribute in the data.
+- **Credit model validators** in a second line of defence, who have to reproduce the first line's
+  number and then say something about it.
+
+The level is intermediate: comfortable with numpy indexing and with what a logistic regression is.
+No credit or accounting background is assumed. Each term is defined in a sentence where a lesson
+first uses it.
+
+---
+
+## What a graduate can do
+
+Each one is an artefact they built.
+
+1. **Build vintage curves and hazard models that respect censoring**, so that a loan still open at
+   the data cut-off is neither called a default nor called good.
+2. **Fit a discrete-time PD model with their own optimiser**, checked against a numerical
+   gradient, and produce PD term structures under macroeconomic scenarios.
+3. **Back-test out of time, by vintage**, and say by how much a random split, a peek at the future
+   or an outcome-derived feature flatters the number.
+4. **Measure what a lender loses by learning only from the applicants it approved**, and compare the
+   remedies against a truth that only a generated population can supply.
+5. **Compare a scorecard with a boosted model under monotonicity constraints**, and report
+   stability next to discrimination.
+6. **Write adverse-action reason codes from attributions**, and show with counterexamples where an
+   attribution ranking is not a defensible reason.
+7. **Test approval and pricing disparities with proxy probabilities and honest intervals.**
+8. **Engineer cash-flow features for thin-file applicants** and measure what they add over
+   bureau-style ones.
+9. **Assemble a monitoring pack and a validation report mapped section by section to SR 26-2.**
+
+What a graduate cannot do, and this programme will not claim: sign a model off. Signing is a role,
+not a skill.
+
+---
+
+## Prerequisites
+
+- **[`lessons/T00-L01-the-8gb-track`](../../lessons/T00-L01-the-8gb-track)**: the profiler and the tier
+  gate. Required. Every module here declares a compute budget, and this lesson teaches what a
+  declared budget means and how it is measured. It is also the house introduction to how these
+  lessons are shaped: stubs, public checks, an autograded rubric.
+- **Python and numpy**, at the level of writing an indexing expression without looking it up.
+  No pandas, no scikit-learn, no statsmodels: every estimator in this programme is built.
+- Module 1 is the programme opener and stands alone after the tier lesson. Later modules build on
+  its vocabulary (vintage, hazard, at-risk, out of time) and say so.
+
+---
+
+## Compute and data
+
+**Every module is `cpu8`: 8 GiB of RAM, 2 vCPU, no GPU, no network, under ten minutes.** The
+measured time and memory of each built module are written into its `meta.yaml` by
+`tools/execute.py` and shown in the status table of [`MODULES.md`](MODULES.md); nothing here is
+typed by hand.
+
+**The data on every required path are generated.** Each lesson simulates its own lenders,
+applicants or loans from a fixed seed, declares that in `meta.yaml`, and prints it in the notebook.
+That is a design choice, not a compromise, for three reasons: a planted truth is the only way to
+check a method against an answer you can see; the real data of the right kind sit behind
+registration or non-commercial terms; and a notebook that must open in an empty directory on a free
+notebook service cannot fetch a registration-walled file.
+
+Third-party data are mentioned, never committed:
+
+| Data | Terms as read on 29 September 2026 | Used here |
+|---|---|---|
+| Freddie Mac Single-Family Loan-Level Dataset | Registration and sign-in to Clarity Data Intelligence; free for non-commercial, academic, research and limited use; a licensing agreement for commercial redistribution. About 56 million mortgages originated between 1 January 1999 and 31 March 2026. | An optional real-data exercise a student can run themselves after registering. Too large for `cpu8` whole; never committed. |
+| Fannie Mae loan performance data | The data page refused automated access, so its terms could not be read. | Not relied on anywhere. |
+| Bank Account Fraud dataset suite | CC BY-NC-ND 4.0, per its datasheet: non-commercial, no derivatives. | Not committed. Module 2 reproduces its experiment on a generated population. |
+| HMDA loan-level data | Public; the CFPB says the public data are modified to protect applicant and borrower privacy. | An optional extension of module 5. |
+
+**Where this programme departs from its catalog entry.** The catalog names pandas or Polars,
+scikit-learn, LightGBM, optbinning, statsmodels, SHAP, Evidently and Apache Fineract in Docker.
+This environment has none of them, and the house rule is numpy and matplotlib only. So the modules
+build what those tools would supply: the boosted trees with monotone constraints, the weight-of-
+evidence binning, exact Shapley values for a small model, the drift statistics and the dashboard.
+That is more work for the student and it is the point: an examiner asks what the estimator does,
+and a student who wrote it can answer. [`MODULES.md`](MODULES.md) says where each module departs.
+
+---
+
+## Modules
+
+| # | Module |
+|---|---|
+| 1 | PD modelling with vintages and macro overlays |
+| 2 | Reject inference and selection bias |
+| 3 | Scorecards versus boosting, with monotonicity |
+| 4 | Adverse action and reason codes |
+| 5 | Disparity testing without protected attributes |
+| 6 | Thin-file and cash-flow underwriting |
+| 7 | Monitoring and the model risk file |
+| 8 | Capstone: a consumer-credit decisioning repo |
+
+Each module's lab and what the student measures are in [`MODULES.md`](MODULES.md), whose status
+table is generated from the lessons themselves. A module reads **built** only when its lesson
+exists, passes all 14 gates in `QUALITY.md` and has been independently reviewed. No count is typed
+here, so none can go stale.
+
+## The capstone
+
+A consumer-credit decisioning repository: a scorecard and a machine-learning challenger, an
+adverse-action notice generator, a proxy-based disparity test, a monitoring dashboard and a
+validation report mapped section by section to SR 26-2, all built from the earlier modules on
+generated data. The catalog's stated test is that an employer can read the report in ten minutes
+and see whether the candidate understands evidence, not just estimators. The capstone is where
+that test is set.
+
+## Layout
+
+```
+programmes/credit-underwriting/
+├── README.md        this file
+├── MODULES.md       the module map, with its generated status table
+├── claims.yaml      every claim above, with a primary source
+└── lessons/         one directory per built module
+```
+
+Run a lesson's gates from the repository root, for example the opening one:
+
+```
+python tools/execute.py programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro --write-back
+python tools/grade.py  programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro --solution
+python tools/grade.py  programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro
+```
+
+<!-- NOTICE:BEGIN generated by tools/status.py; do not edit -->
+
+---
+
+**Synapsa Commons** · © 2026 RealAI · licensed under [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/). You may use this material to learn and to teach, and copy, fork, share and adapt it. You must credit "Synapsa Commons by RealAI" with a link to <https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials>, say what you changed, and share adaptations under the same licence. You may not use it, or anything adapted from it, for commercial advantage or payment; for a commercial licence, contact [RealAI](https://www.realai.eu/contact). The full summary is in [NOTICE](../../NOTICE); the licence's legal code governs.
+
+<!-- NOTICE:END -->

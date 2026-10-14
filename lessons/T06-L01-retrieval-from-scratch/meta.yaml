@@ -19,6 +19,46 @@ objectives:
   over queries
 - Measure, on a corpus built so identifiers and paraphrases favour different retrievers, when hybrid's
   advantage over each pure method is real and when a paired bootstrap interval says it is not
+before_you_start:
+  assumed:
+  - write Python functions with loops, dicts and sorting, and index, slice and sum numpy arrays
+  - take the dot product and the norm of two vectors, and say what the cosine of the angle between them
+    measures
+  - multiply a matrix by a vector or another matrix and say what shape the result has
+  - 'use a logarithm: read log(N / df), and say why a log turns a product of weights into a sum'
+  resources:
+  - title: 'Speech and Language Processing (3rd ed. draft), chapter 11: Information Retrieval and Retrieval-Augmented
+      Generation'
+    by: Dan Jurafsky and James H. Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/11.pdf
+    kind: free
+    why: '11.1 for tf-idf, BM25 and ranked scoring, 11.2 for ranked-retrieval evaluation, 11.3 for dense
+      retrieval: the pipeline this lesson builds from scratch'
+  - title: Introduction to Information Retrieval, chapter 18 (matrix decompositions and latent semantic
+      indexing)
+    by: Manning, Raghavan and Schütze (Cambridge University Press; free online edition)
+    url: https://nlp.stanford.edu/IR-book/html/htmledition/latent-semantic-indexing-1.html
+    kind: free
+    why: the latent-semantic-indexing section shows how a truncated SVD of the term-document matrix gives
+      the dense vectors you build in exercises 4 to 6
+  - title: Mathematics for Machine Learning
+    by: Deisenroth, Faisal and Ong (Cambridge University Press; free PDF from the authors)
+    url: https://mml-book.github.io/
+    kind: free
+    why: chapter 2 for vectors and matrix products; sections 4.5 and 4.6 for the singular value decomposition
+      and rank-k approximation behind truncated_svd
+  - title: Computational and Inferential Thinking, section 13.2 (the bootstrap)
+    by: Ani Adhikari, John DeNero and David Wagner
+    url: https://inferentialthinking.com/chapters/13/2/bootstrap/index.html
+    kind: free
+    why: resampling with replacement and reading a percentile interval, the idea behind exercise 9's bootstrap
+      confidence intervals over queries
+  - title: 'NumPy: the absolute basics for beginners'
+    by: NumPy project (official documentation)
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: the sections on array attributes, indexing and slicing, basic array operations and broadcasting
+      cover every numpy idiom the exercises lean on
 datasets:
 - name: T06-L01 synthetic retrieval corpus (ten planted subjects, exact and paraphrase queries)
   kind: synthetic

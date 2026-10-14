@@ -128,6 +128,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    gives up, must fail however good its detector is.
 #
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L02`, `P03-L03`, `P03-L04`, `P03-L05`, `P03-L06`, `P03-L07`, `P03-L08`
+#
+# **This lesson assumes you can already:**
+#
+# - read a long notebook function by function and trace what each data structure carries from one call to the next
+# - write a checking function that returns a list of named failures rather than a bare True or False
+# - add up counts times prices into a cost in currency, and say which price is a measurement and which is a guess
+# - state a decision, its assumptions and its known failure cases in a page of plain sentences
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Model Cards for Model Reporting](https://arxiv.org/abs/1810.03993) · Mitchell et al. (FAT* 2019) · *free* — a short structured document stating what a model is for, how it was evaluated and where it fails: the shape of the one-page specification you write
+# - [Rules of Machine Learning: Best Practices for ML Engineering](https://developers.google.com/machine-learning/guides/rules-of-ml) · Martin Zinkevich (Google) · *free* — the rules on starting from a simple baseline, training-serving skew, and alerting hygiene (actionable alerts), the habits behind this capstone's checklist
+# - [Hidden Technical Debt in Machine Learning Systems](https://papers.nips.cc/paper_files/paper/2015/hash/86df7dcfd896fcaf2674f757a2463eba-Abstract.html) · Sculley et al. (NeurIPS 2015) · *free* — why a model is a small part of a deployed system, and how undeclared dependencies and feedback loops make a threshold quietly wrong
+# - [Vibration-based Condition Monitoring, 2nd edition](https://www.wiley.com/en-us/Vibration+based+Condition+Monitoring:+Industrial,+Automotive+and+Aerospace+Applications,+2nd+Edition-p-9781119477556) · Robert Bond Randall (Wiley) · *paid* — chapter 1, sections 1.2, 1.3 and 1.7: maintenance strategies, condition-monitoring methods and the basic problem of condition monitoring, the setting this programme is for
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import sys

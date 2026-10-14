@@ -116,6 +116,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    measured results, and explain why a model with no validation on file is a coverage
 #    finding rather than a schema error.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a Python function that checks a dict or dataclass record against a schema (required fields, types, allowed values) and returns a list of problems
+# - turn a policy table with thresholds into code, and say for any value which side of a boundary it falls on (< versus <=)
+# - use Python sets to find what is in one collection and not in another
+# - parse ISO dates (YYYY-MM-DD) and compare them with the datetime module
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [SR 26-2 Revised Guidance on Model Risk Management (the attachment)](https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf) · Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7 · *free* — section III (materiality as exposure and purpose) and, in section VI, 'Model Inventory' and 'Roles and Responsibilities': what an inventory should capture, and why more material models get more rigour
+# - [SS1/23 Model risk management principles for banks](https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss) · Prudential Regulation Authority, Bank of England · *free* — Principle 1, model identification and model risk classification, is the supervisory basis for a model definition, an inventory and a tiering; Principle 2 covers the governance around it
+# - [dataclasses: Data Classes (Python documentation)](https://docs.python.org/3/library/dataclasses.html) · Python Software Foundation · *free* — defining a record type with typed fields and defaults, the shape a model record takes in the lesson's schema validator
+# - [datetime: date objects (Python documentation)](https://docs.python.org/3/library/datetime.html) · Python Software Foundation · *free* — date.fromisoformat and comparing date values, which the validity and review-date checks on a record rely on
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

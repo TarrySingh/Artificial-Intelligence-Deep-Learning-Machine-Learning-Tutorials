@@ -19,6 +19,43 @@ objectives:
   to bend the curve
 - State which language each production tokenizer is actually written in, and what that does and does not
   change about the systems-language argument
+before_you_start:
+  assumed:
+  - write a C++17 program that uses std::vector, std::unordered_map, range-for loops and pass-by-reference
+    parameters, and compile it with clang++ or g++
+  - run make in a terminal and read the first compiler error, which usually names the real line
+  - explain why scanning n items k times costs about k times n, and what a constant-factor speedup is
+  resources:
+  - title: Learn C++
+    by: Alex on learncpp.com
+    url: https://www.learncpp.com/
+    kind: free
+    why: 'the free C++ course; chapter 12 (references and pointers) and chapter 16 (dynamic arrays: std::vector)
+      cover the language you need for the four functions'
+  - title: std::unordered_map
+    by: cppreference.com
+    url: https://en.cppreference.com/w/cpp/container/unordered_map
+    kind: free
+    why: the reference page for the hash map the pair counts live in, including operator[], find and average
+      constant-time lookup
+  - title: Introduction to Algorithms (6.006, Spring 2020)
+    by: MIT OpenCourseWare
+    url: https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/
+    kind: free
+    why: 'Lecture 1 notes on efficiency and asymptotic notation, which ignores constant factors, and Lecture
+      4 on hashing: the background to why the speedup is a constant factor'
+  - title: Makefile Tutorial by Example
+    by: makefiletutorial.com
+    url: https://makefiletutorial.com/
+    kind: free
+    why: the Makefile syntax section (targets, prerequisites, commands), enough to read the lesson's Makefile
+      and the make output when a build fails
+  - title: A Tour of C++, 3rd edition
+    by: Bjarne Stroustrup (Addison-Wesley)
+    url: https://www.informit.com/store/tour-of-c-plus-plus-9780136816485
+    kind: paid
+    why: a compact tour of the standard library; chapter 12, Containers, covers vector (12.2) and unordered_map
+      (12.6) as used in this lesson
 datasets:
 - name: CPython 3.12 standard library source (12 modules, concatenated)
   licence: Python Software Foundation License Version 2

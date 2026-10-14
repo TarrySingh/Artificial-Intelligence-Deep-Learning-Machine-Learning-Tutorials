@@ -25,6 +25,43 @@ objectives:
 - Implement forecast_from_samples to turn module 5's predictive RUL draws into this module's forecast,
   and measure what planning from a normal or a log-normal with the draws' mean and sd costs against planning
   from the draws themselves, in the booked hour, in the risk quoted with it and in its price
+before_you_start:
+  assumed:
+  - build an empirical CDF and read a quantile from a 1-D array of samples with numpy
+  - use np.cumsum on a probability mass function and index the result by integer hour
+  - write a loop that fills a limited number of slots and tracks which are still free
+  - compute the expected value of a cost over a probability distribution
+  resources:
+  - title: 'Engineering Statistics Handbook, 8.1.2.3: Failure (or hazard) rate'
+    by: NIST/SEMATECH
+    url: https://www.itl.nist.gov/div898/handbook/apr/section1/apr123.htm
+    kind: free
+    why: 'the hazard rate as the rate at which survivors fail, with 8.1.2.2 on the survival function just
+      before it: the two functions exercise 2 computes from a pmf'
+  - title: Think Stats, 2nd edition
+    by: Allen B. Downey (Green Tea Press; free online)
+    url: https://greenteapress.com/thinkstats2/html/index.html
+    kind: free
+    why: the cumulative distribution functions chapter (percentiles) and the survival analysis chapter
+      (survival curves, the hazard function)
+  - title: 'Probabilistic Machine Learning: An Introduction'
+    by: Kevin P. Murphy (MIT Press; free PDF from the author)
+    url: https://probml.github.io/pml-book/book1.html
+    kind: free
+    why: 'section 5.1 on Bayesian decision theory: choosing the action that minimises expected loss under
+      unequal costs, the logic of pricing an intervention hour'
+  - title: 'Algorithms: the Greedy Algorithms chapter'
+    by: Jeff Erickson (free online)
+    url: https://jeffe.cs.illinois.edu/teaching/algorithms/book/04-greedy.pdf
+    kind: free
+    why: 'the scheduling examples and the exchange argument: when a greedy rule is provably optimal, which
+      is the question greedy_schedule against best_schedule answers'
+  - title: Maintenance, Replacement, and Reliability, 3rd edition
+    by: Andrew K. S. Jardine and Albert H. C. Tsang (CRC Press)
+    url: https://www.routledge.com/Maintenance-Replacement-and-Reliability-Theory-and-Applications/Jardine-Tsang/p/book/9780367076054
+    kind: paid
+    why: 'chapter 2, Reliability Improvement Through Component Replacement: the book''s treatment of when
+      to replace a component before it fails, the decision this lesson prices'
 datasets:
 - name: synthetic-rul-forecast-fleet
   kind: synthetic

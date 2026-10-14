@@ -113,6 +113,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Fit the measured success-rate-versus-length curve against p^n and measure how much each
 #    guardrail — validation, retries, budget — moves success rate and cost.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions, small classes or dataclasses, and dicts, and use try/except and raise
+# - read and write JSON values in Python (nested dicts, lists, strings, numbers, booleans, null) and say which Python type each one becomes
+# - draw seeded random numbers with numpy or the random module and compute a mean over a list of results
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Building Effective AI Agents](https://www.anthropic.com/engineering/building-effective-agents) · Anthropic · *free* — what an agent is (a model using tools in a loop), stopping conditions such as an iteration cap, and the appendix on designing tools
+# - [JSON Schema reference (formerly Understanding JSON Schema)](https://json-schema.org/understanding-json-schema/reference) · JSON Schema project · *free* — the pages on type, on object properties and required, and on enum: the keywords exercise 1's argument validator has to enforce
+# - [Exponential Backoff And Jitter](https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/) · Marc Brooker (AWS Architecture Blog) · *free* — capped exponential backoff and full jitter, simulated, which is exactly what exercises 3 and 4 implement
+# - [Think Stats, 2nd edition](https://greenteapress.com/thinkstats2/html/thinkstats2009.html) · Allen B. Downey (O'Reilly; free from Green Tea Press) · *free* — chapter 8, Estimation: simulate sampling to get a standard error and a confidence interval, the idea behind exercise 8's bootstrap
+# - [ReAct: Synergizing Reasoning and Acting in Language Models](https://arxiv.org/abs/2210.03629) · Yao et al. (arXiv) · *free* — section 2 defines the interleaved thought, action and observation trajectory; this lesson builds the same control flow, with a scripted policy where the paper prompts a language model
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

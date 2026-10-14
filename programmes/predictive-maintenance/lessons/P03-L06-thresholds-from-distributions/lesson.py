@@ -121,6 +121,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # `meta.yaml` declares it. The method transfers; the particular numbers describe no real
 # plant, and the three prices are a scenario rather than a measurement.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L05`
+#
+# **This lesson assumes you can already:**
+#
+# - build an empirical CDF and read a quantile from a 1-D array of samples with numpy
+# - use np.cumsum on a probability mass function and index the result by integer hour
+# - write a loop that fills a limited number of slots and tracks which are still free
+# - compute the expected value of a cost over a probability distribution
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Engineering Statistics Handbook, 8.1.2.3: Failure (or hazard) rate](https://www.itl.nist.gov/div898/handbook/apr/section1/apr123.htm) · NIST/SEMATECH · *free* — the hazard rate as the rate at which survivors fail, with 8.1.2.2 on the survival function just before it: the two functions exercise 2 computes from a pmf
+# - [Think Stats, 2nd edition](https://greenteapress.com/thinkstats2/html/index.html) · Allen B. Downey (Green Tea Press; free online) · *free* — the cumulative distribution functions chapter (percentiles) and the survival analysis chapter (survival curves, the hazard function)
+# - [Probabilistic Machine Learning: An Introduction](https://probml.github.io/pml-book/book1.html) · Kevin P. Murphy (MIT Press; free PDF from the author) · *free* — section 5.1 on Bayesian decision theory: choosing the action that minimises expected loss under unequal costs, the logic of pricing an intervention hour
+# - [Algorithms: the Greedy Algorithms chapter](https://jeffe.cs.illinois.edu/teaching/algorithms/book/04-greedy.pdf) · Jeff Erickson (free online) · *free* — the scheduling examples and the exchange argument: when a greedy rule is provably optimal, which is the question greedy_schedule against best_schedule answers
+# - [Maintenance, Replacement, and Reliability, 3rd edition](https://www.routledge.com/Maintenance-Replacement-and-Reliability-Theory-and-Applications/Jardine-Tsang/p/book/9780367076054) · Andrew K. S. Jardine and Albert H. C. Tsang (CRC Press) · *paid* — chapter 2, Reliability Improvement Through Component Replacement: the book's treatment of when to replace a component before it fails, the decision this lesson prices
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

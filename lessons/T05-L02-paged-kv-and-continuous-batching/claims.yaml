@@ -1,0 +1,117 @@
+claims:
+- id: corpus-public-domain
+  claim: 'The text used as the training corpus is an excerpt of Shakespeare''s Sonnets, taken from Project
+    Gutenberg eBook #1041. Project Gutenberg records this eBook''s copyright status as "Public domain
+    in the USA.", and records the author, William Shakespeare, with the dates 1564-1616. The excerpt excludes
+    Project Gutenberg''s own header and footer.'
+  where: meta.yaml datasets; lesson.py section 1 (the corpus).
+  source_url: https://www.gutenberg.org/ebooks/1041
+  source_title: 'Project Gutenberg - Shakespeare''s Sonnets by William Shakespeare, eBook #1041'
+  quote: Public domain in the USA.
+  quote_context: the 'Copyright' row of the eBook's catalogue record; the 'Author' row reads 'Shakespeare,
+    William, 1564-1616'
+  accessed: 2026-10-02
+- id: kwon-block-table-and-virtual-memory
+  claim: 'PagedAttention and the vLLM serving system manage the KV cache as blocks reached through a per-request
+    block table, by analogy with an operating system''s virtual memory: blocks are pages, tokens are bytes
+    and requests are processes. The block manager maintains, per request, the mapping between logical
+    and physical KV blocks. This lesson''s block pool, block table, `locate` and `paged_gather` are toy
+    versions of exactly that.'
+  where: lesson.py section 3 (exercise 1), first paragraphs
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), sections 1 and 4.2
+  quote: one can think of blocks as pages, tokens as bytes, and requests as processes.
+  quote_context: 'Section 1 (Introduction), the paragraph describing the design; section 4.2 adds: ''The
+    KV block manager also maintains block tables—the mapping between logical and physical KV blocks of
+    each request.'' The quote is verbatim in the paper''s full text as arXiv renders it at https://arxiv.org/html/2309.06180
+    (the abstract page itself carries only the abstract); re-read there on 2026-09-29 and again on 2026-10-02.'
+  accessed: 2026-10-02
+- id: kwon-three-sources-of-waste
+  claim: 'A KV cache that pre-allocates one contiguous chunk per request wastes memory in three ways:
+    slots reserved for future tokens, internal fragmentation from over-provisioning for the maximum sequence
+    length, and external fragmentation from the memory allocator. This lesson measures the first two as
+    "held but not filled" slots and the third as iterations in which a request was refused although enough
+    slots were free in total (sections 11 and 12).'
+  where: lesson.py section 2 (the contiguous cache), section 11 (exercise 7) and section 12
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), section 3
+  quote: 'three primary sources of memory wastes: reserved slots for future tokens, internal fragmentation
+    due to over-provisioning for potential maximum sequence lengths, and external fragmentation from the
+    memory allocator like the buddy allocator.'
+  quote_context: Section 3 (Memory Challenges in LLM Serving), the paragraph on Fig. 3, chunk pre-allocation
+    in existing systems. The quote is verbatim in the paper's full text as arXiv renders it at https://arxiv.org/html/2309.06180
+    (the abstract page itself carries only the abstract); re-read there on 2026-09-29 and again on 2026-10-02.
+  accessed: 2026-10-02
+- id: kwon-fcfs-latest-preempted-first
+  claim: vLLM serves requests first come, first served, and when it must preempt it evicts the most recently
+    arrived requests first, so that the earliest arrived requests are served first. This is the policy
+    exercise 5 (`grow_or_preempt`) and exercise 6 (`admit`) implement.
+  where: lesson.py section 7 (continuous batching), point 1, and exercise 5
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), section 4.5
+  quote: When vLLM needs to preempt requests, it ensures that the earliest arrived requests are served
+    first and the latest requests are preempted first.
+  quote_context: Section 4.5 (Scheduling and Preemption), first paragraph. The quote is verbatim in the
+    paper's full text as arXiv renders it at https://arxiv.org/html/2309.06180 (the abstract page itself
+    carries only the abstract); re-read there on 2026-09-29 and again on 2026-10-02.
+  accessed: 2026-10-02
+- id: kwon-recomputation-of-preempted-requests
+  claim: 'A preempted request can be recovered by recomputation: the tokens it had already generated are
+    concatenated with its prompt and their KV cache is rebuilt in one prompt-phase iteration. This is
+    how the lesson''s evicted requests come back (`prefill_paged` over prompt plus tokens so far).'
+  where: lesson.py section 7, point 1, and the engine in section 10
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), section 4.5
+  quote: the tokens generated at decoding can be concatenated with the original user prompt as a new prompt—their
+    KV cache at all positions can be generated in one prompt phase iteration.
+  quote_context: Section 4.5, the 'Recomputation' paragraph. The quote is verbatim in the paper's full
+    text as arXiv renders it at https://arxiv.org/html/2309.06180 (the abstract page itself carries only
+    the abstract); re-read there on 2026-09-29 and again on 2026-10-02.
+  accessed: 2026-10-02
+- id: orca-iteration-level-scheduling
+  claim: Serving systems that cannot change the batch being processed hold finished requests back and
+    make new arrivals wait for the whole batch (the static batching of the previous lesson). Orca's iteration-level
+    scheduling schedules execution at the granularity of one model iteration instead, which is the continuous
+    batching this lesson builds.
+  where: lesson.py section 7 (continuous batching), first paragraph
+  source_url: https://www.usenix.org/conference/osdi22/presentation/yu
+  source_title: 'Orca: A Distributed Serving System for Transformer-Based Generative Models (Yu et al.,
+    OSDI 2022), abstract'
+  quote: we propose iteration-level scheduling, a new scheduling mechanism that schedules execution at
+    the granularity of iteration (instead of request)
+  quote_context: 'Abstract; the preceding sentence states the limit: ''requests that have finished earlier
+    than other requests in a batch cannot return to the client, while newly arrived requests have to wait
+    until the current batch completely finishes.'''
+  accessed: 2026-10-02
+- id: vllm-v1-default-preemption-recompute
+  claim: In vLLM V1 the default preemption mode is recomputation rather than swapping KV blocks to CPU
+    memory. This lesson implements the recompute mode only.
+  where: lesson.py section 16 (what this lesson does not cover)
+  source_url: https://docs.vllm.ai/en/latest/configuration/optimization/
+  source_title: vLLM documentation, Optimization and Tuning, section Preemption (the 'latest' documentation)
+  quote: In vLLM V1, the default preemption mode is RECOMPUTE rather than SWAP, as recomputation has lower
+    overhead in the V1 architecture.
+  quote_context: 'the last sentence of the Preemption section; the same section says: ''Preempted requests
+    are recomputed when sufficient KV cache space becomes available again.'' The same sentence is on the
+    documentation pinned to the release named below, https://docs.vllm.ai/en/v0.31.0/configuration/optimization/
+    (read 2026-10-14; the v0.30.0-pinned page, read 2026-09-29 and 2026-10-02, had it too). The markup
+    wraps RECOMPUTE and SWAP in code elements, and some text extractions put a space between SWAP and
+    the comma after it; no such space is reproduced.'
+  accessed: 2026-10-14
+- id: vllm-newest-release
+  claim: As of the access date (2026-10-14) the newest vLLM release published on GitHub is v0.31.0 (published
+    2026-10-05 according to the GitHub releases API); on 2026-09-29 and 2026-10-02 it was v0.30.0 (published
+    2026-09-22). The lesson names the newest release once, dated, as the reference point for its statement
+    about vLLM's default preemption mode.
+  where: lesson.py section 16 (what this lesson does not cover)
+  source_url: https://github.com/vllm-project/vllm/releases/tag/v0.31.0
+  source_title: vllm-project/vllm releases, tag v0.31.0
+  quote: Release v0.31.0
+  quote_context: the page title reads 'Release v0.31.0 · vllm-project/vllm · GitHub'; the releases API
+    (https://api.github.com/repos/vllm-project/vllm/releases/latest) returned tag_name v0.31.0 on the
+    access date, and PyPI's current vllm version was also 0.31.0
+  accessed: 2026-10-14

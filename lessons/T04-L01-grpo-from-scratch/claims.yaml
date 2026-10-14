@@ -1,0 +1,228 @@
+claims:
+- id: grpo-no-critic
+  claim: 'Group Relative Policy Optimisation (GRPO), introduced in DeepSeekMath, is a reinforcement learning
+    algorithm that dispenses with the learned critic (value model) of PPO and estimates its baseline from
+    the scores of a group of sampled outputs for the same question. This is the structure this lesson
+    builds: G completions per prompt, the group itself as the baseline.'
+  where: lesson.py section 1 and the whole of exercises 3, 5, 9 and 10
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: 'DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models (Shao
+    et al., 2024), section 4.1 (as rendered on arXiv, HTML version)'
+  quote: GRPO foregoes the critic model, instead estimating the baseline from group scores, significantly
+    reducing training resources compared to Proximal Policy Optimization (PPO).
+  quote_context: Introduction, the paragraph describing the reinforcement learning contribution
+  accessed: 2026-09-29
+- id: grpo-advantage-normalisation
+  claim: In GRPO with outcome supervision, the rewards of a group's completions are normalised by subtracting
+    the group's average and dividing by the group's standard deviation, and the result is the advantage
+    of every token of that completion. This is the formula exercise 5 implements, with the lesson's own
+    epsilon added to the standard deviation and with the population standard deviation (the source does
+    not say which estimator it means; this lesson fixes ddof=0 and says so).
+  where: lesson.py section 1 and exercise 5 (group_advantages)
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: DeepSeekMath (Shao et al., 2024), section 4.1.2 Outcome Supervision RL with GRPO
+  quote: Subsequently, these rewards are normalized by subtracting the group average and dividing by the
+    group standard deviation.
+  quote_context: Section 4.1.2, first paragraph
+  accessed: 2026-09-29
+- id: grpo-kl-estimator
+  claim: GRPO regularises toward a reference policy by adding the KL divergence between the trained policy
+    and the reference policy directly to the loss, rather than adding a KL penalty to the reward. Exercise
+    9 puts the penalty in the loss, per token, with coefficient beta.
+  where: lesson.py section 1 and exercise 9 (grpo_update)
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: DeepSeekMath (Shao et al., 2024), section 4.1.1 From PPO to GRPO
+  quote: instead of adding KL penalty in the reward, GRPO regularizes by directly adding the KL divergence
+    between the trained policy and the reference policy to the loss
+  quote_context: Section 4.1.1, the paragraph after the GRPO objective (Equation 3)
+  accessed: 2026-09-29
+- id: grpo-kl-unbiased-estimator
+  claim: 'GRPO estimates that KL divergence with an estimator the paper calls unbiased, credited to Schulman
+    (2020): the k3 estimator of exercise 7.'
+  where: lesson.py section 1 and exercise 7 (k3_kl)
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: DeepSeekMath (Shao et al., 2024), section 4.1.1 From PPO to GRPO
+  quote: we estimate the KL divergence with the following unbiased estimator (Schulman, 2020)
+  quote_context: Section 4.1.1, the sentence introducing Equation 4
+  accessed: 2026-09-29
+- id: k3-estimator
+  claim: The k3 estimator of KL(q || p), (r - 1) - log r with r = p(x)/q(x) on samples x drawn from q,
+    is unbiased, and in the source's own experiment has lower standard deviation than the k2 estimator.
+    In this lesson q is the trained policy and p the reference. (Section 20 measures how k3 behaves against
+    the naive estimator k1 at a distance from the reference far larger than the source's example; it does
+    not claim the source's variance result holds there.)
+  where: lesson.py exercise 7 (k3_kl), its check, and section 20
+  source_url: http://joschu.net/blog/kl-approx.html
+  source_title: Approximating KL Divergence (John Schulman, 2020)
+  quote: k3 has even lower standard deviation than k2 while being unbiased, so it appears to be a strictly
+    better estimator.
+  quote_context: Immediately after the table comparing the estimators' bias and standard deviation on
+    the page's second example
+  accessed: 2026-09-29
+- id: k3-nonnegative
+  claim: The k3 estimator is guaranteed to be positive, because it is the vertical distance between log(x)
+    and its tangent; this is why exercise 7's check requires it never to be negative, unlike the naive
+    estimator k1.
+  where: lesson.py exercise 7 (k3_kl) and section 20
+  source_url: http://joschu.net/blog/kl-approx.html
+  source_title: Approximating KL Divergence (John Schulman, 2020)
+  quote: the expression above is guaranteed to be positive.
+  quote_context: The paragraph that chooses lambda = 1 and derives k3
+  accessed: 2026-09-29
+- id: grpo-multiple-iterations
+  claim: GRPO's published algorithm takes several optimisation iterations on one batch of sampled groups
+    (mu of them), after the advantages have been computed once. This lesson's `epochs` is that mu.
+  where: lesson.py section 1, section 11 and exercise 9
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: 'DeepSeekMath (Shao et al., 2024), Algorithm 1: Iterative Group Relative Policy Optimization'
+  quote: for GRPO iteration = 1, …, μ do
+  quote_context: Algorithm 1, line 10
+  accessed: 2026-09-29
+- id: ppo-clip-stabilises
+  claim: The clipping of the probability ratio in GRPO's objective is inherited from PPO and is there
+    to stabilise training.
+  where: lesson.py section 1 and exercise 6 (clipped_surrogate)
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: DeepSeekMath (Shao et al., 2024), section 4.1.1 From PPO to GRPO
+  quote: ε is a clipping-related hyper-parameter introduced in PPO for stabilizing training.
+  quote_context: Section 4.1.1, the sentence after the PPO surrogate objective (Equation 1)
+  accessed: 2026-09-29
+- id: r1-uses-grpo
+  claim: DeepSeek-R1-Zero and DeepSeek-R1 were trained with GRPO as their reinforcement learning algorithm.
+  where: lesson.py the introduction, section 1 and section 21
+  source_url: https://arxiv.org/html/2501.12948
+  source_title: 'DeepSeek-R1: Incentivizing Reasoning Capability in LLMs via Reinforcement Learning (DeepSeek-AI,
+    arXiv 2501.12948v2), section 2.1 Group Relative Policy Optimization (as rendered on arXiv, HTML version)'
+  quote: GRPO (Shao et al., 2024) is the reinforcement learning algorithm that we adopt to train DeepSeek-R1-Zero
+    and DeepSeek-R1.
+  quote_context: Section 2.1, first sentence (appendix A.3 opens with the same sentence, the algorithm's
+    name spelled out)
+  accessed: 2026-09-29
+- id: r1-rule-based-rewards
+  claim: 'DeepSeek-R1-Zero''s reward is rule-based and consists of two types, accuracy rewards (is the
+    answer right, checked by a program) and format rewards. This lesson''s reward has the same two-part
+    shape, at toy scale: a format reward for terminating and a correctness reward from a program.'
+  where: lesson.py section 1 and exercise 4 (check_completion, completion_reward)
+  source_url: https://arxiv.org/html/2501.12948
+  source_title: DeepSeek-R1 (DeepSeek-AI), the reward design section for DeepSeek-R1-Zero
+  quote: 'Our rule-based reward system mainly consists of two types of rewards: accuracy rewards and format
+    rewards.'
+  quote_context: Reward design, for DeepSeek-R1-Zero
+  accessed: 2026-09-29
+- id: r1-no-neural-rewards
+  claim: DeepSeek-R1-Zero avoids neural reward models for reasoning tasks because the authors observed
+    them to be susceptible to reward hacking during large-scale reinforcement learning. This is the context
+    for section 19, which shows that a rule-based verifier can be hacked too when the rule has a hole;
+    the lesson does not claim that any rule-based reward in the cited system has such a hole.
+  where: lesson.py section 19
+  source_url: https://arxiv.org/html/2501.12948
+  source_title: DeepSeek-R1 (DeepSeek-AI), the reward design section for DeepSeek-R1-Zero
+  quote: This decision is predicated on our observation that neural reward models are susceptible to reward
+    hacking during large-scale reinforcement learning.
+  quote_context: 'Reward design: the paragraph explaining why neural reward models are not used for reasoning
+    tasks'
+  accessed: 2026-09-29
+- id: drgrpo-length-bias
+  claim: Dr. GRPO's authors identify an optimisation bias in GRPO that artificially increases response
+    length, especially for incorrect outputs, during training. Section 17 measures the length of incorrect
+    completions under three length normalisations on the toy task; it does not claim the effect is the
+    same size at scale.
+  where: lesson.py section 1, exercise 8 and section 17
+  source_url: https://arxiv.org/abs/2503.20783
+  source_title: 'Understanding R1-Zero-Like Training: A Critical Perspective (Liu et al., 2025), abstract'
+  quote: we identify an optimization bias in Group Relative Policy Optimization (GRPO), which artificially
+    increases response length (especially for incorrect outputs) during training.
+  quote_context: Abstract
+  accessed: 2026-09-29
+- id: drgrpo-constant-normaliser
+  claim: Dr. GRPO's remedy for the length bias is to remove the per-response length normalisation (and
+    the standard-deviation normalisation) and, in an implementation that masks tokens, to divide by a
+    constant such as the generation budget instead of the response's own length. This is the "const" mode
+    of exercise 8, with max_len playing the generation budget.
+  where: lesson.py exercise 8 (length_scale, mode 'const')
+  source_url: https://arxiv.org/html/2503.20783
+  source_title: 'Understanding R1-Zero-Like Training: A Critical Perspective (Liu et al., 2025), the section
+    that proposes Dr. GRPO'
+  quote: we could replace the mask.sum(axis=dim) with a constant value (e.g., generation budget) in the
+    masked_mean function
+  quote_context: The paragraph proposing the unbiased optimiser, after the statement that the length and
+    standard-deviation terms are removed
+  accessed: 2026-09-29
+- id: drgrpo-difficulty-bias
+  claim: Dr. GRPO's authors argue that dividing by the group's standard deviation gives questions with
+    a small standard deviation (nearly always right or nearly always wrong) larger weights in the policy
+    update. Section 16 shows those weights with the lesson's own group_advantages and measures training
+    with and without the division on the toy task; it does not claim the paper's improvement appears here
+    (on this task it does not).
+  where: lesson.py section 1 and section 16
+  source_url: https://arxiv.org/html/2503.20783
+  source_title: 'Understanding R1-Zero-Like Training: A Critical Perspective (Liu et al., 2025), section
+    3.1 (Question-level difficulty bias)'
+  quote: Questions with lower standard deviations (e.g., those that are too easy or too hard, with the
+    outcome rewards being almost all 1 or 0) are given higher weights during policy updates.
+  quote_context: Section 3.1, the paragraph headed 'Question-level difficulty bias'
+  accessed: 2026-09-29
+- id: dapo-sample-level-loss
+  claim: 'The original GRPO algorithm computes a sample-level loss: it averages the token losses within
+    each sample first and then aggregates across samples, so each sample gets equal weight. DAPO argues
+    that this gives tokens of long responses a disproportionately low contribution, and replaces it with
+    a token-level policy-gradient loss. The ''seq'' and ''batch'' modes of exercise 8 are the two.'
+  where: lesson.py section 1, exercise 8 and section 17
+  source_url: https://arxiv.org/html/2503.14476
+  source_title: 'DAPO: An Open-Source LLM Reinforcement Learning System at Scale (Yu et al., 2025), section
+    3.3 Rebalancing Act: Token-Level Policy Gradient Loss'
+  quote: The original GRPO algorithm employs a sample-level loss calculation, which involves first averaging
+    the losses by token within each sample and then aggregating the losses across samples.
+  quote_context: Section 3.3, first sentence
+  accessed: 2026-09-29
+- id: dapo-token-level-loss
+  claim: DAPO introduces a token-level policy-gradient loss for long chain-of-thought reinforcement learning.
+    DAPO's version divides by the total number of tokens across the group's samples; this lesson's 'batch'
+    mode divides by the mean length of the whole batch, a per-token mean across the batch, which is the
+    same idea at the batch level.
+  where: lesson.py exercise 8 (length_scale, mode 'batch')
+  source_url: https://arxiv.org/html/2503.14476
+  source_title: DAPO (Yu et al., 2025), section 3.3
+  quote: We introduce a Token-level Policy Gradient Loss in the long-CoT RL scenario to address the above
+    limitations
+  quote_context: Section 3.3, the sentence before Equation 12
+  accessed: 2026-09-29
+- id: dapo-zero-advantage
+  claim: In GRPO, a group whose completions are all correct and receive the same reward has zero advantage,
+    and a zero advantage gives zero policy gradient; DAPO reports that this shrinks the batch gradient,
+    makes it noisier and lowers sample efficiency. Section 15 measures how often it happens on the toy
+    task, and at the other end of training, when nothing is right yet.
+  where: lesson.py section 1, exercise 5 and section 15
+  source_url: https://arxiv.org/html/2503.14476
+  source_title: 'DAPO (Yu et al., 2025), section 3.2 The More the Merrier: Dynamic Sampling'
+  quote: A zero advantage results in zero policy gradients, shrinking the magnitude and increasing the
+    noise sensitivity of the batch gradient, thereby degrading sample efficiency.
+  quote_context: Section 3.2, the second paragraph
+  accessed: 2026-09-29
+- id: dapo-dynamic-sampling
+  claim: 'DAPO''s remedy for groups that carry no gradient is dynamic sampling: over-sample and filter
+    out the prompts whose accuracy is exactly 1 or 0, so every prompt in the batch has an effective gradient.
+    This lesson names it and measures the problem; it does not implement it.'
+  where: lesson.py section 15
+  source_url: https://arxiv.org/html/2503.14476
+  source_title: DAPO (Yu et al., 2025), section 3.2
+  quote: To this end, we propose to over-sample and filter out prompts with the accuracy equal to 1 and
+    0 as illustrated in Equation 11, leaving all prompts in the batch with effective gradients and keeping
+    a consistent number of prompts.
+  quote_context: Section 3.2, after the description of the gradient-decreasing problem
+  accessed: 2026-09-29
+- id: drgrpo-ablation-result
+  claim: 'In the Dr. GRPO paper''s own experiments (at a scale this lesson does not approach), Dr. GRPO
+    and the ablated variants that remove only the length normalisation or only the standard-deviation
+    normalisation consistently outperform vanilla GRPO in training reward and evaluation accuracy. Section
+    16 measures the standard-deviation variant on a toy task and does not claim to reproduce or contradict
+    the paper''s result: it is a different task and scale (section 21).'
+  where: lesson.py section 16 and section 21
+  source_url: https://arxiv.org/html/2503.20783
+  source_title: 'Understanding R1-Zero-Like Training: A Critical Perspective (Liu et al., 2025), the ablation
+    of Dr. GRPO''s two changes'
+  quote: In terms of performance, Dr. GRPO and the other ablated variants consistently outperform vanilla
+    GRPO in both training rewards and evaluation accuracy.
+  quote_context: The paragraph discussing the ablation curves (Dr. GRPO, GRPO without length normalisation,
+    GRPO without std normalisation, vanilla GRPO), in the appendix
+  accessed: 2026-09-29

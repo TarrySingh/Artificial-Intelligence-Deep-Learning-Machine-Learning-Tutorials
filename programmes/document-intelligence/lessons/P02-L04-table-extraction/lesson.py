@@ -108,6 +108,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Produce, on this corpus, a case where content is perfect and structure is wrong, and a
 #    case where the reverse holds — then say which score your consumer should gate on.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`, `P02-L02`, `P02-L03`
+#
+# **This lesson assumes you can already:**
+#
+# - use numpy to sum a 2-D array along an axis, and compare an array with a threshold to get a boolean mask
+# - read a table as rows of cells and say what a colspan means in HTML table markup
+# - work with boxes as (x0, y0, x1, y1) and say which row band and column a box falls in
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Image-based table recognition: data, model, and evaluation](https://arxiv.org/abs/1911.10683) · Zhong, ShafieiBavani and Jimeno Yepes (arXiv) · *free* — introduces TEDS, the tree-edit-distance similarity over HTML table trees that teds_like simplifies, and why it was proposed instead of cell-level accuracy
+# - [GriTS: Grid Table Similarity Metric for Table Structure Recognition](https://arxiv.org/abs/2203.12555) · Smock, Pesala and Abraham (arXiv) · *free* — a grid-based alternative to TEDS that scores cell topology, location and content; useful for seeing what a single table score hides
+# - [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html) · NumPy developers (official documentation) · *free* — array operations along an axis, conditional indexing and np.nonzero, the tools for the projection profile in ink_runs
+# - [The HTML table cell element (td)](https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/td) · MDN Web Docs (Mozilla) · *free* — the colspan and rowspan attributes, the model of a spanning header that the cell reconstruction has to recover
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

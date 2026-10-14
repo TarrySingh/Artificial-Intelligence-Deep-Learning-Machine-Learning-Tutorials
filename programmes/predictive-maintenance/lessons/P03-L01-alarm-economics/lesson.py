@@ -118,6 +118,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # synthetic. Everything you conclude here about *method* transfers; nothing you conclude about
 # *these particular numbers* describes any real plant.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops and dicts, and select numpy array elements with a boolean mask
+# - read a confusion matrix and say what precision, recall and the false-positive rate each measure
+# - compute an expected value: probabilities times costs, summed over outcomes
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [The Foundations of Cost-Sensitive Learning](https://cseweb.ucsd.edu/~elkan/rescale.pdf) · Charles Elkan (IJCAI 2001) · *free* — section 1 on cost matrices: when one is coherent, and the probability threshold it implies, which is the idea this lesson measures on a fleet
+# - [Probabilistic Machine Learning: An Introduction](https://probml.github.io/pml-book/book1.html) · Kevin P. Murphy (MIT Press; free PDF from the author) · *free* — section 5.1 on Bayesian decision theory: classification under unequal costs, ROC curves and precision-recall curves, all built here from one set of counts
+# - [Tuning the decision threshold for class prediction](https://scikit-learn.org/stable/modules/classification_threshold.html) · scikit-learn documentation · *free* — why the default 0.5 cut-off is rarely the right one, and how a threshold is tuned against a cost or metric instead
+# - [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/) · Jake VanderPlas (O'Reilly; free online) · *free* — chapter 2 on NumPy: comparisons, masks and Boolean logic, and fancy indexing, the array idioms every exercise uses
+# - [Data Science for Business](https://data-science-for-biz.com/contents/) · Foster Provost and Tom Fawcett (O'Reilly) · *paid* — chapter 7, Decision Analytic Thinking I: expected value as the framework for judging a classifier under unequal costs and benefits; chapter 8, profit curves and ROC curves
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

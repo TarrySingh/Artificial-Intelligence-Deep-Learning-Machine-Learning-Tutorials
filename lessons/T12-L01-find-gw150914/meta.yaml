@@ -1,0 +1,77 @@
+id: T12-L01-find-gw150914
+title: Find GW150914 in the raw LIGO data — Welch PSD, whitening, a Newtonian chirp template and a matched
+  filter, from scratch
+track: T12
+flagship: ''
+tier: cpu8
+budget_seconds: 180
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement Welch's method for power-spectral-density estimation and a frequency-domain whitening filter,
+  entirely in numpy
+- Implement a leading-order (Newtonian, quadrupole) inspiral chirp template from the chirp mass, and a
+  quadrature matched-filter SNR time series by FFT correlation
+- Measure that whitening, not band-passing alone, is what lets the matched filter find GW150914's true
+  arrival time in the real detector data
+- Measure the arrival-time difference between Hanford and Livingston and check it against the inter-site
+  light-travel time
+- Estimate the chirp mass by maximising matched-filter SNR over a template bank, and measure how far this
+  Newtonian template's SNR and chirp mass fall from the discovery paper's relativistic analysis
+before_you_start:
+  assumed:
+  - use np.fft.rfft, irfft and rfftfreq, and say which frequency each output bin sits at
+  - explain sampling rate and the Nyquist frequency, and why a window is applied before a Fourier transform
+  - read a log-log amplitude spectrum of a signal buried in noise
+  - use first-year Newtonian physics (gravity, orbital period) with SI units and scientific notation
+  resources:
+  - title: Think DSP
+    by: Allen B. Downey (Green Tea Press)
+    url: https://greenteapress.com/wp/think-dsp/
+    kind: free
+    why: chapter 3 (chirps, leakage and windowing), chapter 7 (the DFT) and chapter 8 (filtering and convolution),
+      the FFT toolkit every exercise uses
+  - title: 'Gravitational Wave Open Science Center: tutorials'
+    by: LIGO, Virgo and KAGRA (GWOSC)
+    url: https://gwosc.org/tutorials/
+    kind: free
+    why: 'the guide to LIGO-Virgo detector noise and the binary black hole matched-filtering notebooks:
+      the same pipeline on the same public data'
+  - title: A guide to LIGO-Virgo detector noise and extraction of transient gravitational-wave signals
+    by: LIGO Scientific Collaboration and Virgo Collaboration (arXiv)
+    url: https://arxiv.org/abs/1908.11170
+    kind: free
+    why: section 4 on estimating the noise spectrum and whitening, and sections 8.1 and 8.2 on the matched
+      filter as the optimal detection statistic and its signal-to-noise ratio
+  - title: 'FINDCHIRP: an algorithm for detection of gravitational waves from inspiraling compact binaries'
+    by: Allen, Anderson, Brady, Brown and Creighton (arXiv)
+    url: https://arxiv.org/abs/gr-qc/0509116
+    kind: free
+    why: 'sections III and IV: the inspiral chirp written in terms of the chirp mass, and the matched-filter
+      signal-to-noise ratio built from it, the quantity exercise 6 computes'
+  - title: 'Gravitational Waves, Volume 1: Theory and Experiments'
+    by: Michele Maggiore (Oxford University Press)
+    url: https://global.oup.com/academic/product/gravitational-waves-9780198570745
+    kind: paid
+    why: section 4.1 on the inspiral of compact binaries (4.1.1, circular orbits and the chirp), and chapter
+      7, data analysis techniques, including 7.1 noise spectral density and 7.3 matched filtering
+datasets:
+- name: GW150914 H1 + L1 strain, 32 s at 4096 Hz (GWOSC GWTC-1-confident release)
+  kind: real
+  licence: CC-BY-4.0
+  url: https://gwosc.org/eventapi/html/GWTC-1-confident/GW150914/v3/
+  licence_url: https://gwosc.org/acknowledgement/
+  copyright: LIGO Scientific Collaboration, Virgo Collaboration and KAGRA, via the Gravitational Wave
+    Open Science Center (gwosc.org)
+  cached_at: assets/gw150914_h1_l1_32s.npz
+  retrieved: 2026-09-24
+  gated: false
+  notes: Downloaded directly from gwosc.org as plain-text .txt.gz (not HDF5 -- this repository ships no
+    h5py), decompressed and re-encoded as a compact float32 .npz under 1 MiB. Exact URLs, GPS times, sample
+    rate, licence and the required acknowledgement text are in assets/SOURCE.md and claims.yaml. The lesson
+    reads only this committed asset; no network access on any required path.
+points: 198
+status: reviewed
+measured_seconds: 0.9
+measured_peak_mib: 68

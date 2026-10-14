@@ -18,6 +18,42 @@ objectives:
 - Measure the effect of the inter-leg phase offset, and show that the antiphase gait survives where the
   in-phase gait topples
 - Run a rollout-capped coordinate search and report the margin it opens over a baseline gait
+before_you_start:
+  assumed:
+  - describe a sinusoid by amplitude, frequency and phase, and sketch two that differ by half a period
+  - integrate a sampled signal over time with a sum or the trapezoid rule
+  - give the units of torque, angular velocity, power and energy, and check that an equation's units balance
+  - copy a dict and change one key in the copy without changing the original
+  resources:
+  - title: University Physics Volume 1, section 10.8 Work and Power for Rotational Motion
+    by: OpenStax (CC BY-NC-SA)
+    url: https://openstax.org/books/university-physics-volume-1/pages/10-8-work-and-power-for-rotational-motion
+    kind: free
+    why: rotational power as torque times angular velocity, the quantity the lesson integrates to get
+      the energy a gait spends
+  - title: Python Numerical Methods, chapter 21 Numerical Integration
+    by: Kong, Siauw and Bayen (UC Berkeley; free online)
+    url: https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter21.00-Numerical-Integration.html
+    kind: free
+    why: section 21.3 (trapezoid rule), how to turn sampled torque times velocity into energy
+  - title: Underactuated Robotics, chapter 4 Simple Models of Walking and Running
+    by: Russ Tedrake (MIT; free online)
+    url: https://underactuated.csail.mit.edu/simple_legs.html
+    kind: free
+    why: the rimless wheel and compass gait, limit cycles and the energy lost at each step, the background
+      for why gait and phase decide what a step costs
+  - title: Modeling and Control of Legged Robots (Springer Handbook of Robotics, chapter 48)
+    by: Wieber, Tedrake and Kuindersma (author-hosted PDF)
+    url: https://groups.csail.mit.edu/robotics-center/public_papers/Wieber15.pdf
+    kind: free
+    why: section 48.6, towards more efficient walking, and gait generation for dynamic walking, where
+      energy cost is the headline measure
+  - title: MuJoCo documentation, Modeling
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/modeling.html
+    kind: free
+    why: the Actuators section, since the gait commands joint angles through actuators and their limits
+      cap what the walker can do
 datasets:
 - name: planar_walker.xml — seven-DoF planar biped
   licence: CC-BY-NC-SA-4.0

@@ -119,6 +119,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    chosen by peeking at test overstates its gain relative to queries never touched during
 #    selection.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `T06-L01`, `T06-L02`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions and loops, and index and slice numpy arrays
+# - read a ranked list and say what recall@k, MRR and nDCG@k measure (T06-L01 builds them)
+# - explain what a train, validation and test split are for, and why a test set is touched once
+# - write the logistic (sigmoid) function and say what one gradient-descent step on a loss does
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Introduction to Information Retrieval](https://nlp.stanford.edu/IR-book/) · Manning, Raghavan and Schütze (Cambridge University Press; free online edition) · *free* — chapter 8 on evaluating ranked retrieval (precision at k, nDCG), and chapter 6 on term weighting and scoring, the features your reranker combines
+# - [Pretrained Transformers for Text Ranking: BERT and Beyond](https://arxiv.org/abs/2010.06467) · Jimmy Lin, Rodrigo Nogueira and Andrew Yates · *free* — the standard survey of multi-stage ranking, whose first-stage retrieval then rerank shape is the system this lesson builds and measures
+# - [Speech and Language Processing (3rd ed. draft), chapter 4: Logistic Regression and Text Classification](https://web.stanford.edu/~jurafsky/slp3/4.pdf) · Dan Jurafsky and James H. Martin (Stanford; free draft) · *free* — 4.2 the sigmoid, 4.5-4.6 cross-entropy loss and gradient descent (your pointwise reranker), 4.10 why a test set is held out, 4.11 the paired bootstrap
+# - [From RankNet to LambdaRank to LambdaMART: An Overview](https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/) · Chris J. C. Burges (Microsoft Research technical report) · *free* — section 2, RankNet: a sigmoid of the score difference as the probability one document outranks another, trained with a pairwise cross-entropy cost, which your pairwise reranker implements
+# - [Computational and Inferential Thinking, section 13.2 (the bootstrap)](https://inferentialthinking.com/chapters/13/2/bootstrap/index.html) · Ani Adhikari, John DeNero and David Wagner · *free* — resampling and percentile intervals, the tool the lesson uses to put an interval on a gain in nDCG and MRR
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import math

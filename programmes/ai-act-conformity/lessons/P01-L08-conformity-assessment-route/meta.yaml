@@ -22,6 +22,43 @@ objectives:
   missing evidence from out-of-date evidence from untraceable evidence
 - Implement the Article 47 declaration and the Article 48 CE marking record, each refusing to exist while
   the thing before it in the chain does not
+before_you_start:
+  assumed:
+  - write Python functions over lists of dicts and dates that return a structured decision rather than
+    a bare boolean
+  - read a legal article and list the conditions under which each of its branches applies
+  - say what a CE mark and a declaration of conformity are for in EU product law, in two sentences
+  resources:
+  - title: 'AI Act Article 43: Conformity assessment'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-43
+    kind: free
+    why: paragraphs 1 to 3 (when internal control suffices and when a notified body is needed) and paragraph
+      4 (new assessment after a substantial modification), shown as amended by the Digital Omnibus
+  - title: 'AI Act Article 47: EU declaration of conformity'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-47
+    kind: free
+    why: 'the written, machine-readable declaration, its ten-year retention and its Annex V content: what
+      the declaration function must refuse to produce too early'
+  - title: 'AI Act Article 48: CE marking'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-48
+    kind: free
+    why: how and where the mark is affixed, including the digital-mark rule and the notified-body number,
+      the contents of the CE marking record
+  - title: The Blue Guide on the implementation of EU product rules 2022
+    by: European Commission (Notice 2022/C 247/01)
+    url: https://op.europa.eu/en/publication-detail/-/publication/91a50d92-f745-11ec-b94a-01aa75ed71a1
+    kind: free
+    why: section 2.1 on products changed by important modification, section 4.4 on the declaration, section
+      4.5.1 on CE marking and section 5 on conformity assessment
+  - title: 'CEN-CENELEC: Artificial Intelligence (JTC 21)'
+    by: CEN and CENELEC
+    url: https://www.cencenelec.eu/areas-of-work/cen-cenelec-topics/artificial-intelligence/
+    kind: free
+    why: 'which harmonised standards for the AI Act are being drafted, and why a published one gives a
+      presumption of conformity: the standards-gap question of Article 43(1)'
 datasets:
 - name: nine fictional AI systems with classification records, change logs and evidence packs
   kind: synthetic

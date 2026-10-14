@@ -1,0 +1,72 @@
+id: P07-L01-search-engine-and-fdr
+title: Build a fragment-ion search engine, target-decoy error control and protein inference, and measure
+  how the protein count moves with the threshold and with the level at which error is controlled
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a tryptic digest, peptide and b/y fragment-ion masses, and a decoy search space in which a
+  peptide shared with a target counts as a target
+- Implement a hyperscore fragment-matching search that retrieves candidates by precursor-mass window and
+  resolves an exact target-decoy tie against the target
+- Implement target-decoy q-values that treat tied scores as one group, and compare the estimate with the
+  true false discovery proportion on spectra whose peptides are known
+- Implement protein inference by parsimony and protein-level target-decoy scoring
+- Measure how many reported proteins are absent from the sample when error is controlled on peptides and
+  when it is controlled on proteins, at the same promised rate, and explain why the two differ
+before_you_start:
+  assumed:
+  - write Python functions over strings, dicts and sets, such as splitting a string at a rule and building
+    a reverse index from values to keys
+  - sort a numpy array and compute running counts and running ratios down the sorted order
+  - tell a false positive from a false negative, and a rate from a count
+  resources:
+  - title: A survey of computational methods and error rate estimation procedures for peptide and protein
+      identification in shotgun proteomics
+    by: Alexey I. Nesvizhskii (J Proteomics 2010, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC2956504
+    kind: free
+    why: section 5 on target-decoy error rates for spectrum matches and section 7 on protein inference,
+      the two halves of the lesson's FDR and parsimony exercises
+  - title: A Scalable Approach for Protein False Discovery Rate Estimation in Large Proteomic Data Sets
+    by: Savitski, Wilhelm, Hahne, Kuster and Bantscheff (Mol Cell Proteomics 2015, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC4563723
+    kind: free
+    why: why the classic target-decoy protein FDR over-predicts false proteins in very large data sets,
+      and the 'picked' remedy that pairs each protein's target and decoy
+  - title: 'Peptide fragmentation: b and y ions'
+    by: Matrix Science (Mascot help)
+    url: https://www.matrixscience.com/help/fragmentation_help.html
+    kind: free
+    why: how b and y ion masses are built from residue masses, the arithmetic of the fragment-ion exercise
+  - title: 'PeptideCutter: available enzymes'
+    by: SIB Swiss Institute of Bioinformatics (Expasy)
+    url: https://web.expasy.org/peptide_cutter/peptidecutter_enzymes.html
+    kind: free
+    why: the trypsin cleavage rule (after K or R, not before P) that the digest exercise implements, with
+      its documented exceptions
+  - title: 'Bioinformatics Algorithms: An Active Learning Approach'
+    by: Phillip Compeau and Pavel Pevzner (Active Learning Publishers)
+    url: https://www.bioinformaticsalgorithms.org/
+    kind: paid
+    why: 'chapter 4, How Do We Sequence Antibiotics?: inferring a peptide from its mass spectrum, from
+      brute force to the spectral convolution; a gentler on-ramp to the search engine'
+datasets:
+- name: synthetic-proteome-and-spectra
+  kind: synthetic
+  description: 1478 proteins in four kinds (base, paralog, truncated fragment, symmetric), 150 of them
+    in the sample, and 2403 tandem mass spectra of which 1000 are of peptides not in the database, generated
+    in lesson.py by generate_world(seed=20260929)
+  generator: 'lesson.py :: generate_world'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 123
+status: reviewed
+measured_seconds: 2.6
+measured_peak_mib: 128

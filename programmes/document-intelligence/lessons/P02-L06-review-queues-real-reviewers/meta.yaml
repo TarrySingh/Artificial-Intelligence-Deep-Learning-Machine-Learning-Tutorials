@@ -20,6 +20,37 @@ objectives:
   an explicit breach-rate target
 - Compute from your own kappa the quality ceiling your evaluation harness can see, check it against the
   simulation's truth, and explain why it is not 1.0
+before_you_start:
+  assumed:
+  - multiply the probabilities of independent events, P(A and B) = P(A) P(B), and add those of mutually
+    exclusive ones
+  - use sorted() with a key, or heapq, to take items from a queue in a chosen order
+  - simulate a day of work with a seeded numpy random generator and report a rate from it
+  resources:
+  - title: 'Survey Article: Inter-Coder Agreement for Computational Linguistics'
+    by: Artstein and Poesio (Computational Linguistics, 2008; ACL Anthology)
+    url: https://aclanthology.org/J08-4004/
+    kind: free
+    why: observed versus expected agreement and the kappa family of coefficients, and how to read the
+      values; the background for Exercises 1 and 2
+  - title: sklearn.metrics.cohen_kappa_score
+    by: scikit-learn developers (official documentation)
+    url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+    kind: free
+    why: the reference definition (p_o - p_e) / (1 - p_e), to check your plain-Python kappa against on
+      the same labels
+  - title: Cheap and Fast - But is it Good? Evaluating Non-Expert Annotations for Natural Language Tasks
+    by: Snow, O'Connor, Jurafsky and Ng (EMNLP 2008; ACL Anthology)
+    url: https://aclanthology.org/D08-1027/
+    kind: free
+    why: 'how agreement between human annotators and expert labels is measured across NLP tasks, and how
+      much annotator quality varies: context for the ceiling reviewers put on a score'
+  - title: 'Algorithm Design, section 4.2: Scheduling to Minimize Lateness'
+    by: Kleinberg and Tardos (Pearson)
+    url: https://www.pearson.com/en-us/subject-catalog/p/algorithm-design/P200000003259/9780137546350
+    kind: paid
+    why: proves that earliest-deadline-first order minimises maximum lateness by an exchange argument,
+      the reason sla_schedule serves the nearest deadline first
 datasets:
 - name: module 1's synthetic remittance advices and extractor, plus a simulated review team
   kind: synthetic

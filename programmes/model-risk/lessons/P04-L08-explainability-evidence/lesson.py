@@ -115,6 +115,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Explain why a check that regenerates in the same process certifies a pack whose numbers
 #    depend on the process's hash seed.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - train a simple model (for example a logistic regression written in numpy) and call its prediction function on a numpy array
+# - write a loop over all subsets of a small set of indices (for example with itertools.combinations)
+# - run one Python script from another with subprocess and read what it prints
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Interpretable Machine Learning](https://christophm.github.io/interpretable-ml-book/) · Christoph Molnar (free online book) · *free* — the chapters Permutation Feature Importance, Partial Dependence Plot (PDP) and Shapley Values, including how correlated features and extrapolation distort each of the first two
+# - [A Unified Approach to Interpreting Model Predictions](https://arxiv.org/abs/1705.07874) · Lundberg and Lee (NeurIPS 2017) · *free* — introduces SHAP and the additive-attribution properties (including attributions summing to prediction minus baseline) that the lesson checks on exact Shapley values
+# - [Command line and environment: PYTHONHASHSEED (Python documentation)](https://docs.python.org/3/using/cmdline.html) · Python Software Foundation · *free* — the PYTHONHASHSEED entry explains hash randomisation, why set and dict-of-string order can differ between processes, and how to pin it
+# - [json: JSON encoder and decoder (Python documentation)](https://docs.python.org/3/library/json.html) · Python Software Foundation · *free* — json.dumps with sort_keys, separators and ensure_ascii, the knobs of a canonical serialisation that gives the same bytes every run
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import builtins

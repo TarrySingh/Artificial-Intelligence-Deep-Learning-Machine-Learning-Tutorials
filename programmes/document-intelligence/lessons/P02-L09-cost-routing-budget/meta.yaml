@@ -25,6 +25,32 @@ objectives:
   and explain from the construction why greedy cannot recover
 - Generate from the computed numbers alone a routing recommendation a finance partner could sign, including
   the price per wrong field avoided of the next step up the frontier
+before_you_start:
+  assumed:
+  - compute a weighted mean with numpy (np.average with weights, or a dot product) and say why it differs
+    from a plain mean
+  - pick the item of a list with the smallest or largest value of a key, using min or max with key=
+  - work out an expected cost, for example the cost of a document that goes to a human reviewer with probability
+    p
+  resources:
+  - title: 'FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance'
+    by: Chen, Zaharia and Zou (arXiv)
+    url: https://arxiv.org/abs/2305.05176
+    kind: free
+    why: 'LLM cascades that send a query to a cheap model first and escalate, with cost against accuracy:
+      the same trade-off as the router''s three tiers'
+  - title: Algorithms, chapters 3 (Dynamic Programming) and 4 (Greedy Algorithms)
+    by: Jeff Erickson (free electronic edition, CC BY 4.0)
+    url: https://jeffe.cs.illinois.edu/teaching/algorithms/
+    kind: free
+    why: 'when a greedy rule is provably optimal, by an exchange argument, and the dynamic-programming
+      alternative: the greedy-versus-sweep question of Exercises 4 and 5'
+  - title: Algorithm Design, chapters 4 (Greedy Algorithms) and 6 (Dynamic Programming)
+    by: Kleinberg and Tardos (Pearson)
+    url: https://www.pearson.com/en-us/subject-catalog/p/algorithm-design/P200000003259/9780137546350
+    kind: paid
+    why: section 4.2's exchange argument and section 6.4 on subset sums and knapsacks, of which a routing
+      budget is a multiple-choice version
 datasets:
 - name: three-tier router price list, eight-segment traffic fixture, and random segment mixes
   kind: synthetic

@@ -60,10 +60,12 @@ claims:
     can also be used to more effectively help manage any model remediation efforts."
   accessed: 2026-09-23
 - id: sr-11-7-superseded
-  claim: SR letter 26-2, of 17 April 2026, attaches the Revised Guidance on Model Risk Management and
+  claim: 'SR letter 26-2, of 17 April 2026, attaches the Revised Guidance on Model Risk Management and
     supersedes and replaces SR letter 11-7 of 4 April 2011 and SR letter 21-8 of 9 April 2021. This is
-    recorded because earlier modules of this programme quote the 2011 wording, and a reader moving between
-    them should not have to work out which text is current. This lesson quotes the 2026 attachment only.
+    recorded because module 8 (P03-L08) quoted the 2011 wording until 2 October 2026, when it was re-sourced
+    to the 2026 attachment, and a reader who saw the older version should not have to work out which text
+    is current. This lesson quotes the 2026 attachment only. Re-checked 2026-10-02: the quoted phrase
+    and both attachment quotations above still match the live documents.'
   where: claims.yaml only; the lesson does not mention either letter by number
   source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
   source_title: Supervisory Letter SR 26-2 on Revised Guidance on Model Risk Management, 17 April 2026

@@ -20,6 +20,42 @@ objectives:
   cost-optimal threshold
 - Explain, from the measured gap between the cost-optimal and accuracy-optimal thresholds, why a threshold
   cannot be inherited from a model, a vendor default or another plant
+before_you_start:
+  assumed:
+  - write Python functions with loops and dicts, and select numpy array elements with a boolean mask
+  - read a confusion matrix and say what precision, recall and the false-positive rate each measure
+  - 'compute an expected value: probabilities times costs, summed over outcomes'
+  resources:
+  - title: The Foundations of Cost-Sensitive Learning
+    by: Charles Elkan (IJCAI 2001)
+    url: https://cseweb.ucsd.edu/~elkan/rescale.pdf
+    kind: free
+    why: 'section 1 on cost matrices: when one is coherent, and the probability threshold it implies,
+      which is the idea this lesson measures on a fleet'
+  - title: 'Probabilistic Machine Learning: An Introduction'
+    by: Kevin P. Murphy (MIT Press; free PDF from the author)
+    url: https://probml.github.io/pml-book/book1.html
+    kind: free
+    why: 'section 5.1 on Bayesian decision theory: classification under unequal costs, ROC curves and
+      precision-recall curves, all built here from one set of counts'
+  - title: Tuning the decision threshold for class prediction
+    by: scikit-learn documentation
+    url: https://scikit-learn.org/stable/modules/classification_threshold.html
+    kind: free
+    why: why the default 0.5 cut-off is rarely the right one, and how a threshold is tuned against a cost
+      or metric instead
+  - title: Python Data Science Handbook
+    by: Jake VanderPlas (O'Reilly; free online)
+    url: https://jakevdp.github.io/PythonDataScienceHandbook/
+    kind: free
+    why: 'chapter 2 on NumPy: comparisons, masks and Boolean logic, and fancy indexing, the array idioms
+      every exercise uses'
+  - title: Data Science for Business
+    by: Foster Provost and Tom Fawcett (O'Reilly)
+    url: https://data-science-for-biz.com/contents/
+    kind: paid
+    why: 'chapter 7, Decision Analytic Thinking I: expected value as the framework for judging a classifier
+      under unequal costs and benefits; chapter 8, profit curves and ROC curves'
 datasets:
 - name: synthetic-fleet-run-to-failure
   kind: synthetic

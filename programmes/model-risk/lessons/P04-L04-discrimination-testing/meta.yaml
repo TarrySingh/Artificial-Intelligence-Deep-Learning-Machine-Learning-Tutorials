@@ -20,6 +20,37 @@ objectives:
   is never filed as no difference
 - Measure the coverage of your own intervals against a binormal model whose true AUC is known in closed
   form, and explain why a nominal 95% interval misses asymmetrically on a small sample
+before_you_start:
+  assumed:
+  - explain what an ROC curve and the AUC show, and what true and false positive rates are
+  - rank a numpy array with ties (argsort and averaging) and take means over boolean masks
+  - explain what a confidence interval claims, and why resampling the data with replacement gives a sample
+    the same size as the original
+  resources:
+  - title: Studies on the Validation of Internal Rating Systems (Working Paper 14, revised)
+    by: Basel Committee on Banking Supervision, 2005
+    url: https://www.bis.org/publications/studies-validation-internal-rating-systems-revised
+    kind: free
+    why: 'section III, rating and PD validation: the ROC measure and accuracy ratio, their link to the
+      Mann-Whitney statistic, and the confidence-interval discussion for the area under the ROC'
+  - title: Advanced Data Analysis from an Elementary Point of View
+    by: Cosma Rohilla Shalizi, Carnegie Mellon University (free draft book)
+    url: https://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/
+    kind: free
+    why: 'chapter 6, The Bootstrap: 6.2 the bootstrap principle and bootstrap confidence intervals, including
+      the percentile method, and 6.3 resampling, behind the lesson''s interval on a rank statistic'
+  - title: 'pROC: an open-source package for R and S+ to analyze and compare ROC curves'
+    by: Robin et al., BMC Bioinformatics 2011 (open access)
+    url: https://link.springer.com/article/10.1186/1471-2105-12-77
+    kind: free
+    why: 'the Implementation section: AUC intervals by DeLong''s method, and DeLong''s U-statistic test
+      of two paired AUCs that needs no bootstrap, beside a paired bootstrap test'
+  - title: An Introduction to the Bootstrap
+    by: Bradley Efron and Robert Tibshirani (Chapman and Hall/CRC, Routledge)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: 'the chapters Confidence Intervals Based on Bootstrap Percentiles and Better Bootstrap Confidence
+      Intervals: the percentile interval and the corrections made to it'
 datasets: []
 points: 155
 status: reviewed

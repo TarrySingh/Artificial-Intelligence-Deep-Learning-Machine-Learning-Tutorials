@@ -1,0 +1,185 @@
+claims:
+- id: cecl-lifetime-credit-losses
+  claim: Under the US current expected credit loss standard (CECL), the allowance for credit losses is
+    the difference between a financial asset's amortised cost and the amount expected to be collected,
+    that is, lifetime credit losses. Section 14 defines lifetime expected credit loss this way and the
+    expected_credit_loss exercise sums marginal PD over the whole remaining term for it.
+  where: lesson.py section 13 (term_structure prose) and section 14 (expected_credit_loss prose)
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/sr1908a1.pdf
+  source_title: Frequently Asked Questions on the New Accounting Standard on Financial Instruments - Credit
+    Losses, Federal Reserve, FDIC, NCUA and OCC, 3 April 2019 (attachment to Federal Reserve SR 19-8,
+    reposted 31 July 2020; also issued as the attachment to OCC Bulletin 2019-17)
+  quote: The allowance for credit losses under CECL is a valuation account, measured as the difference
+    between the financial assets’ amortized cost basis and the amount expected to be collected on the
+    financial assets (i.e., lifetime credit losses).
+  quote_context: 'FAQ 3 (''What does the new accounting standard change in existing U.S. GAAP?''), under
+    ''Introduction of a new credit loss methodology''; the sentence starts on page 5 and ends on page
+    6, with footnotes 6 and 7 between. Re-sourced on 2026-10-14: the FAQ cited at authoring (the attachment
+    to OCC Bulletin 2016-45, December 2016 and September 2017) was rescinded by OCC Bulletin 2019-17 of
+    3 April 2019 and replaced by this consolidated FAQ, which the Federal Reserve lists as current; the
+    quoted words are unchanged in it.'
+  accessed: 2026-10-14
+- id: cecl-expected-prepayments
+  claim: When determining the contractual term of a financial asset under CECL, an entity should consider
+    expected prepayments. Section 14 cites this to say that the lesson's lifetime ECL, which uses a no-prepayment
+    curve and a straight-line balance, leaves prepayment out and overstates a measurement that includes
+    it.
+  where: lesson.py section 14 (expected_credit_loss prose)
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/sr1908a1.pdf
+  source_title: Frequently Asked Questions on the New Accounting Standard on Financial Instruments - Credit
+    Losses, Federal Reserve, FDIC, NCUA and OCC, 3 April 2019 (attachment to Federal Reserve SR 19-8,
+    reposted 31 July 2020; also issued as the attachment to OCC Bulletin 2019-17)
+  quote: When determining the contractual term of a financial asset, an entity should consider expected
+    prepayments but not expected extensions, renewals, or modifications
+  quote_context: 'Footnote 7 of the FAQ (page 5, attached to FAQ 3), which cites ASC 326-20-30-6. The
+    footnote continues with a troubled-debt-restructuring exception, which the lesson does not rely on;
+    it relies only on the prepayment clause. Re-sourced on 2026-10-14: the FAQ cited at authoring (the
+    attachment to OCC Bulletin 2016-45, December 2016 and September 2017) was rescinded by OCC Bulletin
+    2019-17 of 3 April 2019 and replaced by this consolidated FAQ, which the Federal Reserve lists as
+    current; the quoted words are unchanged in it.'
+  accessed: 2026-10-14
+- id: cecl-forecasts
+  claim: 'CECL is forward-looking: it requires consideration of past events and current conditions and
+    also of reasonable and supportable forecasts that affect expected collectability. Section 11 uses
+    this to say why a point-in-time PD, which moves with the macro, is the kind an expected-loss provision
+    needs.'
+  where: lesson.py section 11 (point in time or through the cycle)
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/sr1908a1.pdf
+  source_title: Frequently Asked Questions on the New Accounting Standard on Financial Instruments - Credit
+    Losses, Federal Reserve, FDIC, NCUA and OCC, 3 April 2019 (attachment to Federal Reserve SR 19-8,
+    reposted 31 July 2020; also issued as the attachment to OCC Bulletin 2019-17)
+  quote: CECL requires consideration of not only past events and current conditions, but also reasonable
+    and supportable forecasts that affect expected collectability.
+  quote_context: 'FAQ 3, the list of what the new standard changes, under ''Forward-looking information''
+    (page 6). Re-sourced on 2026-10-14: the FAQ cited at authoring (the attachment to OCC Bulletin 2016-45,
+    December 2016 and September 2017) was rescinded by OCC Bulletin 2019-17 of 3 April 2019 and replaced
+    by this consolidated FAQ, which the Federal Reserve lists as current; the quoted words are unchanged
+    in it.'
+  accessed: 2026-10-14
+- id: ifrs9-twelve-month-ecl
+  claim: Under IFRS 9, 12-month expected credit loss is the portion of lifetime expected credit loss associated
+    with the possibility of the loan defaulting in the next 12 months. Section 13 defines the 12-month
+    PD as the cumulative curve's value at month 12 and section 14 sums marginal PD over twelve months
+    for the 12-month measure.
+  where: lesson.py section 13 and section 14
+  source_url: https://publications.europa.eu/resource/cellar/8554e7e1-b603-11e6-9e3c-01aa75ed71a1.0006.03/DOC_1
+  source_title: IFRS 9 Financial Instruments, as adopted by Commission Regulation (EU) 2016/2067 of 22
+    November 2016, Official Journal of the European Union L 323, 29 November 2016
+  quote: The portion of lifetime expected credit losses that represent the expected credit losses that
+    result from default events on a financial instrument that are possible within the 12 months after
+    the reporting date.
+  quote_context: Appendix A, definition of '12-month expected credit losses', in the IASB text as endorsed
+    in the EU (the IFRS Foundation's own copy needs a login; EUR-Lex challenged automated clients; the
+    Publications Office served the Official Journal document). The FSI summary the author cited (https://www.bis.org/fsi/fsisummaries/ifrs9.htm)
+    says the same in other words and was also re-read.
+  accessed: 2026-10-14
+- id: ifrs9-stage-two-lifetime
+  claim: Under IFRS 9 the loss allowance of a financial instrument whose credit risk has increased significantly
+    since initial recognition is measured at lifetime expected credit losses, and otherwise at 12-month
+    expected credit losses (paragraphs 5.5.3 and 5.5.5, each subject to 5.5.13-5.5.16). Section 13 and
+    section 14 rely on this to say the two measures apply to different loans.
+  where: lesson.py section 13 (term_structure prose)
+  source_url: https://publications.europa.eu/resource/cellar/8554e7e1-b603-11e6-9e3c-01aa75ed71a1.0006.03/DOC_1
+  source_title: IFRS 9 Financial Instruments, as adopted by Commission Regulation (EU) 2016/2067 of 22
+    November 2016, Official Journal of the European Union L 323, 29 November 2016
+  quote: at each reporting date, an entity shall measure the loss allowance for a financial instrument
+    at an amount equal to the lifetime expected credit losses if the credit risk on that financial instrument
+    has increased significantly since initial recognition.
+  quote_context: Paragraph 5.5.3, which opens 'Subject to paragraphs 5.5.13–5.5.16,'. Paragraph 5.5.5
+    reads 'if, at the reporting date, the credit risk on a financial instrument has not increased significantly
+    since initial recognition, an entity shall measure the loss allowance for that financial instrument
+    at an amount equal to 12-month expected credit losses'. 'Stage 1' and 'stage 2' are industry shorthand,
+    not the standard's words.
+  accessed: 2026-10-14
+- id: basel-definition-of-default
+  claim: The Basel framework's reference definition of default is met when the bank considers the obligor
+    unlikely to pay its credit obligations in full without recourse to actions such as realising security,
+    or when the obligor is past due more than 90 days on any material credit obligation. For retail and
+    public sector entity obligations a supervisor may substitute up to 180 days for some products. Section
+    1 adopts this as the lesson's definition of a default event.
+  where: lesson.py section 1 (the loan book)
+  source_url: https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08
+  source_title: 'CRE36, IRB approach: minimum requirements to use IRB approach, Basel Framework, Basel
+    Committee on Banking Supervision'
+  quote: The obligor is past due more than 90 days on any material credit obligation to the banking group.
+  quote_context: 'CRE36.68. The unlikeliness-to-pay limb reads ''The bank considers that the obligor is
+    unlikely to pay its credit obligations to the banking group in full, without recourse by the bank
+    to actions such as realising security (if held)''. Footnote 5 reads ''In the case of retail and public
+    sector entity (PSE) obligations, for the 90 days figure, a supervisor may substitute a figure up to
+    180 days for different products, as it considers appropriate to local conditions.'' Re-sourced on
+    2026-10-14: the publication cited at authoring (.../published/2020-03-27) is marked ''Removed on 08
+    Dec 2022''; the current publication of the same version, published 8 December 2022, adds FAQs on climate-related
+    financial risks and leaves the quoted paragraphs unchanged.'
+  accessed: 2026-10-14
+- id: basel-ttc-long-run-average
+  claim: For banks using the internal-ratings-based approach, Basel requires PD estimates to be a long-run
+    average of one-year default rates for the borrowers in a grade, with a separate treatment for retail
+    exposures in CRE36.81 and CRE36.82. Section 11 uses this as the definition of through-the-cycle.
+  where: lesson.py section 11 (point in time or through the cycle)
+  source_url: https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08
+  source_title: 'CRE36, IRB approach: minimum requirements to use IRB approach, Basel Framework, Basel
+    Committee on Banking Supervision'
+  quote: PD estimates must be a long-run average of one-year default rates for borrowers in the grade,
+    with the exception of retail exposures as set out in CRE36.81 and CRE36.82
+  quote_context: 'CRE36.63. The lesson calls a PD that holds the macro at an average a through-the-cycle
+    PD in this sense, and says its own average is taken over a window without a recession. Re-sourced
+    on 2026-10-14: the publication cited at authoring (.../published/2020-03-27) is marked ''Removed on
+    08 Dec 2022''; the current publication of the same version, published 8 December 2022, adds FAQs on
+    climate-related financial risks and leaves the quoted paragraphs unchanged.'
+  accessed: 2026-10-14
+- id: basel-retail-good-and-bad-years
+  claim: For retail exposures, the Basel IRB requirements ask for an observation period of at least five
+    years whose data include a representative mix of good and bad years of the economic cycle, with the
+    PD based on the observed historical average one-year default rate. Section 11 quotes the 'good and
+    bad years' phrase to show why a TTC average taken over a quiet window is not through any cycle.
+  where: lesson.py section 11 (point in time or through the cycle)
+  source_url: https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08
+  source_title: 'CRE36, IRB approach: minimum requirements to use IRB approach, Basel Framework, Basel
+    Committee on Banking Supervision, version in force from 1 January 2023'
+  quote: The data should include a representative mix of good and bad years of the economic cycle relevant
+    for the portfolio.
+  quote_context: 'CRE36.82, which also says the observation period ''must be at least five years'' and
+    ''The PD should be based on the observed historical average one-year default rate.'' Re-sourced on
+    2026-10-14: the publication cited at authoring (.../published/2020-03-27) is marked ''Removed on 08
+    Dec 2022''; the current publication of the same version, published 8 December 2022, adds FAQs on climate-related
+    financial risks and leaves the quoted paragraphs unchanged.'
+  accessed: 2026-10-14
+- id: sr-26-2-outcomes-analysis
+  claim: The April 2026 interagency guidance on model risk management (attached to Federal Reserve SR
+    26-2) describes outcomes analysis as comparing model outputs to real-world outcomes to assess performance
+    against the model's objectives and business use, and lists back-testing among the forms it can take.
+    Section 9 introduces the actual-over- expected ratio as an outcomes analysis on that basis.
+  where: lesson.py section 9 (actual_vs_expected prose)
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+  source_title: Supervisory Guidance on Model Risk Management, attachment to SR 26-2, Federal Reserve,
+    FDIC and OCC, 17 April 2026
+  quote: Outcomes analysis compares model outputs to corresponding real-world outcomes to assess model
+    performance relative to model objectives and business use.
+  quote_context: Section 'Outcomes Analysis' of the attachment. The same section says outcomes analysis
+    'can take many forms, including testing conducted during model development, reports or analysis performed
+    as part of ongoing monitoring, or standalone activities such as back-testing or outlier analysis'.
+  accessed: 2026-09-29
+- id: freddie-mac-registration
+  claim: Freddie Mac's Single-Family Loan-Level Dataset is reached by registering and signing in to Freddie
+    Mac's Clarity Data Intelligence, and is free for non-commercial, academic, research and limited use,
+    with a licensing agreement required for commercial redistribution. This is why the lesson's book is
+    generated rather than downloaded (the lesson's opening note).
+  where: lesson.py opening note; meta.yaml datasets
+  source_url: https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset
+  source_title: Single-Family Loan-Level Dataset, Freddie Mac
+  quote: To access the Single-Family Loan-Level Dataset, register and sign-in to Clarity Data Intelligence.
+  quote_context: The same page says 'Freddie Mac requires a licensing agreement for commercial redistribution
+    of the data in its Single-Family Loan-Level Dataset. Use of the dataset continues to be free for non-commercial,
+    academic/research and for limited use, subject to the applicable terms and conditions.'
+  accessed: 2026-09-29
+- id: bank-account-fraud-licence
+  claim: The Bank Account Fraud dataset suite is licensed under Creative Commons CC BY-NC-ND 4.0, according
+    to its own datasheet; the no-derivatives and non-commercial terms are why no extract of it is committed
+    to this repository.
+  where: lesson.py opening note; meta.yaml datasets
+  source_url: https://github.com/feedzai/bank-account-fraud/blob/main/documents/datasheet.pdf
+  source_title: Datasheet for the Bank Account Fraud (BAF) dataset suite, Feedzai (NeurIPS 2022)
+  quote: The suite is licensed under the Creative Commons CC BY-NC-ND 4.0 license.
+  quote_context: Answer A44 of the datasheet; the author statement repeats it. The repository's own LICENSE
+    file (Apache-2.0) covers code, not the data.
+  accessed: 2026-09-29

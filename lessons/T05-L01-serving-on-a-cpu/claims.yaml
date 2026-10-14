@@ -1,0 +1,82 @@
+claims:
+- id: vaswani-scaled-dot-product
+  claim: Scaled dot-product attention divides every query-key dot product by the square root of the key
+    dimension before the softmax. This lesson's `attend` divides by the square root of the head width
+    (q.shape[-1]), which is the key dimension of one head.
+  where: lesson.py exercise 1 (attend) and its hint 1
+  source_url: https://arxiv.org/abs/1706.03762
+  source_title: Attention Is All You Need (Vaswani et al., 2017), section 3.2.1 Scaled Dot-Product Attention
+  quote: We compute the dot products of the query with all keys, divide each by √dk, and apply a softmax
+    function to obtain the weights on the values.
+  quote_context: Section 3.2.1, second paragraph (read in the paper's HTML version, https://arxiv.org/html/1706.03762v7,
+    which renders the radical as \sqrt{d_{k}}); the abstract page links to it
+  accessed: 2026-10-02
+- id: kwon-kv-cache-memory-is-large-and-dynamic
+  claim: The KV cache is a large, dynamically sized memory cost that serving systems have to manage per
+    request. This lesson computes that memory exactly for its own model (exercise 6) and cites the paper
+    only for the claim that it is the limiting resource in real serving.
+  where: lesson.py section 8 (memory), first paragraph
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), abstract
+  quote: existing systems struggle because the key-value cache (KV cache) memory for each request is huge
+    and grows and shrinks dynamically.
+  quote_context: Abstract, second sentence
+  accessed: 2026-10-02
+- id: kwon-vllm-builds-around-kv-cache-memory
+  claim: 'vLLM, the serving system built on PagedAttention, is designed around managing KV cache memory:
+    its stated goal is near-zero waste of that memory and sharing of it within and across requests.'
+  where: lesson.py section 8 (memory), first paragraph
+  source_url: https://arxiv.org/abs/2309.06180
+  source_title: Efficient Memory Management for Large Language Model Serving with PagedAttention (Kwon
+    et al., SOSP 2023), abstract
+  quote: we build vLLM, an LLM serving system that achieves (1) near-zero waste in KV cache memory and
+    (2) flexible sharing of KV cache within and across requests to further reduce memory usage.
+  quote_context: Abstract, fourth sentence
+  accessed: 2026-10-02
+- id: yu-orca-static-batch-limits
+  claim: 'A serving system that cannot change the batch it is running has two costs: requests that finish
+    early cannot be returned, and newly arrived requests wait for the whole batch. Orca''s iteration-level
+    scheduling was proposed to remove both. This lesson''s static batching (sections 10 to 12) is exactly
+    the policy being criticised, and says so.'
+  where: lesson.py section 15 (what this lesson does not cover) and exercises 8 and 9
+  source_url: https://www.usenix.org/conference/osdi22/presentation/yu
+  source_title: 'Orca: A Distributed Serving System for Transformer-Based Generative Models (Yu et al.,
+    OSDI 2022), abstract'
+  quote: requests that have finished earlier than other requests in a batch cannot return to the client,
+    while newly arrived requests have to wait until the current batch completely finishes.
+  quote_context: Abstract, describing the limits of existing inference serving systems
+  accessed: 2026-10-02
+- id: hf-left-padding-for-generation
+  claim: For batched generation with decoder-only language models the padding goes on the left, because
+    such models are not trained to continue generation from padding tokens. This is the convention this
+    lesson's make_batch_inputs follows.
+  where: lesson.py section 10, rule 1 of the three padding rules
+  source_url: https://huggingface.co/docs/transformers/llm_tutorial
+  source_title: 'Hugging Face Transformers documentation: Generation with LLMs, section ''Padding side'''
+  quote: But LLMs aren’t trained to continue generation from padding tokens, which means the padding_side()
+    parameter needs to be set to the left of the input.
+  quote_context: The 'Padding side' section, which also shows the right-padded output degrading
+  accessed: 2026-10-02
+- id: vllm-tpot-definition
+  claim: Time per output token is defined as end-to-end latency minus time to first token, divided by
+    one less than the number of output tokens. The lesson's logical-step inter-token latency, (finish
+    - first_token) / (new_tokens - 1), is that quantity counted in steps.
+  where: lesson.py section 12 (exercise 9) and the given summarise_latency
+  source_url: https://docs.vllm.ai/en/latest/design/metrics/
+  source_title: 'vLLM documentation: Metrics (design), the list of latency metrics'
+  quote: computed as (end-to-end latency - TTFT) / (number of output tokens - 1)
+  quote_context: The entry for vllm:request_time_per_output_token_seconds, Per-request Time Per Output
+    Token (TPOT)
+  accessed: 2026-10-02
+- id: vllm-ttft-relative-to-arrival
+  claim: Time to first token is measured from when the request was first received, so it includes any
+    time spent waiting before its prefill. This lesson's TTFT, first_token - arrival, counts the same
+    thing in logical steps, which is why a queued request's TTFT includes the wait.
+  where: lesson.py section 12 (exercise 9), the definition of time to first token
+  source_url: https://docs.vllm.ai/en/latest/design/metrics/
+  source_title: 'vLLM documentation: Metrics (design), the frontend statistics section'
+  quote: However, we calculate this interval relative to when the request was first received by the frontend
+  quote_context: Describing how the Time-To-First-Token interval is calculated, in the list of statistics
+    the frontend collects per engine iteration
+  accessed: 2026-10-02

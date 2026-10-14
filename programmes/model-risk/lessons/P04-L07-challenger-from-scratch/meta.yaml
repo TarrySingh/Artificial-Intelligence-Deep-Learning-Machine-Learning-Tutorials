@@ -21,6 +21,44 @@ objectives:
   pooling adjacent violators
 - Audit a champion-challenger comparison for the same records, period and missing-value treatment, and
   explain why a comparison that fails the audit must report no metrics and no promotion decision
+before_you_start:
+  assumed:
+  - write a numpy solve of a linear system (np.linalg.solve) and explain why it is preferred to forming
+    an explicit inverse
+  - explain what a logistic regression predicts, what its coefficients mean as log odds, and what a likelihood
+    is
+  - build a 2x2 table of counts from two binary variables and compute an odds ratio from it
+  resources:
+  - title: Advanced Data Analysis from an Elementary Point of View
+    by: Cosma Rohilla Shalizi, Carnegie Mellon University (free draft book)
+    url: https://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/
+    kind: free
+    why: 'chapter 11, section 11.3: iteratively re-weighted least squares as Newton''s method (11.3.1),
+      and why linearly separable data leave the likelihood with no maximum'
+  - title: Pattern Recognition and Machine Learning
+    by: Christopher M. Bishop (Springer; free PDF hosted by Microsoft Research)
+    url: https://www.microsoft.com/en-us/research/wp-content/uploads/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf
+    kind: free
+    why: 'section 4.3.3, Iterative reweighted least squares: the Newton-Raphson update for logistic regression
+      written out as a weighted least-squares problem'
+  - title: Isotonic regression (scikit-learn user guide)
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/modules/isotonic.html
+    kind: free
+    why: 'states the problem pooling adjacent violators solves: a non-decreasing fit minimising weighted
+      squared error; the page gives the problem, the lesson the algorithm'
+  - title: Applied Logistic Regression, 3rd edition
+    by: Hosmer, Lemeshow and Sturdivant (Wiley)
+    url: https://www.wiley.com/en-us/Applied+Logistic+Regression%2C+3rd+Edition-p-9780470582473
+    kind: paid
+    why: 'chapter 3, section 3.2 (a dichotomous covariate: the odds ratio from a 2x2 table equals the
+      exponentiated coefficient) and section 4.4, Numerical Problems, which treats separation'
+  - title: Intelligent Credit Scoring, 2nd edition
+    by: Naeem Siddiqi (Wiley)
+    url: https://www.wiley.com/en-us/Intelligent+Credit+Scoring%3A+Building+and+Implementing+Better+Credit+Risk+Scorecards%2C+2nd+Edition-p-9781119279150
+    kind: paid
+    why: 'chapter 10, Initial Characteristic Analysis (weight of evidence, information value) and the
+      Validation section that closes it: the practitioner''s account of the scorecard you build'
 datasets:
 - name: synthetic-credit-book-dev-and-validation
   kind: synthetic

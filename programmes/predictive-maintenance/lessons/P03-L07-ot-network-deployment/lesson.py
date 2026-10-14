@@ -115,6 +115,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # Four of the seven exercises are in **`lesson.c`**. This notebook builds it, drives it,
 # measures it and grades it.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L06`
+#
+# **This lesson assumes you can already:**
+#
+# - read and write C: declare structs, use fixed-width integers such as uint8_t and int32_t, and pass pointers to functions
+# - convert between hexadecimal, binary and decimal, and shift and mask bits
+# - run make from a terminal and read a compiler error and its line number
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Beej's Guide to C Programming](https://beej.us/guide/bgc/html/split/) · Brian "Beej Jorgensen" Hall (free online) · *free* — chapter 5 on pointers, chapter 8 on structs, chapter 24 on bitwise operations and chapter 37 on fixed-width integer types: the C you read and write in lesson.c
+# - [Automation and Make](https://swcarpentry.github.io/make-novice/) · Software Carpentry (free online) · *free* — the first two episodes on Makefiles: targets, dependencies and recipes, enough to follow what make test does in this lesson
+# - [The Scientist and Engineer's Guide to Digital Signal Processing: Fixed Point (Integers)](https://www.dspguide.com/ch4/2.htm) · Steven W. Smith (free online) · *free* — chapter 4 on how integers are stored as bit patterns (unsigned, offset binary, sign and magnitude, two's complement), the representation under the Q16.16 health index
+# - [MODBUS over Serial Line: Specification and Implementation Guide V1.02](https://www.modbus.org/file/secure/modbusoverserial.pdf) · Modbus Organization · *free* — the RTU transmission mode frame format and Appendix B on CRC generation, the layout frame_decode has to parse and check
+# - [Guide to Operational Technology (OT) Security, SP 800-82 Rev. 3](https://csrc.nist.gov/pubs/sp/800/82/r3/final) · NIST · *free* — section 5.2.3 on network security and appendix E.1.2 on unidirectional gateways (data diodes), the constraint exercise 7 prices
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

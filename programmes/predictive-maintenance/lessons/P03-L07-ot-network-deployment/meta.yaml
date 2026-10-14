@@ -24,6 +24,43 @@ objectives:
   and measure how many hours of plant it holds
 - Explain, from a measured comparison, why a one-way data diode forces drift detection to be unsupervised,
   and implement the signal that survives it
+before_you_start:
+  assumed:
+  - 'read and write C: declare structs, use fixed-width integers such as uint8_t and int32_t, and pass
+    pointers to functions'
+  - convert between hexadecimal, binary and decimal, and shift and mask bits
+  - run make from a terminal and read a compiler error and its line number
+  resources:
+  - title: Beej's Guide to C Programming
+    by: Brian "Beej Jorgensen" Hall (free online)
+    url: https://beej.us/guide/bgc/html/split/
+    kind: free
+    why: 'chapter 5 on pointers, chapter 8 on structs, chapter 24 on bitwise operations and chapter 37
+      on fixed-width integer types: the C you read and write in lesson.c'
+  - title: Automation and Make
+    by: Software Carpentry (free online)
+    url: https://swcarpentry.github.io/make-novice/
+    kind: free
+    why: 'the first two episodes on Makefiles: targets, dependencies and recipes, enough to follow what
+      make test does in this lesson'
+  - title: 'The Scientist and Engineer''s Guide to Digital Signal Processing: Fixed Point (Integers)'
+    by: Steven W. Smith (free online)
+    url: https://www.dspguide.com/ch4/2.htm
+    kind: free
+    why: chapter 4 on how integers are stored as bit patterns (unsigned, offset binary, sign and magnitude,
+      two's complement), the representation under the Q16.16 health index
+  - title: 'MODBUS over Serial Line: Specification and Implementation Guide V1.02'
+    by: Modbus Organization
+    url: https://www.modbus.org/file/secure/modbusoverserial.pdf
+    kind: free
+    why: the RTU transmission mode frame format and Appendix B on CRC generation, the layout frame_decode
+      has to parse and check
+  - title: Guide to Operational Technology (OT) Security, SP 800-82 Rev. 3
+    by: NIST
+    url: https://csrc.nist.gov/pubs/sp/800/82/r3/final
+    kind: free
+    why: section 5.2.3 on network security and appendix E.1.2 on unidirectional gateways (data diodes),
+      the constraint exercise 7 prices
 datasets:
 - name: synthetic-modbus-capture-and-outage-script
   kind: synthetic

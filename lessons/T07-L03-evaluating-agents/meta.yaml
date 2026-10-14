@@ -1,0 +1,66 @@
+id: T07-L03-evaluating-agents
+title: Evaluating agents -- reliability you can report
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 150
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T07-L01-agent-loop-from-scratch
+objectives:
+- Implement seeded, reproducible repeated trials per task, and aggregate them into per-task success counts
+- Implement the pass@k and pass^k reliability estimators from their primary sources, and measure that
+  pass@k rises with k while pass^k falls on the same trial data
+- Compute trajectory metrics -- steps, tool errors, recoveries and cost per success -- and a failure taxonomy,
+  directly from agent traces
+- Measure how much narrower -- and wrong -- a bootstrap over pooled trials makes a suite's 95% interval
+  look than one over tasks, and explain why the task is the unit to resample
+- Implement a paired bootstrap comparison of two agent configurations on the same tasks and seed, and
+  decide whether the paired difference in reliability is distinguishable from zero
+before_you_start:
+  assumed:
+  - compute a mean and a percentile of a list with numpy, and draw samples with replacement from a seeded
+    Generator
+  - work out the probability that k independent trials in a row all succeed at success rate p, and read
+    a binomial coefficient C(n, k)
+  - loop over a list of trace records (dicts) and count outcomes with a dict or Counter
+  resources:
+  - title: Evaluating Large Language Models Trained on Code
+    by: Chen et al. (arXiv)
+    url: https://arxiv.org/abs/2107.03374
+    kind: free
+    why: section 2.1, Functional Correctness, defines pass@k and its unbiased estimator, which exercise
+      3 implements
+  - title: 'tau-bench: A Benchmark for Tool-Agent-User Interaction in Real-World Domains'
+    by: Yao, Shinn, Razavi and Narasimhan (arXiv)
+    url: https://arxiv.org/abs/2406.12045
+    kind: free
+    why: where pass^k, the probability that all k trials succeed, is proposed as an agent reliability
+      metric (exercise 4)
+  - title: Demystifying evals for AI agents
+    by: Anthropic
+    url: https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents
+    kind: free
+    why: trials, graders, and why pass@k and pass^k answer different questions when agent runs vary
+  - title: Think Stats, 2nd edition
+    by: Allen B. Downey (O'Reilly; free from Green Tea Press)
+    url: https://greenteapress.com/thinkstats2/html/thinkstats2009.html
+    kind: free
+    why: 'chapter 8, Estimation: sampling distributions, standard errors and confidence intervals found
+      by simulation, the idea you apply when bootstrapping over tasks'
+  - title: An Introduction to the Bootstrap
+    by: Bradley Efron and R. J. Tibshirani (Chapman & Hall/CRC)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: the chapters on bootstrap standard errors and percentile confidence intervals, behind sections
+      5 and 11
+datasets:
+- name: T07-L03 synthetic multi-trial task suite (T07-L01's lookup-chain tasks, k independently seeded
+    trials per task, seeded fault and transient-failure injection)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 252
+status: reviewed
+measured_seconds: 0.3
+measured_peak_mib: 69

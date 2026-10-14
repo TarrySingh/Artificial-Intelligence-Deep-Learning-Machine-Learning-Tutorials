@@ -114,6 +114,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Audit a comparison for the same records, period and missing values — and explain why a
 #    comparison that fails the audit must report no metrics and no promotion decision.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`, `P04-L04`
+#
+# **This lesson assumes you can already:**
+#
+# - write a numpy solve of a linear system (np.linalg.solve) and explain why it is preferred to forming an explicit inverse
+# - explain what a logistic regression predicts, what its coefficients mean as log odds, and what a likelihood is
+# - build a 2x2 table of counts from two binary variables and compute an odds ratio from it
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Advanced Data Analysis from an Elementary Point of View](https://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/) · Cosma Rohilla Shalizi, Carnegie Mellon University (free draft book) · *free* — chapter 11, section 11.3: iteratively re-weighted least squares as Newton's method (11.3.1), and why linearly separable data leave the likelihood with no maximum
+# - [Pattern Recognition and Machine Learning](https://www.microsoft.com/en-us/research/wp-content/uploads/2006/01/Bishop-Pattern-Recognition-and-Machine-Learning-2006.pdf) · Christopher M. Bishop (Springer; free PDF hosted by Microsoft Research) · *free* — section 4.3.3, Iterative reweighted least squares: the Newton-Raphson update for logistic regression written out as a weighted least-squares problem
+# - [Isotonic regression (scikit-learn user guide)](https://scikit-learn.org/stable/modules/isotonic.html) · scikit-learn developers · *free* — states the problem pooling adjacent violators solves: a non-decreasing fit minimising weighted squared error; the page gives the problem, the lesson the algorithm
+# - [Applied Logistic Regression, 3rd edition](https://www.wiley.com/en-us/Applied+Logistic+Regression%2C+3rd+Edition-p-9780470582473) · Hosmer, Lemeshow and Sturdivant (Wiley) · *paid* — chapter 3, section 3.2 (a dichotomous covariate: the odds ratio from a 2x2 table equals the exponentiated coefficient) and section 4.4, Numerical Problems, which treats separation
+# - [Intelligent Credit Scoring, 2nd edition](https://www.wiley.com/en-us/Intelligent+Credit+Scoring%3A+Building+and+Implementing+Better+Credit+Risk+Scorecards%2C+2nd+Edition-p-9781119279150) · Naeem Siddiqi (Wiley) · *paid* — chapter 10, Initial Characteristic Analysis (weight of evidence, information value) and the Validation section that closes it: the practitioner's account of the scorecard you build
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

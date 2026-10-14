@@ -18,6 +18,37 @@ objectives:
   a probe scale where it cannot
 - Train the model on a CPU and measure that held-out loss beats the corpus unigram entropy by a stated
   margin
+before_you_start:
+  assumed:
+  - multiply matrices by hand and with @ in numpy, and predict the shape of the result
+  - index, slice and broadcast numpy arrays, including indexing with an integer array
+  - differentiate a composition of functions with the chain rule
+  - say what one step of gradient descent does to a parameter
+  resources:
+  - title: 'The spelled-out intro to neural networks and backpropagation: building micrograd'
+    by: 'Andrej Karpathy (Neural Networks: Zero To Hero)'
+    url: https://karpathy.ai/zero-to-hero.html
+    kind: free
+    why: the first video in the series, a step-by-step backward pass by hand, which is the habit exercises
+      4 and 5 ask of you
+  - title: 'CS231n: Backpropagation, Intuitions'
+    by: Stanford CS231n (Karpathy and Li)
+    url: https://cs231n.github.io/optimization-2/
+    kind: free
+    why: the chain rule on computation graphs, then gradients for vectorised operations including the
+      matrix-matrix multiply gradient used in attention_backward
+  - title: 'NumPy user guide: Broadcasting'
+    by: NumPy project
+    url: https://numpy.org/doc/stable/user/basics.broadcasting.html
+    kind: free
+    why: the broadcasting rules that decide the shape of every batched product, mask and bias addition
+      in the attention code
+  - title: 'Mathematics for Machine Learning, chapter 5: Vector Calculus'
+    by: Deisenroth, Faisal and Ong (Cambridge University Press; PDF free from the authors)
+    url: https://mml-book.github.io/
+    kind: free
+    why: sections 5.3 and 5.4 on gradients of vector-valued functions and of matrices, and 5.6 on backpropagation,
+      the maths behind a hand-derived backward pass
 datasets:
 - name: 'Shakespeare''s Sonnets (opening excerpt), Project Gutenberg eBook #1041'
   licence: Public domain (work first published 1609; author died 1616). Project Gutenberg records the

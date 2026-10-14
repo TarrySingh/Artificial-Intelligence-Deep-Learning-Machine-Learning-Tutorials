@@ -124,6 +124,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # log ships with ground truth attached. `meta.yaml` declares the generator under `datasets:`.
 # The method transfers. The particular numbers describe no real plant.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L03`
+#
+# **This lesson assumes you can already:**
+#
+# - parse a date string with datetime.strptime and compare or subtract two timestamps
+# - group a list of records by a key and sort each group by time
+# - explain what a train/test split is for and why the test rows must stay untouched
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Introduction to survival analysis](https://lifelines.readthedocs.io/en/latest/Survival%20Analysis%20intro.html) · lifelines documentation (Cameron Davidson-Pilon) · *free* — right-censoring explained with an example of what ignoring censored units does to a lifetime estimate, then the survival and hazard functions
+# - [Common pitfalls and recommended practices: data leakage](https://scikit-learn.org/stable/common_pitfalls.html) · scikit-learn documentation · *free* — section 12.2 on data leakage: how information that would not exist at prediction time inflates a score, the failure exercise 8 is built to catch
+# - [Cross-validation: cross-validation iterators for grouped data](https://scikit-learn.org/stable/modules/cross_validation.html) · scikit-learn documentation · *free* — the group K-fold section: why rows from one group must not sit on both sides of a split, which is the case for splitting by unit
+# - [datetime: strftime() and strptime() behavior](https://docs.python.org/3/library/datetime.html) · Python documentation · *free* — the format-code table for parsing dates written in several formats, as in the work-order export in exercise 1
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

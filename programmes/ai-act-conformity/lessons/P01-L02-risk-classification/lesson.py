@@ -119,6 +119,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > systems you classify are fictional. For a real system, read the Official Journal text and
 # > take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a Python function that branches on several boolean and string fields of a dict and returns a small structured result
+# - compare two datetime.date values and say whether a date has passed as of a given day
+# - read a legal article and tell its general rule from the exceptions to it, and the exceptions' own exceptions
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 6: Classification rules for high-risk AI systems](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-6) · European Commission, AI Act Service Desk · *free* — paragraphs 1 to 4, shown as amended by the Digital Omnibus (new 1a to 1c marked): the Annex I and Annex III routes, the 6(3) derogation and its profiling override, and the 6(4) duty to document
+# - [AI Act Annex III: High-risk AI systems referred to in Article 6(2)](https://ai-act-service-desk.ec.europa.eu/en/ai-act/annex-3) · European Commission, AI Act Service Desk · *free* — the eight use-case areas and their numbered points, which the lesson's classification procedure looks systems up against
+# - [Draft Commission guidelines on the classification of high-risk AI systems](https://digital-strategy.ec.europa.eu/en/library/draft-commission-guidelines-classification-high-risk-ai-systems) · European Commission (draft of 19 May 2026) · *free* — the Commission's own draft reading of Article 6: general principles, then the Annex I and Annex III routes; a draft, so check whether a final text has replaced it
+# - [Regulation (EU) 2026/1744 (Digital Omnibus on AI)](https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX%3A32026R1744) · European Parliament and Council, Official Journal · *free* — the amending act that moves the dates on which the high-risk obligations bind; the date logic of exercise 3 rests on it
+# - [The EU Artificial Intelligence Act: A Commentary](https://academic.oup.com/oxford-law-pro/book/62212) · Michèle Finck (Oxford University Press, 2026) · *paid* — per the publisher an article-by-article commentary; its contents page was not checkable, so no entry numbers are given: look up Article 6 and Annex III for a lawyer's reading
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

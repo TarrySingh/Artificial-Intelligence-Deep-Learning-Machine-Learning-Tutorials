@@ -112,6 +112,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # Every number in this notebook's output is computed by the code you run. Nothing numeric is
 # typed by hand; the sources for what MuJoCo *documents* are in `claims.yaml`.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - multiply a matrix by a vector in numpy and say what shape the result has
+# - apply a rotation matrix and a translation to move a point between two coordinate frames
+# - compute a partial derivative of a simple function by hand, such as d/dx of x^2 y
+# - solve a small linear system with numpy and say what a singular matrix is
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Modern Robotics: Mechanics, Planning, and Control](https://hades.mech.northwestern.edu/index.php/Modern_Robotics) · Lynch and Park (Cambridge University Press; free preprint PDF from the authors) · *free* — chapter 3 (rigid-body motions), 4 (forward kinematics), 5.1 and 5.3 (manipulator Jacobian and singularities), 6.2 and 6.3 (numerical inverse kinematics)
+# - [Introduction to Inverse Kinematics with Jacobian Transpose, Pseudoinverse and Damped Least Squares methods](https://mathweb.ucsd.edu/~sbuss/ResearchWeb/ikmethods/iksurvey.pdf) · Samuel R. Buss (UC San Diego) · *free* — sections 2 to 5 for the Jacobian and the damped least squares update you implement, and section 6 for the SVD view of why damping tames a singular pose
+# - [Introduction to Applied Linear Algebra, Vectors, Matrices, and Least Squares](https://web.stanford.edu/~boyd/vmls/) · Boyd and Vandenberghe (Cambridge University Press; free PDF from the authors) · *free* — chapters 6 and 10 for matrix-vector and matrix-matrix products, chapters 12 and 15 for least squares and the regularised version damped least squares is
+# - [Python Numerical Methods, chapter 20 Numerical Differentiation](https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter20.00-Numerical-Differentiation.html) · Kong, Siauw and Bayen (UC Berkeley; free online) · *free* — finite-difference formulas and their accuracy, the tool the lesson uses to check the Jacobian and to find the best step size
+# - [MuJoCo documentation, API functions](https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html) · Google DeepMind (official documentation) · *free* — the reference entries for mj_jac, mj_jacBody, mj_jacSite and mj_kinematics that the lesson calls
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

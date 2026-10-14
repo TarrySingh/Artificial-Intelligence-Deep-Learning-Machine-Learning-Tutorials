@@ -20,6 +20,41 @@ objectives:
 - Produce a release decision that names which slice regressions are real and which slices are too small
   to say, and measure how often point-estimate and uncorrected rules block a release in which nothing
   changed
+before_you_start:
+  assumed:
+  - write numpy code that resamples rows with an index array (rng.integers) and reduces along an axis
+  - explain what a confidence interval, a null hypothesis and a p-value are
+  - group records by an attribute with a dict or collections.Counter and count the size of each group
+  resources:
+  - title: An Introduction to Statistical Learning
+    by: James, Witten, Hastie and Tibshirani (Springer; free PDF from the authors)
+    url: https://www.statlearning.com/
+    kind: free
+    why: the Resampling Methods chapter covers the bootstrap; the Multiple Testing chapter covers family-wise
+      error, Holm and Benjamini-Hochberg (use the 2nd edition or the Python edition)
+  - title: Think Stats, 3rd edition
+    by: Allen B. Downey (free online from the author; Creative Commons, non-commercial)
+    url: https://allendowney.github.io/ThinkStats/
+    kind: free
+    why: chapter 8, Estimation (confidence intervals by resampling), and chapter 9, Hypothesis Testing
+      (p-values by simulation), as runnable Python notebooks
+  - title: 'Automated Data Slicing for Model Validation: A Big data - AI Integration Approach (Slice Finder)'
+    by: Chung, Kraska, Polyzotis, Tae and Whang (arXiv)
+    url: https://arxiv.org/abs/1807.06068
+    kind: free
+    why: 'finding problematic validation slices with effect size, hypothesis tests and false-discovery
+      control: the problem find_slices and release_decision solve'
+  - title: 'statsmodels: multipletests'
+    by: statsmodels developers (official documentation)
+    url: https://www.statsmodels.org/stable/generated/statsmodels.stats.multitest.multipletests.html
+    kind: free
+    why: reference implementations of the holm and fdr_bh corrections, to check your Exercise 4 against
+  - title: An Introduction to the Bootstrap
+    by: Efron and Tibshirani (Chapman & Hall / Routledge)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: 'the standard text on the bootstrap: percentile intervals and bootstrap hypothesis tests, the
+      ideas behind paired_bootstrap'
 datasets:
 - name: document-intelligence slice evaluation set (module 1's remittance advices with attributes)
   kind: synthetic

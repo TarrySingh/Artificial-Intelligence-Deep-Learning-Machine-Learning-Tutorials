@@ -22,6 +22,43 @@ objectives:
   over the union of categories rather than over one split's
 - Implement a subgroup bias probe with a minimum-support rule, and explain why a 100% error rate on three
   rows is reported as insufficient support rather than as the system's worst disparity
+before_you_start:
+  assumed:
+  - compute a proportion and its standard error, and say what a 95% confidence interval for it means
+  - explain what training, validation and test splits are for, and what happens to a test score if the
+    splits share rows
+  - use numpy arrays and collections.Counter to count categories and compute shares
+  resources:
+  - title: 'AI Act Article 10: Data and data governance'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-10
+    kind: free
+    why: 'paragraph 2 (the governance practices, from origin and labelling to bias examination and gaps)
+      and paragraph 3 (relevant, representative, free of errors): the checks the lesson codes'
+  - title: OpenIntro Statistics
+    by: OpenIntro (Diez, Cetinkaya-Rundel, Barr)
+    url: https://www.openintro.org/book/os/
+    kind: free
+    why: 'chapters 5 and 6: confidence intervals for a proportion and the difference of two proportions,
+      the maths behind the lesson''s share floor and minimum detectable difference'
+  - title: 'scikit-learn: Common pitfalls and recommended practices'
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/common_pitfalls.html
+    kind: free
+    why: section 12.2 on data leakage, including leakage through preprocessing before the split, the failure
+      the leakage check hunts for
+  - title: 'Fairness and Machine Learning: Limitations and Opportunities'
+    by: Barocas, Hardt and Narayanan (MIT Press, free online)
+    url: https://fairmlbook.org/classification.html
+    kind: free
+    why: 'the Classification chapter: group-wise error rates and the separation criterion, the quantities
+      the subgroup bias probe compares'
+  - title: 'Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift'
+    by: Rabanser, Günnemann and Lipton (NeurIPS 2019, arXiv)
+    url: https://arxiv.org/abs/1810.11953
+    kind: free
+    why: 'how to test whether a test set still looks like the training set, feature by feature or in aggregate:
+      the idea behind the drift check'
 datasets:
 - name: loan-copilot synthetic application table
   kind: synthetic

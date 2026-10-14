@@ -115,6 +115,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Explain why a gate that widens its tolerance, skips a class of numbers or reads numbers
 #    out of strings passes the very document it exists to stop.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`, `P04-L02`, `P04-L03`, `P04-L04`, `P04-L05`, `P04-L06`, `P04-L07`, `P04-L08`, `P04-L09`
+#
+# **This lesson assumes you can already:**
+#
+# - write a regular expression with groups and alternatives, and use re.finditer to get matches with their positions out of a text
+# - compute the age in days between two datetime.date values and compare it with a threshold
+# - read and write Python dataclasses, and sort and group lists of them
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [SR 26-2 Revised Guidance on Model Risk Management (the attachment)](https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf) · Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7 · *free* — section VI, Documentation ('tracking of recommendations, responses, and exceptions' and remediation), Model Inventory and Roles and Responsibilities; section V, Ongoing Model Monitoring
+# - [SS1/23 Model risk management principles for banks](https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss) · Prudential Regulation Authority, Bank of England · *free* — Principle 2, governance, and Principle 4, independent validation: who owns a finding, who it is reported to, and the model risk reporting a committee pack serves
+# - [Regular Expression HOWTO (Python documentation)](https://docs.python.org/3/howto/regex.html) · Python Software Foundation · *free* — the sections on repeating things, groups and finditer: enough to write the number-in-text matcher the figure gate is built on
+# - [datetime: date objects (Python documentation)](https://docs.python.org/3/library/datetime.html) · Python Software Foundation · *free* — date.fromisoformat, date subtraction and timedelta.days: the arithmetic behind ageing a finding from an explicit as-of date
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

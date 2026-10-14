@@ -110,6 +110,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 6. Explain why re-cutting stability bins on each new sample makes a drifting population
 #    read as stable forever.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops and numpy boolean masks, and cut an array of values into bins with np.quantile or np.histogram
+# - explain what a binary classifier's predicted probability of default is, and compare it with the observed 0/1 outcome
+# - turn a written rule (promote only if A holds and B holds and C does not) into code that returns the reason for each test
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [SR 26-2 Revised Guidance on Model Risk Management (the attachment)](https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf) · Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7 · *free* — section V (Model Validation and Monitoring: outcomes analysis, ongoing monitoring) and section VI (Documentation): the guidance a validation report and a promotion rule are written against
+# - [Probability calibration (scikit-learn user guide)](https://scikit-learn.org/stable/modules/calibration.html) · scikit-learn developers · *free* — the 'Calibration curves' section: how a reliability diagram bins predictions and compares the mean prediction with the observed rate in each bin
+# - [On Calibration of Modern Neural Networks](https://arxiv.org/abs/1706.04599) · Guo, Pleiss, Sun and Weinberger (ICML 2017) · *free* — section 2 defines reliability diagrams and the expected calibration error as a support-weighted gap over bins, the quantity the lesson computes; skip the neural-network parts
+# - [Statistical Properties of Population Stability Index](https://scholarworks.wmich.edu/dissertations/3208/) · Bilal Yurdakul, Western Michigan University dissertation (open access) · *free* — defines the population stability index as a monitor of whether a model's population has moved from its development baseline, and states the usual 0.10 and 0.25 rules of thumb
+# - [Assessment (Fairlearn user guide)](https://fairlearn.org/main/user_guide/assessment/) · Fairlearn contributors · *free* — MetricFrame computes any metric disaggregated by group, the idea behind the lesson's subgroup performance table; read the disaggregated-metrics part
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

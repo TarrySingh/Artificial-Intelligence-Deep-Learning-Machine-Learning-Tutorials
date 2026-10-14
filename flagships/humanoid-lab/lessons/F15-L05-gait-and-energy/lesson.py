@@ -107,6 +107,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # Every number this notebook prints is computed by the code you run. The only figures typed by
 # a human are the published costs of transport in section 7, and each carries its source.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`, `F15-L03`
+#
+# **This lesson assumes you can already:**
+#
+# - describe a sinusoid by amplitude, frequency and phase, and sketch two that differ by half a period
+# - integrate a sampled signal over time with a sum or the trapezoid rule
+# - give the units of torque, angular velocity, power and energy, and check that an equation's units balance
+# - copy a dict and change one key in the copy without changing the original
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [University Physics Volume 1, section 10.8 Work and Power for Rotational Motion](https://openstax.org/books/university-physics-volume-1/pages/10-8-work-and-power-for-rotational-motion) · OpenStax (CC BY-NC-SA) · *free* — rotational power as torque times angular velocity, the quantity the lesson integrates to get the energy a gait spends
+# - [Python Numerical Methods, chapter 21 Numerical Integration](https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter21.00-Numerical-Integration.html) · Kong, Siauw and Bayen (UC Berkeley; free online) · *free* — section 21.3 (trapezoid rule), how to turn sampled torque times velocity into energy
+# - [Underactuated Robotics, chapter 4 Simple Models of Walking and Running](https://underactuated.csail.mit.edu/simple_legs.html) · Russ Tedrake (MIT; free online) · *free* — the rimless wheel and compass gait, limit cycles and the energy lost at each step, the background for why gait and phase decide what a step costs
+# - [Modeling and Control of Legged Robots (Springer Handbook of Robotics, chapter 48)](https://groups.csail.mit.edu/robotics-center/public_papers/Wieber15.pdf) · Wieber, Tedrake and Kuindersma (author-hosted PDF) · *free* — section 48.6, towards more efficient walking, and gait generation for dynamic walking, where energy cost is the headline measure
+# - [MuJoCo documentation, Modeling](https://mujoco.readthedocs.io/en/stable/modeling.html) · Google DeepMind (official documentation) · *free* — the Actuators section, since the gait commands joint angles through actuators and their limits cap what the walker can do
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib

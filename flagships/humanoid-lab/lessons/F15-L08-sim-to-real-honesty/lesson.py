@@ -111,6 +111,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # typed by a human are the hardware prices in section 10, and each one carries the URL it came
 # from and the date it was read.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`, `F15-L03`, `F15-L05`
+#
+# **This lesson assumes you can already:**
+#
+# - reshape a numpy vector into a matrix and multiply it by a state vector with @, as a state-feedback law u = -K x does
+# - draw random parameters from a range with numpy's default_rng and a fixed seed
+# - compute a survival rate over a set of runs and say how many runs it rests on
+# - explain why a score measured on the data you tuned against is optimistic, and what a held-out set is for
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Sim-to-Real Transfer of Robotic Control with Dynamics Randomization](https://arxiv.org/abs/1710.06537) · Peng, Andrychowicz, Zaremba and Abbeel (arXiv) · *free* — the paper behind the wrapper you build, randomising masses, friction and damping, with action latency and observation noise in the same simulator
+# - [Sim-to-Real Transfer in Deep Reinforcement Learning for Robotics: a Survey](https://arxiv.org/abs/2009.13303) · Zhao, Queralta and Westerlund (arXiv) · *free* — a survey of the reality gap and the methods for closing it, with domain randomisation as one of them
+# - [MuJoCo documentation, XML reference](https://mujoco.readthedocs.io/en/stable/XMLreference.html) · Google DeepMind (official documentation) · *free* — actuator ctrlrange and forcerange (the saturation you measure), joint frictionloss and damping, and body mass, the parameters you randomise
+# - [Underactuated Robotics, System Identification](https://underactuated.csail.mit.edu/sysid.html) · Russ Tedrake (MIT; free online) · *free* — the section on estimating inertial parameters and friction, the real-world counterpart of the mass and friction mismatch you inject
+# - [An Introduction to Statistical Learning](https://www.statlearning.com/) · James, Witten, Hastie and Tibshirani (Springer; free PDF from the authors) · *free* — chapter 5 on resampling, section 5.1.1 (the validation set approach), for why a held-out set is the honest measure
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib

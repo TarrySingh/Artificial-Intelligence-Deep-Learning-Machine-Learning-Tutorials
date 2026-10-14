@@ -1,0 +1,100 @@
+claims:
+- id: codex-pass-at-k-unbiased-estimator
+  claim: Estimating pass@k by generating exactly k samples per problem and counting a problem solved if
+    any of them passes (Kulal et al.'s procedure, which the paper describes just before this quote) has
+    high variance; the Codex/HumanEval paper's fix is to generate n >= k samples per task, count the c
+    that pass, and compute the unbiased estimator pass@k := E[1 - C(n-c, k) / C(n, k)] over all n samples
+    at once. This lesson's pass_at_k implements exactly this estimator (exercise 3), generalised from
+    "samples that pass unit tests" to "trials that end in success".
+  where: lesson.py exercise 3 (pass_at_k) and its docstring's formula
+  source_url: https://arxiv.org/abs/2107.03374
+  source_title: Chen, Tworek, Jun et al. — Evaluating Large Language Models Trained on Code (arXiv:2107.03374),
+    Section 2.1
+  quote: However, computing pass@k in this way can have high variance. Instead, to evaluate pass@k, we
+    generate n ≥ k samples per task (in this paper, we use n = 200 and k ≤ 100), count the number of correct
+    samples c ≤ n which pass unit tests, and calculate the unbiased estimator
+  quote_context: Section 2.1, the paragraph immediately after Figure 2, ending at the colon that introduces
+    Equation 1. Equation 1 itself (pass@k := E_Problems[1 - C(n-c,k)/C(n,k)]) is typeset maths, not extractable
+    body text, so it is transcribed rather than quoted here; its numerically stable numpy form appears
+    as Figure 3 on the same page and matches this lesson's own math.comb-based implementation.
+  accessed: 2026-09-24
+- id: taubench-pass-hat-k-definition
+  claim: 'For code generation, pass@k is defined as the chance that at least one of k i.i.d. trials succeeds,
+    which rewards discovery under more attempts. tau-bench proposes a different metric for real-world
+    agent tasks needing reliability and consistency: pass^k ("pass hat k"), the chance that ALL k i.i.d.
+    trials of a task succeed, averaged across tasks. This lesson''s pass_hat_k (exercise 4) implements
+    exactly that definition, using the paper''s own unbiased estimator C(c,k)/C(n,k) for a task run n
+    times with c successes.'
+  where: lesson.py exercise 4 (pass_hat_k) and its docstring
+  source_url: https://arxiv.org/abs/2406.12045
+  source_title: 'Yao, Shinn, Razavi, Narasimhan (Sierra) — tau-bench: A Benchmark for Tool-Agent-User
+    Interaction in Real-World Domains (arXiv:2406.12045), “Pass^k metric” paragraph'
+  quote: the community has defined the pass@k (pass at k) metric as the chance that at least one out of
+    k i.i.d. task trials is successful [...] For real-world agent tasks requiring reliability and consistency
+    like customer service, we propose a new metric – pass^k (pass hat k), defined as the chance that all
+    k i.i.d. task trials are successful, averaged across tasks.
+  quote_context: The paragraph headed ‘Pass^k metric.’, introducing the metric and contrasting it with
+    pass@k
+  accessed: 2026-09-24
+- id: codex-direct-computation-numerically-unstable
+  claim: The Codex paper says computing its pass@k estimator directly produces very large numbers and
+    numerical instability, and gives a numpy implementation that evaluates the ratio as a term-by-term
+    product instead. This lesson uses exact math.comb integers instead.
+  where: lesson.py exercise 3, hint 2 and the pass_at_k docstring
+  source_url: https://arxiv.org/abs/2107.03374
+  source_title: Chen, Tworek, Jun et al. — Evaluating Large Language Models Trained on Code (arXiv:2107.03374),
+    Section 2.1
+  quote: Calculating this estimator directly results in very large numbers and numerical instability.
+    In Figure 3, we include a numerically stable numpy implementation that simplifies the expression and
+    evaluates the product term-by-term.
+  quote_context: Section 2.1, the paragraph immediately after Equation 1; Figure 3 is the numpy code.
+    Re-read from the arXiv PDF (v2) by the reviewer.
+  accessed: 2026-09-24
+- id: python-math-comb-is-zero-when-k-exceeds-n
+  claim: math.comb(n, k) is 0 when k > n, which is why C(n-c, k) is 0 (not undefined) when there are fewer
+    than k failures, and why the n - c < k and c < k shortcuts in pass@k and pass^k agree exactly with
+    the plain ratio.
+  where: lesson.py exercise 3, hint 1
+  source_url: https://docs.python.org/3.12/library/math.html#math.comb
+  source_title: 'Python 3.12 documentation — math: Mathematical functions, math.comb'
+  quote: Evaluates to n! / (k! * (n - k)!) when k <= n and evaluates to zero when k > n.
+  quote_context: 'The entry for math.comb(n, k) in the Python 3.12 documentation (this lesson runs on
+    3.11 and 3.12). Re-sourced on 2026-10-14: the unversioned docs.python.org/3/ now serves Python 3.15,
+    where this sentence sits under math.integer.comb and math.comb is listed as an alias kept for backward
+    compatibility ("Soft deprecated since version 3.15: Use the math.integer functions instead of these
+    aliases."), so the old URL no longer carries the quote. The behaviour is unchanged; the lesson keeps
+    math.comb because math.integer does not exist on Python 3.11 or 3.12.'
+  accessed: 2026-10-14
+- id: python-312-sum-uses-neumaier
+  claim: The built-in sum() changed how it adds floats in Python 3.12, so the same sum() of the same floats
+    is not guaranteed to print identically on 3.11 and 3.12; this lesson averages with math.fsum instead.
+  where: lesson.py exercise 3, hint 2 (and the reproducibility note in meta.yaml)
+  source_url: https://docs.python.org/3/whatsnew/3.12.html
+  source_title: Python documentation — What's New In Python 3.12, Other Language Changes
+  quote: sum() now uses Neumaier summation to improve accuracy and commutativity when summing floats or
+    mixed ints and floats.
+  quote_context: The bullet list under 'Other Language Changes'.
+  accessed: 2026-09-24
+- id: python-math-fsum-tracks-partial-sums
+  claim: math.fsum avoids loss of precision by tracking several intermediate partial sums rather than
+    rounding after every addition.
+  where: lesson.py section 5 (the _exact_means helper)
+  source_url: https://docs.python.org/3/library/math.html#math.fsum
+  source_title: 'Python documentation — math: Mathematical functions, math.fsum'
+  quote: Return an accurate floating-point sum of values in the iterable. Avoids loss of precision by
+    tracking multiple intermediate partial sums.
+  quote_context: The entry for math.fsum(iterable).
+  accessed: 2026-09-24
+- id: numpy-sum-precision-depends-on-layout
+  claim: numpy chooses its summation method for speed (pairwise only along the fast axis in memory), and
+    documents that the exact precision may vary, so .mean(axis=1) is not this lesson's choice of summation
+    order.
+  where: lesson.py section 5
+  source_url: https://numpy.org/doc/stable/reference/generated/numpy.sum.html
+  source_title: NumPy documentation — numpy.sum, Notes
+  quote: Technically, to provide the best speed possible, the improved precision is only used when the
+    summation is along the fast axis in memory. Note that the exact precision may vary depending on other
+    parameters.
+  quote_context: The Notes section of numpy.sum. numpy.mean's own Notes define the mean as 'the sum of
+    the elements along the axis divided by the number of elements'.
+  accessed: 2026-09-24

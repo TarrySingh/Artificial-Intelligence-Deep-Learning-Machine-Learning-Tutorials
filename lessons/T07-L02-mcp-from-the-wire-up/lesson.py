@@ -96,6 +96,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # **Time:** ~50 minutes · **Runs on:** a laptop CPU, no GPU, no network ·
 # **Prerequisites:** T00-L01-the-8gb-track, T07-L01-agent-loop-from-scratch.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `T07-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - start a child process from Python with subprocess and exchange text lines through its stdin and stdout
+# - parse a line with json.loads and tell invalid JSON apart from valid JSON that has the wrong shape
+# - read a specification that uses MUST, SHOULD and MAY, and say which statements a conforming program cannot skip
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [JSON-RPC 2.0 Specification](https://www.jsonrpc.org/specification) · JSON-RPC Working Group · *free* — the whole page (it is short): request, notification, response and error objects and the reserved error codes that exercises 1 to 3 and 7 implement
+# - [MCP specification 2025-11-25: Lifecycle](https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle) · Model Context Protocol project · *free* — initialization and version negotiation, the MUST rules behind exercises 4 and 5
+# - [MCP specification 2025-11-25: Tools](https://modelcontextprotocol.io/specification/2025-11-25/server/tools) · Model Context Protocol project · *free* — tools/list, tools/call, and the split between protocol errors and tool results flagged isError, which exercise 6 dispatches on
+# - [MCP specification 2025-11-25: Transports](https://modelcontextprotocol.io/specification/2025-11-25/basic/transports) · Model Context Protocol project · *free* — the stdio section only: newline-delimited UTF-8 messages, no embedded newlines, nothing but messages on stdout (exercises 1, 2 and section 12)
+# - [subprocess: Subprocess management](https://docs.python.org/3/library/subprocess.html) · Python documentation · *free* — Popen with PIPE, communicate and the deadlock warning, for the real-subprocess proof in section 12
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import ast

@@ -20,6 +20,43 @@ objectives:
   decision depends on
 - Implement completeness_report() so it names the required fields a reconstructed decision is missing,
   and justify why that field list is a modelling choice
+before_you_start:
+  assumed:
+  - write a Python function that walks a list of dicts and builds a new record from each one
+  - turn a dict into JSON text with the json module and read the result
+  - call hashlib.sha256 on bytes and read its hex digest
+  - add a timedelta to a date and compare the result with today's date
+  resources:
+  - title: 'AI Act Article 12: Record-keeping'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12
+    kind: free
+    why: 'the duty this lesson implements: paragraph 1 (automatic recording over the system''s lifetime)
+      and paragraph 2 (the three purposes the logs must serve)'
+  - title: 'AI Act Article 19: Automatically generated logs'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-19
+    kind: free
+    why: paragraph 1, the provider's log-retention floor of at least six months, which is what the retention
+      check in exercise 3 turns into code
+  - title: Efficient Data Structures for Tamper-Evident Logging
+    by: Crosby and Wallach (USENIX Security 2009)
+    url: https://www.usenix.org/legacy/event/sec09/tech/full_papers/crosby.pdf
+    kind: free
+    why: section 2 (membership and incremental auditing) says what a verifier must be able to prove; section
+      3 shows the tree that scales the plain hash chain the lesson builds
+  - title: 'RFC 6962: Certificate Transparency'
+    by: Laurie, Langley and Kasper (IETF)
+    url: https://www.rfc-editor.org/rfc/rfc6962
+    kind: free
+    why: 'section 2.1 on Merkle hash trees and consistency proofs: a production append-only log whose
+      published head hash does the job of the lesson''s anchor'
+  - title: 'The EU Artificial Intelligence Act: A Commentary'
+    by: Michèle Finck (Oxford University Press, 2026)
+    url: https://academic.oup.com/oxford-law-pro/book/62212
+    kind: paid
+    why: 'per the publisher an article-by-article commentary; its contents page was not checkable, so
+      no entry numbers are given: look up Articles 12 and 19 for a lawyer''s reading'
 datasets: []
 points: 58
 status: reviewed

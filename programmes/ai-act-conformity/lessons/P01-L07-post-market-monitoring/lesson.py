@@ -122,6 +122,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > they appear. They are not statements about what any authority would accept. For a real
 # > system, read the Official Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - compute a proportion and its binomial standard error from a count and a sample size
+# - parse ISO 8601 timestamps with a UTC offset in Python and subtract them to get seconds
+# - say why a median shrugs off a few extreme values and a mean does not
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [NIST/SEMATECH e-Handbook of Statistical Methods: Proportions Control Charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc332.htm) · NIST · *free* — section 6.3.3.2 on p-chart centre line and three-sigma limits, with the case where the baseline proportion has to be estimated from earlier samples
+# - [AI Act Article 72: Post-market monitoring](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-72) · European Commission, AI Act Service Desk · *free* — paragraph 2 (actively and systematically collect and analyse performance data, including deployers') and paragraph 3 (the monitoring plan), shown as amended by the Digital Omnibus
+# - [AI Act Article 73: Reporting of serious incidents](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-73) · European Commission, AI Act Service Desk · *free* — the 15-day, 10-day and two-day reporting limits and the awareness trigger the incident clock implements; read it with the definition of serious incident in Article 3(49)
+# - [Draft guidance and reporting template on serious AI incidents](https://digital-strategy.ec.europa.eu/en/consultations/ai-act-commission-issues-draft-guidance-and-reporting-template-serious-ai-incidents-and-seeks) · European Commission (draft of 26 September 2025) · *free* — the Commission's draft reading of Article 73 with worked examples and a report template; a draft, so check for a final version
+# - [Introduction to Statistical Quality Control, 8th edition](https://www.wiley.com/en-us/Introduction+to+Statistical+Quality+Control%2C+8th+Edition-p-9781119723097) · Douglas C. Montgomery (Wiley) · *paid* — chapter 7, section 7.2, the control chart for fraction nonconforming (the p chart), in textbook depth
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

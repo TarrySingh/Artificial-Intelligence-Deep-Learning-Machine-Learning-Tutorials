@@ -18,41 +18,55 @@ claims:
     on the measurement process to expose errors that afflict the process over time".
   accessed: 2026-09-22
 - id: ongoing-monitoring-is-part-of-validation
-  claim: The US Federal Reserve and OCC supervisory guidance on model risk management names ongoing monitoring
-    as one of three core elements of model validation, alongside the evaluation of conceptual soundness
-    and outcomes analysis, and states that its purpose includes deciding whether changed conditions require
-    the model to be adjusted, rebuilt or replaced. The lesson's framing — that the monitoring loop is
-    part of the model's deliverable and not an optional extra, and that the decision it feeds is "adjust,
-    rebuild or replace" rather than "alarm" — is this idea applied to a plant rather than a bank. The
-    lesson does not claim that this guidance applies to industrial condition monitoring; it is cited as
-    the place the argument is made explicitly.
-  where: lesson.py section 8 (the audit that closes the loop), section 12 (closing the loop)
-  source_url: https://www.federalreserve.gov/boarddocs/srletters/2011/sr1107a1.pdf
-  source_title: Supervisory Guidance on Model Risk Management, attachment to SR letter 11-7, Board of
-    Governors of the Federal Reserve System and Office of the Comptroller of the Currency, 4 April 2011,
-    section V.2 Ongoing Monitoring
-  quote: Ongoing monitoring is essential to evaluate whether changes in products, exposures, activities,
-    clients, or market conditions necessitate adjustment, redevelopment, or replacement of the model and
-    to verify that any extension of the model beyond its original scope is valid.
-  quote_context: Second paragraph of "2. Ongoing Monitoring" under "Key Elements of Comprehensive Validation",
-    which lists the three core elements as "Evaluation of conceptual soundness, including developmental
-    evidence", "Ongoing monitoring, including process verification and benchmarking" and "Outcomes analysis,
-    including back-testing".
-  accessed: 2026-09-22
+  claim: As of 2026-10-02 the current US interagency model risk guidance is the Revised Guidance on Model
+    Risk Management issued on 17 April 2026 by the Federal Reserve (as SR 26-2), the OCC and the FDIC.
+    Its section V, Model Validation and Monitoring, lists ongoing model monitoring as one of three components
+    of model validation, alongside conceptual soundness and outcomes analysis; defines it as evaluating
+    whether a model is still performing as expected given changes in the conditions around it; and says
+    that a model which no longer performs as expected may warrant overlays, adjustment or redevelopment.
+    The lesson's framing — that the monitoring loop is part of the model's deliverable and not an optional
+    extra, and that what it feeds is a choice of fix (re-baseline, condition, re-price) rather than an
+    alarm — is this idea applied to a plant rather than a bank. The lesson does not claim that this guidance
+    applies to industrial condition monitoring; it is cited as the place the argument is made explicitly.
+    Until 2 October 2026 this entry quoted the 2011 guidance (SR 11-7), whose corresponding sentence named
+    "adjustment, redevelopment, or replacement" and also the verification of any extension of the model
+    beyond its original scope; the 2026 text does not name replacement here and treats extending a model's
+    use in section IV, Model Use, instead.
+  where: lesson.py section 8 (the audit that closes the loop), section 10 (the diagnosis-to-fix table),
+    section 12 (closing the loop)
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+  source_title: Revised Guidance on Model Risk Management, attachment to SR letter 26-2, Board of Governors
+    of the Federal Reserve System, Federal Deposit Insurance Corporation and Office of the Comptroller
+    of the Currency, 17 April 2026, section V, Ongoing Model Monitoring
+  quote: Ongoing model monitoring involves an evaluation of the extent to which a model is performing
+    as expected given potential changes in products, exposures, activities, clients, data relevance, or
+    market conditions. A model that no longer performs as expected may warrant overlays, adjustment, or
+    redevelopment of the model
+  quote_context: First paragraph under the heading "Ongoing Model Monitoring", the third of the three
+    headings under "Components of Model Validation" in section V (the other two are "Conceptual Soundness"
+    and "Outcomes Analysis"), page 9 of the attachment. The second sentence continues "depending on a
+    banking organization's model risk management policy as it pertains to model deterioration." Section
+    IV, under "Model Use", says "When extending a model's use beyond its original application, sound practice
+    involves considering additional analysis of the new usage and its limitations".
+  accessed: 2026-10-02
 - id: sr-11-7-superseded
-  claim: SR letter 11-7 was superseded on 17 April 2026 by SR letter 26-2, Revised Guidance on Model Risk
-    Management. This is recorded because the quotation above is taken from the 2011 text and a reader
-    should not be left to assume it is the current supervisory guidance. The lesson quotes the 2011 wording
-    because that is the wording the author verified against the primary document; the 2026 revision was
-    read and its supersession statement verified, but no sentence from it is quoted.
+  claim: SR letter 11-7 (4 April 2011) was superseded and replaced on 17 April 2026 by SR letter 26-2,
+    Revised Guidance on Model Risk Management, issued jointly by the Federal Reserve, the OCC and the
+    FDIC; SR 26-2 also supersedes SR letter 21-8 (9 April 2021). This is recorded because this lesson's
+    monitoring claim quoted the 2011 text until 2 October 2026 and now quotes the 2026 attachment, and
+    a reader comparing the two should know which is current. The Federal Reserve's former SR 11-7 page
+    under /supervisionreg/ returns 404 as of 2026-10-02.
   where: claims.yaml only; the lesson does not mention either letter by number
   source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
   source_title: Supervisory Letter SR 26-2 on Revised Guidance on Model Risk Management, 17 April 2026
-  quote: supersedes and replaces SR letter 11-7
-  quote_context: From the letter's opening paragraph, which states that the attached Revised Guidance
-    on Model Risk Management supersedes and replaces SR letter 11-7 (issued April 4, 2011) and SR letter
-    21-8 (issued April 9, 2021).
-  accessed: 2026-09-22
+  quote: which supersedes and replaces SR letter 11-7, Guidance on Model Risk Management (issued April
+    4, 2011) and SR letter 21-8
+  quote_context: 'From the letter''s opening paragraph: the Board, the OCC and the FDIC "are issuing the
+    attached Revised Guidance on Model Risk Management", followed by the quoted clause, which names SR
+    letter 21-8 as the Interagency Statement on Model Risk Management for Bank Systems Supporting Bank
+    Secrecy Act/Anti-Money Laundering Compliance (issued April 9, 2021). The letter''s "Supersedes" footer
+    repeats both.'
+  accessed: 2026-10-02
 - id: cmapss-optional-extension
   claim: NASA's Prognostics Center of Excellence data repository publishes the Turbofan Engine Degradation
     Simulation (C-MAPSS) sets as a direct download with no registration form, asks that publications acknowledge

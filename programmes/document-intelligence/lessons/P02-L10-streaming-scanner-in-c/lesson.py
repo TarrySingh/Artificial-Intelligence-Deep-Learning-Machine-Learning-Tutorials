@@ -111,6 +111,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # **You edit `lesson.c`, not this file.** This notebook builds your C, feeds it cases, and
 # checks its answers against a Python scanner that is given to you, already working.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - read and write C: functions, structs, pointers, fixed-size char arrays and size_t
+# - compile a C file with clang or gcc, run make on an existing Makefile, and read the compiler's error messages
+# - explain what the stack and the heap are, and what happens when a program writes past the end of a buffer
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Beej's Guide to C Programming](https://beej.us/guide/bgc/) · Brian "Beej Jorgensen" Hall (free online, PDF and HTML) · *free* — chapters 5 to 9 (pointers, arrays, strings, structs, file input/output) are the C that field_push, field_complete and scan_chunk use
+# - [RFC 4180: Common Format and MIME Type for Comma-Separated Values (CSV) Files](https://www.rfc-editor.org/rfc/rfc4180) · Yakov Shafranovich (IETF) · *free* — the CSV rules the scanner must honour: quoted fields, doubled quotes, line breaks inside quotes, and a final record with no trailing line break
+# - [Makefile Tutorial by Example](https://makefiletutorial.com/) · Makefile Tutorial project (free online) · *free* — targets, prerequisites and recipes, enough to read the lesson's Makefile and to see how make decides a file is out of date
+# - [getrusage(2), Linux manual page](https://man7.org/linux/man-pages/man2/getrusage.2.html) · Linux man-pages project (man7.org) · *free* — documents ru_maxrss, the peak-memory counter of the measurement sections; Linux reports KiB, which is why the lesson measures its unit instead of assuming it
+# - [The C Programming Language, 2nd edition](https://www.pearson.com/en-us/subject-catalog/p/c-programming-language/P200000000368/9780137460847) · Kernighan and Ritchie (Pearson) · *paid* — the classic C text: chapter 1 (a tutorial introduction), chapter 5 (pointers and arrays) and chapter 7 (input and output)
+
 # %%
 # Setup: one cell, everything the lesson needs, with versions printed.
 import platform

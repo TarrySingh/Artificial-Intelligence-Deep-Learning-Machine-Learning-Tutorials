@@ -21,6 +21,44 @@ objectives:
 - Implement a centre-of-mass feedback controller, measure the largest push it survives forwards and backwards
   on a graded ladder, and explain why it beats a joint-posture controller only in the direction where
   the support polygon leaves room to work
+before_you_start:
+  assumed:
+  - index rows of a 2-D numpy array, and sum or average along one axis with weights
+  - compute the 2-D cross product a_x*b_y - a_y*b_x of two vectors, and say what its sign tells you about
+    left and right
+  - balance torques about a pivot, with force times lever arm, and say when a body tips
+  - write a PD law from F15-L03 and say what its proportional and derivative gains each do
+  resources:
+  - title: University Physics Volume 1, section 9.6 Center of Mass
+    by: OpenStax (CC BY-NC-SA)
+    url: https://openstax.org/books/university-physics-volume-1/pages/9-6-center-of-mass
+    kind: free
+    why: the centre of mass of a system as a mass-weighted average, the quantity you project to the ground
+      and check against subtree_com
+  - title: University Physics Volume 1, section 12.1 Conditions for Static Equilibrium
+    by: OpenStax (CC BY-NC-SA)
+    url: https://openstax.org/books/university-physics-volume-1/pages/12-1-conditions-for-static-equilibrium
+    kind: free
+    why: torque balance and why a body tips once its centre of gravity leaves the base of support, the
+      physics behind the support polygon
+  - title: Modeling and Control of Legged Robots (Springer Handbook of Robotics, chapter 48)
+    by: Wieber, Tedrake and Kuindersma (author-hosted PDF)
+    url: https://groups.csail.mit.edu/robotics-center/public_papers/Wieber15.pdf
+    kind: free
+    why: sections 48.2 and 48.3, centre of pressure, support polygon, stability and the capture point,
+      the vocabulary this lesson measures
+  - title: Underactuated Robotics, chapter 5 Highly-articulated Legged Robots
+    by: Russ Tedrake (MIT; free online)
+    url: https://underactuated.csail.mit.edu/humanoids.html
+    kind: free
+    why: the sections on centre of pressure and zero-moment point, and on centroidal dynamics, which explain
+      why the foot lifts before the motor runs out
+  - title: MuJoCo documentation, Simulation
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/programming/simulation.html
+    kind: free
+    why: the "State and control" section on xfrc_applied and qfrc_applied, the channel the lesson uses
+      to push the machine
 datasets:
 - name: stander.xml — planar ankle-balancer on a flat foot
   licence: CC-BY-NC-SA-4.0

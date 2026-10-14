@@ -18,7 +18,9 @@ For every lesson directory under lessons/, flagships/*/lessons/ and programmes/*
   gate T     (checked inside structure()) timer guards: in lesson.py, solutions/lesson_solution.py and tests/test_lesson.py, any
              code that arms SIGALRM must save the timer already running (signal.getitimer) and, in a
              `finally`, re-arm it with its time left AND its interval; it must never switch the timer
-             off with a literal `setitimer(ITIMER_REAL, 0...)` nor use signal.alarm (which cannot
+             off with a literal `setitimer(ITIMER_REAL, 0...)` (except inside a `finally` that re-arms
+             the saved timer after it, as the canonical guard does to stop its own one-shot alarm before
+             it restores the old handler) nor use signal.alarm (which cannot
              restore an interval), and what its SIGALRM handler raises must derive from BaseException,
              not Exception. A guard that cancels an outer timer silently disables tools/grade.py's
              per-row time limit and any harness alarm. The canonical guard is in tools/lesson_template.
@@ -70,6 +72,44 @@ PROSE_LIMIT = 40
 VAGUE = ("understand", "learn", "know", "appreciate", "be aware")
 
 
+def before_you_start(meta: dict, src: str) -> list:
+    """Gate 2, second half: a "Before you start" box, so a learner knows what to bring and where to
+    learn it. The data lives in meta.yaml; tools/notebooks.py --inject writes the box. Whether each
+    link is live and whether `free` is true is checked by tools/check_resources.py (needs the
+    network) and by the reviewer; this check is what a machine can decide offline."""
+    box = meta.get("before_you_start")
+    if not isinstance(box, dict):
+        return ["g2: no before_you_start in meta.yaml"]
+    bad = []
+    assumed, res = box.get("assumed") or [], box.get("resources") or []
+    bad += [f"g2: an assumed skill is not plain text (quote it in meta.yaml): {str(a)[:40]}"
+            for a in assumed if not isinstance(a, str)]
+    if not 2 <= len(assumed) <= 5:
+        bad.append(f"g2: before_you_start lists {len(assumed)} assumed skills (2-5)")
+    if not 2 <= len(res) <= 5:
+        bad.append(f"g2: before_you_start lists {len(res)} resources (2-5)")
+    seen = set()
+    for r in res:
+        if not isinstance(r, dict) or not all(isinstance(r.get(k), str) and r.get(k) for k in ("title", "by", "url", "kind", "why")):
+            bad.append("g2: a resource needs title, by, url, kind and why")
+            continue
+        url = str(r["url"])
+        if not url.startswith("https://") or any(x in url for x in ("bit.ly", "t.co/", "tinyurl")):
+            bad.append(f"g2: resource url must be a direct https link: {url[:50]}")
+        if url in seen:
+            bad.append(f"g2: resource listed twice: {url[:50]}")
+        seen.add(url)
+        if r["kind"] not in ("free", "paid"):
+            bad.append(f"g2: resource kind must be free or paid: {r['kind']}")
+        if len(str(r["why"])) > 220:
+            bad.append("g2: a resource's `why` runs past 220 characters")
+    if res and not any(isinstance(r, dict) and r.get("kind") == "free" for r in res):
+        bad.append("g2: at least one resource must be free")
+    if "# <!-- COMMONS BEFORE" not in src:
+        bad.append("g2: the Before-you-start box is not injected (run tools/notebooks.py --inject)")
+    return bad
+
+
 def structure(d: Path, known: set) -> list:
     """The machine-checkable half of gates 1, 2, 3, 5, 8, 11 and 12. Returns what failed."""
     import yaml
@@ -80,14 +120,19 @@ def structure(d: Path, known: set) -> list:
         bad.append(f"g1: {len(objectives)} objectives")
     bad += [f"g1: vague objective '{o[:30]}'" for o in objectives if str(o).lower().startswith(VAGUE)]
     bad += [f"g2: unknown prerequisite {p}" for p in (meta.get("prerequisites") or []) if p not in known]
+    bad += before_you_start(meta, (d / "lesson.py").read_text())
     run = worst = 0
     in_md = False
+    in_box = False
     for line in (d / "lesson.py").read_text().splitlines():
         if line.startswith("# %%"):
             if "[markdown]" not in line:
                 worst, run = max(worst, run), 0
             in_md = "[markdown]" in line
-        elif in_md and line.lstrip("#").strip():
+            in_box = False
+        elif in_md and line.startswith("# <!-- COMMONS BEFORE"):
+            in_box = True          # generated reference box: not teaching prose, not counted by g3
+        elif in_md and not in_box and line.lstrip("#").strip():
             run += 1
     worst = max(worst, run)
     if worst > PROSE_LIMIT:
@@ -160,18 +205,35 @@ def timer_guards(d: Path) -> list:
             arms = [c for c in calls if _call_name(c) == "setitimer"]
             if any(_call_name(c) == "alarm" and isinstance(c.func, ast.Attribute) for c in calls):
                 bad.append(f"gT: {where} uses signal.alarm, which cannot restore an outer interval timer")
+            def _rearms(c):     # setitimer(which, <time left>, <interval>) or setitimer(which, *saved)
+                return (_call_name(c) == "setitimer"
+                        and (len(c.args) >= 3 or any(isinstance(a, ast.Starred) for a in c.args))
+                        and not isinstance(c.args[1] if len(c.args) > 1 else None, ast.Constant))
+
+            def _finally_calls(n):
+                return [c for stmt in n.finalbody for c in ast.walk(stmt) if isinstance(c, ast.Call)]
             for c in arms:
+                iv = c.args[2] if len(c.args) > 2 else None
+                # A guard must arm a ONE-SHOT alarm and re-arm it by hand. A repeating interval of its own
+                # (a numeric literal) can deliver a late alarm after the old handler is back: under GC
+                # pressure that killed the process (-14). Re-arming a SAVED interval is not a literal.
+                if isinstance(iv, ast.Constant) and isinstance(iv.value, (int, float)) and iv.value:
+                    bad.append(f"gT: {where} line {c.lineno} arms a repeating alarm of its own "
+                               "(setitimer(..., interval)); use the one-shot canonical guard")
                 t = c.args[1] if len(c.args) > 1 else None
-                if isinstance(t, ast.Constant) and not t.value:
+                # A literal stop is allowed only inside a `finally` that re-arms the saved timer AFTER it
+                # (the canonical guard stops its own alarm, takes any of its own that is pending, puts the
+                # old handler back, and only then re-arms the outer one). Anywhere else it cancels the outer.
+                if isinstance(t, ast.Constant) and not t.value and not any(
+                        any(x is c for x in _finally_calls(n)) and any(
+                            _rearms(r) and (r.lineno, r.col_offset) > (c.lineno, c.col_offset) for r in _finally_calls(n))
+                        for n in ast.walk(unit) if isinstance(n, ast.Try)):
                     bad.append(f"gT: {where} line {c.lineno} switches the timer off (setitimer(..., 0)) "
                                "instead of re-arming the timer that was running before")
             if arms:
                 saved = any(_call_name(c) == "getitimer" for c in calls)
-                restored = any(isinstance(n, ast.Try) and any(
-                    _call_name(c) == "setitimer" and (len(c.args) >= 3 or any(isinstance(a, ast.Starred) for a in c.args))
-                    and not isinstance(c.args[1] if len(c.args) > 1 else None, ast.Constant)
-                    for stmt in n.finalbody for c in ast.walk(stmt) if isinstance(c, ast.Call))
-                    for n in ast.walk(unit))
+                restored = any(isinstance(n, ast.Try) and any(_rearms(c) for c in _finally_calls(n))
+                               for n in ast.walk(unit))
                 if not saved:
                     bad.append(f"gT: {where} arms a timer without saving the one already running (signal.getitimer)")
                 if not restored:

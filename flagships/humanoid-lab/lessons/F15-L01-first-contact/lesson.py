@@ -101,6 +101,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 3. Compute whole-body centre-of-mass height from state, and show it differs from root height.
 # 4. Measure this machine's real-time factor and explain why simulated time is not wall time.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** none.
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops, and index and slice numpy arrays
+# - compute a weighted average of a few numbers by hand, and say why it differs from a plain average
+# - read a library function's signature and docstring, and call it with the right arguments
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [The Python Tutorial](https://docs.python.org/3/tutorial/) · Python Software Foundation (official documentation) · *free* — chapter 4 (control flow and functions) and chapter 5 (lists, tuples and dictionaries) cover the Python every exercise here uses
+# - [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html) · The NumPy project (official documentation) · *free* — array shape, indexing, slicing and arithmetic, which is how you read qpos, qvel and xipos out of MuJoCo's data
+# - [MuJoCo documentation, Overview](https://mujoco.readthedocs.io/en/stable/overview.html) · Google DeepMind (official documentation) · *free* — the mjModel and mjData split and the mj_step pipeline, the two ideas the whole lesson is organised around
+# - [MuJoCo documentation, Python](https://mujoco.readthedocs.io/en/stable/python.html) · Google DeepMind (official documentation) · *free* — how MjModel and MjData fields appear as numpy arrays, and named access to joints and bodies
+# - [University Physics Volume 1, section 9.6 Center of Mass](https://openstax.org/books/university-physics-volume-1/pages/9-6-center-of-mass) · OpenStax (CC BY-NC-SA) · *free* — the centre of mass of a system as a mass-weighted average, which is what the com_height exercise computes
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

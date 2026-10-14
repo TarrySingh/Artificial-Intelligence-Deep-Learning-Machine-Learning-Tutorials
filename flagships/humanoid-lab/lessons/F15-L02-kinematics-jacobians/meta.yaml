@@ -19,6 +19,43 @@ objectives:
   your own sweep the step size that minimises total error
 - Implement damped least-squares inverse kinematics, report the Cartesian residual for a reachable and
   an unreachable target, and measure what the damping term prevents at a singular pose
+before_you_start:
+  assumed:
+  - multiply a matrix by a vector in numpy and say what shape the result has
+  - apply a rotation matrix and a translation to move a point between two coordinate frames
+  - compute a partial derivative of a simple function by hand, such as d/dx of x^2 y
+  - solve a small linear system with numpy and say what a singular matrix is
+  resources:
+  - title: 'Modern Robotics: Mechanics, Planning, and Control'
+    by: Lynch and Park (Cambridge University Press; free preprint PDF from the authors)
+    url: https://hades.mech.northwestern.edu/index.php/Modern_Robotics
+    kind: free
+    why: chapter 3 (rigid-body motions), 4 (forward kinematics), 5.1 and 5.3 (manipulator Jacobian and
+      singularities), 6.2 and 6.3 (numerical inverse kinematics)
+  - title: Introduction to Inverse Kinematics with Jacobian Transpose, Pseudoinverse and Damped Least
+      Squares methods
+    by: Samuel R. Buss (UC San Diego)
+    url: https://mathweb.ucsd.edu/~sbuss/ResearchWeb/ikmethods/iksurvey.pdf
+    kind: free
+    why: sections 2 to 5 for the Jacobian and the damped least squares update you implement, and section
+      6 for the SVD view of why damping tames a singular pose
+  - title: Introduction to Applied Linear Algebra, Vectors, Matrices, and Least Squares
+    by: Boyd and Vandenberghe (Cambridge University Press; free PDF from the authors)
+    url: https://web.stanford.edu/~boyd/vmls/
+    kind: free
+    why: chapters 6 and 10 for matrix-vector and matrix-matrix products, chapters 12 and 15 for least
+      squares and the regularised version damped least squares is
+  - title: Python Numerical Methods, chapter 20 Numerical Differentiation
+    by: Kong, Siauw and Bayen (UC Berkeley; free online)
+    url: https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter20.00-Numerical-Differentiation.html
+    kind: free
+    why: finite-difference formulas and their accuracy, the tool the lesson uses to check the Jacobian
+      and to find the best step size
+  - title: MuJoCo documentation, API functions
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/APIreference/APIfunctions.html
+    kind: free
+    why: the reference entries for mj_jac, mj_jacBody, mj_jacSite and mj_kinematics that the lesson calls
 datasets:
 - name: arm.xml — humanoid upper body, welded pelvis, ten hinge dofs
   licence: CC-BY-NC-SA-4.0

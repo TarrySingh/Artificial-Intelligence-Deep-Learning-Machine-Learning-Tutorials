@@ -123,6 +123,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > where they appear. They are not statements about what any authority would accept. For a
 # > real system, read the Official Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - group the events of a log by an id with a dict and read them back in sequence order
+# - describe a set of durations with a median and percentiles, and say why a mean can mislead
+# - say what a rate with a small denominator can and cannot show, in terms of a confidence interval
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 14: Human oversight](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14) · European Commission, AI Act Service Desk · *free* — paragraph 4 (the overseer must be able to notice automation bias and to override) and paragraph 5 (two-person verification, for remote biometric identification): the duties the lesson measures
+# - [Automation bias: a systematic review of frequency, effect mediators, and mitigators](https://pmc.ncbi.nlm.nih.gov/articles/PMC3240751/) · Goddard, Roudsari and Wyatt (JAMIA 2012, open access on PMC) · *free* — the evidence on how often people defer to automated advice and what changes it, which is what the override-versus-confidence curve is a footprint of
+# - [The Flaws of Policies Requiring Human Oversight of Government Algorithms](https://arxiv.org/abs/2109.05067) · Ben Green (arXiv, 2021) · *free* — why a rule that says a human must oversee does not make oversight happen, the reason the lesson measures baselines instead of accepting an assertion
+# - [OpenIntro Statistics](https://www.openintro.org/book/os/) · OpenIntro (Diez, Cetinkaya-Rundel, Barr) · *free* — chapter 6 on the difference of two proportions: the reasoning behind each reviewer's own minimum detectable difference in the automation-bias exercise
+# - [The EU Artificial Intelligence Act: A Commentary](https://academic.oup.com/oxford-law-pro/book/62212) · Michèle Finck (Oxford University Press, 2026) · *paid* — per the publisher an article-by-article commentary; its contents page was not checkable, so no entry numbers are given: look up Article 14 for a lawyer's reading
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

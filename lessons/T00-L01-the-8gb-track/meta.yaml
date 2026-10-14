@@ -17,6 +17,44 @@ objectives:
 - Implement tier_check() so it reproduces this repository's own execution gate, including the equality
   boundary
 - Explain why a lesson that exceeds its declared budget is rewritten rather than given a bigger budget
+before_you_start:
+  assumed:
+  - write a Python function with a loop and a try/finally block, define a NamedTuple, and read a traceback
+    to find the failing line
+  - create and slice a numpy array, and call methods such as .sum() on it
+  - say what RAM is, as opposed to disk, and what happens to a program that asks for more of it than the
+    machine has
+  resources:
+  - title: 'The Python Tutorial, section 8: Errors and Exceptions'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/errors.html
+    kind: free
+    why: try, except and finally, which is how measure() stops its clock and its tracer even when the
+      measured call raises
+  - title: 'NumPy user guide: Data types'
+    by: NumPy project
+    url: https://numpy.org/doc/stable/user/basics.types.html
+    kind: free
+    why: what int64 is and what happens when a value does not fit, the silent wrap-around behind the one
+      wrong implementation in section 4
+  - title: 'tracemalloc: Trace memory allocations'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/tracemalloc.html
+    kind: free
+    why: start(), get_traced_memory() and reset_peak(), the API behind the Python-allocator column of
+      measure()
+  - title: 'Operating Systems: Three Easy Pieces'
+    by: Arpaci-Dusseau and Arpaci-Dusseau
+    url: https://pages.cs.wisc.edu/~remzi/OSTEP/
+    kind: free
+    why: 'the free textbook; chapter 13 (Address Spaces) and chapter 18 (Introduction to Paging): memory
+      as pages the OS hands out, background for why process RSS differs from what Python allocated'
+  - title: 'Computer Systems: A Programmer''s Perspective, 3rd edition'
+    by: Bryant and O'Hallaron (Pearson)
+    url: https://csapp.cs.cmu.edu/
+    kind: paid
+    why: 'chapter 9, Virtual Memory: page tables, page faults, memory mapping and the heap allocator (9.9),
+      the machinery beneath the resident-memory figure that measure() reads'
 datasets: []
 points: 49
 status: reviewed

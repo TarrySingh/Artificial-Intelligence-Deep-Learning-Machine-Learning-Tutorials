@@ -66,7 +66,11 @@ def rubric(d: Path) -> tuple:
 
     if "RUBRIC" not in lists:
         return 0, 0
-    found = rows(lists["RUBRIC"])
+    # RUBRIC may be re-bound by a wrapper, `RUBRIC = [(_guard(fn), p, h) for fn, p, h in RUBRIC]`,
+    # which keeps every row; the rows are read from the first binding that is a list of them.
+    found = next((r for node in ast.walk(tree) if isinstance(node, ast.Assign)
+                  and any(isinstance(t, ast.Name) and t.id == "RUBRIC" for t in node.targets)
+                  if (r := rows(node.value))), [])
     pts = sum(e.elts[1].value for e in found if isinstance(e.elts[1], ast.Constant))
     return pts, len(found)
 

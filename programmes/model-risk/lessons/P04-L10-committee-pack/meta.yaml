@@ -31,6 +31,37 @@ objectives:
   a committee pack that refuses to render while any figure is untraceable
 - Measure how a widened tolerance, an exempted class of figure or numbers read out of strings let a typed
   figure through, and explain why a figure that traces is not thereby the right figure
+before_you_start:
+  assumed:
+  - write a regular expression with groups and alternatives, and use re.finditer to get matches with their
+    positions out of a text
+  - compute the age in days between two datetime.date values and compare it with a threshold
+  - read and write Python dataclasses, and sort and group lists of them
+  resources:
+  - title: SR 26-2 Revised Guidance on Model Risk Management (the attachment)
+    by: Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7
+    url: https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf
+    kind: free
+    why: section VI, Documentation ('tracking of recommendations, responses, and exceptions' and remediation),
+      Model Inventory and Roles and Responsibilities; section V, Ongoing Model Monitoring
+  - title: SS1/23 Model risk management principles for banks
+    by: Prudential Regulation Authority, Bank of England
+    url: https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss
+    kind: free
+    why: 'Principle 2, governance, and Principle 4, independent validation: who owns a finding, who it
+      is reported to, and the model risk reporting a committee pack serves'
+  - title: Regular Expression HOWTO (Python documentation)
+    by: Python Software Foundation
+    url: https://docs.python.org/3/howto/regex.html
+    kind: free
+    why: 'the sections on repeating things, groups and finditer: enough to write the number-in-text matcher
+      the figure gate is built on'
+  - title: 'datetime: date objects (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/datetime.html
+    kind: free
+    why: 'date.fromisoformat, date subtraction and timedelta.days: the arithmetic behind ageing a finding
+      from an explicit as-of date'
 datasets:
 - name: synthetic retail application book, out-of-time sample and driver samples
   kind: synthetic

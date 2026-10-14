@@ -20,6 +20,37 @@ objectives:
   its structure-only variant
 - Produce, on this corpus, a case where content is perfect while structure is wrong and a case where the
   reverse holds, and state which score a named downstream consumer must gate on
+before_you_start:
+  assumed:
+  - use numpy to sum a 2-D array along an axis, and compare an array with a threshold to get a boolean
+    mask
+  - read a table as rows of cells and say what a colspan means in HTML table markup
+  - work with boxes as (x0, y0, x1, y1) and say which row band and column a box falls in
+  resources:
+  - title: 'Image-based table recognition: data, model, and evaluation'
+    by: Zhong, ShafieiBavani and Jimeno Yepes (arXiv)
+    url: https://arxiv.org/abs/1911.10683
+    kind: free
+    why: introduces TEDS, the tree-edit-distance similarity over HTML table trees that teds_like simplifies,
+      and why it was proposed instead of cell-level accuracy
+  - title: 'GriTS: Grid Table Similarity Metric for Table Structure Recognition'
+    by: Smock, Pesala and Abraham (arXiv)
+    url: https://arxiv.org/abs/2203.12555
+    kind: free
+    why: a grid-based alternative to TEDS that scores cell topology, location and content; useful for
+      seeing what a single table score hides
+  - title: 'NumPy: the absolute basics for beginners'
+    by: NumPy developers (official documentation)
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: array operations along an axis, conditional indexing and np.nonzero, the tools for the projection
+      profile in ink_runs
+  - title: The HTML table cell element (td)
+    by: MDN Web Docs (Mozilla)
+    url: https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/td
+    kind: free
+    why: the colspan and rowspan attributes, the model of a spanning header that the cell reconstruction
+      has to recover
 datasets: []
 points: 94
 status: reviewed

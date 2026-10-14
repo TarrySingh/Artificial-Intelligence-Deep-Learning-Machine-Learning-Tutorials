@@ -18,6 +18,44 @@ objectives:
 - Sweep kp at fixed kd, produce the tracking-error curve, and locate the stability limit from measured
   error alone
 - Explain why a once-per-step PD law diverges at high kp and again at high kd
+before_you_start:
+  assumed:
+  - write a loop that reads a state, computes a command from it and steps a simulator, recording a series
+    to plot
+  - 'describe a mass on a spring and damper in words: what stiffness and damping each change about the
+    motion'
+  - read a plot of an error against a parameter on a log axis
+  resources:
+  - title: Feedback Systems, An Introduction for Scientists and Engineers
+    by: Åström and Murray (Princeton University Press; free PDF from the authors)
+    url: https://fbswiki.org/wiki/index.php/Main_Page
+    kind: free
+    why: section 5.3 (stability) and chapter 11 (PID control), for what proportional and derivative action
+      do and where a loop goes unstable
+  - title: 'Modern Robotics: Mechanics, Planning, and Control'
+    by: Lynch and Park (Cambridge University Press; free preprint PDF from the authors)
+    url: https://hades.mech.northwestern.edu/index.php/Modern_Robotics
+    kind: free
+    why: chapter 11, sections 11.2 error dynamics and 11.4 torque-input motion control, where a single
+      joint under gravity shows the steady-state error and the gravity-compensation fix
+  - title: Underactuated Robotics, chapter 2 The Simple Pendulum
+    by: Russ Tedrake (MIT; free online)
+    url: https://underactuated.csail.mit.edu/pend.html
+    kind: free
+    why: stability of a joint under feedback and the torque-limited pendulum, the same finite actuator
+      authority a PD law runs into here
+  - title: MuJoCo documentation, Computation
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/computation/index.html
+    kind: free
+    why: the actuation model and the bias force (Coriolis, centrifugal, gravity) that qfrc_bias reports
+      and gravity compensation cancels
+  - title: Python Numerical Methods, chapter 22 ODE Initial Value Problems
+    by: Kong, Siauw and Bayen (UC Berkeley; free online)
+    url: https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter22.00-ODE-Initial-Value-Problems.html
+    kind: free
+    why: section 22.4 (numerical error and instability), the stepping mechanism behind a once-per-step
+      law diverging at high gain
 datasets:
 - name: planar_two_link — shoulder-and-elbow arm, inline MJCF
   licence: CC-BY-NC-SA-4.0

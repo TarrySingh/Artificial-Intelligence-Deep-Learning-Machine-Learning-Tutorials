@@ -23,6 +23,37 @@ objectives:
   in fresh processes and asserts byte equality
 - Explain why a check that regenerates in the same process certifies a pack whose figures depend on the
   process hash seed
+before_you_start:
+  assumed:
+  - train a simple model (for example a logistic regression written in numpy) and call its prediction
+    function on a numpy array
+  - write a loop over all subsets of a small set of indices (for example with itertools.combinations)
+  - run one Python script from another with subprocess and read what it prints
+  resources:
+  - title: Interpretable Machine Learning
+    by: Christoph Molnar (free online book)
+    url: https://christophm.github.io/interpretable-ml-book/
+    kind: free
+    why: the chapters Permutation Feature Importance, Partial Dependence Plot (PDP) and Shapley Values,
+      including how correlated features and extrapolation distort each of the first two
+  - title: A Unified Approach to Interpreting Model Predictions
+    by: Lundberg and Lee (NeurIPS 2017)
+    url: https://arxiv.org/abs/1705.07874
+    kind: free
+    why: introduces SHAP and the additive-attribution properties (including attributions summing to prediction
+      minus baseline) that the lesson checks on exact Shapley values
+  - title: 'Command line and environment: PYTHONHASHSEED (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/using/cmdline.html
+    kind: free
+    why: the PYTHONHASHSEED entry explains hash randomisation, why set and dict-of-string order can differ
+      between processes, and how to pin it
+  - title: 'json: JSON encoder and decoder (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/json.html
+    kind: free
+    why: json.dumps with sort_keys, separators and ensure_ascii, the knobs of a canonical serialisation
+      that gives the same bytes every run
 datasets:
 - name: synthetic credit applicants
   kind: synthetic

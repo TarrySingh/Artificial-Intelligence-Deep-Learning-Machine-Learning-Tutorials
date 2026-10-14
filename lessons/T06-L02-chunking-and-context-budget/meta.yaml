@@ -19,6 +19,39 @@ objectives:
   context — and distinguish it from a chunk-level retrieval hit
 - Measure, on a corpus with planted evidence spans of varying length, how chunk size and overlap trade
   evidence coverage against token cost, and choose a chunking policy from the measured curve
+before_you_start:
+  assumed:
+  - tokenise text with a Python regular expression, and slice a string by character offsets, reading a
+    span as a half-open [start, end) interval
+  - say what a token and a context window are, and why a prompt that exceeds the window loses text
+  - read a cost-versus-quality curve (here, tokens spent against evidence reached) and pick an operating
+    point from it
+  resources:
+  - title: Regular Expression HOWTO
+    by: Python documentation
+    url: https://docs.python.org/3/howto/regex.html
+    kind: free
+    why: finditer and match spans (start, end), plus word boundaries and character classes, which the
+      carried-forward tokenizer relies on
+  - title: Byte-Pair Encoding tokenization (Hugging Face LLM Course, chapter 6)
+    by: Hugging Face
+    url: https://huggingface.co/learn/llm-course/chapter6/5
+    kind: free
+    why: how a subword vocabulary is trained and applied, which is what you need to read exercise 3's
+      comparison of an approximate token counter against a real BPE tokenizer
+  - title: 'Speech and Language Processing (3rd ed. draft), chapter 11: Information Retrieval and Retrieval-Augmented
+      Generation'
+    by: Dan Jurafsky and James H. Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/11.pdf
+    kind: free
+    why: 11.3 on splitting documents into fixed-length passages before retrieval, and 11.4 on what the
+      retrieved text is used for in retrieval-augmented generation
+  - title: Glossary (context window, tokens, RAG)
+    by: Anthropic (Claude documentation)
+    url: https://platform.claude.com/docs/en/about-claude/glossary
+    kind: free
+    why: short definitions of the context window, tokens and retrieval-augmented generation, the three
+      terms the token budget and coverage metric are built on
 datasets:
 - name: T06-L02 synthetic incident-report corpus (eight planted facts, varying evidence-span length)
   kind: synthetic

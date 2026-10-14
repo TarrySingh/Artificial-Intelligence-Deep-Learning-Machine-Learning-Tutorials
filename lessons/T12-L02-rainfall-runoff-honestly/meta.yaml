@@ -1,0 +1,84 @@
+id: T12-L02-rainfall-runoff-honestly
+title: Rainfall to runoff, honestly — build a four-parameter runoff model, a calibrator and a lagged-rain
+  baseline, and measure the hold-out, split and flow-band traps on two real Australian catchments
+track: T12
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement Nash-Sutcliffe and Kling-Gupta efficiency and a day-of-year climatology benchmark, and measure
+  how much of each river's flow the calendar alone explains
+- Implement a four-parameter conceptual rainfall-runoff model (production store, routing store, two unit
+  hydrographs) and a deterministic compass-search calibration, in numpy
+- Measure how far in-sample scoring, a random split and calibrating on the test years overstate skill,
+  against a chronological hold-out, on real streamflow records
+- Compare the calibrated model with a lagged-rainfall ridge regression under the same hold-out, the same
+  benchmark and the same metrics
+- Measure skill separately on the whole record, the low flows and the largest days (NSE, log NSE, high-flow
+  volume bias) instead of trusting one summary score
+before_you_start:
+  assumed:
+  - slice a daily numpy series by year and compute means, including a mean for each day of the year
+  - explain train, validation and test sets, and why scoring a model on its own training data overstates
+    its skill
+  - fit a linear regression with numpy, or solve a small linear system with np.linalg.solve
+  - say what a catchment, streamflow, rainfall and evapotranspiration are, and read a hydrograph (flow
+    against time)
+  resources:
+  - title: 'Technical note: Inherent benchmark or not? Comparing Nash-Sutcliffe and Kling-Gupta efficiency
+      scores'
+    by: Knoben, Freer and Woods (Hydrology and Earth System Sciences)
+    url: https://hess.copernicus.org/articles/23/4323/2019/
+    kind: free
+    why: what NSE and KGE reward, why a benchmark is needed to read either score, and why mean flow scores
+      NSE 0 but KGE near -0.41 (exercises 1 and 2)
+  - title: 'airGR: the INRAE GR hydrological models'
+    by: INRAE Catchment Hydrology Research Group
+    url: https://hydrogr.github.io/airGR/
+    kind: free
+    why: the documentation of GR4J, the four-parameter daily lumped model family that this lesson's four-parameter
+      model is a simplification of
+  - title: 'Forecasting: Principles and Practice, 3rd edition: Evaluating point forecast accuracy'
+    by: Rob J. Hyndman and George Athanasopoulos
+    url: https://otexts.com/fpp3/toolbox.html#sec-accuracy
+    kind: free
+    why: 'section 5.8: training versus test data for time series, and accuracy compared against simple
+      benchmarks such as the mean and naive methods, the logic of exercises 3 and 7'
+  - title: An Introduction to Statistical Learning
+    by: James, Witten, Hastie and Tibshirani (Springer; free PDF from the authors)
+    url: https://www.statlearning.com/
+    kind: free
+    why: section 6.2.1 on ridge regression (exercise 8), and section 5.1.1 on the validation-set approach
+      and what a single split can and cannot tell you
+  - title: 'Rainfall-Runoff Modelling: The Primer, 2nd edition'
+    by: Keith J. Beven (Wiley-Blackwell)
+    url: https://www.wiley.com/en-us/rainfall-runoff-modelling-the-primer-2nd-edition-p-9780470714591
+    kind: paid
+    why: chapter 2 on how rainfall-runoff models evolved (2.3, the unit hydrograph), chapter 4 on data-based
+      transfer-function models, chapter 7 on parameter estimation and predictive uncertainty
+datasets:
+- name: 'CAMELS-AUS v2: daily flow, SILO rainfall and SILO Morton-wet PET for two catchments (607013 and
+    116015A), 1985-2014'
+  kind: real
+  licence: 'CC-BY-4.0 (every committed array: CAMELS-AUS v2 as published; upstream BoM HRS streamflow
+    and SILO rain and PET each CC-BY-4.0 by the provider''s own statement)'
+  url: https://zenodo.org/records/14289037
+  licence_url: https://creativecommons.org/licenses/by/4.0/
+  copyright: Keirnan Fowler, Ziqi Zhang and Xue Hou (University of Melbourne); underlying data from the
+    Australian Bureau of Meteorology and the Queensland Government (SILO)
+  cached_at: assets/camels_aus_v2_two_basins_1985_2014.npz
+  retrieved: 2026-09-29
+  gated: false
+  notes: 'Two catchment columns and 10,957 days extracted, without any numerical change, from streamflow_mmd.csv,
+    precipitation_SILO.csv and et_morton_wet_SILO.csv in the Zenodo record. Exact files, the selection
+    rule, the licence and the required attribution are in assets/SOURCE.md and claims.yaml. The lesson
+    reads only this committed asset; no network access on any required path. Upstream licences checked
+    on each provider''s own page: HRS streamflow CC BY 4.0, SILO rain and PET CC BY 4.0. Attribution text
+    for BoM and SILO is in assets/SOURCE.md.'
+points: 197
+status: reviewed
+measured_seconds: 4.2
+measured_peak_mib: 65

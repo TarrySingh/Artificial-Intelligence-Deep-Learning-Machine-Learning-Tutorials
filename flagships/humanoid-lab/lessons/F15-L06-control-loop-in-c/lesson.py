@@ -112,6 +112,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # drives it, checks it and measures it. Two exercises at the end are in Python, and they exist
 # so the comparison at the end is between two loops you wrote rather than a slogan.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`, `F15-L03`
+#
+# **This lesson assumes you can already:**
+#
+# - read and write C: declare variables, call functions, and use arrays and pointers to double
+# - pass a struct by pointer and read its fields with ->
+# - build a C program with make, read a compiler warning, and run the resulting binary
+# - read a C function prototype in a header and call the function with arguments of the right types
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Beej's Guide to C Programming](https://beej.us/guide/bgc/) · Brian "Beej Jorgensen" Hall · *free* — chapters 5 (pointers), 6 (arrays), 8 (structs) and 17 (multifile projects), which is all the C you write in lesson.c
+# - [Makefile Tutorial by Example](https://makefiletutorial.com/) · theicfire (makefiletutorial.com) · *free* — targets, prerequisites and variables, enough to read this lesson's Makefile and rebuild after an edit
+# - [MuJoCo documentation, Simulation](https://mujoco.readthedocs.io/en/stable/programming/simulation.html) · Google DeepMind (official documentation) · *free* — the simulation loop, the "State and control" section and mj_makeData, the C API calls the loop you write is built from
+# - [MuJoCo documentation, Programming](https://mujoco.readthedocs.io/en/stable/programming/index.html) · Google DeepMind (official documentation) · *free* — the Getting started and Header files sections, how a C program includes mujoco.h and links the library
+# - [C Programming: A Modern Approach](https://wwnorton.com/books/9780393979503) · K. N. King (W. W. Norton) · *paid* — a widely used C textbook; chapters 11 and 12 (pointers, pointers and arrays), 15 (writing large programs) and 16 (structures), if Beej's guide is not enough
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import math

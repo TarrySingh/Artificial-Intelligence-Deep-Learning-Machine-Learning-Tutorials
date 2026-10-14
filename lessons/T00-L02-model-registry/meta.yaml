@@ -1,0 +1,79 @@
+id: T00-L02-model-registry
+title: Build a role-based model registry, a retirement detector and a golden test that survives a model
+  swap
+track: T00
+flagship: ''
+tier: cpu8
+budget_seconds: 30
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement resolve() so a role follows same_as links to one pinned model id and rejects an unknown role
+  and a cycle
+- Implement lifecycle_findings() and drift_findings() so a registry is diffed against a dated provider
+  snapshot for retired, missing, renamed, soon-to-retire, repriced and resized pins
+- Implement a golden-output regression test that compares a normalised contract, and measure how many
+  cases survive swapping the model behind a role
+- Measure, on the committed snapshot, how many pinned roles in a stale registry already carry a finding
+before_you_start:
+  assumed:
+  - write Python functions that loop over dicts and lists of dicts, and return a NamedTuple
+  - read a nested YAML or JSON file and say which keys and values it holds
+  - parse an ISO date and add, subtract and compare days with the datetime module
+  - write a plain assert-based test for a function
+  resources:
+  - title: 'The Python Tutorial, section 5: Data Structures'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/datastructures.html
+    kind: free
+    why: dictionaries (5.5) and tuples (5.3) and how to loop over them, which is all that resolve() and
+      the two checkers do
+  - title: PyYAML documentation
+    by: PyYAML project
+    url: https://pyyaml.org/wiki/PyYAMLDocumentation
+    kind: free
+    why: the Tutorial section on loading a YAML document into Python dicts and lists, which is how models.yaml
+      becomes the registry
+  - title: 'datetime: Basic date and time types'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/datetime.html
+    kind: free
+    why: date, timedelta and date.fromisoformat, the pieces behind the notice-window arithmetic in the
+      retirement detector
+  - title: 'Software Engineering at Google, chapter 12: Unit Testing'
+    by: Winters, Manshreck and Wright (O'Reilly; free to read at abseil.io)
+    url: https://abseil.io/resources/swe-book/html/ch12.html
+    kind: free
+    why: 'the sections on preventing brittle tests, testing via public APIs, and testing behaviours rather
+      than methods: the reason the golden test compares a contract'
+  - title: Model deprecations (Claude Platform docs)
+    by: Anthropic
+    url: https://platform.claude.com/docs/en/about-claude/model-deprecations
+    kind: free
+    why: a real retirement table, with states, tentative retirement dates and replacements, which is what
+      the provider snapshot in this lesson mirrors
+datasets:
+- name: provider_snapshot.json - Anthropic model list, lifecycle and prices as of 2026-09-29
+  licence: CC-BY-NC-SA-4.0 for the transcription; the facts come from the source pages
+  url: https://platform.claude.com/docs/en/about-claude/model-deprecations
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  copyright: Model identifiers, dates, prices and limits transcribed by the Synapsa Commons project (c)
+    2026 RealAI from the four Anthropic documentation pages listed in assets/SOURCE.md; none of the pages'
+    prose or tables is reproduced
+  cached_at: assets/provider_snapshot.json
+  retrieved: 2026-09-29
+  gated: false
+- name: models.yaml - a deliberately stale role registry (fixture)
+  licence: CC-BY-NC-SA-4.0
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+  copyright: Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA
+    4.0 with the rest of the course
+  cached_at: assets/models.yaml
+  retrieved: 2026-09-29
+  gated: false
+points: 70
+status: reviewed
+measured_seconds: 0.1
+measured_peak_mib: 20

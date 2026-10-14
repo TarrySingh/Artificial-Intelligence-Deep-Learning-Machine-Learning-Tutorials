@@ -13,8 +13,8 @@
 | 5 | Remaining useful life, and its error bars | **built** | `P03-L05-remaining-useful-life` | python | 0.9 s · 91 MiB | 122 pts / 31 cases |
 | 6 | Threshold setting from an RUL distribution | **built** | `P03-L06-thresholds-from-distributions` | python | 0.9 s · 80 MiB | 139 pts / 36 cases |
 | 7 | Deployment on an OT network | **built** | `P03-L07-ot-network-deployment` | **C** | 1.0 s · 78 MiB | 114 pts / 16 cases |
-| 8 | Drift, retraining, and the alarm audit | **built** | `P03-L08-drift-and-the-alarm-audit` | python | 2.5 s · 92 MiB | 148 pts / 37 cases |
-| 9 | Capstone: a monitoring programme for one asset class | **built** | `P03-L09-capstone` | python | 1.2 s · 103 MiB | 183 pts / 45 cases |
+| 8 | Drift, retraining, and the alarm audit | **built** | `P03-L08-drift-and-the-alarm-audit` | python | 2.8 s · 98 MiB | 148 pts / 37 cases |
+| 9 | Capstone: a monitoring programme for one asset class | **built** | `P03-L09-capstone` | python | 1.1 s · 106 MiB | 183 pts / 45 cases |
 
 <!-- STATUS:END -->
 

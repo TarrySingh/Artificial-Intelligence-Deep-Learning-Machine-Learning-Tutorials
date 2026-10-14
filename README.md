@@ -30,13 +30,17 @@ computed by code you run, and every claim it makes about the world cites a prima
 | Validate a model well enough to sign it off: calibration, challengers, explainability, the committee pack | [`programmes/model-risk/`](programmes/model-risk/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/model-risk/lessons/P04-L01-validation-suite/lesson.ipynb) |
 | Take predictive maintenance from sensor physics to an alarm threshold priced in money | [`programmes/predictive-maintenance/`](programmes/predictive-maintenance/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/predictive-maintenance/lessons/P03-L01-alarm-economics/lesson.ipynb) |
 | Pull fields out of invoices and contracts, and prove how often you are wrong | [`programmes/document-intelligence/`](programmes/document-intelligence/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/document-intelligence/lessons/P02-L01-extraction-evaluation/lesson.ipynb) |
+| Build credit models that survive an audit: vintage curves, a hazard model, macro scenarios and an out-of-time back-test | [`programmes/credit-underwriting/`](programmes/credit-underwriting/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro/lesson.ipynb) |
+| Get from mass spectra to proteins you can defend: a search engine, target-decoy FDR, protein inference, missing values and batch effects | [`programmes/proteomics-multiomics/`](programmes/proteomics-multiomics/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L01-search-engine-and-fdr/lesson.ipynb) |
 | Make a simulated humanoid stand and walk, then measure how far that is from a robot | [`flagships/humanoid-lab/`](flagships/humanoid-lab/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/flagships/humanoid-lab/lessons/F15-L01-first-contact/lesson.ipynb) |
-| Build search and RAG you can measure: retrieval, chunking, the context budget and reranking | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T06-L01-retrieval-from-scratch/lesson.ipynb) |
-| Build AI agents that hold up: the agent loop from scratch, and MCP from the wire up | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T07-L01-agent-loop-from-scratch/lesson.ipynb) |
+| Build search and RAG you can measure: retrieval, chunking, the context budget, reranking and agent memory | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T06-L01-retrieval-from-scratch/lesson.ipynb) |
+| Build AI agents that hold up: the agent loop from scratch, MCP and A2A from the wire up, evaluation, observability and constrained decoding | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T07-L01-agent-loop-from-scratch/lesson.ipynb) |
+| Do AI for science on real data: find the first gravitational wave in the raw LIGO data, and model rainfall to runoff honestly | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T12-L01-find-gw150914/lesson.ipynb) |
+| Serve and train language models on modest hardware: a KV cache, paging and continuous batching on a CPU, and GRPO from scratch | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T05-L01-serving-on-a-cpu/lesson.ipynb) |
 | Start from nothing: the 8 GB machine, tokenisers from scratch, a language model on a CPU | [`lessons/`](lessons/) | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L01-the-8gb-track/lesson.ipynb) |
 
-The model-risk, predictive-maintenance and document-intelligence courses build on
-[`lessons/T00-L01-the-8gb-track`](lessons/T00-L01-the-8gb-track/), which makes the profiler and the
+The model-risk, predictive-maintenance, document-intelligence, credit and proteomics courses build
+on [`lessons/T00-L01-the-8gb-track`](lessons/T00-L01-the-8gb-track/), which makes the profiler and the
 compute tiers every lesson is held to; start there if you have not done it. Each programme's
 `MODULES.md` is its map and shows which lessons exist and which are still only specified; the
 humanoid lab's is its `README.md`, and [`lessons/`](lessons/) has its own.
@@ -45,16 +49,18 @@ humanoid lab's is its `README.md`, and [`lessons/`](lessons/) has its own.
 
 <!-- STATUS:BEGIN generated by tools/status.py from the lessons themselves; do not edit -->
 
-**57 lessons, every one passing all 14 gates in `QUALITY.md` and independently reviewed.** 7 are compiled C or C++ exercises. Every notebook opens in Colab, Kaggle, Binder, Codespaces or local Jupyter. Every `MODULES.md` marks a module built only when its lesson exists and has passed; everything else says `specified`, and means it.
+**72 lessons, every one passing all 14 gates in `QUALITY.md` and independently reviewed.** 7 are compiled C or C++ exercises. Every notebook opens in Colab, Kaggle, Binder, Codespaces or local Jupyter. Every `MODULES.md` marks a module built only when its lesson exists and has passed; everything else says `specified`, and means it.
 
 | Area | Built | Specified, not built |
 |---|---|---|
 | `flagships/humanoid-lab` | 8 lessons + capstone | — |
-| `lessons/` — track lessons | 10 | — |
+| `lessons/` — track lessons | 22 | — |
 | `programmes/ai-act-conformity` | 9 of 9 | 0 |
+| `programmes/credit-underwriting` | 1 of 8 | 7 |
 | `programmes/document-intelligence` | 11 of 11 | 0 |
 | `programmes/model-risk` | 10 of 10 | 0 |
 | `programmes/predictive-maintenance` | 9 of 9 | 0 |
+| `programmes/proteomics-multiomics` | 2 of 7 | 5 |
 
 <!-- STATUS:END -->
 
@@ -67,8 +73,8 @@ New lessons three times a week, every Monday, Wednesday and Friday. Watch or sta
 ```mermaid
 timeline
     September 2026 : Document intelligence for regulated operations, retrieval and RAG, and the agents track begins
-    October 2026 : AI agents and the protocols they speak, AI for science, serving models on modest hardware, post-training from scratch, and evaluating across languages
-    November 2026 : A new industry programme on evidence-based credit decisions
+    October 2026 : AI agents and the protocols they speak, two new industry programmes on proteomics and multiomics and on evidence-based credit decisions, AI for science, serving models on modest hardware, post-training from scratch, and evaluating across languages
+    November 2026 : The credit decisions and the proteomics and multiomics programmes continue, module by module
     December 2026 : Deeper courses in the industries we already cover
 ```
 

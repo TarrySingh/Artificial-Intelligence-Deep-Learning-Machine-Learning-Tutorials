@@ -116,6 +116,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # stub instead of crashing, a demo that needs an unfinished exercise names it and skips, and
 # the last cell prints a progress board. Stuck on an exercise? Open its hints, one at a time.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`, `F15-L03`
+#
+# **This lesson assumes you can already:**
+#
+# - index rows of a 2-D numpy array, and sum or average along one axis with weights
+# - compute the 2-D cross product a_x*b_y - a_y*b_x of two vectors, and say what its sign tells you about left and right
+# - balance torques about a pivot, with force times lever arm, and say when a body tips
+# - write a PD law from F15-L03 and say what its proportional and derivative gains each do
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [University Physics Volume 1, section 9.6 Center of Mass](https://openstax.org/books/university-physics-volume-1/pages/9-6-center-of-mass) · OpenStax (CC BY-NC-SA) · *free* — the centre of mass of a system as a mass-weighted average, the quantity you project to the ground and check against subtree_com
+# - [University Physics Volume 1, section 12.1 Conditions for Static Equilibrium](https://openstax.org/books/university-physics-volume-1/pages/12-1-conditions-for-static-equilibrium) · OpenStax (CC BY-NC-SA) · *free* — torque balance and why a body tips once its centre of gravity leaves the base of support, the physics behind the support polygon
+# - [Modeling and Control of Legged Robots (Springer Handbook of Robotics, chapter 48)](https://groups.csail.mit.edu/robotics-center/public_papers/Wieber15.pdf) · Wieber, Tedrake and Kuindersma (author-hosted PDF) · *free* — sections 48.2 and 48.3, centre of pressure, support polygon, stability and the capture point, the vocabulary this lesson measures
+# - [Underactuated Robotics, chapter 5 Highly-articulated Legged Robots](https://underactuated.csail.mit.edu/humanoids.html) · Russ Tedrake (MIT; free online) · *free* — the sections on centre of pressure and zero-moment point, and on centroidal dynamics, which explain why the foot lifts before the motor runs out
+# - [MuJoCo documentation, Simulation](https://mujoco.readthedocs.io/en/stable/programming/simulation.html) · Google DeepMind (official documentation) · *free* — the "State and control" section on xfrc_applied and qfrc_applied, the channel the lesson uses to push the machine
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import hashlib

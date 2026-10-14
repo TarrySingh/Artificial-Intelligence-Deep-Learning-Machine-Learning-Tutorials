@@ -18,6 +18,44 @@ objectives:
 - Measure throughput and peak resident memory against a Python scanner on identical bytes, and attribute
   each factor to the language or to the algorithm
 - Show that peak resident memory is flat while the export grows by two orders of magnitude
+before_you_start:
+  assumed:
+  - 'read and write C: functions, structs, pointers, fixed-size char arrays and size_t'
+  - compile a C file with clang or gcc, run make on an existing Makefile, and read the compiler's error
+    messages
+  - explain what the stack and the heap are, and what happens when a program writes past the end of a
+    buffer
+  resources:
+  - title: Beej's Guide to C Programming
+    by: Brian "Beej Jorgensen" Hall (free online, PDF and HTML)
+    url: https://beej.us/guide/bgc/
+    kind: free
+    why: chapters 5 to 9 (pointers, arrays, strings, structs, file input/output) are the C that field_push,
+      field_complete and scan_chunk use
+  - title: 'RFC 4180: Common Format and MIME Type for Comma-Separated Values (CSV) Files'
+    by: Yakov Shafranovich (IETF)
+    url: https://www.rfc-editor.org/rfc/rfc4180
+    kind: free
+    why: 'the CSV rules the scanner must honour: quoted fields, doubled quotes, line breaks inside quotes,
+      and a final record with no trailing line break'
+  - title: Makefile Tutorial by Example
+    by: Makefile Tutorial project (free online)
+    url: https://makefiletutorial.com/
+    kind: free
+    why: targets, prerequisites and recipes, enough to read the lesson's Makefile and to see how make
+      decides a file is out of date
+  - title: getrusage(2), Linux manual page
+    by: Linux man-pages project (man7.org)
+    url: https://man7.org/linux/man-pages/man2/getrusage.2.html
+    kind: free
+    why: documents ru_maxrss, the peak-memory counter of the measurement sections; Linux reports KiB,
+      which is why the lesson measures its unit instead of assuming it
+  - title: The C Programming Language, 2nd edition
+    by: Kernighan and Ritchie (Pearson)
+    url: https://www.pearson.com/en-us/subject-catalog/p/c-programming-language/P200000000368/9780137460847
+    kind: paid
+    why: 'the classic C text: chapter 1 (a tutorial introduction), chapter 5 (pointers and arrays) and
+      chapter 7 (input and output)'
 datasets: []
 points: 39
 status: reviewed

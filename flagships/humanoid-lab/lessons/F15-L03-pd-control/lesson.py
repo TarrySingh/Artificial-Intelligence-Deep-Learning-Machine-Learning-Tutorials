@@ -120,6 +120,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # stub instead of crashing, a demo that needs an unfinished exercise names it and skips, and
 # the last cell prints a progress board. Stuck on an exercise? Open its hints, one at a time.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a loop that reads a state, computes a command from it and steps a simulator, recording a series to plot
+# - describe a mass on a spring and damper in words: what stiffness and damping each change about the motion
+# - read a plot of an error against a parameter on a log axis
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Feedback Systems, An Introduction for Scientists and Engineers](https://fbswiki.org/wiki/index.php/Main_Page) · Åström and Murray (Princeton University Press; free PDF from the authors) · *free* — section 5.3 (stability) and chapter 11 (PID control), for what proportional and derivative action do and where a loop goes unstable
+# - [Modern Robotics: Mechanics, Planning, and Control](https://hades.mech.northwestern.edu/index.php/Modern_Robotics) · Lynch and Park (Cambridge University Press; free preprint PDF from the authors) · *free* — chapter 11, sections 11.2 error dynamics and 11.4 torque-input motion control, where a single joint under gravity shows the steady-state error and the gravity-compensation fix
+# - [Underactuated Robotics, chapter 2 The Simple Pendulum](https://underactuated.csail.mit.edu/pend.html) · Russ Tedrake (MIT; free online) · *free* — stability of a joint under feedback and the torque-limited pendulum, the same finite actuator authority a PD law runs into here
+# - [MuJoCo documentation, Computation](https://mujoco.readthedocs.io/en/stable/computation/index.html) · Google DeepMind (official documentation) · *free* — the actuation model and the bias force (Coriolis, centrifugal, gravity) that qfrc_bias reports and gravity compensation cancels
+# - [Python Numerical Methods, chapter 22 ODE Initial Value Problems](https://pythonnumericalmethods.studentorg.berkeley.edu/notebooks/chapter22.00-ODE-Initial-Value-Problems.html) · Kong, Siauw and Bayen (UC Berkeley; free online) · *free* — section 22.4 (numerical error and instability), the stepping mechanism behind a once-per-step law diverging at high gain
+
 # %%
 # Setup. Everything the lesson needs, in one cell, with versions printed by the code.
 import sys

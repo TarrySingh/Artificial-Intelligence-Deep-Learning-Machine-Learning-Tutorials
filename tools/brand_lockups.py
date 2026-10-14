@@ -89,8 +89,8 @@ def draw(name, fonts, ink, blue, saffron, stroke, bg=None):
     print(f"  wrote brand/{name}.png  ({round(W) * 2} x {H * 2} px)")
 
 
-COURSES = ("EU AI Act", "Model risk", "Maintenance", "Documents",
-           "RAG", "AI agents", "Humanoid lab")
+COURSES = ("EU AI Act", "Model risk", "Maintenance", "Documents", "Credit", "Proteomics",
+           "RAG", "AI agents", "AI for science", "Serving and training", "Humanoid lab")
 
 
 def measure(s, prop, size):
@@ -134,15 +134,17 @@ def social(fonts):
     text(ax, M, 370, "that run anywhere.", bold, 64, "#ffffff")
     text(ax, M, 430, "Autograded notebooks for Colab, Kaggle, Binder, Codespaces and Jupyter.",
          regular, 25, hsl(0, 0, 70))
-    # the courses, as quiet outlined chips
-    x, y, h = M, 492, 44
+    # the courses, as quiet outlined chips, in up to two rows that end clear of the footer line
+    x, y, h = M, 462, 40
     for c in COURSES:
         w = measure(c, regular, 20) + 36
         if x + w > W - M:
-            x, y = M, y + h + 14
+            x, y = M, y + h + 10
+            if y + h > 556:
+                raise SystemExit("social-preview: the course chips need a third row; shorten COURSES")
         ax.add_patch(FancyBboxPatch((x, y), w, h, boxstyle="round,pad=0,rounding_size=22",
                                     fc="#000000", ec=hsl(0, 0, 32), lw=1.2))
-        text(ax, x + 18, y + 29, c, regular, 20, hsl(0, 0, 88))
+        text(ax, x + 18, y + 27, c, regular, 20, hsl(0, 0, 88))
         x += w + 12
     text(ax, M, 598, "From the team building Synapsa  \u00b7  synapsa.realai.eu", regular, 20, hsl(0, 0, 55))
     fig.savefig(OUT / "social-preview.png", dpi=100, facecolor="#000000")

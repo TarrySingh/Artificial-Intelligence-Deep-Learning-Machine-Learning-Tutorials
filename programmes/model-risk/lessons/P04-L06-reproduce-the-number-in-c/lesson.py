@@ -115,6 +115,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # it and grades it. Two exercises are in Python, because the instruments a validator uses to
 # describe a gap belong next to the report, not next to the loop.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `P04-L01`, `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write, compile and run a C program from the command line with a loop over an array of double and a function that takes a pointer and a length
+# - write a Makefile with a build target and a test target, and run it with make
+# - explain why 0.1 + 0.2 != 0.3 in Python, i.e. that a double is a binary number with about 16 decimal digits of precision
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html) · David Goldberg (Oracle-hosted reprint) · *free* — the definition of an ulp and of relative error, and Theorem 8 (the Kahan summation formula) with its error bound against naive summation
+# - [math: Mathematical functions (Python documentation)](https://docs.python.org/3/library/math.html) · Python Software Foundation · *free* — math.fsum, an exactly-rounded sum, and math.ulp and math.nextafter: the Python reference and the distance-in-doubles instrument the lesson reproduces in C
+# - [Beej's Guide to C Programming](https://beej.us/guide/bgc/) · Brian Hall (Beej), free online · *free* — the chapters on variables, pointers, arrays and compiling with clang get you through the C the exercises need
+# - [Automation and Make](https://swcarpentry.github.io/make-novice/) · Software Carpentry (free online) · *free* — episodes 1 and 2, Introduction and Makefiles: targets, dependencies and recipes, enough to read and run the lesson's make test
+# - [Handbook of Floating-Point Arithmetic, 2nd edition](https://link.springer.com/book/10.1007/978-3-319-76526-6) · Muller, Brunie, de Dinechin, Jeannerod, Joldes, Lefevre et al. (Birkhauser/Springer) · *paid* — chapter 5, Enhanced Floating-Point Sums, Dot Products, and Polynomial Values: summing more accurately than the naive loop, in depth
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

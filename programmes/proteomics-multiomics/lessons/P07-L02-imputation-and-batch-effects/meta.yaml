@@ -1,0 +1,77 @@
+id: P07-L02-imputation-and-batch-effects
+title: Build a differential-abundance pipeline for a label-free quantity matrix with missing values (Benjamini-Hochberg,
+  a Welch test with holes, three imputations and a location-scale batch correction) and count what each
+  choice does to the call set against a planted truth
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- P07-L01-search-engine-and-fdr
+objectives:
+- Implement the Benjamini-Hochberg adjustment and a Welch t-test that copes with missing values, and combine
+  them into a differential-abundance call set at a promised false discovery rate
+- 'Implement three imputation strategies for a label-free quantity matrix: a minimum value per sample,
+  the nearest neighbouring proteins in the same sample, and a draw from a normal fitted to the low tail
+  of each sample'
+- Implement a location-scale batch correction and measure what it does when batch is balanced against
+  condition and when batch is correlated with condition
+- Measure, against a planted answer key, how many proteins each imputation and each correction call, how
+  many of those calls are truly differential, and how much the call sets overlap
+- Explain, from the counts the notebook prints, why a list accepted at a promised false discovery rate
+  can hold more false calls than promised, and why the answer to which imputation is best depends on which
+  kind of missing value you have
+before_you_start:
+  assumed:
+  - 'write numpy code that handles missing values: np.isnan masks, nan-aware means and standard deviations,
+    and row or column operations on a matrix'
+  - say what a null hypothesis and a p-value are, and standardise a column of numbers to a z-score
+  - read a table of counts (called, truly differential, not) and compute a proportion from it
+  resources:
+  - title: 'Computer Age Statistical Inference, chapter 15: Large-Scale Hypothesis Testing and FDRs'
+    by: Bradley Efron and Trevor Hastie (Cambridge University Press; PDF free from the authors)
+    url: https://hastie.su.domains/CASI/
+    kind: free
+    why: chapter 15 (section 15.2) sets out false discovery rates and the Benjamini-Hochberg procedure,
+      and what a promised rate is a promise about
+  - title: NIST/SEMATECH e-Handbook of Statistical Methods, 1.3.5.3 Two-Sample t-Test for Equal Means
+    by: NIST
+    url: https://www.itl.nist.gov/div898/handbook/eda/section3/eda353.htm
+    kind: free
+    why: gives the unequal-variance (Welch) statistic and the Welch-Satterthwaite degrees of freedom that
+      the lesson's Welch test computes
+  - title: Processing quantitative proteomics data with QFeatures
+    by: Laurent Gatto (Bioconductor)
+    url: https://bioconductor.org/packages/release/bioc/vignettes/QFeatures/inst/doc/Processing.html
+    kind: free
+    why: its 'Managing missing values' and 'Imputation' sections separate values missing at random from
+      values missing because they fall below detection, the distinction the lesson turns on
+  - title: A comparative study of evaluating missing value imputation methods in label-free proteomics
+    by: Jin et al. (Scientific Reports 2021, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC7815892
+    kind: free
+    why: benchmarks seven imputation methods at varied shares of values missing not at random and reports
+      false discoveries among altered proteins, the comparison the lesson reproduces in miniature
+  - title: Tackling the widespread and critical impact of batch effects in high-throughput data
+    by: Leek et al. (Nature Reviews Genetics 2010, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3880143
+    kind: free
+    why: why a batch confounded with the condition of interest misleads, and the covariate-adjustment
+      and surrogate-variable remedies, framing the balanced versus correlated batch designs
+datasets:
+- name: synthetic-label-free-quantity-matrix
+  kind: synthetic
+  description: 1200 proteins x 24 samples of log2 quantities in two conditions and two batches, 15% moderate
+    and 4% on/off differential proteins, values lost below a detection limit and at random, generated
+    in lesson.py by generate_world(seed=20260930), in a balanced and a correlated batch design
+  generator: 'lesson.py :: generate_world'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 127
+status: reviewed
+measured_seconds: 6.8
+measured_peak_mib: 82

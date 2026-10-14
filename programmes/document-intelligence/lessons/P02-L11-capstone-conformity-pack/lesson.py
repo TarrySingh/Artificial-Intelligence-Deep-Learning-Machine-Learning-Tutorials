@@ -116,6 +116,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    is documented" are different claims — and why only one of them survives a repair that
 #    merely makes the checker quieter.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`, `P02-L02`, `P02-L03`, `P02-L04`, `P02-L05`, `P02-L06`, `P02-L07`, `P02-L08`, `P02-L09`, `P02-L10`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python regular expressions with groups, and use re.finditer to walk every match in a string
+# - explain why 0.1 + 0.2 != 0.3, and compare floats within a stated tolerance or to a stated number of decimals
+# - tell a dict, a list, a string, a bool and a number apart with isinstance, and say why isinstance(True, int) is True
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Regular Expression HOWTO](https://docs.python.org/3/howto/regex.html) · Python documentation · *free* — the finditer and groups sections are the tools for extract_figures, which must find every number a document prints
+# - [Floating-Point Arithmetic: Issues and Limitations](https://docs.python.org/3/tutorial/floatingpoint.html) · Python documentation (tutorial) · *free* — representation error, and math.isclose and rounding as the way to compare a computed value with a printed one at the precision the document claims
+# - [Model Cards for Model Reporting](https://arxiv.org/abs/1810.03993) · Mitchell et al. (FAT* 2019; arXiv) · *free* — what a model-reporting document should state (intended use, evaluation data, per-group results): the kind of document the conformity pack is
+# - [Improving Reproducibility in Machine Learning Research](https://arxiv.org/abs/2003.12206) · Pineau et al. (NeurIPS 2019 reproducibility programme; arXiv) · *free* — the reproducibility checklist and what the programme found when reported results were re-checked: the motive for a gate that regenerates every figure
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

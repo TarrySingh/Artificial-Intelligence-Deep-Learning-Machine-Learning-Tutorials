@@ -1,0 +1,369 @@
+# Every factual claim this programme's README.md and MODULES.md make about the world, with a
+# primary source and the date the source was read. Each source below was fetched and read on the
+# access date; none of these entries rests on a search-result summary or on memory. Where a
+# source is an abstract, the abstract was read from the PubMed record (efetch, abstract format).
+#
+# Per-lesson claims live in the lesson's own claims.yaml (module 1's covers trypsin, fragment-ion
+# masses, the hyperscore, target-decoy counting and protein inference). Numbers a student sees in
+# notebook output are computed by code they run and are not claims.
+claims:
+  - id: alphadia-published-2026
+    claim: >-
+      AlphaDIA, a modular open-source search framework for data-independent acquisition (DIA)
+      proteomics, was published in Nature Biotechnology, volume 44, issue 7 (July 2026), pages
+      1168-1177 (DOI 10.1038/s41587-025-02791-w); the record gives an online-first date of 21
+      October 2025, so the issue year is 2026 although the DOI carries 025. The paper describes a
+      search strategy called DIA transfer learning that uses fully predicted libraries. It is the
+      dated event that makes DIA and open search the current subject rather than a history lesson.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 1"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/41120665/
+    source_title: "Wallmann G, et al. AlphaDIA enables DIA transfer learning for feature-free proteomics. Nat Biotechnol 2026;44(7):1168-1177. DOI 10.1038/s41587-025-02791-w. PMID 41120665"
+    quote: >-
+      Here we present alphaDIA, a modular open-source search framework for data-independent
+      acquisition (DIA) proteomics.
+    quote_context: >-
+      the abstract, which goes on to describe "a search strategy named DIA transfer learning that
+      uses fully predicted libraries"; the PubMed record's citation line reads "Nat Biotechnol.
+      2026 Jul;44(7):1168-1177" and "Epub 2025 Oct 21"
+    accessed: 2026-09-29
+
+  - id: pride-datasets-per-month
+    claim: >-
+      The 2025 update of the PRIDE database paper reports that submissions to the PRIDE Archive
+      had reached on average around 534 datasets per month. Public proteomics data is therefore
+      abundant enough that reprocessing it is a routine way to work, which is why the programme
+      is organised around public archives and why the licence of each record matters.
+    where: "README.md — 'Why this programme, and why now'"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/39494541/
+    source_title: "Perez-Riverol Y, et al. The PRIDE database at 20 years: 2025 update. Nucleic Acids Res 2025;53(D1):D543-D553. DOI 10.1093/nar/gkae1011. PMID 39494541"
+    quote: >-
+      The number of submitted datasets to PRIDE Archive (the archival component of PRIDE) has
+      reached on average around 534 datasets per month.
+    quote_context: "the abstract; the same paper calls PRIDE a founding member of the ProteomeXchange consortium"
+    accessed: 2026-09-29
+
+  - id: sage-open-engine
+    claim: >-
+      Sage is an open-source proteomics search tool whose author reports that it matches the
+      performance of state-of-the-art software tools while running an order of magnitude
+      faster. It is one of the production engines the programme's first module says its toy
+      engine is not a rival to; the paper's title calls it open-source.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 1"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/37819886/
+    source_title: "Lazear MR. Sage: An Open-Source Tool for Fast Proteomics Searching and Quantification at Scale. J Proteome Res 2023;22(11):3652-3659. DOI 10.1021/acs.jproteome.3c00486"
+    quote: >-
+      Sage matches the performance of state-of-the-art software tools while running an order of
+      magnitude faster.
+    quote_context: "the abstract"
+    accessed: 2026-09-29
+
+  - id: msfragger-open-engine
+    claim: >-
+      MSFragger is a peptide identification tool built on a fragment-ion indexing method, reported
+      in 2017 to give a more than 100-fold speed improvement over most existing proteome database
+      search tools. It is the other production engine the first module's toy is not a rival to.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 1"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/28394336/
+    source_title: "Kong AT, Leprevost FV, Avtonomov DM, Mellacheruvu D, Nesvizhskii AI. MSFragger: ultrafast and comprehensive peptide identification in mass spectrometry-based proteomics. Nat Methods 2017;14(5):513-520. DOI 10.1038/nmeth.4256"
+    quote: >-
+      enables a more than 100-fold improvement in speed over most existing proteome database
+      search tools
+    accessed: 2026-09-29
+
+  - id: msfragger-academic-licence
+    claim: >-
+      MSFragger is not open source. Its README says it is available freely for academic research,
+      non-commercial or educational purposes under an academic licence, and that other uses need a
+      commercial licence. The programme's documents therefore call Sage open-source and MSFragger
+      free for academic use, and no module depends on MSFragger. The README is on the default
+      branch, which moves; the version read was the last commit to it,
+      8a143152285d36e2958e6e3013017fa4ca62fdcc of 23 March 2026.
+    where: "README.md — 'Why this programme, and why now'; MODULES.md — module 1"
+    source_url: https://raw.githubusercontent.com/Nesvilab/MSFragger/master/README.md
+    source_title: "MSFragger README, section License, github.com/Nesvilab/MSFragger"
+    quote: >-
+      MSFragger is available freely for __academic research__, __non-commercial__ or
+      __educational__ purposes under [academic license]
+    quote_context: >-
+      the README's License section (the underscores and brackets are its own Markdown); the next
+      paragraph reads "Other uses require a __commercial__ license"
+    accessed: 2026-09-29
+
+  - id: dia-peptide-centric
+    claim: >-
+      In data-independent acquisition (here the SWATH-MS variant) all ionised peptides within a
+      specified mass range are fragmented together using rather large precursor isolation
+      windows, and its analysis is peptide-centric, which is why the first module's
+      one-precursor-per-spectrum engine is a data-dependent search and not a DIA search, and
+      says so.
+    where: "MODULES.md — module 1 (what the catalogue's DIA lab is and is not)"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/30104418/
+    source_title: "Ludwig C, Gillet L, Rosenberger G, Amon S, Collins BC, Aebersold R. Data-independent acquisition-based SWATH-MS for quantitative proteomics: a tutorial. Mol Syst Biol 2018;14(8):e8126. DOI 10.15252/msb.20178126"
+    quote: >-
+      In a SWATH-MS measurement, all ionized peptides of a given sample that fall within a
+      specified mass range are fragmented in a systematic and unbiased fashion using rather large
+      precursor isolation windows.
+    quote_context: >-
+      the abstract, which continues "To analyse SWATH-MS data, a strategy based on peptide-centric
+      scoring has been established"
+    accessed: 2026-09-29
+
+  - id: pride-record-licence-field
+    claim: >-
+      The public PRIDE Archive web service returns, for each dataset record, a licence field taken
+      from the submission. For the archive's first dataset, PXD000001, that field reads "EBI terms
+      of use". The licence is therefore a property of the individual dataset record, and the
+      programme's dataset ledger requires it to be read from that record before any extract of a
+      PRIDE submission is committed.
+    where: "README.md — 'The dataset ledger'"
+    source_url: https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD000001
+    source_title: "PRIDE Archive web service, project record PXD000001 (JSON)"
+    quote: >-
+      "license" : "EBI terms of use"
+    quote_context: "a field of the JSON record returned for accession PXD000001"
+    accessed: 2026-09-29
+
+  - id: pride-example-raw-file-size
+    claim: >-
+      The raw instrument file of the archive's first submission, PXD000001, which is a single
+      LC-MS run, is 220,475,548 bytes according to the archive's own file listing. That is the
+      scale of one raw file of one run, and a study with more runs downloads more. It is why the
+      programme's labs generate their spectra rather than download them, and why any extract has
+      to be chosen and licensed deliberately.
+    where: "README.md — 'Compute and data honesty'"
+    source_url: https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD000001/files?pageSize=100
+    source_title: "PRIDE Archive web service, file listing for PXD000001 (JSON)"
+    quote: >-
+      "fileSizeBytes" : 220475548
+    quote_context: >-
+      the entry whose fileName is TMT_Erwinia_1uLSike_Top10HCD_isol2_45stepped_60min_01.raw and
+      whose file category is RAW; the same listing has a 243,031,280-byte mzXML conversion of it
+    accessed: 2026-09-29
+
+  - id: ebi-terms-no-additional-restriction
+    claim: >-
+      EMBL-EBI, which hosts PRIDE and MetaboLights, states that where it presents scientific data
+      generated by others it imposes no additional restriction on the use of the contributed data
+      beyond those provided by the data owner. The terms on any given dataset are therefore the
+      data owner's, which is why the ledger records them per dataset rather than once per archive.
+    where: "README.md — 'The dataset ledger'"
+    source_url: https://www.ebi.ac.uk/about/terms-of-use
+    source_title: "EMBL-EBI terms of use, last revised 14th October 2026"
+    quote: >-
+      Where EMBL-EBI presents scientific data generated by others, EMBL-EBI imposes no additional
+      restriction on the use of the contributed data than those provided by the data owner
+    quote_context: >-
+      the 'General' section; the sentence continues ", unless otherwise specified in these Terms of
+      Use", as it did before. Re-read on 2026-10-14: the page was revised that day (it had read
+      'Last revised: 5th February 2024' on 2026-09-29). Compared with the archived February 2024
+      text, the revision only adds Access and Benefit Sharing to the uploader's duties and to the
+      third-party rights on the original data; the quoted sentence is unchanged.
+    accessed: 2026-10-14
+
+  - id: proteomexchange-ownership-and-licences
+    claim: >-
+      The ProteomeXchange consortium's data submission guidelines (version 3.0.1, 13 October 2019)
+      say that the original submitter and the principal investigator remain the owners of a
+      submitted dataset, and that the member resources had decided to move towards a default CC0
+      licence as a minimum. The document is dated: the per-dataset licence field is the current
+      record, and this is the policy context.
+    where: "README.md — 'The dataset ledger'"
+    source_url: https://www.proteomexchange.org/docs/guidelines_px.pdf
+    source_title: "ProteomeXchange and proteomics data submission, Data Submission Guidelines for the ProteomeXchange Consortium, version 3.0.1, 13 October 2019"
+    quote: >-
+      the original submitter and the corresponding Principal Investigator (PI) are the owners of
+      these data
+    quote_context: >-
+      section 6; section 7 says "all PX resources have decided to move towards a default Creative
+      Commons CC0 license as a minimum level" and "CC0 was already the default existing license for
+      datasets in MassIVE and jPOST", and its Table 4 (by September 2019) lists MassIVE's default
+      license type as CC0; the README's MassIVE sentence rests on this
+    accessed: 2026-09-29
+
+  - id: metabolights-record-licence-field
+    claim: >-
+      The public MetaboLights web service returns a dataset licence for each study. For the first
+      study, MTBLS1, it reads "EMBL-EBI Terms of Use", and the record carries a revision comment
+      "updating data license" dated 2 September 2025. As with PRIDE, the licence is read from the
+      study's own record, and the record can change.
+    where: "README.md — 'The dataset ledger'; MODULES.md — module 3"
+    source_url: https://www.ebi.ac.uk/metabolights/ws/studies/MTBLS1
+    source_title: "MetaboLights web service, study record MTBLS1 (JSON)"
+    quote: >-
+      "datasetLicense": "EMBL-EBI Terms of Use"
+    quote_context: >-
+      a field of the JSON record returned for MTBLS1, next to "datasetLicenseUrl":
+      "https://www.ebi.ac.uk/about/terms-of-use/" and "revisionComment": "updating data license"
+    accessed: 2026-09-29
+
+  - id: metabolights-is-ebi-database
+    claim: >-
+      MetaboLights describes itself as the EBI's database for metabolomics experiments and
+      derived information, so the EMBL-EBI terms of use above are the terms its records fall under
+      unless a record's own licence field says otherwise.
+    where: "README.md — 'The dataset ledger'"
+    source_url: https://www.ebi.ac.uk/metabolights/
+    source_title: "MetaboLights home page, EMBL-EBI"
+    quote: >-
+      MetaboLights — the EBI's database for metabolomics experiments and derived information.
+    quote_context: "the content of the page's meta description tag"
+    accessed: 2026-09-29
+
+  - id: lazar-missing-values
+    claim: >-
+      In label-free quantitative proteomics, the missingness mechanism differs between data sets
+      and each imputation method is devoted to a specific type of missingness, so the question is
+      not which imputation method is most accurate in general but which is most appropriate. This
+      is the premise of module 2, whose lab reports how each of three imputation strategies
+      changes a differential-abundance call set instead of ranking them.
+    where: "MODULES.md — module 2"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/26906401/
+    source_title: "Lazar C, Gatto L, Ferro M, Bruley C, Burger T. Accounting for the Multiple Natures of Missing Values in Label-Free Quantitative Proteomics Data Sets to Compare Imputation Strategies. J Proteome Res 2016;15(4):1116-25. DOI 10.1021/acs.jproteome.5b00981"
+    quote: >-
+      we believe that the question at stake is not to find the most accurate imputation method in
+      general but instead the most appropriate one
+    accessed: 2026-09-29
+
+  - id: leek-batch-effects
+    claim: >-
+      Batch effects, which occur because measurements are affected by laboratory conditions,
+      reagent lots and personnel differences, are a major problem when they are correlated with an
+      outcome of interest, and lead to incorrect conclusions. This is the hazard modules 2 and 5
+      are built around.
+    where: "MODULES.md — modules 2 and 5"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/20838408/
+    source_title: "Leek JT, Scharpf RB, Bravo HC, Simcha D, Langmead B, Johnson WE, Geman D, Baggerly K, Irizarry RA. Tackling the widespread and critical impact of batch effects in high-throughput data. Nat Rev Genet 2010;11(10):733-9. DOI 10.1038/nrg2825"
+    quote: >-
+      This becomes a major problem when batch effects are correlated with an outcome of interest
+      and lead to incorrect conclusions.
+    quote_context: "the abstract"
+    accessed: 2026-09-29
+
+  - id: charbonnet-confidence-scale
+    claim: >-
+      Non-target high-resolution mass spectrometry identifications are communicated on graded
+      confidence scales. One published scale, for per- and polyfluoroalkyl substances, runs from
+      level 1a, confirmed by a reference standard, to level 5, exact masses of interest, and its
+      authors say it is consistent with the general criteria for communicating confidence in the
+      identification of small organic molecules by high-resolution mass spectrometry. Module 3's
+      lab reports each annotation with an explicit level for that reason. The scale cited is
+      PFAS-specific and is used here as an example of the form, not as the scale the lesson
+      applies.
+    where: "MODULES.md — module 3"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/35719859/
+    source_title: "Charbonnet JA, McDonough CA, Xiao F, Schwichtenberg T, Cao D, Kaserzon S, Thomas KV, Dewapriya P, Place BJ, Schymanski EL, Field JA, Helbling DE, Higgins CP. Communicating Confidence of Per- and Polyfluoroalkyl Substance Identification via High-Resolution Mass Spectrometry. Environ Sci Technol Lett 2022;9(6):473-481. DOI 10.1021/acs.estlett.2c00206"
+    quote: >-
+      Confidence levels range from level 1a-"Confirmed by Reference Standard," and level
+      1b-"Indistinguishable from Reference Standard," to level 5-"Exact Masses of Interest,"
+    quote_context: >-
+      the abstract, which continues "This confidence scale is consistent with general criteria for
+      communicating confidence in the identification of small organic molecules by HRMS"
+    accessed: 2026-09-29
+
+  - id: mofa-plus
+    claim: >-
+      MOFA+ is a statistical framework for the integration of single-cell multi-modal data that
+      reconstructs a low-dimensional representation using variational inference, and supports
+      sparsity constraints. It is the factor-model half of module 4's comparison.
+    where: "MODULES.md — module 4"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/32393329/
+    source_title: "Argelaguet R, Arnol D, Bredikhin D, Deloro Y, Velten B, Marioni JC, Stegle O. MOFA+: a statistical framework for comprehensive integration of multi-modal single-cell data. Genome Biol 2020;21(1):111. DOI 10.1186/s13059-020-02015-1"
+    quote: >-
+      MOFA+ reconstructs a low-dimensional representation of the data using computationally
+      efficient variational inference and supports flexible sparsity constraints
+    quote_context: "the abstract"
+    accessed: 2026-09-29
+
+  - id: totalvi-citeseq
+    claim: >-
+      totalVI is a framework for the end-to-end joint analysis of CITE-seq data that
+      probabilistically represents the data as a composite of biological and technical factors,
+      including protein background and batch effects. It is the deep-generative half of module 4's
+      comparison.
+    where: "MODULES.md — module 4"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/33589839/
+    source_title: "Gayoso A, Steier Z, Lopez R, Regier J, Nazor KL, Streets A, Yosef N. Joint probabilistic modeling of single-cell multi-omic data with totalVI. Nat Methods 2021;18(3):272-282. DOI 10.1038/s41592-020-01050-x"
+    quote: >-
+      a framework for end-to-end joint analysis of CITE-seq data that probabilistically
+      represents the data as a composite of biological and technical factors, including protein
+      background and batch effects
+    quote_context: "the abstract"
+    accessed: 2026-09-29
+
+  - id: scvi-tools-needs-pytorch
+    claim: >-
+      totalVI ships in scvi-tools, whose README describes the package as built on top of PyTorch.
+      PyTorch is not in this repository's standard environment (numpy, matplotlib and the
+      standard library), so module 4 cannot run totalVI itself on its tier and says so. It builds
+      a factor model and a small latent-variable network in numpy instead.
+    where: "MODULES.md — module 4"
+    source_url: https://raw.githubusercontent.com/scverse/scvi-tools/main/README.md
+    source_title: "scvi-tools README, github.com/scverse/scvi-tools (default branch, which moves)"
+    quote: >-
+      built on top of [PyTorch] and [AnnData]
+    quote_context: "the README's opening description of the package; the brackets are the README's own link markup"
+    accessed: 2026-09-29
+
+  - id: mofapy2-dependencies
+    claim: >-
+      MOFA+'s Python package, mofapy2, declares numpy, pandas, scipy, scikit-learn and h5py as its
+      dependencies. pandas, scipy, scikit-learn and h5py are not in this repository's standard
+      environment, so module 4 cannot run MOFA+ itself on its tier any more than it can run
+      totalVI, and says so. The file is on the default branch, which moves; the version read was
+      the last commit to it, 90418e5021b3ae735ebf1fea5d7e07cae71c8bb7 of 26 August 2026.
+    where: "MODULES.md — module 4"
+    source_url: https://raw.githubusercontent.com/bioFAM/mofapy2/master/pyproject.toml
+    source_title: "mofapy2 pyproject.toml, [tool.poetry.dependencies], github.com/bioFAM/mofapy2"
+    quote: >-
+      scikit-learn = "~1"
+    quote_context: >-
+      the [tool.poetry.dependencies] table, which also lists numpy = "*", pandas = "*",
+      scipy = "~1" and h5py = "~3"
+    accessed: 2026-09-29
+
+  - id: nesvizhskii-proteogenomics
+    claim: >-
+      In proteogenomics, customised protein sequence databases generated from genomic and
+      transcriptomic information are used to identify novel peptides that are not in reference
+      protein sequence databases, and the review draws attention to the challenge of false
+      positive identifications in proteogenomics. Module 6 measures how many variant peptides are
+      supported by spectra for that reason.
+    where: "MODULES.md — module 6"
+    source_url: https://pubmed.ncbi.nlm.nih.gov/25357241/
+    source_title: "Nesvizhskii AI. Proteogenomics: concepts, applications and computational strategies. Nat Methods 2014;11(11):1114-25. DOI 10.1038/nmeth.3144"
+    quote: >-
+      I also draw attention to the challenge of false positive identifications in proteogenomics
+    quote_context: >-
+      the abstract, which begins "Proteogenomics is an area of research at the interface of
+      proteomics and genomics"
+    accessed: 2026-09-29
+
+  - id: cptac-package-hosting-and-licence
+    claim: >-
+      The cptac Python package's README says its maintainers are having difficulty with the API on
+      Zenodo and are working to find a better host for their data, and asks readers to note the
+      difference between the licence as it applies to code and to data. The catalogue lists CPTAC
+      as an optional module; for those two reasons nothing in this programme depends on it.
+    where: "MODULES.md — 'What is deliberately not here'"
+    source_url: https://raw.githubusercontent.com/PayneLab/cptac/master/README.md
+    source_title: "cptac README, github.com/PayneLab/cptac (default branch, which moves)"
+    quote: >-
+      We are having difficulty with the API on Zenodo and are working to find a better host for
+      our data.
+    quote_context: >-
+      the first paragraph of the README; a later section says "Please note the difference between
+      the license as it applies to code versus data."
+    accessed: 2026-09-29
+
+# --- deliberate non-claims -------------------------------------------------------------------
+# * No salary, vacancy-count or "demand is rising" figure is quoted. The catalogue's planning note
+#   for this programme cites a job-board salary range; job-board figures are not primary, move
+#   weekly, and could not be checked against a page that will say the same thing next quarter.
+#   The README names the job titles the programme is for and makes no claim about pay or hiring.
+# * No claim is made that this programme leads to a job, a certification or a publication.
+# * The synthetic worlds in every module are inventions. Nothing in them is claimed to describe a
+#   real organism, instrument, cohort or search, and each notebook says so in its first screen.
+# * The catalogue's labs that reprocess public archives (module 1's PRIDE DIA reproduction,
+#   module 3's MetaboLights study, module 4's public CITE-seq data, module 6's public
+#   proteogenomic cohort) are NOT reproduced. MODULES.md says why, module by module, and what
+#   replaces each.

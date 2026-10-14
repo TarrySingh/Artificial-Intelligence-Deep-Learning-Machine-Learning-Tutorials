@@ -116,6 +116,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # it and grades it. The sixth, in Python, is the unit conversion without which no memory
 # figure in this lesson means anything.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a C program that reads standard input with fread into a fixed buffer, using arrays, pointers and structs
+# - build and run a C program with make and a compiler, and pipe one program's output into another in a shell
+# - use unsigned 64-bit integers in C, including shifts, XOR and wrap-around multiplication
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Beej's Guide to C Programming](https://beej.us/guide/bgc/) · Brian Hall (Beej), free online · *free* — the chapters on pointers, arrays, structs and File Input/Output (fread, EOF) cover the C the monitor is written in
+# - [getrusage(2) Linux manual page](https://man7.org/linux/man-pages/man2/getrusage.2.html) · Linux man-pages project · *free* — ru_maxrss and the RUSAGE_CHILDREN note: it is the resident set size of the largest child, the peak-memory measurement the harness takes
+# - [splitmix64.c](https://prng.di.unimi.it/splitmix64.c) · Sebastiano Vigna (public domain, on the prng.di.unimi.it site) · *free* — the reference splitmix64 generator in a dozen lines of C, the generator the lesson shares between C and Python so a sample reproduces bit for bit
+# - [reservoir sampling (Dictionary of Algorithms and Data Structures)](https://xlinux.nist.gov/dads/HTML/reservoirSampling.html) · NIST · *free* — a short statement of the algorithm for choosing k items from a stream of unknown length, an in-memory variant of Knuth's Algorithm 3.4.2R
+# - [The Art of Computer Programming, Volume 2: Seminumerical Algorithms, 3rd edition](https://www.informit.com/store/art-of-computer-programming-volume-2-seminumerical-algorithms-9780201896848) · Donald E. Knuth (Addison-Wesley, via InformIT) · *paid* — section 3.4.2, Random Sampling and Shuffling, where Algorithm R, the reservoir method the lesson implements, is given
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import atexit

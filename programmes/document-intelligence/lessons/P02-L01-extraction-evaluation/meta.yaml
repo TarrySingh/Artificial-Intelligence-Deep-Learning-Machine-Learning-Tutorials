@@ -16,6 +16,31 @@ objectives:
 - Implement a confidence-ordered review queue under a fixed budget and measure the macro-F1 it buys per
   unit of cost
 - Explain why the harness is built before the extractor rather than after it
+before_you_start:
+  assumed:
+  - write Python functions with loops, dicts and sets, and read a docstring with a worked example
+  - compute precision, recall and F1 by hand from counts of true positives, false positives and false
+    negatives
+  - clean text with str methods and simple regular expressions (strip, lower, replace, re.sub)
+  - 'read a confusion matrix: rows are the true class, columns the predicted class'
+  resources:
+  - title: 'Introduction to Information Retrieval, section 8.3: Evaluation of unranked retrieval sets'
+    by: Manning, Raghavan and Schütze (Cambridge University Press; free online)
+    url: https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-unranked-retrieval-sets-1.html
+    kind: free
+    why: defines precision, recall and the F measure, the three quantities score_field computes per field
+  - title: 'scikit-learn user guide: Metrics and scoring'
+    by: scikit-learn developers (official documentation)
+    url: https://scikit-learn.org/stable/modules/model_evaluation.html
+    kind: free
+    why: the confusion-matrix and precision/recall/F-measure sections, including macro versus micro averaging,
+      to check your scorer against
+  - title: 'Speech and Language Processing, chapter: Words and Tokens'
+    by: Jurafsky and Martin (Stanford; free drafts)
+    url: https://web.stanford.edu/~jurafsky/slp3/2.pdf
+    kind: free
+    why: section 2.9 (minimum edit distance) explains the Levenshtein distance behind the fuzzy matcher;
+      section 2.6 (regular expressions) helps with normalise_value
 datasets: []
 points: 90
 status: reviewed

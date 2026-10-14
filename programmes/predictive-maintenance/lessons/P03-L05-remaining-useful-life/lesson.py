@@ -126,6 +126,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # extension you can run this same code against afterwards. The method transfers. The
 # particular numbers describe no real fleet.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L04`
+#
+# **This lesson assumes you can already:**
+#
+# - fit a line to noisy points by least squares and say what its slope and intercept mean
+# - multiply and invert small matrices in numpy with @ and np.linalg.inv
+# - draw samples from a normal distribution with numpy and read a 5th-95th percentile interval from them
+# - say what taking a logarithm does to exponential growth
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Metrics for Offline Evaluation of Prognostic Performance](https://papers.phmsociety.org/index.php/ijphm/article/view/1336) · Saxena, Celaya, Saha, Saha and Goebel (NASA Ames; IJPHM 2010, open access) · *free* — the RUL error metrics, the prognostic horizon and the alpha-lambda accuracy cone that exercise 7 builds, and how the metrics are applied as a hierarchy of tests
+# - [Damage Propagation Modeling for Aircraft Engine Prognostics](https://ntrs.nasa.gov/api/citations/20090029214/downloads/20090029214.pdf) · Saxena, Goebel, Simon and Eklund (NASA, PHM 2008) · *free* — how the C-MAPSS run-to-failure data were generated and the asymmetric score of the PHM08 challenge that exercise 6 implements
+# - [Probabilistic Machine Learning: An Introduction](https://probml.github.io/pml-book/book1.html) · Kevin P. Murphy (MIT Press; free PDF from the author) · *free* — section 11.7 on Bayesian linear regression: the prior, the Gaussian posterior and the posterior predictive that fit_posterior and the RUL interval rest on
+# - [Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares](https://web.stanford.edu/~boyd/vmls/) · Stephen Boyd and Lieven Vandenberghe (Cambridge University Press; free PDF) · *free* — chapter 11 on matrix inverses and chapters 12 and 13 on least squares and least-squares data fitting: the line fit and matrix algebra the posterior is built from
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

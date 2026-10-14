@@ -1,0 +1,324 @@
+claims:
+- id: trypsin-cleaves-after-arg-lys
+  claim: Trypsin cleaves preferentially after arginine and lysine. The lesson's digest cuts after every
+    K or R, which is the simplified rule that most search engines use as their default.
+  where: lesson.py section 2 (exercise 1, digest)
+  source_url: https://web.expasy.org/peptide_cutter/peptidecutter_enzymes.html
+  source_title: 'PeptideCutter: enzymes and their cleavage rules, SIB Swiss Institute of Bioinformatics
+    (ExPASy)'
+  quote: Preferentially cleaves at Arg and Lys in position P1
+  quote_context: the Trypsin entry, which cites Keil, 1992; P1 is the residue before the cleaved bond
+  accessed: 2026-09-29
+- id: trypsin-proline-rule-and-exceptions
+  claim: A proline in the position after the cleavage site usually blocks trypsin, which is the rule the
+    lesson uses (no cut when K or R is followed by P). The same source lists exceptions to it, and further
+    situations in which a Lys or Arg bond is blocked, so the lesson's rule is a simplification and says
+    so.
+  where: lesson.py section 2 (exercise 1, digest)
+  source_url: https://web.expasy.org/peptide_cutter/peptidecutter_enzymes.html
+  source_title: 'PeptideCutter: enzymes and their cleavage rules, SIB Swiss Institute of Bioinformatics
+    (ExPASy)'
+  quote: Pro usually blocks the action when found in position P1'
+  quote_context: the same Trypsin entry, which continues "but not when Lys is in position P1 and Trp is
+    in position P2 at the same time" and lists further blocking contexts
+  accessed: 2026-09-29
+- id: residue-mass-table
+  claim: The twenty monoisotopic amino-acid residue masses in RESIDUE_MASS are the values in Matrix Science's
+    Mascot amino-acid reference table (glycine 57.021464, alanine 71.037114, and so on; isoleucine and
+    leucine are identical at 113.084064). All twenty were compared with the page on the access date, and
+    separately recomputed from the elemental compositions the same table lists, using the NIST monoisotopic
+    masses of the elements, to within 1e-5 Da.
+  where: lesson.py setup cell (RESIDUE_MASS) and exercise 2
+  source_url: https://www.matrixscience.com/help/aa_help.html
+  source_title: 'Mascot: Amino acid reference data, Matrix Science'
+  quote: To calculate the mass of a neutral peptide or protein, sum the residue masses plus the masses
+    of the terminating groups (e.g. H at the N-terminus and OH at the C-terminus).
+  quote_context: the sentence above the table; the Glycine row lists C 2 H 3 NO with monoisotopic mass
+    57.021464
+  accessed: 2026-09-29
+- id: fragment-ion-series
+  claim: When a peptide fragments along its backbone, a fragment that keeps the charge on the N-terminal
+    side is an a, b or c ion, and one that keeps it on the C-terminal side is an x, y or z ion. The lesson
+    uses b and y ions only, each with one charge.
+  where: lesson.py section 3 (exercise 2, fragment_ions)
+  source_url: https://www.matrixscience.com/help/fragmentation_help.html
+  source_title: 'Mascot: Peptide fragmentation, Matrix Science'
+  quote: If this charge is retained on the N terminal fragment, the ion is classed as either a, b or c.
+  quote_context: the next sentence gives x, y or z for the C terminal
+  accessed: 2026-09-29
+- id: y-ion-extra-proton
+  claim: y ions abstract an additional proton from the precursor peptide, which is why the lesson's y_i
+    is the sum of the last i residue masses plus one water plus one proton, while b_i is the sum of the
+    first i residue masses plus one proton only.
+  where: lesson.py section 3 (exercise 2, fragment_ions)
+  source_url: https://www.matrixscience.com/help/fragmentation_help.html
+  source_title: 'Mascot: Peptide fragmentation, Matrix Science'
+  quote: In addition to the proton(s) carrying the charge, c ions and y ions abstract an additional proton
+    from the precursor peptide.
+  accessed: 2026-09-29
+- id: proton-mass
+  claim: The mass of the proton is 1.0072764666 u, the 2022 CODATA recommended value (1.007 276 466 5789
+    u), which PROTON in the lesson rounds to ten decimal places.
+  where: lesson.py setup cell (PROTON)
+  source_url: https://physics.nist.gov/cgi-bin/cuu/Value?mpu
+  source_title: 'CODATA Value: proton mass in u, NIST Fundamental Physical Constants'
+  quote: 1.007 276 466 5789 u
+  quote_context: 'Numerical value; source: 2022 CODATA recommended values'
+  accessed: 2026-09-29
+- id: hydrogen-monoisotopic-mass
+  claim: The relative atomic mass of hydrogen-1 is 1.00782503223, which enters WATER.
+  where: lesson.py setup cell (WATER)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=H&ascii=ascii2&isotype=some
+  source_title: Atomic Weights and Isotopic Compositions for Hydrogen, NIST
+  quote: Relative Atomic Mass = 1.00782503223(9)
+  quote_context: the Mass Number = 1 entry
+  accessed: 2026-09-29
+- id: oxygen-monoisotopic-mass
+  claim: The relative atomic mass of oxygen-16 is 15.99491461957. With two hydrogen-1 it gives the monoisotopic
+    mass of water used as WATER, 2 x 1.00782503223 + 15.99491461957 = 18.0105646838.
+  where: lesson.py setup cell (WATER)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=O&ascii=ascii2&isotype=some
+  source_title: Atomic Weights and Isotopic Compositions for Oxygen, NIST
+  quote: Relative Atomic Mass = 15.99491461957(17)
+  quote_context: the Mass Number = 16 entry
+  accessed: 2026-09-29
+- id: search-engines-always-answer
+  claim: Sequence search engines return a result even for spectra that cannot be matched, so correct and
+    incorrect identifications have to be told apart by a separate procedure. The target-decoy strategy
+    is described by its authors as a straightforward and effective way to do so, and they recommend searching
+    a concatenated target-decoy database over separate searches.
+  where: lesson.py section 1 and section 6 (exercise 4, decoys)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/17327847/
+  source_title: Elias JE, Gygi SP. Target-decoy search strategy for increased confidence in large-scale
+    protein identifications by mass spectrometry. Nat Methods 2007;4(3):207-14. DOI 10.1038/nmeth1019
+  quote: As most sequence search engines return results even for 'unmatchable' spectra, proteome researchers
+    must devise ways to distinguish correct from incorrect peptide identifications.
+  quote_context: the abstract, which goes on to say "The target-decoy search strategy represents a straightforward
+    and effective way to manage this effort" and lists "(ii) concatenated target-decoy database searches
+    are preferable to separate target and decoy database searches"
+  accessed: 2026-09-29
+- id: decoy-false-discovery-estimate
+  claim: Elias and Gygi's abstract states that the major assumptions of the target-decoy strategy are
+    reasonable, and that alternate methods of constructing decoy databases are similarly effective once
+    certain considerations are taken into account. The lesson reverses; the next entry names shuffling
+    and reversal as the usual two constructions and sources the formula the lesson uses, D / T, which
+    this abstract does not give.
+  where: lesson.py section 6 (exercise 4) and section 8 (the assumption test)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/17327847/
+  source_title: Elias JE, Gygi SP. Target-decoy search strategy for increased confidence in large-scale
+    protein identifications by mass spectrometry. Nat Methods 2007;4(3):207-14. DOI 10.1038/nmeth1019
+  quote: (i) the major assumptions made with this database search strategy are reasonable
+  quote_context: the abstract, item (i) of four issues addressed; item (iv) is "alternate methods for
+    constructing decoy databases are similarly effective once certain considerations are taken into account"
+  accessed: 2026-09-29
+- id: target-decoy-competition-estimates
+  claim: 'In target-decoy competition each spectrum keeps only its best match in the concatenated database.
+    Elias and Gygi''s estimate is over the combined list of targets and decoys: twice the number of decoys
+    divided by the length of the list, 2D / (T + D). The target-only variant, which reports only target
+    hits as this lesson does, estimates the FDR as the number of decoys divided by the number of targets,
+    D / T. The analysis that shows both are consistent estimates assumes no ties, or ties broken at random;
+    the lesson''s decoy-wins tie rule is its own, conservative convention, and says so.'
+  where: lesson.py section 8 (exercise 6, the tie rule) and section 9 (exercise 7, q_values)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4533616/fullTextXML
+  source_title: Keich U, Kertesz-Farkas A, Noble WS. Improved False Discovery Rate Estimation Procedure
+    for Shotgun Proteomics. J Proteome Res 2015;14(8):3148-61. DOI 10.1021/acs.jproteome.5b00081. PMCID
+    PMC4533616 (open access full text)
+  quote: The FDR estimate is simply the number of decoys divided by the number of targets
+  quote_context: the introduction, on the target-only variant (T-TDC); the sentence before it, on Elias
+    and Gygi's combined list (C-TDC), reads "The estimated FDR is simply twice the number of decoys in
+    the list, divided by the total length of the list", and section 2.2 states its assumption "(assuming
+    no ties or that ties are randomly broken)"; the introduction describes the decoys as "a decoy database
+    of shuffled or reversed peptides"
+  accessed: 2026-09-29
+- id: decoy-plus-one-correction
+  claim: When decoy counting is used for q-value estimation and filtering, a correction has to be introduced
+    into the common equations for target-decoy FDR estimation; the correction matters most for small sets
+    and very low thresholds. The abstract does not give the form of the correction; the next entry, the
+    same authors' software, names it the "+1" correction.
+  where: lesson.py section 9 (exercise 7, q_values)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/27959540/
+  source_title: Levitsky LI, Ivanov MV, Lobas AA, Gorshkov MV. Unbiased False Discovery Rate Estimation
+    for Shotgun Proteomics Based on the Target-Decoy Approach. J Proteome Res 2017;16(2):393-397. DOI
+    10.1021/acs.jproteome.6b00144
+  quote: when decoy counting is used for q value estimation and subsequent filtering, a correction has
+    to be introduced into these common equations for TDA-based FDR estimation
+  quote_context: the abstract; it adds that "The necessity of both the correction and the use of confidence
+    intervals is especially pronounced when filtering small sets ... and when using very low FDR thresholds"
+  accessed: 2026-09-29
+- id: plus-one-correction-form
+  claim: Pyteomics, the Python library of the same group (Levitsky, Ivanov, Gorshkov), offers a "+1" correction
+    to decoy counting in its q-value functions, off by default, and points to the Levitsky et al. paper
+    for the explanation. That is the form of the lesson's plus_one option, D replaced by D + 1, and the
+    lesson likewise keeps the plain ratio as its default. The file is on Pyteomics' default branch, which
+    moves; the version read was the last commit to it, aec2973e0ed8c5dab95fe426e1f743fc28d21696 of 20
+    March 2025.
+  where: lesson.py section 9 (exercise 7, q_values)
+  source_url: https://raw.githubusercontent.com/levitsky/pyteomics/master/pyteomics/auxiliary/target_decoy.py
+  source_title: Pyteomics, pyteomics/auxiliary/target_decoy.py, docstring of the q-value functions, github.com/levitsky/pyteomics
+  quote: '1: enable "+1" correction. This accounts for the probability that a false positive scores better
+    than the first excluded decoy PSM;'
+  quote_context: 'the description of the `correction` argument, which lists "0 (default): no correction;"
+    and ends "See `this paper <http://dx.doi.org/10.1021/acs.jproteome.6b00144>`_ for further explanation."'
+  accessed: 2026-09-29
+- id: hyperscore-form-in-sage
+  claim: The open-source engine Sage computes the X!Tandem hyperscore as the natural log of the product
+    of one plus the summed matched b intensity and one plus the summed matched y intensity, plus the log-factorials
+    of the number of matched b and y ions. The lesson uses this form with exact log-factorials (math.lgamma(n
+    + 1)) where Sage uses Stirling's approximation, so scores differ from Sage's slightly and are not
+    comparable with its output. The file is on Sage's default branch, which moves; the version read was
+    the last commit to that file, df16dece3fcde2a7a51a42b630ca6b45ba96adb7 of 13 October 2026.
+  where: lesson.py section 7 (exercise 5, hyperscore)
+  source_url: https://raw.githubusercontent.com/lazear/sage/master/crates/sage/src/scoring.rs
+  source_title: Sage, crates/sage/src/scoring.rs, ScoreType::score (SageHyperScore), github.com/lazear/sage
+  quote: i.ln() + lnfact(matched_b) + lnfact(matched_y)
+  quote_context: 'the line before it reads "let i = (summed_b + 1.0) as f64 * (summed_y + 1.0) as f64;"
+    and the comment above the match arm reads "Calculate the X!Tandem hyperscore". Re-read on 2026-10-14:
+    the file had one newer commit than the d74024d (5 June 2026) read at authoring, df16dece of 13 October
+    2026, "fix: Score ordering bug (#236)", which changes only how candidate scores are ordered (Ord for
+    Score now uses total_cmp); the hyperscore line and the Stirling form of lnfact are unchanged.'
+  accessed: 2026-10-14
+- id: sage-open-engine
+  claim: Sage is an open-source, freely available proteomics pipeline, and its author reports that it
+    matches the performance of state-of-the-art tools while running an order of magnitude faster. It is
+    one of the production engines this lesson's toy is not a rival to. Its documentation lists FDR calculation
+    by target-decoy competition and picked-peptide and picked-protein approaches.
+  where: lesson.py section 3 (the paragraph after the b/y ion definitions) and section 12
+  source_url: https://pubmed.ncbi.nlm.nih.gov/37819886/
+  source_title: 'Lazear MR. Sage: An Open-Source Tool for Fast Proteomics Searching and Quantification
+    at Scale. J Proteome Res 2023;22(11):3652-3659. DOI 10.1021/acs.jproteome.3c00486'
+  quote: Sage matches the performance of state-of-the-art software tools while running an order of magnitude
+    faster.
+  quote_context: the abstract; the README at https://github.com/lazear/sage lists "FDR calculation using
+    target-decoy competition and picked-peptide & picked-protein approaches"
+  accessed: 2026-09-29
+- id: msfragger-open-engine
+  claim: MSFragger is a peptide identification tool built on a fragment-ion indexing method, reported
+    in 2017 to be more than 100-fold faster than most existing proteome database search tools. It is the
+    other production engine this lesson's toy is not a rival to.
+  where: lesson.py section 3 (the paragraph after the b/y ion definitions)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/28394336/
+  source_title: 'Kong AT, Leprevost FV, Avtonomov DM, Mellacheruvu D, Nesvizhskii AI. MSFragger: ultrafast
+    and comprehensive peptide identification in mass spectrometry-based proteomics. Nat Methods 2017;14(5):513-520.
+    DOI 10.1038/nmeth.4256'
+  quote: enables a more than 100-fold improvement in speed over most existing proteome database search
+    tools
+  accessed: 2026-09-29
+- id: dia-is-peptide-centric
+  claim: 'In data-independent acquisition (here in its SWATH-MS variant) all ionized peptides within a
+    specified mass range are fragmented together using rather large precursor isolation windows, and its
+    analysis is based on peptide-centric scoring, which typically needs prior knowledge of the peptides
+    in the form of spectral libraries and peptide query parameters. The lesson''s engine is not that:
+    it searches data-dependent spectra, one selected precursor each, and the lesson says so.'
+  where: lesson.py section 1 (the scoping note)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/30104418/
+  source_title: 'Ludwig C, Gillet L, Rosenberger G, Amon S, Collins BC, Aebersold R. Data-independent
+    acquisition-based SWATH-MS for quantitative proteomics: a tutorial. Mol Syst Biol 2018;14(8):e8126.
+    DOI 10.15252/msb.20178126'
+  quote: In a SWATH-MS measurement, all ionized peptides of a given sample that fall within a specified
+    mass range are fragmented in a systematic and unbiased fashion using rather large precursor isolation
+    windows.
+  quote_context: the abstract, which continues "To analyse SWATH-MS data, a strategy based on peptide-centric
+    scoring has been established"
+  accessed: 2026-09-29
+- id: shared-peptides-ambiguity
+  claim: The same peptide sequence can be present in several proteins or isoforms, and such shared peptides
+    lead to ambiguity in determining which proteins were in the sample. This is the protein inference
+    problem that exercise 9 addresses.
+  where: lesson.py section 5 (exercise 3) and section 11 (exercise 9)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/16009968/
+  source_title: 'Nesvizhskii AI, Aebersold R. Interpretation of shotgun proteomic data: the protein inference
+    problem. Mol Cell Proteomics 2005;4(10):1419-40. DOI 10.1074/mcp.R500012-MCP200'
+  quote: The same peptide sequence can be present in multiple different proteins or protein isoforms.
+    Such shared peptides therefore can lead to ambiguities in determining the identities of sample proteins.
+  accessed: 2026-09-29
+- id: parsimony-protein-grouping
+  claim: 'Protein inference tools report the minimal list of proteins that explains the identified peptides,
+    using grouping algorithms based on the principle of parsimony, and gather into one subgroup proteins
+    that are not distinguishable according to the identified peptides. Exercise 9 implements that idea,
+    in a simplified form: identical peptide sets form a group, a group whose peptides are a proper subset
+    of another''s is dropped, and a greedy cover chooses among the rest.'
+  where: lesson.py section 11 (exercise 9, protein_groups)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/27990826/
+  source_title: 'Langella O, Valot B, Balliau T, Blein-Nicolas M, Bonhomme L, Zivy M. X!TandemPipeline:
+    A Tool to Manage Sequence Redundancy for Protein Inference and Phosphosite Identification. J Proteome
+    Res 2017;16(2):494-503. DOI 10.1021/acs.jproteome.6b00632'
+  quote: It provides the minimal list of proteins or phosphosites that are present in a set of samples
+    using grouping algorithms based on the principle of parsimony.
+  quote_context: the abstract, which continues "subgroups gather proteins that are not distinguishable
+    according to the identified peptides"
+  accessed: 2026-09-29
+- id: picked-protein-fdr
+  claim: The classic target-decoy strategy has limitations that show most on very large data sets and
+    lead to a strong over-representation of decoy identifications at the protein level. The "picked" protein
+    FDR approach treats the target and decoy sequences of a protein as a pair and chooses whichever receives
+    the higher score. The lesson uses the classic protein-level estimate and says that it does not test
+    for this effect.
+  where: lesson.py section 13 (the paragraph after the comparison table)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/25987413/
+  source_title: Savitski MM, Wilhelm M, Hahne H, Kuster B, Bantscheff M. A Scalable Approach for Protein
+    False Discovery Rate Estimation in Large Proteomic Data Sets. Mol Cell Proteomics 2015;14(9):2394-404.
+    DOI 10.1074/mcp.M114.046995
+  quote: There are also limitations inherent to the widely used classic target-decoy strategy that particularly
+    show when analyzing very large data sets and that lead to a strong over-representation of decoy identifications.
+  quote_context: the abstract, which continues by describing the "picked" protein FDR approach that "treats
+    target and decoy sequences of the same protein as a pair rather than as individual entities"
+  accessed: 2026-09-29
+- id: protein-fdr-above-psm-fdr
+  claim: On large real proteomics data sets, protein false discovery rates were found to be significantly
+    elevated compared with those of peptide-spectrum matches. The lesson cites this beside its own measurement
+    of the same direction in its generated world, and makes no claim about the size of the effect on any
+    real data set.
+  where: lesson.py section 13 (the paragraph after the comparison table)
+  source_url: https://pubmed.ncbi.nlm.nih.gov/19608599/
+  source_title: Reiter L, Claassen M, Schrimpf SP, Jovanovic M, Schmidt A, Buhmann JM, Hengartner MO,
+    Aebersold R. Protein identification false discovery rates for very large proteomics data sets generated
+    by tandem mass spectrometry. Mol Cell Proteomics 2009;8(11):2405-17. DOI 10.1074/mcp.M900317-MCP200
+  quote: We particularly found that protein false discovery rates are significantly elevated compared
+    with those of peptide-spectrum matches.
+  quote_context: the abstract
+  accessed: 2026-09-29
+- id: pride-record-licence-field
+  claim: 'The public PRIDE Archive web service returns, for each dataset record, a licence field taken
+    from the submission. For the first dataset, PXD000001, that field reads "EBI terms of use". The licence
+    is therefore a property of the individual dataset record and has to be read from that record before
+    an extract of a public PRIDE submission is committed to this repository. This lesson commits no extract:
+    its data is generated. The programme''s dataset ledger (programmes/proteomics-multiomics/README.md)
+    records this rule.'
+  where: lesson.py header (the paragraph on the synthetic data); meta.yaml datasets
+  source_url: https://www.ebi.ac.uk/pride/ws/archive/v2/projects/PXD000001
+  source_title: PRIDE Archive web service, project record PXD000001 (JSON)
+  quote: '"license" : "EBI terms of use"'
+  quote_context: a field of the JSON record returned for accession PXD000001
+  accessed: 2026-09-29
+- id: ebi-terms-no-additional-restriction
+  claim: EMBL-EBI, which hosts PRIDE, states that where it presents scientific data generated by others
+    it imposes no additional restriction on the use of the contributed data beyond those provided by the
+    data owner. The terms on any given dataset are therefore the data owner's, which is why the ledger
+    records them per dataset rather than once for the archive.
+  where: programmes/proteomics-multiomics/README.md (dataset ledger); referenced from lesson.py header
+  source_url: https://www.ebi.ac.uk/about/terms-of-use
+  source_title: EMBL-EBI terms of use, last revised 14th October 2026
+  quote: Where EMBL-EBI presents scientific data generated by others, EMBL-EBI imposes no additional restriction
+    on the use of the contributed data than those provided by the data owner
+  quote_context: 'the ''General'' section; the sentence continues ", unless otherwise specified in these
+    Terms of Use", as it did before. Re-read on 2026-10-14: the page was revised that day (it had read
+    ''Last revised: 5th February 2024'' when this lesson was authored). Compared with the archived February
+    2024 text, the revision only adds Access and Benefit Sharing to the uploader''s duties and to the
+    third-party rights on the original data; the quoted sentence is unchanged.'
+  accessed: 2026-10-14
+- id: proteomexchange-ownership-and-licences
+  claim: 'The ProteomeXchange consortium''s data submission guidelines (version 3.0.1, 13 October 2019)
+    say that the original submitter and the principal investigator remain the owners of a submitted dataset,
+    that the member resources had different terms of use and data licences, that they had decided to move
+    towards a default CC0 licence as a minimum, and that PRIDE then followed the EMBL-EBI terms of use.
+    The document is dated: the per-dataset licence field above is the current record, and this is the
+    policy context.'
+  where: programmes/proteomics-multiomics/README.md (dataset ledger)
+  source_url: https://www.proteomexchange.org/docs/guidelines_px.pdf
+  source_title: ProteomeXchange and proteomics data submission, Data Submission Guidelines for the ProteomeXchange
+    Consortium, version 3.0.1, 13 October 2019
+  quote: the original submitter and the corresponding Principal Investigator (PI) are the owners of these
+    data
+  quote_context: section 6; section 7 says "all PX resources have decided to move towards a default Creative
+    Commons CC0 license as a minimum level" and that "PRIDE followed the EMBL-EBI" terms of use
+  accessed: 2026-09-29

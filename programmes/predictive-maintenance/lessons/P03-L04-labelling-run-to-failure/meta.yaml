@@ -23,6 +23,36 @@ objectives:
   why a score ceiling alone misses the quiet leak
 - Measure how far the cost-optimal threshold moves between three labelling policies applied to one unchanged
   health index, and what the worst of them costs when scored honestly
+before_you_start:
+  assumed:
+  - parse a date string with datetime.strptime and compare or subtract two timestamps
+  - group a list of records by a key and sort each group by time
+  - explain what a train/test split is for and why the test rows must stay untouched
+  resources:
+  - title: Introduction to survival analysis
+    by: lifelines documentation (Cameron Davidson-Pilon)
+    url: https://lifelines.readthedocs.io/en/latest/Survival%20Analysis%20intro.html
+    kind: free
+    why: right-censoring explained with an example of what ignoring censored units does to a lifetime
+      estimate, then the survival and hazard functions
+  - title: 'Common pitfalls and recommended practices: data leakage'
+    by: scikit-learn documentation
+    url: https://scikit-learn.org/stable/common_pitfalls.html
+    kind: free
+    why: 'section 12.2 on data leakage: how information that would not exist at prediction time inflates
+      a score, the failure exercise 8 is built to catch'
+  - title: 'Cross-validation: cross-validation iterators for grouped data'
+    by: scikit-learn documentation
+    url: https://scikit-learn.org/stable/modules/cross_validation.html
+    kind: free
+    why: 'the group K-fold section: why rows from one group must not sit on both sides of a split, which
+      is the case for splitting by unit'
+  - title: 'datetime: strftime() and strptime() behavior'
+    by: Python documentation
+    url: https://docs.python.org/3/library/datetime.html
+    kind: free
+    why: the format-code table for parsing dates written in several formats, as in the work-order export
+      in exercise 1
 datasets:
 - name: synthetic-plant-and-work-order-log
   kind: synthetic

@@ -122,6 +122,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > where it appears. None of them is a statement about what any authority would accept. For a
 # > real system, read the Official Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`, `P01-L04`
+#
+# **This lesson assumes you can already:**
+#
+# - compute accuracy or error rate from predictions and labels held in numpy arrays
+# - draw a seeded random sample with replacement using numpy.random.Generator
+# - say what a confidence interval does and does not tell you about a measured accuracy
+# - read a curve of a metric against a perturbation severity
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 15: Accuracy, robustness and cybersecurity](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-15) · European Commission, AI Act Service Desk · *free* — paragraph 3 (declare accuracy levels and metrics), paragraph 4 (resilience to errors and faults) and paragraph 5 (poisoning, adversarial examples, confidentiality attacks)
+# - [An Introduction to Statistical Learning](https://www.statlearning.com/) · James, Witten, Hastie and Tibshirani (free PDF) · *free* — chapter 5 on resampling methods, section 5.2 on the bootstrap: the resample-and-recompute idea behind every interval in the report
+# - [Benchmarking Neural Network Robustness to Common Corruptions and Perturbations](https://arxiv.org/abs/1903.12261) · Hendrycks and Dietterich (ICLR 2019, arXiv) · *free* — how to measure robustness as a curve over graded severities of a perturbation, the design of the lesson's four-family degradation sweep
+# - [NIST AI 100-2 E2025: Adversarial Machine Learning](https://csrc.nist.gov/pubs/ai/100/2/e2025/final) · NIST · *free* — the taxonomy of data poisoning and model-extraction attacks and their mitigations, the vocabulary behind Article 15(5) and the lesson's poisoning and extraction exercises
+# - [An Introduction to the Bootstrap](https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317) · Efron and Tibshirani (Chapman and Hall/CRC) · *paid* — the standard text on the bootstrap, including the percentile interval and its limits, which the lesson names but does not derive
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

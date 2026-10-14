@@ -113,6 +113,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    "no difference".
 # 6. Grade an interval's coverage against a distribution whose true AUC is known exactly.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - explain what an ROC curve and the AUC show, and what true and false positive rates are
+# - rank a numpy array with ties (argsort and averaging) and take means over boolean masks
+# - explain what a confidence interval claims, and why resampling the data with replacement gives a sample the same size as the original
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Studies on the Validation of Internal Rating Systems (Working Paper 14, revised)](https://www.bis.org/publications/studies-validation-internal-rating-systems-revised) · Basel Committee on Banking Supervision, 2005 · *free* — section III, rating and PD validation: the ROC measure and accuracy ratio, their link to the Mann-Whitney statistic, and the confidence-interval discussion for the area under the ROC
+# - [Advanced Data Analysis from an Elementary Point of View](https://www.stat.cmu.edu/~cshalizi/ADAfaEPoV/) · Cosma Rohilla Shalizi, Carnegie Mellon University (free draft book) · *free* — chapter 6, The Bootstrap: 6.2 the bootstrap principle and bootstrap confidence intervals, including the percentile method, and 6.3 resampling, behind the lesson's interval on a rank statistic
+# - [pROC: an open-source package for R and S+ to analyze and compare ROC curves](https://link.springer.com/article/10.1186/1471-2105-12-77) · Robin et al., BMC Bioinformatics 2011 (open access) · *free* — the Implementation section: AUC intervals by DeLong's method, and DeLong's U-statistic test of two paired AUCs that needs no bootstrap, beside a paired bootstrap test
+# - [An Introduction to the Bootstrap](https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317) · Bradley Efron and Robert Tibshirani (Chapman and Hall/CRC, Routledge) · *paid* — the chapters Confidence Intervals Based on Bootstrap Percentiles and Better Bootstrap Confidence Intervals: the percentile interval and the corrections made to it
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

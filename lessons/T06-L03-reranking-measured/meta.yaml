@@ -21,6 +21,43 @@ objectives:
 - Detect, with a tripwire the notebook prints rather than a written assertion, whether a model-selection
   step read the held-out test queries, and measure how much a reranker chosen by peeking at test overstates
   its gain relative to queries never touched during selection
+before_you_start:
+  assumed:
+  - write Python functions and loops, and index and slice numpy arrays
+  - read a ranked list and say what recall@k, MRR and nDCG@k measure (T06-L01 builds them)
+  - explain what a train, validation and test split are for, and why a test set is touched once
+  - write the logistic (sigmoid) function and say what one gradient-descent step on a loss does
+  resources:
+  - title: Introduction to Information Retrieval
+    by: Manning, Raghavan and Schütze (Cambridge University Press; free online edition)
+    url: https://nlp.stanford.edu/IR-book/
+    kind: free
+    why: chapter 8 on evaluating ranked retrieval (precision at k, nDCG), and chapter 6 on term weighting
+      and scoring, the features your reranker combines
+  - title: 'Pretrained Transformers for Text Ranking: BERT and Beyond'
+    by: Jimmy Lin, Rodrigo Nogueira and Andrew Yates
+    url: https://arxiv.org/abs/2010.06467
+    kind: free
+    why: the standard survey of multi-stage ranking, whose first-stage retrieval then rerank shape is
+      the system this lesson builds and measures
+  - title: 'Speech and Language Processing (3rd ed. draft), chapter 4: Logistic Regression and Text Classification'
+    by: Dan Jurafsky and James H. Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/4.pdf
+    kind: free
+    why: 4.2 the sigmoid, 4.5-4.6 cross-entropy loss and gradient descent (your pointwise reranker), 4.10
+      why a test set is held out, 4.11 the paired bootstrap
+  - title: 'From RankNet to LambdaRank to LambdaMART: An Overview'
+    by: Chris J. C. Burges (Microsoft Research technical report)
+    url: https://www.microsoft.com/en-us/research/publication/from-ranknet-to-lambdarank-to-lambdamart-an-overview/
+    kind: free
+    why: 'section 2, RankNet: a sigmoid of the score difference as the probability one document outranks
+      another, trained with a pairwise cross-entropy cost, which your pairwise reranker implements'
+  - title: Computational and Inferential Thinking, section 13.2 (the bootstrap)
+    by: Ani Adhikari, John DeNero and David Wagner
+    url: https://inferentialthinking.com/chapters/13/2/bootstrap/index.html
+    kind: free
+    why: resampling and percentile intervals, the tool the lesson uses to put an interval on a gain in
+      nDCG and MRR
 datasets:
 - name: T06-L03 synthetic reranking corpus (20 planted topics, four train/val/test/fresh query splits)
   kind: synthetic

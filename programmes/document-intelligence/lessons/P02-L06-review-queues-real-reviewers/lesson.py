@@ -114,6 +114,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Compute, from your own kappa, the ceiling your harness can see, check it against the
 #    simulation's truth, and explain why it is not 1.0.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - multiply the probabilities of independent events, P(A and B) = P(A) P(B), and add those of mutually exclusive ones
+# - use sorted() with a key, or heapq, to take items from a queue in a chosen order
+# - simulate a day of work with a seeded numpy random generator and report a rate from it
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Survey Article: Inter-Coder Agreement for Computational Linguistics](https://aclanthology.org/J08-4004/) · Artstein and Poesio (Computational Linguistics, 2008; ACL Anthology) · *free* — observed versus expected agreement and the kappa family of coefficients, and how to read the values; the background for Exercises 1 and 2
+# - [sklearn.metrics.cohen_kappa_score](https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html) · scikit-learn developers (official documentation) · *free* — the reference definition (p_o - p_e) / (1 - p_e), to check your plain-Python kappa against on the same labels
+# - [Cheap and Fast - But is it Good? Evaluating Non-Expert Annotations for Natural Language Tasks](https://aclanthology.org/D08-1027/) · Snow, O'Connor, Jurafsky and Ng (EMNLP 2008; ACL Anthology) · *free* — how agreement between human annotators and expert labels is measured across NLP tasks, and how much annotator quality varies: context for the ceiling reviewers put on a score
+# - [Algorithm Design, section 4.2: Scheduling to Minimize Lateness](https://www.pearson.com/en-us/subject-catalog/p/algorithm-design/P200000003259/9780137546350) · Kleinberg and Tardos (Pearson) · *paid* — proves that earliest-deadline-first order minimises maximum lateness by an exchange argument, the reason sla_schedule serves the nearest deadline first
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

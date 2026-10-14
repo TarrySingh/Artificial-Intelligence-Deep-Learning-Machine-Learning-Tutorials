@@ -118,6 +118,24 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    construction.
 # 5. Generate, from the numbers alone, the routing recommendation a finance partner would sign.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`, `P02-L03`, `P02-L06`, `P02-L07`
+#
+# **This lesson assumes you can already:**
+#
+# - compute a weighted mean with numpy (np.average with weights, or a dot product) and say why it differs from a plain mean
+# - pick the item of a list with the smallest or largest value of a key, using min or max with key=
+# - work out an expected cost, for example the cost of a document that goes to a human reviewer with probability p
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance](https://arxiv.org/abs/2305.05176) · Chen, Zaharia and Zou (arXiv) · *free* — LLM cascades that send a query to a cheap model first and escalate, with cost against accuracy: the same trade-off as the router's three tiers
+# - [Algorithms, chapters 3 (Dynamic Programming) and 4 (Greedy Algorithms)](https://jeffe.cs.illinois.edu/teaching/algorithms/) · Jeff Erickson (free electronic edition, CC BY 4.0) · *free* — when a greedy rule is provably optimal, by an exchange argument, and the dynamic-programming alternative: the greedy-versus-sweep question of Exercises 4 and 5
+# - [Algorithm Design, chapters 4 (Greedy Algorithms) and 6 (Dynamic Programming)](https://www.pearson.com/en-us/subject-catalog/p/algorithm-design/P200000003259/9780137546350) · Kleinberg and Tardos (Pearson) · *paid* — section 4.2's exchange argument and section 6.4 on subset sums and knapsacks, of which a routing budget is a multiple-choice version
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

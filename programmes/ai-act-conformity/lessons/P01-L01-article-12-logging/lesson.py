@@ -118,6 +118,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > section 6 — it is not a statement about what any authority would accept. For a real system,
 # > read the Official Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a Python function that walks a list of dicts and builds a new record from each one
+# - turn a dict into JSON text with the json module and read the result
+# - call hashlib.sha256 on bytes and read its hex digest
+# - add a timedelta to a date and compare the result with today's date
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 12: Record-keeping](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-12) · European Commission, AI Act Service Desk · *free* — the duty this lesson implements: paragraph 1 (automatic recording over the system's lifetime) and paragraph 2 (the three purposes the logs must serve)
+# - [AI Act Article 19: Automatically generated logs](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-19) · European Commission, AI Act Service Desk · *free* — paragraph 1, the provider's log-retention floor of at least six months, which is what the retention check in exercise 3 turns into code
+# - [Efficient Data Structures for Tamper-Evident Logging](https://www.usenix.org/legacy/event/sec09/tech/full_papers/crosby.pdf) · Crosby and Wallach (USENIX Security 2009) · *free* — section 2 (membership and incremental auditing) says what a verifier must be able to prove; section 3 shows the tree that scales the plain hash chain the lesson builds
+# - [RFC 6962: Certificate Transparency](https://www.rfc-editor.org/rfc/rfc6962) · Laurie, Langley and Kasper (IETF) · *free* — section 2.1 on Merkle hash trees and consistency proofs: a production append-only log whose published head hash does the job of the lesson's anchor
+# - [The EU Artificial Intelligence Act: A Commentary](https://academic.oup.com/oxford-law-pro/book/62212) · Michèle Finck (Oxford University Press, 2026) · *paid* — per the publisher an article-by-article commentary; its contents page was not checkable, so no entry numbers are given: look up Articles 12 and 19 for a lawyer's reading
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

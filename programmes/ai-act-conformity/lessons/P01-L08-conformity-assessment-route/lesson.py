@@ -123,6 +123,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > The systems are fictional. For a real system, read the Official Journal text and take
 # > professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`, `P01-L02`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions over lists of dicts and dates that return a structured decision rather than a bare boolean
+# - read a legal article and list the conditions under which each of its branches applies
+# - say what a CE mark and a declaration of conformity are for in EU product law, in two sentences
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 43: Conformity assessment](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-43) · European Commission, AI Act Service Desk · *free* — paragraphs 1 to 3 (when internal control suffices and when a notified body is needed) and paragraph 4 (new assessment after a substantial modification), shown as amended by the Digital Omnibus
+# - [AI Act Article 47: EU declaration of conformity](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-47) · European Commission, AI Act Service Desk · *free* — the written, machine-readable declaration, its ten-year retention and its Annex V content: what the declaration function must refuse to produce too early
+# - [AI Act Article 48: CE marking](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-48) · European Commission, AI Act Service Desk · *free* — how and where the mark is affixed, including the digital-mark rule and the notified-body number, the contents of the CE marking record
+# - [The Blue Guide on the implementation of EU product rules 2022](https://op.europa.eu/en/publication-detail/-/publication/91a50d92-f745-11ec-b94a-01aa75ed71a1) · European Commission (Notice 2022/C 247/01) · *free* — section 2.1 on products changed by important modification, section 4.4 on the declaration, section 4.5.1 on CE marking and section 5 on conformity assessment
+# - [CEN-CENELEC: Artificial Intelligence (JTC 21)](https://www.cencenelec.eu/areas-of-work/cen-cenelec-topics/artificial-intelligence/) · CEN and CENELEC · *free* — which harmonised standards for the AI Act are being drafted, and why a published one gives a presumption of conformity: the standards-gap question of Article 43(1)
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

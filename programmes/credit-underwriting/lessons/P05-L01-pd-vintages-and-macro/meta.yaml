@@ -1,0 +1,78 @@
+id: P05-L01-pd-vintages-and-macro
+title: Build vintage curves with censoring handled, a hazard model fitted by your own checked Newton solver,
+  and a macro overlay that turns it into scenario PD term structures, then back-test it out of time and
+  measure how much each shortcut flatters the result
+track: P05
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a risk table and vintage default curves in which a censored loan is neither a default nor
+  a good loan and a month that was never observed stays unobserved
+- Implement a discrete-time hazard model with one intercept per month on book and a macro covariate, fitted
+  by Newton's method and validated against a central-difference gradient check
+- Implement PD term structures under macro scenarios, read by calendar month, and the 12-month and lifetime
+  expected credit loss that follow from them
+- Measure out-of-time calibration by vintage and by calendar window, and how much a random split, future
+  months in the training window and an outcome-derived feature each flatter a back-test
+- Measure a point-in-time and a through-the-cycle PD from one fitted model and explain which question
+  each one answers
+before_you_start:
+  assumed:
+  - 'write numpy code on 2-D arrays: row and column indexing, boolean masks, cumulative sums and cumulative
+    products'
+  - 'read a logistic model: turn a log-odds value into a probability with the sigmoid and say what a coefficient
+    does to the odds'
+  - chain per-period chances into the probability of lasting several periods, as a running product of
+    one minus the per-period default chance
+  - solve a small linear system A x = b with numpy.linalg.solve
+  resources:
+  - title: 'Generalized Linear Models, chapter 7: Survival Models'
+    by: Germán Rodríguez (Princeton)
+    url: https://grodri.github.io/glms/notes/c7.pdf
+    kind: free
+    why: 'section 7.2 on censoring and section 7.6 on discrete-time models, where the hazard becomes a
+      logistic regression with one parameter per period: the model this lesson fits'
+  - title: 'Generalized Linear Models, chapter 3: Logit Models for Binary Data'
+    by: Germán Rodríguez (Princeton)
+    url: https://grodri.github.io/glms/notes/c3.pdf
+    kind: free
+    why: section 3.2.1 gives the binomial log-likelihood and the Fisher scoring procedure (iteratively
+      re-weighted least squares) behind the loss and fitting loop
+  - title: 'CS231n: Neural Networks Part 3, section Gradient checks'
+    by: Stanford CS231n (Karpathy et al.)
+    url: https://cs231n.github.io/neural-networks-3/
+    kind: free
+    why: why a centred difference beats a one-sided one, and how to compare an analytic gradient with
+      a numerical one by relative error, as in the gradient-check exercise
+  - title: Frequently Asked Questions on the New Accounting Standard on Financial Instruments, Credit
+      Losses
+    by: Federal Reserve, FDIC, NCUA and OCC
+    url: https://www.federalreserve.gov/supervisionreg/srletters/sr1908a1.pdf
+    kind: free
+    why: plain-language answers on lifetime expected credit loss, reasonable and supportable forecasts
+      and vintage disclosure, the vocabulary behind the PD term structure and the loss exercise
+  - title: 'Credit Risk Analytics: Measurement Techniques, Applications, and Examples in SAS'
+    by: Baesens, Roesch and Scheule (Wiley)
+    url: https://www.wiley.com/en-us/Credit+Risk+Analytics%3A+Measurement+Techniques%2C+Applications%2C+and+Examples+in+SAS-p-9781119143987
+    kind: paid
+    why: 'chapter 6, Probabilities of Default (PD): Discrete-Time Hazard Models, the model this lesson
+      fits, then chapter 13 on model validation and chapter 14 on stress testing; examples in SAS'
+datasets:
+- name: synthetic-consumer-loan-book
+  kind: synthetic
+  description: 86,400 loans in 48 monthly vintages of 1,800, each a 36-month instalment loan followed
+    to default, prepayment, maturity or the data cut-off at calendar month 65, with a planted unemployment-like
+    macro path, a planted recession and a planted loosening of underwriting, generated in lesson.py by
+    simulate_book(seed=20260929)
+  generator: 'lesson.py :: simulate_book'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 164
+status: reviewed
+measured_seconds: 1.2
+measured_peak_mib: 100

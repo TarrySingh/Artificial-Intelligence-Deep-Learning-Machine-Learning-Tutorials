@@ -1,0 +1,84 @@
+id: T05-L02-paged-kv-and-continuous-batching
+title: Build a paged KV cache and a continuous-batching scheduler for a small language model, prove they
+  change no token, and measure what they buy against a contiguous cache with static batching
+track: T05
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T03-L03-nanolm-cpu-slice
+- T05-L01-serving-on-a-cpu
+objectives:
+- Implement a block allocator, a block table and paged write and gather that reproduce a contiguous cache's
+  contents exactly
+- Implement a batched decode step over sequences of different lengths through their block tables, and
+  verify its logits against recomputing the whole sequence within a stated tolerance
+- Implement a continuous-batching scheduler with first-come-first-served admission and preemption by recomputation,
+  and verify that every request it serves produces the tokens it produces when served alone
+- Implement exact slot accounting for paged and contiguous caches, and measure throughput, time to first
+  token and memory lost to fragmentation for static batching with a contiguous cache, continuous batching
+  with a contiguous cache, and continuous batching with a paged cache, on one request trace
+- Measure how block size trades internal fragmentation against block-table size, and how the size of the
+  pool and the gap between declared and actual output length decide whether paging helps
+before_you_start:
+  assumed:
+  - write a Python class that keeps a free list of integer ids and a dict from a request id to the list
+    of ids it holds
+  - gather rows from a numpy array with an integer index array, and write values back into chosen rows
+    by assignment
+  - compute how many fixed-size blocks n items need with integer ceiling division, and how many slots
+    are left empty
+  resources:
+  - title: Efficient Memory Management for Large Language Model Serving with PagedAttention
+    by: Kwon et al. (SOSP 2023, arXiv)
+    url: https://arxiv.org/abs/2309.06180
+    kind: free
+    why: section 3 on the three sources of KV-cache waste, section 4.2 on the KV cache manager's blocks
+      and block tables, section 4.5 on first-come-first-served scheduling and preemption by swapping or
+      recomputation
+  - title: 'Orca: A Distributed Serving System for Transformer-Based Generative Models'
+    by: Yu et al. (OSDI 2022)
+    url: https://www.usenix.org/conference/osdi22/presentation/yu
+    kind: free
+    why: the paper that introduced iteration-level scheduling, now called continuous batching; section
+      3, Challenges and Proposed Solutions, sets out why finished requests should leave the batch at once
+  - title: 'Operating Systems: Three Easy Pieces, chapter 18, Paging: Introduction'
+    by: Remzi and Andrea Arpaci-Dusseau
+    url: https://pages.cs.wisc.edu/~remzi/OSTEP/vm-paging.pdf
+    kind: free
+    why: fixed-size pages, page tables and why paging avoids external fragmentation, the operating-system
+      idea that PagedAttention borrows for the block table
+  - title: 'Mastering LLM Techniques: Inference Optimization'
+    by: Shashank Verma and Neal Vaidya (NVIDIA Developer Blog)
+    url: https://developer.nvidia.com/blog/mastering-llm-techniques-inference-optimization/
+    kind: free
+    why: 'the in-flight batching section: evict finished sequences and admit new requests between iterations,
+      set against static batching'
+  - title: Optimization and Tuning, section Preemption (vLLM documentation)
+    by: vLLM project
+    url: https://docs.vllm.ai/en/latest/configuration/optimization/
+    kind: free
+    why: 'what a production engine does when the KV cache runs out: preempt a request and recompute it
+      later, rather than swap, and what that costs in latency'
+datasets:
+- name: 'Shakespeare''s Sonnets (opening excerpt), Project Gutenberg eBook #1041 - the T03-L03 corpus,
+    embedded as a string literal'
+  licence: Public domain (work first published 1609; author died 1616). Project Gutenberg records the
+    copyright status of this eBook as 'Public domain in the USA.'
+  url: https://www.gutenberg.org/ebooks/1041
+  source_file_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
+  copyright: None. William Shakespeare (1564-1616).
+  cached_at: embedded directly in lesson.py as the CORPUS string literal
+  bytes: 5988
+  retrieved: 2026-09-29
+  gated: false
+  notes: The identical 5988-character excerpt T03-L03 embeds (its header and footer are not included),
+    copied so the notebook stands alone. Nothing is downloaded at run time.
+- name: T05-L02 synthetic request traces (seeded numpy draws) and a checkpoint trained inside the lesson
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 230
+status: reviewed
+measured_seconds: 9.9
+measured_peak_mib: 83

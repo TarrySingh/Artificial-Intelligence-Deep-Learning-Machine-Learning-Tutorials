@@ -17,6 +17,45 @@ objectives:
 - Apply a written champion-versus-challenger decision rule and report the outcome of every test in it
 - Generate the validation report from the measured results, and explain why re-cutting stability bins
   on each new sample makes a drifting population read as stable forever
+before_you_start:
+  assumed:
+  - write Python functions with loops and numpy boolean masks, and cut an array of values into bins with
+    np.quantile or np.histogram
+  - explain what a binary classifier's predicted probability of default is, and compare it with the observed
+    0/1 outcome
+  - turn a written rule (promote only if A holds and B holds and C does not) into code that returns the
+    reason for each test
+  resources:
+  - title: SR 26-2 Revised Guidance on Model Risk Management (the attachment)
+    by: Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7
+    url: https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf
+    kind: free
+    why: 'section V (Model Validation and Monitoring: outcomes analysis, ongoing monitoring) and section
+      VI (Documentation): the guidance a validation report and a promotion rule are written against'
+  - title: Probability calibration (scikit-learn user guide)
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/modules/calibration.html
+    kind: free
+    why: 'the ''Calibration curves'' section: how a reliability diagram bins predictions and compares
+      the mean prediction with the observed rate in each bin'
+  - title: On Calibration of Modern Neural Networks
+    by: Guo, Pleiss, Sun and Weinberger (ICML 2017)
+    url: https://arxiv.org/abs/1706.04599
+    kind: free
+    why: section 2 defines reliability diagrams and the expected calibration error as a support-weighted
+      gap over bins, the quantity the lesson computes; skip the neural-network parts
+  - title: Statistical Properties of Population Stability Index
+    by: Bilal Yurdakul, Western Michigan University dissertation (open access)
+    url: https://scholarworks.wmich.edu/dissertations/3208/
+    kind: free
+    why: defines the population stability index as a monitor of whether a model's population has moved
+      from its development baseline, and states the usual 0.10 and 0.25 rules of thumb
+  - title: Assessment (Fairlearn user guide)
+    by: Fairlearn contributors
+    url: https://fairlearn.org/main/user_guide/assessment/
+    kind: free
+    why: MetricFrame computes any metric disaggregated by group, the idea behind the lesson's subgroup
+      performance table; read the disaggregated-metrics part
 datasets: []
 points: 110
 status: reviewed

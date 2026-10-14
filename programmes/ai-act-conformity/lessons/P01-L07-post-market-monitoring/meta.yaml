@@ -21,6 +21,42 @@ objectives:
   its residual spread, and merges without counting the overlap twice
 - Implement the Article 73 classifier and its clock, starting every deadline at awareness rather than
   occurrence, and explain why a point 3(49)(c) infringement does not get the two-day deadline
+before_you_start:
+  assumed:
+  - compute a proportion and its binomial standard error from a count and a sample size
+  - parse ISO 8601 timestamps with a UTC offset in Python and subtract them to get seconds
+  - say why a median shrugs off a few extreme values and a mean does not
+  resources:
+  - title: 'NIST/SEMATECH e-Handbook of Statistical Methods: Proportions Control Charts'
+    by: NIST
+    url: https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc332.htm
+    kind: free
+    why: section 6.3.3.2 on p-chart centre line and three-sigma limits, with the case where the baseline
+      proportion has to be estimated from earlier samples
+  - title: 'AI Act Article 72: Post-market monitoring'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-72
+    kind: free
+    why: paragraph 2 (actively and systematically collect and analyse performance data, including deployers')
+      and paragraph 3 (the monitoring plan), shown as amended by the Digital Omnibus
+  - title: 'AI Act Article 73: Reporting of serious incidents'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-73
+    kind: free
+    why: the 15-day, 10-day and two-day reporting limits and the awareness trigger the incident clock
+      implements; read it with the definition of serious incident in Article 3(49)
+  - title: Draft guidance and reporting template on serious AI incidents
+    by: European Commission (draft of 26 September 2025)
+    url: https://digital-strategy.ec.europa.eu/en/consultations/ai-act-commission-issues-draft-guidance-and-reporting-template-serious-ai-incidents-and-seeks
+    kind: free
+    why: the Commission's draft reading of Article 73 with worked examples and a report template; a draft,
+      so check for a final version
+  - title: Introduction to Statistical Quality Control, 8th edition
+    by: Douglas C. Montgomery (Wiley)
+    url: https://www.wiley.com/en-us/Introduction+to+Statistical+Quality+Control%2C+8th+Edition-p-9781119723097
+    kind: paid
+    why: chapter 7, section 7.2, the control chart for fraction nonconforming (the p chart), in textbook
+      depth
 datasets:
 - name: loan-copilot synthetic provider log and partner deployer feed
   kind: synthetic

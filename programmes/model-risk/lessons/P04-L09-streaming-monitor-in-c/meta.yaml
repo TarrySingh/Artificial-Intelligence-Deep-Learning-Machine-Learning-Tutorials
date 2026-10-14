@@ -21,6 +21,44 @@ objectives:
   produced it, and hold the monitor under a ceiling set over its own measured baseline
 - Explain why the harness measures a forked worker rather than the launcher's own high-water mark, and
   why a breach must name its bin and its checkpoint
+before_you_start:
+  assumed:
+  - write a C program that reads standard input with fread into a fixed buffer, using arrays, pointers
+    and structs
+  - build and run a C program with make and a compiler, and pipe one program's output into another in
+    a shell
+  - use unsigned 64-bit integers in C, including shifts, XOR and wrap-around multiplication
+  resources:
+  - title: Beej's Guide to C Programming
+    by: Brian Hall (Beej), free online
+    url: https://beej.us/guide/bgc/
+    kind: free
+    why: the chapters on pointers, arrays, structs and File Input/Output (fread, EOF) cover the C the
+      monitor is written in
+  - title: getrusage(2) Linux manual page
+    by: Linux man-pages project
+    url: https://man7.org/linux/man-pages/man2/getrusage.2.html
+    kind: free
+    why: 'ru_maxrss and the RUSAGE_CHILDREN note: it is the resident set size of the largest child, the
+      peak-memory measurement the harness takes'
+  - title: splitmix64.c
+    by: Sebastiano Vigna (public domain, on the prng.di.unimi.it site)
+    url: https://prng.di.unimi.it/splitmix64.c
+    kind: free
+    why: the reference splitmix64 generator in a dozen lines of C, the generator the lesson shares between
+      C and Python so a sample reproduces bit for bit
+  - title: reservoir sampling (Dictionary of Algorithms and Data Structures)
+    by: NIST
+    url: https://xlinux.nist.gov/dads/HTML/reservoirSampling.html
+    kind: free
+    why: a short statement of the algorithm for choosing k items from a stream of unknown length, an in-memory
+      variant of Knuth's Algorithm 3.4.2R
+  - title: 'The Art of Computer Programming, Volume 2: Seminumerical Algorithms, 3rd edition'
+    by: Donald E. Knuth (Addison-Wesley, via InformIT)
+    url: https://www.informit.com/store/art-of-computer-programming-volume-2-seminumerical-algorithms-9780201896848
+    kind: paid
+    why: section 3.4.2, Random Sampling and Shuffling, where Algorithm R, the reservoir method the lesson
+      implements, is given
 datasets:
 - name: synthetic development sample and monthly score extract
   kind: synthetic

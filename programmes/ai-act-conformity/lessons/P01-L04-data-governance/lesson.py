@@ -121,6 +121,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > are not statements about what any authority would accept. For a real system, read the
 # > Official Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - compute a proportion and its standard error, and say what a 95% confidence interval for it means
+# - explain what training, validation and test splits are for, and what happens to a test score if the splits share rows
+# - use numpy arrays and collections.Counter to count categories and compute shares
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Article 10: Data and data governance](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-10) · European Commission, AI Act Service Desk · *free* — paragraph 2 (the governance practices, from origin and labelling to bias examination and gaps) and paragraph 3 (relevant, representative, free of errors): the checks the lesson codes
+# - [OpenIntro Statistics](https://www.openintro.org/book/os/) · OpenIntro (Diez, Cetinkaya-Rundel, Barr) · *free* — chapters 5 and 6: confidence intervals for a proportion and the difference of two proportions, the maths behind the lesson's share floor and minimum detectable difference
+# - [scikit-learn: Common pitfalls and recommended practices](https://scikit-learn.org/stable/common_pitfalls.html) · scikit-learn developers · *free* — section 12.2 on data leakage, including leakage through preprocessing before the split, the failure the leakage check hunts for
+# - [Fairness and Machine Learning: Limitations and Opportunities](https://fairmlbook.org/classification.html) · Barocas, Hardt and Narayanan (MIT Press, free online) · *free* — the Classification chapter: group-wise error rates and the separation criterion, the quantities the subgroup bias probe compares
+# - [Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift](https://arxiv.org/abs/1810.11953) · Rabanser, Günnemann and Lipton (NeurIPS 2019, arXiv) · *free* — how to test whether a test set still looks like the training set, feature by feature or in aggregate: the idea behind the drift check
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

@@ -22,6 +22,43 @@ objectives:
   the floor, which on this fixture is a full grid step before the point estimate does
 - Implement a neighbourhood poisoning scan with a minimum-support rule and a measured model-extraction
   budget, and emit only the residual-risk statements the evidence actually bounds
+before_you_start:
+  assumed:
+  - compute accuracy or error rate from predictions and labels held in numpy arrays
+  - draw a seeded random sample with replacement using numpy.random.Generator
+  - say what a confidence interval does and does not tell you about a measured accuracy
+  - read a curve of a metric against a perturbation severity
+  resources:
+  - title: 'AI Act Article 15: Accuracy, robustness and cybersecurity'
+    by: European Commission, AI Act Service Desk
+    url: https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-15
+    kind: free
+    why: paragraph 3 (declare accuracy levels and metrics), paragraph 4 (resilience to errors and faults)
+      and paragraph 5 (poisoning, adversarial examples, confidentiality attacks)
+  - title: An Introduction to Statistical Learning
+    by: James, Witten, Hastie and Tibshirani (free PDF)
+    url: https://www.statlearning.com/
+    kind: free
+    why: 'chapter 5 on resampling methods, section 5.2 on the bootstrap: the resample-and-recompute idea
+      behind every interval in the report'
+  - title: Benchmarking Neural Network Robustness to Common Corruptions and Perturbations
+    by: Hendrycks and Dietterich (ICLR 2019, arXiv)
+    url: https://arxiv.org/abs/1903.12261
+    kind: free
+    why: how to measure robustness as a curve over graded severities of a perturbation, the design of
+      the lesson's four-family degradation sweep
+  - title: 'NIST AI 100-2 E2025: Adversarial Machine Learning'
+    by: NIST
+    url: https://csrc.nist.gov/pubs/ai/100/2/e2025/final
+    kind: free
+    why: the taxonomy of data poisoning and model-extraction attacks and their mitigations, the vocabulary
+      behind Article 15(5) and the lesson's poisoning and extraction exercises
+  - title: An Introduction to the Bootstrap
+    by: Efron and Tibshirani (Chapman and Hall/CRC)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: the standard text on the bootstrap, including the percentile interval and its limits, which the
+      lesson names but does not derive
 datasets:
 - name: loan-copilot synthetic applicant table, evaluation and training splits
   kind: synthetic

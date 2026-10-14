@@ -109,6 +109,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #
 # Nothing is downloaded. The corpus and every sample sentence are text embedded in this file.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops, tuples and dicts (collections.Counter is enough) and build a new list instead of editing one you are looping over
+# - say how a Python str differs from bytes, and convert between them with .encode and .decode
+# - write an assert-based round-trip test of the form decode(encode(x)) == x
+# - say in one sentence what a tokenizer does for a language model
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Unicode HOWTO](https://docs.python.org/3/howto/unicode.html) · Python Software Foundation · *free* — code points versus bytes and how UTF-8 spends one to four bytes per character, the starting point of section 2 and of the token tax
+# - [Speech and Language Processing, chapter 2: Words and Tokens](https://web.stanford.edu/~jurafsky/slp3/2.pdf) · Jurafsky and Martin · *free* — the free draft textbook; section 2.3 on Unicode, code points and UTF-8, then section 2.4 on byte-pair encoding training and encoding, with byte-level BPE in 2.4.3
+# - [Let's build the GPT Tokenizer](https://www.youtube.com/watch?v=zduSFxRajkE) · Andrej Karpathy (YouTube) · *free* — from 00:14:56 to 00:57:36: Unicode and UTF-8, counting pairs, merging the most common pair, the training loop, then decode and encode, the steps of exercises 1 to 5
+# - [Neural Machine Translation of Rare Words with Subword Units](https://arxiv.org/abs/1508.07909) · Sennrich, Haddow and Birch · *free* — section 3.2 and its Algorithm 1: the original count-pairs, merge-the-most-frequent loop in a few lines of Python; it starts from characters, where this lesson starts from bytes
+# - [Build a Large Language Model (From Scratch)](https://www.manning.com/books/build-a-large-language-model-from-scratch) · Sebastian Raschka (Manning) · *paid* — chapter 2, Working with text data; section 2.5 uses GPT-2's byte pair encoding through the tiktoken library rather than training one, a useful contrast with this lesson
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

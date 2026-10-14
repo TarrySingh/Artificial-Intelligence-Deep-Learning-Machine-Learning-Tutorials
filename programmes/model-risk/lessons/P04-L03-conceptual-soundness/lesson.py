@@ -116,6 +116,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    a trivial baseline by a margin stated in advance.
 # 5. Assemble the results into a severity-rated finding register that is generated, not typed.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a Python class that subclasses dict and overrides a special method such as __getitem__
+# - read a model specification given as a table of variables, allowed ranges and the expected direction of each variable's effect
+# - explain what a train/test split is for
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [SR 26-2 Revised Guidance on Model Risk Management (the attachment)](https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf) · Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7 · *free* — section V, 'Conceptual Soundness': what a validator is expected to assess and document about design, assumptions and data selection, and the role of benchmarking and interpretability measures
+# - [SS1/23 Model risk management principles for banks](https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss) · Prudential Regulation Authority, Bank of England · *free* — Principle 3 (model development, implementation and use) and Principle 4 (independent model validation): what a validator is expected to test, which the lesson's probes turn into code
+# - [Common pitfalls and recommended practices (scikit-learn user guide)](https://scikit-learn.org/stable/common_pitfalls.html) · scikit-learn developers · *free* — section 12.2 'Data leakage': information unavailable at prediction time, and how leakage inflates a test score
+# - [Data model: emulating container types (Python language reference)](https://docs.python.org/3/reference/datamodel.html) · Python Software Foundation · *free* — section 3.3.7, Emulating container types: the special methods (__getitem__, __contains__, __iter__ and others) a dict-like recorder can override
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

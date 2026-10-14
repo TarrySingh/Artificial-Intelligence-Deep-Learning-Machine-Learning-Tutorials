@@ -10,6 +10,16 @@ objectives:
   - "Implement ..."
   - "Measure ..."
   - "Explain why ..."
+before_you_start:         # gate 2: what the lesson assumes, and where to learn it online
+  assumed:                # 2-5 concrete things a student can already do
+    - "write Python functions and loops, and index numpy arrays"
+    - "..."
+  resources:              # 2-5 direct https links; free first, paid books after; one clause of why each
+    - title: ...
+      by: Author or publisher
+      url: https://...
+      kind: free          # free | paid
+      why: the chapters or sections that matter for THIS lesson, in one clause
 datasets: []            # name, licence, direct URL — free and ungated only
 points: 10
 status: draft           # draft | executed | reviewed | shipped

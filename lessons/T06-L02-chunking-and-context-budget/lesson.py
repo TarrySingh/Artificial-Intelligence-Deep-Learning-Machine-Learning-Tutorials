@@ -97,6 +97,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # **Time:** ~55 minutes · **Runs on:** a laptop CPU, no GPU, no data or model download ·
 # **Prerequisites:** T00-L01-the-8gb-track, T06-L01-retrieval-from-scratch.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `T06-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - tokenise text with a Python regular expression, and slice a string by character offsets, reading a span as a half-open [start, end) interval
+# - say what a token and a context window are, and why a prompt that exceeds the window loses text
+# - read a cost-versus-quality curve (here, tokens spent against evidence reached) and pick an operating point from it
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Regular Expression HOWTO](https://docs.python.org/3/howto/regex.html) · Python documentation · *free* — finditer and match spans (start, end), plus word boundaries and character classes, which the carried-forward tokenizer relies on
+# - [Byte-Pair Encoding tokenization (Hugging Face LLM Course, chapter 6)](https://huggingface.co/learn/llm-course/chapter6/5) · Hugging Face · *free* — how a subword vocabulary is trained and applied, which is what you need to read exercise 3's comparison of an approximate token counter against a real BPE tokenizer
+# - [Speech and Language Processing (3rd ed. draft), chapter 11: Information Retrieval and Retrieval-Augmented Generation](https://web.stanford.edu/~jurafsky/slp3/11.pdf) · Dan Jurafsky and James H. Martin (Stanford; free draft) · *free* — 11.3 on splitting documents into fixed-length passages before retrieval, and 11.4 on what the retrieved text is used for in retrieval-augmented generation
+# - [Glossary (context window, tokens, RAG)](https://platform.claude.com/docs/en/about-claude/glossary) · Anthropic (Claude documentation) · *free* — short definitions of the context window, tokens and retrieval-augmented generation, the three terms the token budget and coverage metric are built on
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

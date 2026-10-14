@@ -280,9 +280,51 @@ def notice(d: Path) -> str:
             "# ---\n" + "\n#\n".join(wrap(t) for t in paras) + "\n")
 
 
+BEFORE_OPEN = "# <!-- COMMONS BEFORE v1"
+
+
+def before(d: Path) -> str:
+    """The "Before you start" box, generated from meta.yaml's `before_you_start` (gate 2).
+
+    Empty when the lesson has none yet, so a lesson being authored is not disturbed; the gate in
+    tools/verify_all.py is what insists on it. Free resources are listed first, paid ones after.
+    """
+    import yaml
+    meta = yaml.safe_load((d / "meta.yaml").read_text()) or {}
+    box = meta.get("before_you_start")
+    if not box:
+        return ""
+    lines = ["## Before you start", ""]
+    pre = [str(x).split("-")[0] + "-" + str(x).split("-")[1] for x in (meta.get("prerequisites") or [])]
+    lines.append("**Lessons to do first:** " + (", ".join(f"`{x}`" for x in pre) if pre else "none.") )
+    lines += ["", "**This lesson assumes you can already:**", ""]
+    lines += [f"- {a}" for a in box.get("assumed") or []]
+    res = sorted(box.get("resources") or [], key=lambda r: r.get("kind") != "free")
+    lines += ["", "**New to some of that? These are good places to learn it** "
+              "(free to read online first, then paid books). You do not need any of them if the list "
+              "above already reads as familiar.", ""]
+    for r in res:
+        kind = "free" if r.get("kind") == "free" else "paid"
+        lines.append(f"- [{r['title']}]({r['url']}) · {r['by']} · *{kind}* — {r['why']}")
+    out = [f"{BEFORE_OPEN} · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->"]
+    for t in lines:
+        out.append("# " + t if t else "#")
+    return "# %% [markdown]\n" + "\n".join(out) + "\n\n"
+
+
+def with_before(d: Path, body: str) -> str:
+    """Put the box after the lesson's first markdown cell (its title and what you will build)."""
+    box = before(d)
+    if not box:
+        return body
+    m = re.match(r"# %% \[markdown\]\n.*?(?=^# %%)", body, flags=re.S | re.M)
+    at = m.end() if m else 0
+    return body[:at] + box + body[at:]
+
+
 def compose(d: Path, src: str) -> str:
     """lesson.py as it must be: generated launcher, the lesson itself, generated notice."""
-    body = strip(src).rstrip("\n") + "\n"
+    body = with_before(d, strip(src).rstrip("\n") + "\n")
     return launcher(d, body) + body + "\n" + notice(d)
 
 
@@ -316,6 +358,7 @@ def strip(src: str) -> str:
     src = re.sub(r"^# %%\n# --- COMMONS LAUNCHER .*?^# --- END COMMONS LAUNCHER ---\n\n?", "", src,
                  flags=re.S | re.M)
     src = re.sub(r"\n*^# %% \[markdown\]\n# <!-- COMMONS NOTICE .*\Z", "\n", src, flags=re.S | re.M)
+    src = re.sub(r"^# %% \[markdown\]\n# <!-- COMMONS BEFORE .*?(?=^# %%)\n?", "", src, flags=re.S | re.M)
     return src
 
 

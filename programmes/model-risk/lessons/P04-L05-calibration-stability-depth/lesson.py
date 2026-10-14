@@ -113,6 +113,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    a given sample size.
 # 5. Generate a calibration-and-stability appendix in which every threshold carries that rate.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P04-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - read a chi-square test result: what degrees of freedom and a p-value mean for a test statistic
+# - write a seeded bootstrap or resampling loop with a numpy Generator and read off percentiles from the draws
+# - explain what log-odds are, and that a logistic model's score is a sum of one term per input
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Studies on the Validation of Internal Rating Systems (Working Paper 14, revised)](https://www.bis.org/publications/studies-validation-internal-rating-systems-revised) · Basel Committee on Banking Supervision, 2005 · *free* — section III's calibration tests: the binomial test and the chi-square (Hosmer-Lemeshow) test of several rating categories at once, with their assumptions and weaknesses
+# - [Statistical Properties of Population Stability Index](https://scholarworks.wmich.edu/dissertations/3208/) · Bilal Yurdakul, Western Michigan University dissertation (open access) · *free* — studies the statistical properties of PSI and proposes recommendations for the usual 0.10 and 0.25 thresholds, which have no stated error rate; the question the lesson's false-alarm measurement asks
+# - [DLMF Chapter 8: Incomplete Gamma and Related Functions](https://dlmf.nist.gov/8) · NIST Digital Library of Mathematical Functions · *free* — §8.2 defines the normalised functions P(a,z) and Q(a,z), §8.23 ties them to the chi-square distribution, and §8.9 gives continued fractions for computing them
+# - [Applied Logistic Regression, 3rd edition](https://www.wiley.com/en-us/Applied+Logistic+Regression%2C+3rd+Edition-p-9780470582473) · Hosmer, Lemeshow and Sturdivant (Wiley) · *paid* — chapter 5, Assessing the Fit of the Model: 5.2.2 on the Hosmer-Lemeshow tests and 5.4 on assessing fit by external validation
+# - [Intelligent Credit Scoring, 2nd edition](https://www.wiley.com/en-us/Intelligent+Credit+Scoring%3A+Building+and+Implementing+Better+Credit+Risk+Scorecards%2C+2nd+Edition-p-9781119279150) · Naeem Siddiqi (Wiley) · *paid* — chapter 12's pre-implementation validation (system stability and characteristic analysis reports) and chapter 14's monitoring reports: how population stability is tracked in credit practice
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

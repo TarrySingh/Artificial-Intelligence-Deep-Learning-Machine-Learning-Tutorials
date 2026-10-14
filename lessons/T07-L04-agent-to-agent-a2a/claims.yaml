@@ -1,0 +1,600 @@
+claims:
+- id: a2a-current-version
+  claim: On the date this lesson was authored, the A2A specification page names 1.0.0 as its latest released
+    version; the protocol version on the wire is only its Major.Minor part, so this lesson speaks A2A
+    1.0 (the repository's latest tagged release, v1.0.1, is a bug-fix patch of it).
+  where: lesson.py section 1 (which version this lesson implements) and meta.yaml
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Latest Released Version 1.0.0
+  quote_context: The version banner at the top of the specification page
+  accessed: '2026-10-02'
+- id: a2a-version-major-minor
+  claim: The protocol version in use is identified by Major.Minor only; patch numbers do not affect compatibility
+    and must not be considered when negotiating.
+  where: lesson.py A2A_VERSION, A2AServer.check_version, rule R04
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Patch version numbers SHOULD NOT be used in requests, responses and Agent Cards, and MUST not
+    be considered when clients and servers negotiate protocol versions.
+  quote_context: Section 3.6 Versioning, first paragraph
+  accessed: '2026-10-02'
+- id: a2a-release-v1-0-1
+  claim: The specification repository's latest tagged release on the accessed date is v1.0.1, published
+    2026-05-28, a bug-fix release.
+  where: meta.yaml comments (why the pinned version is 1.0 although the tag is v1.0.1)
+  source_url: https://github.com/a2aproject/A2A/releases/tag/v1.0.1
+  source_title: a2aproject/A2A release v1.0.1
+  quote: prefer application/a2a+json in HTTP binding
+  quote_context: 'The first bullet under ''Bug Fixes'' in the v1.0.1 release notes (GitHub API: published_at
+    2026-05-28T11:34:36Z)'
+  accessed: '2026-10-02'
+- id: a2a-governance
+  claim: A2A was originally developed by Google and donated to the Linux Foundation, and is maintained
+    by a Technical Steering Committee.
+  where: lesson.py section 1
+  source_url: https://a2a-protocol.org/latest/
+  source_title: A2A Protocol home page
+  quote: A2A was originally developed by Google and donated to the Linux Foundation.
+  quote_context: The 'Governance & Open Source' section of the home page
+  accessed: '2026-10-02'
+- id: a2a-aaif
+  claim: On 27 August 2026 the A2A project announced that the protocol had been accepted as a Growth Stage
+    project at the Agentic AI Foundation (AAIF).
+  where: lesson.py section 1 (the sentence on who runs the standard)
+  source_url: https://a2a-protocol.org/latest/blog/2026/08/27/a-new-chapter-for-a2a-joining-the-agentic-ai-foundation/
+  source_title: 'A2A Protocol blog: A New Chapter for A2A: Joining the Agentic AI Foundation (2026-08-27)'
+  quote: The Agent2Agent (A2A) protocol has officially been accepted as a Growth Stage project at the
+    Agentic AI Foundation (AAIF).
+  quote_context: First sentence of the post; the post's date, 2026-08-27, is in its URL and header
+  accessed: '2026-10-14'
+- id: a2a-aaif-lf-directed
+  claim: The project's own announcement describes the AAIF as Linux Foundation-directed.
+  where: lesson.py section 1 (the sentence on who runs the standard)
+  source_url: https://a2a-protocol.org/latest/blog/2026/08/27/a-new-chapter-for-a2a-joining-the-agentic-ai-foundation/
+  source_title: 'A2A Protocol blog: A New Chapter for A2A: Joining the Agentic AI Foundation (2026-08-27)'
+  quote: Linux Foundation-directed AAIF
+  quote_context: Section 'Neutral Governance', the sentence beginning 'By operating under the' (the page's
+    own text)
+  accessed: '2026-10-14'
+- id: a2a-governance-tsc
+  claim: The project is governed by a Technical Steering Committee whose seats are held by named companies.
+  where: lesson.py section 1
+  source_url: https://github.com/a2aproject/A2A/blob/main/GOVERNANCE.md
+  source_title: 'a2aproject/A2A: GOVERNANCE.md'
+  quote: The Agent2Agent project is governed by the Technical Steering Committee.
+  quote_context: The opening sentence of GOVERNANCE.md
+  accessed: '2026-10-02'
+- id: a2a-license
+  claim: The A2A Protocol is licensed under the Apache License 2.0.
+  where: lesson.py section 1
+  source_url: https://a2a-protocol.org/latest/
+  source_title: A2A Protocol home page
+  quote: The A2A Protocol is licensed under the Apache License 2.0
+  quote_context: The 'License' section of the home page
+  accessed: '2026-10-02'
+- id: a2a-opaque-execution
+  claim: A2A is designed for agents that collaborate without sharing internal state, thoughts, plans or
+    tool implementations (opaque execution).
+  where: lesson.py sections 1 and 14
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Opaque Execution: Agents collaborate based on declared capabilities and exchanged information,
+    without needing to share their internal thoughts, plans, or tool implementations.'
+  quote_context: Section 1.2 Guiding Principles
+  accessed: '2026-10-02'
+- id: a2a-vs-mcp
+  claim: 'The A2A documentation states the relationship to MCP: A2A connects agents to each other and
+    MCP connects each agent to its own tools; they are complementary, not competing.'
+  where: lesson.py sections 1 and 14, self-check question 5
+  source_url: https://a2a-protocol.org/latest/topics/a2a-and-mcp/
+  source_title: 'A2A documentation: A2A and MCP, Detailed Comparison'
+  quote: A2A connects the agents to each other; MCP connects each agent to its own tools.
+  quote_context: 'The section ''A2A ❤️ MCP: Complementary Protocols for Agentic Systems'''
+  accessed: '2026-10-02'
+- id: a2a-not-a-replacement-for-mcp
+  claim: 'A2A''s own home page says it is not a replacement for MCP: MCP standardizes agent-to-tool communication
+    and A2A standardizes agent-to-agent communication.'
+  where: lesson.py section 14
+  source_url: https://a2a-protocol.org/latest/
+  source_title: A2A Protocol home page
+  quote: Not a replacement for MCP. MCP standardizes agent-to-tool communication; A2A standardizes agent-to-agent
+    communication.
+  quote_context: The 'What A2A Is Not' list
+  accessed: '2026-10-02'
+- id: mcp-what-it-is
+  claim: The Model Context Protocol describes itself as an open-source standard for connecting AI applications
+    to external systems (tools, data sources, workflows).
+  where: lesson.py section 14 (the MCP side of the comparison)
+  source_url: https://modelcontextprotocol.io/docs/2026-07-28/getting-started/intro
+  source_title: 'Model Context Protocol: What is the Model Context Protocol (MCP)?'
+  quote: MCP (Model Context Protocol) is an open-source standard for connecting AI applications to external
+    systems.
+  quote_context: The first paragraph of the introduction page
+  accessed: '2026-10-02'
+- id: mcp-tools-list-shape
+  claim: In MCP a tool definition carries a name, a human-readable description and an inputSchema (JSON
+    Schema defining expected parameters), and clients discover tools with tools/list; this is the shape
+    the lesson's ToolWire publishes.
+  where: lesson.py section 14 (ToolWire, count_schema_properties)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25: Tools'
+  quote: 'inputSchema: JSON Schema defining expected parameters'
+  quote_context: The 'Tool' definition list in the Tools page (revision 2025-11-25, the revision T07-L02
+    implements)
+  accessed: '2026-10-02'
+- id: a2a-card-must-be-available
+  claim: An A2A server MUST make an Agent Card available.
+  where: lesson.py exercise 1 and rule R01
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: A2A Servers MUST make an Agent Card available.
+  quote_context: Section 8.1 Purpose
+  accessed: '2026-10-02'
+- id: a2a-wellknown-uri
+  claim: Clients can find Agent Cards at the well-known URI /.well-known/agent-card.json.
+  where: lesson.py WELL_KNOWN_CARD
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Well-Known URI: Accessing https://{server_domain}/.well-known/agent-card.json'
+  quote_context: Section 8.2 Discovery Mechanisms
+  accessed: '2026-10-02'
+- id: a2a-required-fields
+  claim: A field marked REQUIRED in the protobuf definition MUST be present and set, and a required array
+    MUST contain at least one element.
+  where: lesson.py exercise 1 (validate_agent_card)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Arrays marked as required MUST contain at least one element.
+  quote_context: Section 5.7 Field Presence and Optionality, under 'Required Fields'
+  accessed: '2026-10-02'
+- id: a2a-required-fields-set
+  claim: Fields marked REQUIRED in the protobuf definition MUST be present and set in valid messages.
+  where: lesson.py exercise 1 (validate_agent_card)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Fields marked with [(google.api.field_behavior) = REQUIRED] indicate that the field MUST be present
+    and set in valid messages.
+  quote_context: Section 5.7 Field Presence and Optionality
+  accessed: '2026-10-02'
+- id: a2a-agentcard-skills-required
+  claim: In the normative protobuf definition the AgentCard's skills field is REQUIRED (as are name, description,
+    supportedInterfaces, version, capabilities and the default modes).
+  where: lesson.py exercise 1 (validate_agent_card), FaultCardMissingSkills
+  source_url: https://github.com/a2aproject/A2A/blob/v1.0.1/specification/a2a.proto
+  source_title: 'a2aproject/A2A v1.0.1: specification/a2a.proto'
+  quote: repeated AgentSkill skills = 12 [(google.api.field_behavior) = REQUIRED];
+  quote_context: The AgentCard message in a2a.proto at tag v1.0.1
+  accessed: '2026-10-02'
+- id: a2a-ignore-unrecognized
+  claim: Implementations SHOULD ignore unrecognised fields, so a validator must not reject unknown extra
+    fields.
+  where: lesson.py exercise 1
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Implementations SHOULD ignore unrecognized fields in messages, allowing for forward compatibility
+    as the protocol evolves.
+  quote_context: Section 5.7, 'Unrecognized Fields'
+  accessed: '2026-10-02'
+- id: a2a-task-states
+  claim: The specification defines the task states, marks COMPLETED, FAILED, CANCELED and REJECTED as
+    terminal, and INPUT_REQUIRED and AUTH_REQUIRED as interrupted.
+  where: lesson.py section 1 constants and exercise 2
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Indicates that the agent requires additional user input to proceed. This is an interrupted state.
+  quote_context: The TaskState table (section 4.1.3); each terminal row ends 'This is a terminal state.'
+  accessed: '2026-10-02'
+- id: a2a-terminal-immutable
+  claim: Once a task reaches a terminal state it cannot restart; any follow-up must be a new task in the
+    same contextId.
+  where: lesson.py exercise 2 (check_transition), rule R13
+  source_url: https://a2a-protocol.org/latest/topics/life-of-a-task/
+  source_title: 'A2A documentation: Life of a Task'
+  quote: Once a task reaches a terminal state (completed, canceled, rejected, or failed), it cannot restart.
+  quote_context: The 'Task Immutability' section of Life of a Task
+  accessed: '2026-10-02'
+- id: a2a-no-transition-table
+  claim: 'NOT A CLAIM (a recorded omission): version 1.0 of the specification defines the states and the
+    terminal/interrupted split but publishes no complete state-transition graph; the transition table
+    in exercise 2, beyond terminal immutability, is this lesson''s own conservative reading and the harness
+    tests nothing beyond the quoted MUSTs.'
+  where: lesson.py section 4 (exercise 2) and meta.yaml
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Tasks are stateful and progress through a defined lifecycle.
+  quote_context: Section 2.2 Core Concepts, the Task entry; the states are then listed in section 4.1.3
+    without transitions
+  accessed: '2026-10-02'
+- id: a2a-task-id-rules
+  claim: Agents MUST generate a unique taskId for each new task they create.
+  where: lesson.py exercise 3, rule R07
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MUST generate a unique taskId for each new task they create
+  quote_context: Section 3.4.2 Task Identifier Semantics
+  accessed: '2026-10-02'
+- id: a2a-task-not-found
+  claim: A message that carries a taskId which does not correspond to an existing task MUST be answered
+    with TaskNotFoundError.
+  where: lesson.py exercise 3 (admit_message), rule R03
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MUST return a TaskNotFoundError if the provided taskId does not correspond to an existing
+    task
+  quote_context: Section 3.4.2 Task Identifier Semantics
+  accessed: '2026-10-02'
+- id: a2a-context-mismatch
+  claim: Agents MUST reject a message whose contextId differs from that of the task its taskId references.
+    The specification names no particular error code for this, so rule R12 accepts any JSON-RPC error;
+    the lesson's own server uses INVALID_PARAMS.
+  where: lesson.py exercise 3 (admit_message), rule R12
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MUST reject messages containing mismatching contextId and taskId (i.e., the provided contextId
+    is different from that of the referenced Task).
+  quote_context: Section 3.4.3 Multi-Turn Conversation Patterns
+  accessed: '2026-10-02'
+- id: a2a-context-preserve
+  claim: Agents MAY accept and preserve a client-provided contextId (if they cannot, they must reject
+    rather than generate a new one).
+  where: lesson.py exercise 3, rule R07
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MAY accept and preserve client-provided contextId values
+  quote_context: Section 3.4.1 Context Identifier Semantics
+  accessed: '2026-10-02'
+- id: a2a-terminal-rejects-messages
+  claim: 'Messages sent to a task in a terminal state cannot be accepted: the server answers UnsupportedOperationError.'
+  where: lesson.py exercise 3 (admit_message), rule R13 (exercise 9)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Messages sent to Tasks that are in a terminal state (TASK_STATE_COMPLETED, TASK_STATE_FAILED,
+    TASK_STATE_CANCELED, TASK_STATE_REJECTED) cannot accept further messages.
+  quote_context: Section 3.1.1 Send Message, the UnsupportedOperationError entry under Errors
+  accessed: '2026-10-02'
+- id: a2a-validate-input
+  claim: Servers MUST validate all input parameters before processing.
+  where: lesson.py read_history_length and exercise 3 (an invalid historyLength must not create a task)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Servers MUST validate all input parameters before processing
+  quote_context: Section 3.3.2 Error Handling, 'Validation Errors'
+  accessed: '2026-10-02'
+- id: a2a-send-blocking
+  claim: 'By default SendMessage blocks: it MUST wait until the task is terminal or interrupted before
+    returning.'
+  where: lesson.py exercise 3 (op_send_message), rule R05
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: If false (default), the operation MUST wait until the task reaches a terminal (COMPLETED, FAILED,
+    CANCELED, REJECTED) or interrupted (INPUT_REQUIRED, AUTH_REQUIRED) state before returning.
+  quote_context: Section 3.2.2 SendMessageConfiguration, field returnImmediately
+  accessed: '2026-10-02'
+- id: a2a-send-return-immediately
+  claim: With returnImmediately true the operation MUST return right after creating the task, even if
+    processing is still in progress.
+  where: lesson.py exercise 3 (op_send_message), rule R06
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The operation MUST return immediately after creating the task, even if processing is still in
+    progress.
+  quote_context: 'Section 3.2.2, ''Non-Blocking (return_immediately: true)'''
+  accessed: '2026-10-02'
+- id: a2a-history-length
+  claim: 'historyLength: the server MUST NOT return more messages than the provided value; 0 means no
+    history and the history field SHOULD be omitted.'
+  where: lesson.py exercise 3 (apply_history_length) and 4, rule R08
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The server MUST NOT return more messages than the provided value, but MAY apply a lower limit.
+  quote_context: Section 3.1.3 Get Task, field historyLength; section 3.2.4 adds 'the history field SHOULD
+    be omitted' for 0
+  accessed: '2026-10-02'
+- id: a2a-history-length-zero
+  claim: historyLength 0 means no history should be returned and the history field SHOULD be omitted.
+  where: lesson.py apply_history_length
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: '0: No history should be returned; the history field SHOULD be omitted'
+  quote_context: Section 3.2.4 History Length Semantics
+  accessed: '2026-10-02'
+- id: a2a-cancel-not-cancelable
+  claim: Cancelling a task that is not in a cancelable state (already completed, failed or canceled) is
+    TaskNotCancelableError.
+  where: lesson.py exercise 4 (op_cancel_task), rule R14
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'TaskNotCancelableError: The task is not in a cancelable state (e.g., already completed, failed,
+    or canceled).'
+  quote_context: Section 3.1.5 Cancel Task, Errors
+  accessed: '2026-10-02'
+- id: a2a-cancel-not-guaranteed
+  claim: CancelTask is an attempt that may legitimately fail for a live task too, so a conformance rule
+    must not demand that a live task be cancelable; rule R14 tests only finished tasks, and a task in
+    CANCELED can only be reached against a server that does cancel.
+  where: lesson.py exercise 4 prose, exercise 9 (rule_cancel_finished_refused), reach_state
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The server will attempt to cancel the task, but success is not guaranteed (e.g., the task might
+    have already completed or failed, or cancellation might not be supported at its current stage).
+  quote_context: Section 3.1.5 Cancel Task, first paragraph
+  accessed: '2026-10-02'
+- id: jsonrpc-response-id
+  claim: In JSON-RPC 2.0 a response's id must equal the id of the request it answers; the client checks
+    this on every answer and rule R15 on every streamed event.
+  where: lesson.py A2AClient.call and A2AClient.stream, exercise 9 (rule_stream_is_a_stream)
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: It MUST be the same as the value of the id member in the Request Object.
+  quote_context: Section 5 Response object, the 'id' member
+  accessed: '2026-10-02'
+- id: a2a-stream-shape
+  claim: A streaming operation MUST establish a stream; if it returns a Task the stream MUST begin with
+    the Task object followed by zero or more status/artifact update events.
+  where: lesson.py exercise 5 (op_stream_message), rule R15
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Task lifecycle stream: If the agent returns a Task, the stream MUST begin with the Task object,
+    followed by zero or more TaskStatusUpdateEvent or TaskArtifactUpdateEvent objects.'
+  quote_context: Section 3.1.2 Send Streaming Message, Behavior
+  accessed: '2026-10-02'
+- id: a2a-stream-establish
+  claim: SendStreamingMessage MUST establish a streaming connection for real-time updates (a single blob
+    is not a stream).
+  where: lesson.py rule R15, FaultStreamBlob
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The operation MUST establish a streaming connection for real-time updates.
+  quote_context: Section 3.1.2 Send Streaming Message, Behavior
+  accessed: '2026-10-02'
+- id: a2a-stream-close
+  claim: The stream MUST close when the task reaches a terminal state.
+  where: lesson.py exercises 5 and 7, rule R15
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The stream MUST close when the task reaches a terminal state
+  quote_context: Section 3.1.2 Send Streaming Message, Behavior
+  accessed: '2026-10-02'
+- id: a2a-stream-progress-feedback
+  claim: The implementation MUST provide immediate feedback on progress and intermediate results.
+  where: lesson.py exercise 9 (rule_stream_is_a_stream, the first event of a multi-step task is not already
+    terminal)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The implementation MUST provide immediate feedback on progress and intermediate results.
+  quote_context: Section 3.1.2 Send Streaming Message, Behavior
+  accessed: '2026-10-02'
+- id: a2a-stream-exactly-one
+  claim: A StreamResponse MUST contain exactly one of task, message, statusUpdate, artifactUpdate.
+  where: lesson.py exercise 7, rule R15
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Note: A StreamResponse MUST contain exactly one of the following: task, message, statusUpdate,
+    artifactUpdate'
+  quote_context: Section 3.2.3 Stream Response
+  accessed: '2026-10-02'
+- id: a2a-event-order
+  claim: All implementations MUST deliver events in the order they were generated.
+  where: lesson.py exercise 5, rule R15, FaultStreamReordered
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: All implementations MUST deliver events in the order they were generated.
+  quote_context: Section 3.5.2 Streaming Event Delivery
+  accessed: '2026-10-02'
+- id: a2a-message-only-stream
+  claim: A message-only stream MUST contain exactly one Message object and then close immediately.
+  where: lesson.py exercise 7 (a message-only stream folds to its message and admits nothing after)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: the stream MUST contain exactly one Message object and then close immediately
+  quote_context: Section 3.1.2 Send Streaming Message, 'Message-only stream'
+  accessed: '2026-10-02'
+- id: a2a-capability-validation
+  claim: If the Agent Card's capabilities.streaming is false or absent, SendStreamingMessage and SubscribeToTask
+    MUST return UnsupportedOperationError.
+  where: lesson.py exercise 5 (capability check before admission), rule R10
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: If AgentCard.capabilities.streaming is false or not present, attempts to use SendStreamingMessage
+    or SubscribeToTask operations MUST return UnsupportedOperationError.
+  quote_context: Section 3.3.4 Capability Validation
+  accessed: '2026-10-02'
+- id: a2a-artifact-append
+  claim: 'TaskArtifactUpdateEvent.append: if true the content of the artifact should be appended to a
+    previously sent artifact with the same ID.'
+  where: lesson.py exercise 7 (apply_stream_event)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: If true, the content of this artifact should be appended to a previously sent artifact with the
+    same ID.
+  quote_context: Section 4.2.2 TaskArtifactUpdateEvent, field append (table cell)
+  accessed: '2026-10-02'
+- id: a2a-artifact-last-chunk
+  claim: 'TaskArtifactUpdateEvent.lastChunk: if true this is the final chunk of the artifact.'
+  where: lesson.py exercise 7
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: If true, this is the final chunk of the artifact.
+  quote_context: Section 4.2.2 TaskArtifactUpdateEvent, field lastChunk (table cell)
+  accessed: '2026-10-02'
+- id: a2a-artifact-update
+  claim: A TaskArtifactUpdateEvent carries a generated or updated artifact chunk for a task.
+  where: lesson.py exercise 7
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: A task delta where an artifact has been generated.
+  quote_context: Section 4.2.2 TaskArtifactUpdateEvent
+  accessed: '2026-10-02'
+- id: a2a-input-required
+  claim: An agent asks for input by moving the task to input-required; the client continues by sending
+    a new message with the same taskId and contextId.
+  where: lesson.py exercises 6 and 8, rule R16
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The client continues the interaction by sending a new message with the same taskId and contextId
+  quote_context: Section 3.4.3 Multi-Turn Conversation Patterns, 'Input Required State'
+  accessed: '2026-10-02'
+- id: a2a-part-exactly-one
+  claim: A Part MUST contain exactly one of text, raw, url, data.
+  where: lesson.py message_problem, rule R11, FaultTwoContentFields
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Note: A Part MUST contain exactly one of the following: text, raw, url, data'
+  quote_context: Section 4.1.6 Part
+  accessed: '2026-10-02'
+- id: a2a-version-negotiation
+  claim: If the requested A2A-Version is not supported the agent MUST return VersionNotSupportedError;
+    an empty value is interpreted as 0.3.
+  where: lesson.py A2AServer.check_version, rule R04
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: If the version is not supported by the interface, agents MUST return a VersionNotSupportedError.
+  quote_context: Section 3.6.2 Server Responsibilities
+  accessed: '2026-10-02'
+- id: a2a-version-empty-is-03
+  claim: Agents MUST interpret an empty A2A-Version value as 0.3.
+  where: lesson.py check_version, rule R04
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MUST interpret empty value as 0.3 version.
+  quote_context: Section 3.6.2 Server Responsibilities
+  accessed: '2026-10-02'
+- id: a2a-version-header
+  claim: Clients MUST send the A2A-Version header with each request (except 0.3 clients, for which an
+    empty header is assumed 0.3).
+  where: lesson.py A2AClient._headers
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Clients MUST send the A2A-Version header with each request to maintain compatibility after an
+    agent upgrades to a new version of the protocol (except for 0.3 Clients - 0.3 will be assumed for
+    empty header).
+  quote_context: Section 3.6.1 Client Responsibilities
+  accessed: '2026-10-02'
+- id: a2a-protojson-enums
+  claim: In JSON serialisations enum values are ProtoJSON string names, for example TASK_STATE_INPUT_REQUIRED.
+  where: lesson.py state constants, rule R09, FaultOldDialectStates
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Enum values MUST be represented according to the ProtoJSON specification, which serializes enums
+    as their string names as defined in the Protocol Buffer definition (typically SCREAMING_SNAKE_CASE).
+  quote_context: Section 5.5 JSON Field Naming Convention, 'Enum Values'
+  accessed: '2026-10-02'
+- id: a2a-error-code-range
+  claim: A2A-specific errors use JSON-RPC codes in the range -32001 to -32099.
+  where: lesson.py error constants
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: A2A-specific errors use codes in the range -32001 to -32099.
+  quote_context: Section 9.5 Error Handling
+  accessed: '2026-10-02'
+- id: a2a-error-task-not-found
+  claim: TaskNotFoundError maps to JSON-RPC code -32001.
+  where: lesson.py TASK_NOT_FOUND
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: TaskNotFoundError -32001 NOT_FOUND 404 Not Found
+  quote_context: Section 5.4 Error Code Mappings, table row (cells separated by spaces)
+  accessed: '2026-10-02'
+- id: a2a-error-task-not-cancelable
+  claim: TaskNotCancelableError maps to JSON-RPC code -32002.
+  where: lesson.py TASK_NOT_CANCELABLE
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: TaskNotCancelableError -32002 FAILED_PRECONDITION 400 Bad Request
+  quote_context: Section 5.4 Error Code Mappings, table row
+  accessed: '2026-10-02'
+- id: a2a-error-unsupported-operation
+  claim: UnsupportedOperationError maps to JSON-RPC code -32004.
+  where: lesson.py UNSUPPORTED_OPERATION
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: UnsupportedOperationError -32004 FAILED_PRECONDITION 400 Bad Request
+  quote_context: Section 5.4 Error Code Mappings, table row
+  accessed: '2026-10-02'
+- id: a2a-error-version-not-supported
+  claim: VersionNotSupportedError maps to JSON-RPC code -32009.
+  where: lesson.py VERSION_NOT_SUPPORTED
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: VersionNotSupportedError -32009 FAILED_PRECONDITION 400 Bad Request
+  quote_context: Section 5.4 Error Code Mappings, table row
+  accessed: '2026-10-02'
+- id: a2a-jsonrpc-error-codes
+  claim: An unknown method is JSON-RPC MethodNotFoundError, code -32601.
+  where: lesson.py rule R02
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: -32601 MethodNotFoundError "Method not found" The requested method does not exist or is not available
+  quote_context: Section 9.5 Error Handling, the standard error-code table
+  accessed: '2026-10-02'
+- id: a2a-jsonrpc-binding
+  claim: The JSON-RPC binding is JSON-RPC 2.0 over HTTP(S) with PascalCase method names; streaming uses
+    Server-Sent Events.
+  where: lesson.py section 1 and the whole server
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Method Naming: PascalCase method names matching gRPC conventions (e.g., SendMessage, GetTask)'
+  quote_context: Section 9.1 Protocol Requirements
+  accessed: '2026-10-02'
+- id: a2a-jsonrpc-protocol
+  claim: The JSON-RPC binding is JSON-RPC 2.0 over HTTP(S).
+  where: lesson.py section 1
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Protocol: JSON-RPC 2.0 over HTTP(S)'
+  quote_context: Section 9.1 Protocol Requirements
+  accessed: '2026-10-02'
+- id: a2a-sse-streaming
+  claim: In the JSON-RPC binding streaming is Server-Sent Events (text/event-stream), each event a JSON-RPC
+    response.
+  where: lesson.py A2AServer.handle (SSE framing), SSE_CT
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: 'Streaming: Server-Sent Events (text/event-stream)'
+  quote_context: Section 9.1 Protocol Requirements
+  accessed: '2026-10-02'
+- id: a2a-bindings
+  claim: The specified protocol bindings are JSON-RPC, gRPC and HTTP+JSON.
+  where: lesson.py sections 1 and 15
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: The core ones officially supported are JSONRPC, GRPC and HTTP+JSON.
+  quote_context: Section 4.4.6 AgentInterface, field protocolBinding
+  accessed: '2026-10-02'
+- id: a2a-messages-not-outputs
+  claim: Messages SHOULD NOT be used to deliver task outputs; results SHOULD be returned as Artifacts.
+  where: lesson.py ChainJob (the answer is an artifact, progress notes are status messages)
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Messages SHOULD NOT be used to deliver task outputs. Results SHOULD BE returned using Artifacts
+    associated with a Task.
+  quote_context: Section 3.7 Messages and Artifacts
+  accessed: '2026-10-02'
+- id: a2a-async-optional-message
+  claim: Agents MAY accept additional messages for tasks in non-terminal states; the specification leaves
+    what to do to the agent, so the lesson tests nothing about it.
+  where: lesson.py section 1 ('what is tested') and A2AServer.deliver
+  source_url: https://a2a-protocol.org/latest/specification/
+  source_title: 'Agent2Agent (A2A) Protocol Specification (page banner: Latest Released Version 1.0.0)'
+  quote: Agents MAY accept additional messages for tasks in non-terminal states to enable multi-turn interactions
+  quote_context: Section 3.3.3 Asynchronous Processing
+  accessed: '2026-10-02'
+- id: a2a-v03-method-names
+  claim: In version 0.3 of the specification JSON-RPC method names follow the pattern category/action,
+    for example message/send and tasks/get (version 1.0 uses PascalCase names such as SendMessage).
+  where: lesson.py section 1 (what changed since 0.3), FaultOldDialectStates
+  source_url: https://a2a-protocol.org/v0.3.0/specification/
+  source_title: Agent2Agent (A2A) Protocol Specification, version 0.3.0
+  quote: Method names follow the pattern {category}/{action} (e.g., "message/send", "tasks/get").
+  quote_context: Section 3.2.1 JSON-RPC Transport of the 0.3.0 specification
+  accessed: '2026-10-02'
+- id: a2a-v03-task-states
+  claim: In version 0.3 of the specification the task states are lowercase strings such as input-required
+    (version 1.0 uses ProtoJSON names such as TASK_STATE_INPUT_REQUIRED).
+  where: lesson.py section 1 (what changed since 0.3), FaultOldDialectStates
+  source_url: https://a2a-protocol.org/v0.3.0/specification/
+  source_title: Agent2Agent (A2A) Protocol Specification, version 0.3.0
+  quote: InputRequired = "input-required",
+  quote_context: Section 6.3 TaskState Enum of the 0.3.0 specification
+  accessed: '2026-10-02'

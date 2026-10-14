@@ -22,6 +22,37 @@ objectives:
   to the right diagnosis costs on this fleet
 - Implement estimate_prices so a class the audit barely saw keeps the kick-off guess and is reported as
   one, and re-derive module 1's threshold from the audited prices
+before_you_start:
+  assumed:
+  - bin a 1-D array by quantile edges with np.quantile and np.digitize, and turn the counts into proportions
+  - compare two histograms of the same variable and describe where they differ
+  - compute a mean cost per category from a list of records, and say why the mean of right-skewed values
+    sits above the median
+  resources:
+  - title: 'Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift'
+    by: Rabanser, Günnemann and Lipton (NeurIPS 2019)
+    url: https://arxiv.org/abs/1810.11953
+    kind: free
+    why: 'detecting a shift in the input data without labels: per-feature two-sample tests and dimensionality
+      reduction, the setting this lesson is in after the diode'
+  - title: 'Learning under Concept Drift: A Review'
+    by: Lu, Liu, Dong, Gu, Gama and Zhang (IEEE TKDE)
+    url: https://arxiv.org/abs/2004.05785
+    kind: free
+    why: 'the taxonomy of drift: a change in the input distribution (virtual drift, covariate shift) versus
+      a change in the input-to-outcome relation'
+  - title: Statistical Properties of Population Stability Index
+    by: Bilal Yurdakul (Western Michigan University dissertation, open access)
+    url: https://scholarworks.wmich.edu/dissertations/3208/
+    kind: free
+    why: what the population stability index measures, its 0.10 and 0.25 rules of thumb, and the point
+      that they are used with no stated Type I or Type II error rate
+  - title: Think Stats, 2nd edition
+    by: Allen B. Downey (Green Tea Press; free online)
+    url: https://greenteapress.com/thinkstats2/html/index.html
+    kind: free
+    why: 'the estimation chapter: the estimation game and sampling distributions, why a price averaged
+      from a handful of audit rows cannot be trusted'
 datasets:
 - name: synthetic-drifting-fleet-and-alarm-audit
   kind: synthetic
@@ -35,5 +66,5 @@ datasets:
   downloads: false
 points: 148
 status: reviewed
-measured_seconds: 2.5
-measured_peak_mib: 92
+measured_seconds: 2.8
+measured_peak_mib: 98

@@ -20,6 +20,40 @@ objectives:
 - Reconcile an inventory against a runtime registry and name the models running outside it
 - Generate the inventory report from the measured results, and explain why a model with no validation
   on file is a coverage finding and not a schema error
+before_you_start:
+  assumed:
+  - write a Python function that checks a dict or dataclass record against a schema (required fields,
+    types, allowed values) and returns a list of problems
+  - turn a policy table with thresholds into code, and say for any value which side of a boundary it falls
+    on (< versus <=)
+  - use Python sets to find what is in one collection and not in another
+  - parse ISO dates (YYYY-MM-DD) and compare them with the datetime module
+  resources:
+  - title: SR 26-2 Revised Guidance on Model Risk Management (the attachment)
+    by: Federal Reserve, OCC and FDIC (hosted by the Federal Reserve), 17 April 2026; supersedes SR 11-7
+    url: https://www.federalreserve.gov/supervisionreg/srletters/sr2602a1.pdf
+    kind: free
+    why: 'section III (materiality as exposure and purpose) and, in section VI, ''Model Inventory'' and
+      ''Roles and Responsibilities'': what an inventory should capture, and why more material models get
+      more rigour'
+  - title: SS1/23 Model risk management principles for banks
+    by: Prudential Regulation Authority, Bank of England
+    url: https://www.bankofengland.co.uk/prudential-regulation/publication/2023/may/model-risk-management-principles-for-banks-ss
+    kind: free
+    why: Principle 1, model identification and model risk classification, is the supervisory basis for
+      a model definition, an inventory and a tiering; Principle 2 covers the governance around it
+  - title: 'dataclasses: Data Classes (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/dataclasses.html
+    kind: free
+    why: defining a record type with typed fields and defaults, the shape a model record takes in the
+      lesson's schema validator
+  - title: 'datetime: date objects (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/datetime.html
+    kind: free
+    why: date.fromisoformat and comparing date values, which the validity and review-date checks on a
+      record rely on
 datasets: []
 points: 121
 status: reviewed

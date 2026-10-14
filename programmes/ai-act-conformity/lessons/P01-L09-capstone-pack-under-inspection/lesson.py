@@ -121,6 +121,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > would accept. For a real system, read the Official Journal text and take professional
 # > advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`, `P01-L02`, `P01-L03`, `P01-L04`, `P01-L05`, `P01-L06`, `P01-L07`, `P01-L08`
+#
+# **This lesson assumes you can already:**
+#
+# - run a lesson's functions on a fixture and read their structured output without opening their source
+# - read and walk nested dict records in Python
+# - explain what a hash digest of a document proves, and what it does not prove about whether the document is true
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Closing the AI Accountability Gap: Defining an End-to-End Framework for Internal Algorithmic Auditing](https://arxiv.org/abs/2001.00973) · Raji et al. (FAT* 2020, arXiv) · *free* — the audit stages from scoping to reflection and the artefacts each produces: the shape of the inspection the capstone has you carry out
+# - [Categorizing Variants of Goodhart's Law](https://arxiv.org/abs/1803.04585) · Manheim and Garrabrant (arXiv) · *free* — why a check turned green by optimising the check is not the same as a system made safe, the failure the repaired-versus-silenced audit looks for
+# - [Artificial Intelligence Risk Management Framework (AI RMF 1.0)](https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10) · NIST · *free* — free PDF; sections 5.3 Measure and 5.4 Manage on testing, evidence and documented residual risk (MANAGE 1.4), a second lens on what the inspector asks for
+# - [Regulation (EU) 2024/1689 (the AI Act): official text](https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng) · European Parliament and Council, EUR-Lex · *free* — the original 2024 text, without the Digital Omnibus (EUR-Lex links the consolidated version); Chapter III Section 2 (Articles 8 to 15) holds the requirements the pack evidences
+# - [The EU Artificial Intelligence Act: A Commentary](https://academic.oup.com/oxford-law-pro/book/62212) · Michèle Finck (Oxford University Press, 2026) · *paid* — per the publisher an article-by-article commentary; its contents page was not checkable, so no entry numbers are given: look up Articles 8 to 15 and 43
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

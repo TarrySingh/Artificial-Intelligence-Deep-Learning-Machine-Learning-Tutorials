@@ -24,6 +24,42 @@ objectives:
   — malformed JSON, an unknown method, an unsupported protocol version, a tools/call without a name, a
   notification that must get no response, an explicit id: null, and ping — both in-process and over the
   subprocess''s real stdin/stdout'
+before_you_start:
+  assumed:
+  - start a child process from Python with subprocess and exchange text lines through its stdin and stdout
+  - parse a line with json.loads and tell invalid JSON apart from valid JSON that has the wrong shape
+  - read a specification that uses MUST, SHOULD and MAY, and say which statements a conforming program
+    cannot skip
+  resources:
+  - title: JSON-RPC 2.0 Specification
+    by: JSON-RPC Working Group
+    url: https://www.jsonrpc.org/specification
+    kind: free
+    why: 'the whole page (it is short): request, notification, response and error objects and the reserved
+      error codes that exercises 1 to 3 and 7 implement'
+  - title: 'MCP specification 2025-11-25: Lifecycle'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+    kind: free
+    why: initialization and version negotiation, the MUST rules behind exercises 4 and 5
+  - title: 'MCP specification 2025-11-25: Tools'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+    kind: free
+    why: tools/list, tools/call, and the split between protocol errors and tool results flagged isError,
+      which exercise 6 dispatches on
+  - title: 'MCP specification 2025-11-25: Transports'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/basic/transports
+    kind: free
+    why: 'the stdio section only: newline-delimited UTF-8 messages, no embedded newlines, nothing but
+      messages on stdout (exercises 1, 2 and section 12)'
+  - title: 'subprocess: Subprocess management'
+    by: Python documentation
+    url: https://docs.python.org/3/library/subprocess.html
+    kind: free
+    why: Popen with PIPE, communicate and the deadlock warning, for the real-subprocess proof in section
+      12
 datasets:
 - name: T07-L02 demo chain task (reuses T07-L01's synthetic lookup-chain generator, one fixed seed)
   kind: synthetic

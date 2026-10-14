@@ -17,6 +17,43 @@ objectives:
   Article 4, nor Article 50
 - Justify which date binds a system that is both an Annex III use case and a safety component of a product
   regulated under Annex I
+before_you_start:
+  assumed:
+  - write Python functions over dicts and lists of dicts, returning new values rather than mutating their
+    inputs
+  - compare and sort datetime.date values, and say what comparing a date against an as-of date answers
+  - tell a statute's Articles, Annexes and Recitals apart, and follow a cross-reference from one to another
+  resources:
+  - title: Regulation (EU) 2024/1689 (the AI Act), full text in the Official Journal
+    by: EUR-Lex, Publications Office of the European Union
+    url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj
+    kind: free
+    why: 'the authoritative text as adopted in 2024: Article 5, Article 6 with Annexes I and III, Article
+      50 and Article 4; its high-risk dates were later amended by the Digital Omnibus below'
+  - title: 'AI Act: shaping Europe''s digital future'
+    by: European Commission
+    url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    kind: free
+    why: the Commission's plain-language page on the four risk levels, with an application timeline updated
+      for the AI Omnibus, which the lesson's date ladder is checked against
+  - title: AI Act Single Information Platform (AI Act Service Desk)
+    by: European Commission and the AI Office
+    url: https://ai-act-service-desk.ec.europa.eu/en
+    kind: free
+    why: the official AI Act Explorer for browsing articles and annexes by number, plus the Compliance
+      Checker, FAQs and the Commission's high-risk guidelines
+  - title: Regulation (EU) 2026/1744 (the Digital Omnibus on AI), full text in the Official Journal
+    by: EUR-Lex, Publications Office of the European Union
+    url: https://eur-lex.europa.eu/eli/reg/2026/1744/oj
+    kind: free
+    why: the July 2026 amending act that moves the Chapter III high-risk duties to 2 December 2027 (Annex
+      III) and 2 August 2028 (Annex I), the last two rungs of the date ladder
+  - title: datetime, basic date and time types
+    by: Python documentation
+    url: https://docs.python.org/3/library/datetime.html
+    kind: free
+    why: the date objects section, for constructing, comparing and subtracting dates, which is all the
+      lesson's date ladder needs
 datasets:
 - name: systems.yaml — fictional AI system registry authored for this lesson
   licence: CC-BY-NC-SA-4.0

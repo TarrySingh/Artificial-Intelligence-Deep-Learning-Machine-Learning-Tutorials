@@ -1,0 +1,69 @@
+id: T06-L04-agent-memory
+title: Agent memory — what to keep, what to retrieve, what to forget
+track: T06
+flagship: ''
+tier: cpu8
+budget_seconds: 150
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T06-L01-retrieval-from-scratch
+- T07-L01-agent-loop-from-scratch
+objectives:
+- 'Implement a salience-gated write policy that stores an event only when its importance is at least a
+  threshold, and check the boundary one step either side: an event exactly at the threshold is kept, one
+  step below it is dropped'
+- Implement near-duplicate detection and merging (a cosine gate over the same fact's current memories
+  only), and measure fact recall at a small retrieval budget with and without it, holding supersession
+  on in both
+- Implement an update rule that supersedes every current memory of a changed fact, and measure fact recall
+  of the CURRENT value, on probes asked after a fact has changed, with and without it
+- Implement the recency, importance and relevance retrieval score from Park et al. (2023) — exponential
+  decay over elapsed turns, a 1-10 importance and cosine relevance, each min-max scaled over the candidates
+  and summed with equal weight — and get the decay constant's direction right
+- Measure fact recall on probe questions asked at later turns against memory size and retrieval cost,
+  across five write policies and a swept retrieval budget, and choose a policy from the measured table
+before_you_start:
+  assumed:
+  - keep a store of records in Python (a list of dicts or a small class) and update or filter them in
+    a loop
+  - compute the cosine similarity of two vectors and say why they are length-normalised first
+  - explain exponential decay (value times a constant to the power of elapsed time) and which direction
+    the constant moves the curve
+  - rescale a list of numbers to the range 0 to 1 (min-max scaling), and say what happens when they are
+    all equal
+  resources:
+  - title: 'Generative Agents: Interactive Simulacra of Human Behavior'
+    by: Park, O'Brien, Cai, Morris, Liang and Bernstein (arXiv; UIST 2023)
+    url: https://arxiv.org/abs/2304.03442
+    kind: free
+    why: 'section 4.1, Memory and Retrieval: the recency, importance and relevance score, with exponential-decay
+      recency and min-max scaling, that exercises 5 and 6 implement'
+  - title: LLM Powered Autonomous Agents (the Memory section)
+    by: Lilian Weng (Lil'Log)
+    url: https://lilianweng.github.io/posts/2023-06-23-agent/
+    kind: free
+    why: a readable map of short-term versus long-term memory in agents and why a retriever sits between
+      the store and the prompt, before you build one
+  - title: 'Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory'
+    by: Chhikara, Khant, Aryan, Singh and Yadav (arXiv)
+    url: https://arxiv.org/abs/2504.19413
+    kind: free
+    why: its update phase picks ADD, UPDATE, DELETE or NOOP for each new fact against the most similar
+      stored memories, an LLM-driven version of the dedup-and-supersede rules in exercises 2 to 4
+  - title: Introduction to Information Retrieval, section on dot products and cosine similarity (chapter
+      6)
+    by: Manning, Raghavan and Schütze (Cambridge University Press; free online edition)
+    url: https://nlp.stanford.edu/IR-book/html/htmledition/dot-products-1.html
+    kind: free
+    why: cosine similarity and length normalisation worked through on TF-IDF vectors, which is the relevance
+      signal in the retrieval score
+datasets:
+- name: T06-L04 synthetic interaction log (six tracked facts, introduced, restated in paraphrase, and
+    updated, over 480 turns, fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 165
+status: reviewed
+measured_seconds: 1.4
+measured_peak_mib: 35

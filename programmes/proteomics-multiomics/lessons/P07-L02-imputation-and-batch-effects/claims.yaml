@@ -1,0 +1,134 @@
+claims:
+- id: bh-controls-fdr
+  claim: The Benjamini-Hochberg procedure controls the false discovery rate, the expected proportion of
+    false discoveries amongst the rejected hypotheses. The lesson implements it as adjusted p-values (q-values)
+    and calls proteins at q <= the promised rate.
+  where: lesson.py section 3 (exercise 1, benjamini_hochberg)
+  source_url: https://stat.ethz.ch/R-manual/R-devel/library/stats/html/p.adjust.html
+  source_title: 'R documentation: p.adjust, Adjust P-values for Multiple Comparisons (R Core Team, stats
+    package)'
+  quote: The "BH" (aka "fdr") and "BY" methods of Benjamini, Hochberg, and Yekutieli control the false
+    discovery rate, FDR, the expected proportion of false discoveries amongst the rejected hypotheses.
+  quote_context: the Details section of the manual page
+  accessed: 2026-09-29
+- id: welch-t-test-formulas
+  claim: The two-sample t statistic for unequal variances is the difference of the sample means over sqrt(s1^2/N1
+    + s2^2/N2), and its degrees of freedom are the Welch-Satterthwaite formulation, which is robust for
+    unequal sample sizes and/or unequal variances. The lesson's welch_test uses exactly these two formulas.
+  where: lesson.py section 4 (exercise 2, welch_test)
+  source_url: https://www.itl.nist.gov/div898/handbook/eda/section3/eda353.htm
+  source_title: NIST/SEMATECH e-Handbook of Statistical Methods, 1.3.5.3 Two-Sample t-Test for Equal Means
+  quote: The Welch-Satterthwaite degrees of freedom are robust for unequal sample sizes and/or unequal
+    variances.
+  quote_context: the sentence after the degrees-of-freedom formula for the unequal-variance test; the
+    page gives the formula as (s1^2/N1 + s2^2/N2)^2 / [ (s1^2/N1)^2/(N1-1) + (s2^2/N2)^2/(N2-1) ]
+  accessed: 2026-09-29
+- id: lazar-missing-values
+  claim: In label-free quantitative proteomics, missing values are a genuine issue; the missingness mechanism
+    may be of different natures depending on the data set, and each imputation method is devoted to a
+    specific type of missingness mechanism, so the question is not which method is most accurate in general
+    but which is most appropriate. This is the premise of the lesson.
+  where: lesson.py sections 1 and 13
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:26906401%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Lazar C, Gatto L, Ferro M, Bruley C, Burger T. Accounting for the Multiple Natures of
+    Missing Values in Label-Free Quantitative Proteomics Data Sets to Compare Imputation Strategies. J
+    Proteome Res 2016;15(4):1116-25. DOI 10.1021/acs.jproteome.5b00981. PubMed 26906401, read through
+    Europe PMC's copy of the record
+  quote: we believe that the question at stake is not to find the most accurate imputation method in general
+    but instead the most appropriate one
+  quote_context: the abstract, which also says that (i) depending on the proteomics data set, the missingness
+    mechanism may be of different natures and (ii) each imputation method is devoted to a specific type
+    of missingness mechanism
+  accessed: 2026-09-29
+- id: mnar-from-detection-limits
+  claim: Limits in detection drive values that are missing not at random (MNAR) in proteomics, and existing
+    imputation methods typically target either missing-at-random or MNAR mechanisms. The lesson's simulator
+    loses a cell with a probability that rises as its value falls (the MNAR mechanism) and independently
+    loses a small share of cells at random.
+  where: lesson.py sections 1 and 2 (generate_world)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:42483901%20AND%20SRC:MED&resultType=core&format=json
+  source_title: 'Shi Y, Davis S, Charles PD, Taylor S, Dombi E, Berridge G, Ebner D, Fischer R. SoftHybrid:
+    A Hybrid Imputation Algorithm Optimized for Single-Cell Proteomics Data. J Proteome Res 2026 (issue
+    of 2026-08). DOI 10.1021/acs.jproteome.5c01221. PubMed 42483901, read through Europe PMC''s copy of
+    the record'
+  quote: limits in detection drive missing-not-at-random (MNAR) sparsity
+  quote_context: the abstract, first sentence, about single-cell proteomics; the second sentence says
+    existing imputation methods typically target either missing-at-random (MAR) or MNAR mechanisms. The
+    lesson uses this only for the mechanism, not for single-cell data
+  accessed: 2026-09-29
+- id: troyanskaya-knn-impute
+  claim: Nearest-neighbour estimation of missing values was proposed for gene-expression microarray data
+    as KNNimpute, a weighted k-nearest-neighbours method, and compared with an SVD method and with row
+    averages. The lesson's impute_knn is a simplified, unweighted version with an exactly specified distance
+    and tie rule, and applies it to protein quantities; the lesson makes no claim that this exact rule
+    is the published one.
+  where: lesson.py section 10 (exercise 7, impute_knn)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:11395428%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Troyanskaya O, Cantor M, Sherlock G, Brown P, Hastie T, Tibshirani R, Botstein D, Altman
+    RB. Missing value estimation methods for DNA microarrays. Bioinformatics 2001;17(6):520-5. DOI 10.1093/bioinformatics/17.6.520.
+    PubMed 11395428, read through Europe PMC's copy of the record
+  quote: 'We implemented and evaluated three methods: a Singular Value Decomposition (SVD) based method
+    (SVDimpute), weighted K-nearest neighbors (KNNimpute), and row average.'
+  accessed: 2026-09-29
+- id: leek-batch-effects
+  claim: Batch effects, which occur because measurements are affected by laboratory conditions, reagent
+    lots and personnel differences, become a major problem when they are correlated with an outcome of
+    interest and lead to incorrect conclusions. This is the hazard the lesson's correlated design measures.
+  where: lesson.py sections 1 and 15
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:20838408%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Leek JT, Scharpf RB, Bravo HC, Simcha D, Langmead B, Johnson WE, Geman D, Baggerly K,
+    Irizarry RA. Tackling the widespread and critical impact of batch effects in high-throughput data.
+    Nat Rev Genet 2010;11(10):733-9. DOI 10.1038/nrg2825. PubMed 20838408, read through Europe PMC's copy
+    of the record
+  quote: This becomes a major problem when batch effects are correlated with an outcome of interest and
+    lead to incorrect conclusions.
+  quote_context: the abstract
+  accessed: 2026-09-29
+- id: imputation-batch-interaction-2026
+  claim: A 2026 study of a urine peptidomics data set of 1,050 samples across 13 batches, combining three
+    imputations with three batch-effect corrections, reported that unadjusted ComBat removed a large proportion
+    of the disease-associated peptides while including disease status in the ComBat model largely preserved
+    the biological signal, and that imputation and batch-effect correction interact. The lesson cites
+    it as an example of the same cost, on real data, that its simulated correlated design measures; it
+    does not reproduce the study.
+  where: lesson.py section 15
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:41705731%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Gonidaki C, Latosinska A, Vlahou A, Stroggilos R, Mischak H. Practical Impact of Imputation
+    and Batch-Effect Correction for Proteomics/Peptidomics Differential-Abundance Analysis. Proteomics
+    2026 (first published 2026-02-18). DOI 10.1002/pmic.70111. PubMed 41705731, read through Europe PMC's
+    copy of the record
+  quote: whereas inclusion of disease status in the ComBat model largely preserved biological signal
+  quote_context: the abstract; the preceding clause says MNN and especially unadjusted ComBat removed
+    a large proportion of disease-associated peptides (about 50% and more than 90% respectively)
+  accessed: 2026-09-29
+- id: imputation-minimal-impact-2026
+  claim: The same 2026 urine peptidomics study found that the choice of imputation method had minimal
+    impact on its final list of disease-associated peptides, given its missingness structure and normalisation
+    strategy. The lesson cites it so that its simulated world, in which the choice matters a great deal,
+    is not read as a statement about real data sets.
+  where: lesson.py section 15
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:41705731%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Gonidaki C, Latosinska A, Vlahou A, Stroggilos R, Mischak H. Practical Impact of Imputation
+    and Batch-Effect Correction for Proteomics/Peptidomics Differential-Abundance Analysis. Proteomics
+    2026 (first published 2026-02-18). DOI 10.1002/pmic.70111. PubMed 41705731, read through Europe PMC's
+    copy of the record
+  quote: Imputation method choice had minimal impact on the final list of disease-associated peptides
+    (DAPs), given the missingness structure and normalization strategy.
+  quote_context: the abstract, the sentence after the description of the data set
+  accessed: 2026-09-29
+- id: nygaard-group-aware-correction
+  claim: A batch correction that preserves the group difference (for example a two-way model of group
+    and batch) may systematically induce incorrect group differences in downstream analyses when the groups
+    are distributed between the batches in an unbalanced manner, and may lead to exaggerated confidence.
+    This is why the lesson's correction stays blind to the condition.
+  where: lesson.py section 15
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:26272994%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Nygaard V, Rødland EA, Hovig E. Methods that remove batch effects while retaining group
+    differences may lead to exaggerated confidence in downstream analyses. Biostatistics 2016;17(1):29-39.
+    DOI 10.1093/biostatistics/kxv027. PubMed 26272994, read through Europe PMC's copy of the record
+  quote: this approach may systematically induce incorrect group differences in downstream analyses when
+    groups are distributed between the batches in an unbalanced manner
+  quote_context: the abstract; "this approach" is the option of preserving the difference between study
+    groups, e.g. using a two-way ANOVA model to simultaneously estimate both group and batch effects.
+    The title adds that such methods may lead to exaggerated confidence in downstream analyses
+  accessed: 2026-09-29

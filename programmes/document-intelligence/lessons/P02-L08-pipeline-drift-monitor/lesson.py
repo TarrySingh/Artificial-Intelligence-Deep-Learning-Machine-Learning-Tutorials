@@ -110,6 +110,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Explain why a drift statistic, or a label-free confidence proxy, pages for the harmless
 #    changes and sleeps through the harmful one.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - bin data with np.histogram on explicit bin edges and turn the counts into proportions
+# - explain how noisy a rate is when it is measured on a few hundred items, such as the share of audited documents that are defective
+# - say what log(p / q) is when p equals q, and when p is much larger than q
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [NIST/SEMATECH e-Handbook of Statistical Methods: CUSUM control charts](https://www.itl.nist.gov/div898/handbook/pmc/section3/pmc323.htm) · NIST (US National Institute of Standards and Technology) · *free* — the tabular CUSUM with a reference value k and a decision threshold h, and how they trade detection speed against false alarms, the statistic cusum implements
+# - [Information Theory, Inference, and Learning Algorithms, chapter 2](https://www.inference.org.uk/itprnn/book.html) · David MacKay (Cambridge University Press; free PDF from the author) · *free* — section 2.6 defines relative entropy (KL divergence) and Gibbs' inequality, and notes that it is not symmetric; the background for kl_divergence
+# - [Statistical Properties of Population Stability Index](https://scholarworks.wmich.edu/dissertations/3208/) · Bilal Yurdakul (PhD dissertation, Western Michigan University, 2018; open access) · *free* — the population stability index, its link to KL divergence, and the type I and type II error rates behind the 0.10 and 0.25 rules of thumb; background for population_stability_index
+# - [Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift](https://arxiv.org/abs/1810.11953) · Rabanser, Günnemann and Lipton (NeurIPS 2019; arXiv) · *free* — compares label-free shift detectors on inputs and predictions, and treats whether a detected shift is harmful as a separate question from detecting it
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

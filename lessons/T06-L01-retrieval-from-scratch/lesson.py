@@ -109,6 +109,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Measure, on a corpus built so that identifiers and paraphrases favour different
 #    retrievers, when hybrid's advantage over each pure method is real and when it is not.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops, dicts and sorting, and index, slice and sum numpy arrays
+# - take the dot product and the norm of two vectors, and say what the cosine of the angle between them measures
+# - multiply a matrix by a vector or another matrix and say what shape the result has
+# - use a logarithm: read log(N / df), and say why a log turns a product of weights into a sum
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Speech and Language Processing (3rd ed. draft), chapter 11: Information Retrieval and Retrieval-Augmented Generation](https://web.stanford.edu/~jurafsky/slp3/11.pdf) · Dan Jurafsky and James H. Martin (Stanford; free draft) · *free* — 11.1 for tf-idf, BM25 and ranked scoring, 11.2 for ranked-retrieval evaluation, 11.3 for dense retrieval: the pipeline this lesson builds from scratch
+# - [Introduction to Information Retrieval, chapter 18 (matrix decompositions and latent semantic indexing)](https://nlp.stanford.edu/IR-book/html/htmledition/latent-semantic-indexing-1.html) · Manning, Raghavan and Schütze (Cambridge University Press; free online edition) · *free* — the latent-semantic-indexing section shows how a truncated SVD of the term-document matrix gives the dense vectors you build in exercises 4 to 6
+# - [Mathematics for Machine Learning](https://mml-book.github.io/) · Deisenroth, Faisal and Ong (Cambridge University Press; free PDF from the authors) · *free* — chapter 2 for vectors and matrix products; sections 4.5 and 4.6 for the singular value decomposition and rank-k approximation behind truncated_svd
+# - [Computational and Inferential Thinking, section 13.2 (the bootstrap)](https://inferentialthinking.com/chapters/13/2/bootstrap/index.html) · Ani Adhikari, John DeNero and David Wagner · *free* — resampling with replacement and reading a percentile interval, the idea behind exercise 9's bootstrap confidence intervals over queries
+# - [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html) · NumPy project (official documentation) · *free* — the sections on array attributes, indexing and slicing, basic array operations and broadcasting cover every numpy idiom the exercises lean on
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

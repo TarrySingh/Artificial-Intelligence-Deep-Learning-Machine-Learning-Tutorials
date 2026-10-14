@@ -104,6 +104,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 4. Implement `tier_check()` so it reproduces this repository's own gate, boundary included.
 # 5. Explain why a lesson that busts its budget gets rewritten, not given a bigger budget.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** none.
+#
+# **This lesson assumes you can already:**
+#
+# - write a Python function with a loop and a try/finally block, define a NamedTuple, and read a traceback to find the failing line
+# - create and slice a numpy array, and call methods such as .sum() on it
+# - say what RAM is, as opposed to disk, and what happens to a program that asks for more of it than the machine has
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [The Python Tutorial, section 8: Errors and Exceptions](https://docs.python.org/3/tutorial/errors.html) · Python Software Foundation · *free* — try, except and finally, which is how measure() stops its clock and its tracer even when the measured call raises
+# - [NumPy user guide: Data types](https://numpy.org/doc/stable/user/basics.types.html) · NumPy project · *free* — what int64 is and what happens when a value does not fit, the silent wrap-around behind the one wrong implementation in section 4
+# - [tracemalloc: Trace memory allocations](https://docs.python.org/3/library/tracemalloc.html) · Python Software Foundation · *free* — start(), get_traced_memory() and reset_peak(), the API behind the Python-allocator column of measure()
+# - [Operating Systems: Three Easy Pieces](https://pages.cs.wisc.edu/~remzi/OSTEP/) · Arpaci-Dusseau and Arpaci-Dusseau · *free* — the free textbook; chapter 13 (Address Spaces) and chapter 18 (Introduction to Paging): memory as pages the OS hands out, background for why process RSS differs from what Python allocated
+# - [Computer Systems: A Programmer's Perspective, 3rd edition](https://csapp.cs.cmu.edu/) · Bryant and O'Hallaron (Pearson) · *paid* — chapter 9, Virtual Memory: page tables, page faults, memory mapping and the heap allocator (9.9), the machinery beneath the resident-memory figure that measure() reads
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

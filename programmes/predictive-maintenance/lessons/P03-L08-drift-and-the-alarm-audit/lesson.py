@@ -118,6 +118,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # ships with that column. `meta.yaml` declares the generator under `datasets:`. The method
 # transfers; the particular numbers describe no real plant.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`, `P03-L07`
+#
+# **This lesson assumes you can already:**
+#
+# - bin a 1-D array by quantile edges with np.quantile and np.digitize, and turn the counts into proportions
+# - compare two histograms of the same variable and describe where they differ
+# - compute a mean cost per category from a list of records, and say why the mean of right-skewed values sits above the median
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Failing Loudly: An Empirical Study of Methods for Detecting Dataset Shift](https://arxiv.org/abs/1810.11953) · Rabanser, Günnemann and Lipton (NeurIPS 2019) · *free* — detecting a shift in the input data without labels: per-feature two-sample tests and dimensionality reduction, the setting this lesson is in after the diode
+# - [Learning under Concept Drift: A Review](https://arxiv.org/abs/2004.05785) · Lu, Liu, Dong, Gu, Gama and Zhang (IEEE TKDE) · *free* — the taxonomy of drift: a change in the input distribution (virtual drift, covariate shift) versus a change in the input-to-outcome relation
+# - [Statistical Properties of Population Stability Index](https://scholarworks.wmich.edu/dissertations/3208/) · Bilal Yurdakul (Western Michigan University dissertation, open access) · *free* — what the population stability index measures, its 0.10 and 0.25 rules of thumb, and the point that they are used with no stated Type I or Type II error rate
+# - [Think Stats, 2nd edition](https://greenteapress.com/thinkstats2/html/index.html) · Allen B. Downey (Green Tea Press; free online) · *free* — the estimation chapter: the estimation game and sampling distributions, why a price averaged from a handful of audit rows cannot be trusted
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

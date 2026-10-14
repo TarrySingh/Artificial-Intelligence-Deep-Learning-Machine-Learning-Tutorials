@@ -24,6 +24,37 @@ objectives:
 - Implement best_quantile, measure which quantile of one predictive distribution each metric selects when
   all four are run on the same rows, and demonstrate from those numbers that a later model can score a
   lower RMSE than a cautious one while being late an order of magnitude more often
+before_you_start:
+  assumed:
+  - fit a line to noisy points by least squares and say what its slope and intercept mean
+  - multiply and invert small matrices in numpy with @ and np.linalg.inv
+  - draw samples from a normal distribution with numpy and read a 5th-95th percentile interval from them
+  - say what taking a logarithm does to exponential growth
+  resources:
+  - title: Metrics for Offline Evaluation of Prognostic Performance
+    by: Saxena, Celaya, Saha, Saha and Goebel (NASA Ames; IJPHM 2010, open access)
+    url: https://papers.phmsociety.org/index.php/ijphm/article/view/1336
+    kind: free
+    why: the RUL error metrics, the prognostic horizon and the alpha-lambda accuracy cone that exercise
+      7 builds, and how the metrics are applied as a hierarchy of tests
+  - title: Damage Propagation Modeling for Aircraft Engine Prognostics
+    by: Saxena, Goebel, Simon and Eklund (NASA, PHM 2008)
+    url: https://ntrs.nasa.gov/api/citations/20090029214/downloads/20090029214.pdf
+    kind: free
+    why: how the C-MAPSS run-to-failure data were generated and the asymmetric score of the PHM08 challenge
+      that exercise 6 implements
+  - title: 'Probabilistic Machine Learning: An Introduction'
+    by: Kevin P. Murphy (MIT Press; free PDF from the author)
+    url: https://probml.github.io/pml-book/book1.html
+    kind: free
+    why: 'section 11.7 on Bayesian linear regression: the prior, the Gaussian posterior and the posterior
+      predictive that fit_posterior and the RUL interval rest on'
+  - title: 'Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares'
+    by: Stephen Boyd and Lieven Vandenberghe (Cambridge University Press; free PDF)
+    url: https://web.stanford.edu/~boyd/vmls/
+    kind: free
+    why: 'chapter 11 on matrix inverses and chapters 12 and 13 on least squares and least-squares data
+      fitting: the line fit and matrix algebra the posterior is built from'
 datasets:
 - name: synthetic-run-to-failure-fleet
   kind: synthetic

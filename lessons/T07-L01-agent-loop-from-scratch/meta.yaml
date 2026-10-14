@@ -18,6 +18,43 @@ objectives:
   interval, a cost-per-success figure and a failure taxonomy
 - Fit the measured success-rate-versus-length curve against p^n and measure how much each guardrail --
   validation, retries, budget -- moves success rate and cost
+before_you_start:
+  assumed:
+  - write Python functions, small classes or dataclasses, and dicts, and use try/except and raise
+  - read and write JSON values in Python (nested dicts, lists, strings, numbers, booleans, null) and say
+    which Python type each one becomes
+  - draw seeded random numbers with numpy or the random module and compute a mean over a list of results
+  resources:
+  - title: Building Effective AI Agents
+    by: Anthropic
+    url: https://www.anthropic.com/engineering/building-effective-agents
+    kind: free
+    why: what an agent is (a model using tools in a loop), stopping conditions such as an iteration cap,
+      and the appendix on designing tools
+  - title: JSON Schema reference (formerly Understanding JSON Schema)
+    by: JSON Schema project
+    url: https://json-schema.org/understanding-json-schema/reference
+    kind: free
+    why: 'the pages on type, on object properties and required, and on enum: the keywords exercise 1''s
+      argument validator has to enforce'
+  - title: Exponential Backoff And Jitter
+    by: Marc Brooker (AWS Architecture Blog)
+    url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+    kind: free
+    why: capped exponential backoff and full jitter, simulated, which is exactly what exercises 3 and
+      4 implement
+  - title: Think Stats, 2nd edition
+    by: Allen B. Downey (O'Reilly; free from Green Tea Press)
+    url: https://greenteapress.com/thinkstats2/html/thinkstats2009.html
+    kind: free
+    why: 'chapter 8, Estimation: simulate sampling to get a standard error and a confidence interval,
+      the idea behind exercise 8''s bootstrap'
+  - title: 'ReAct: Synergizing Reasoning and Acting in Language Models'
+    by: Yao et al. (arXiv)
+    url: https://arxiv.org/abs/2210.03629
+    kind: free
+    why: section 2 defines the interleaved thought, action and observation trajectory; this lesson builds
+      the same control flow, with a scripted policy where the paper prompts a language model
 datasets:
 - name: T07-L01 synthetic tool-call chains (lookup chains of controlled length, seeded fault and transient-failure
     injection)

@@ -21,6 +21,45 @@ objectives:
   narrows the held-out gap against a nominally-tuned controller
 - Decide from NVIDIA's published requirements whether a named GPU can run Isaac Sim, and state what this
   course therefore cannot teach
+before_you_start:
+  assumed:
+  - reshape a numpy vector into a matrix and multiply it by a state vector with @, as a state-feedback
+    law u = -K x does
+  - draw random parameters from a range with numpy's default_rng and a fixed seed
+  - compute a survival rate over a set of runs and say how many runs it rests on
+  - explain why a score measured on the data you tuned against is optimistic, and what a held-out set
+    is for
+  resources:
+  - title: Sim-to-Real Transfer of Robotic Control with Dynamics Randomization
+    by: Peng, Andrychowicz, Zaremba and Abbeel (arXiv)
+    url: https://arxiv.org/abs/1710.06537
+    kind: free
+    why: the paper behind the wrapper you build, randomising masses, friction and damping, with action
+      latency and observation noise in the same simulator
+  - title: 'Sim-to-Real Transfer in Deep Reinforcement Learning for Robotics: a Survey'
+    by: Zhao, Queralta and Westerlund (arXiv)
+    url: https://arxiv.org/abs/2009.13303
+    kind: free
+    why: a survey of the reality gap and the methods for closing it, with domain randomisation as one
+      of them
+  - title: MuJoCo documentation, XML reference
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/XMLreference.html
+    kind: free
+    why: actuator ctrlrange and forcerange (the saturation you measure), joint frictionloss and damping,
+      and body mass, the parameters you randomise
+  - title: Underactuated Robotics, System Identification
+    by: Russ Tedrake (MIT; free online)
+    url: https://underactuated.csail.mit.edu/sysid.html
+    kind: free
+    why: the section on estimating inertial parameters and friction, the real-world counterpart of the
+      mass and friction mismatch you inject
+  - title: An Introduction to Statistical Learning
+    by: James, Witten, Hastie and Tibshirani (Springer; free PDF from the authors)
+    url: https://www.statlearning.com/
+    kind: free
+    why: chapter 5 on resampling, section 5.1.1 (the validation set approach), for why a held-out set
+      is the honest measure
 datasets:
 - name: balancer.xml — planar ankle-and-hip balancer
   licence: CC-BY-NC-SA-4.0

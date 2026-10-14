@@ -1,0 +1,372 @@
+# Every factual claim this programme's README.md and MODULES.md make about the world, with a
+# primary source and the date the source was read. Each source below was fetched and read on the
+# access date (2026-09-29, or 2026-10-14 where the entry says so); none of these entries rests
+# on a search-result summary. Where the primary text could not be fetched by an automated client,
+# the entry says what was read instead.
+# Independent review, 2026-09-29: every URL re-fetched; IFRS 9 and Annex III now cite the
+# Official Journal texts; the CRE36 URL was replaced because the old one now lands on the CRE
+# overview; CFPB Circular 2022-03 is recorded as withdrawn (Federal Register, 12 May 2025).
+# Freshness review, 2026-10-14: every URL re-fetched. The CECL entry now cites the current
+# interagency FAQ (OCC Bulletin 2016-45 was rescinded on 3 April 2019); the CRE36 entry cites the
+# current publication of the chapter (the 2020 one was removed on 8 December 2022); the Annex III
+# entry is now checked against the AI Omnibus text, which does not amend Annex III. No claim in
+# README.md or MODULES.md changed.
+#
+# Per-lesson claims live in the lesson's own claims.yaml. Numbers a student sees in notebook
+# output are computed by code they run and are not claims.
+claims:
+  - id: sr-26-2-issued-and-supersedes
+    claim: >-
+      On 17 April 2026 the Federal Reserve issued SR 26-2, Revised Guidance on Model Risk
+      Management, jointly with the FDIC and the OCC. It supersedes and replaces SR 11-7 (4
+      April 2011) and SR 21-8 (9 April 2021), and the Federal Reserve states that it is
+      expected to be most relevant to banking organisations with over 30 billion US dollars
+      in total assets that it regulates. This is the regulatory event that makes the
+      programme current.
+    where: "README.md, 'Why this programme, and why now'"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602.htm
+    source_title: "SR 26-2: Revised Guidance on Model Risk Management, Board of Governors of the Federal Reserve System, 17 April 2026"
+    quote: >-
+      which supersedes and replaces SR letter 11-7, Guidance on Model Risk Management
+      (issued April 4, 2011)
+    quote_context: >-
+      The same sentence continues 'and SR letter 21-8, Interagency Statement on Model Risk
+      Management for Bank Systems Supporting Bank Secrecy Act/Anti-Money Laundering
+      Compliance (issued April 9, 2021)'. The page carries the applicability line 'This
+      letter is expected to be most relevant to banking organizations with over $30 billion
+      in total assets regulated by the Federal Reserve.' and the date April 17, 2026.
+    accessed: 2026-09-29
+
+  - id: sr-26-2-outcomes-analysis
+    claim: >-
+      The attachment to SR 26-2 describes outcomes analysis as comparing model outputs to
+      real-world outcomes to assess performance against the model's objectives and business
+      use, and lists back-testing among its forms. Module 1 and the monitoring module are
+      built as outcomes analyses in this sense.
+    where: "README.md, 'Why this programme'; MODULES.md, modules 1 and 7"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: "Supervisory Guidance on Model Risk Management, attachment to SR 26-2, Federal Reserve, FDIC and OCC, 17 April 2026"
+    quote: >-
+      Outcomes analysis compares model outputs to corresponding real-world outcomes to
+      assess model performance relative to model objectives and business use.
+    quote_context: >-
+      Section 'Outcomes Analysis' under 'Components of Model Validation'. The section
+      continues 'standalone activities such as back-testing or outlier analysis'.
+    accessed: 2026-09-29
+
+  - id: sr-26-2-structure
+    claim: >-
+      The SR 26-2 attachment is organised in seven numbered parts: Introduction; Purpose and
+      Scope; Overview of Model Risk and Model Risk Management; Model Development and Model
+      Use; Model Validation and Monitoring; Governance and Controls; and Vendor and Other
+      Third-Party Products. Module 7 maps its validation report to these parts.
+    where: "MODULES.md, module 7"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+    source_title: "Supervisory Guidance on Model Risk Management, attachment to SR 26-2, Federal Reserve, FDIC and OCC, 17 April 2026"
+    quote: >-
+      V. MODEL VALIDATION AND MONITORING
+    quote_context: >-
+      The other headings read, in order, 'I. INTRODUCTION', 'II. PURPOSE AND SCOPE', 'III.
+      OVERVIEW OF MODEL RISK AND MODEL RISK MANAGEMENT', 'IV. MODEL DEVELOPMENT AND MODEL
+      USE', 'VI. GOVERNANCE AND CONTROLS' and 'VII. VENDOR AND OTHER THIRD-PARTY PRODUCTS'.
+    accessed: 2026-09-29
+
+  - id: eu-ai-act-timeline
+    claim: >-
+      The EU AI Act entered into force on 1 August 2024 and became applicable on 2 August
+      2026 with some exceptions; the AI Omnibus, which entered into force on 27 July 2026,
+      extended the rules for high-risk use cases in the sensitive areas of Annex III to 2
+      December 2027. This is the second regime that makes the programme current for a
+      European lender.
+    where: "README.md, 'Why this programme, and why now'"
+    source_url: https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai
+    source_title: "AI Act, Shaping Europe's digital future, European Commission"
+    quote: >-
+      the rules for high-risk use cases in certain sensitive areas ( Annex III ) have been
+      extended to 2 December 2027
+    quote_context: >-
+      The same page states 'The AI Act entered into force on 1 August 2024 and became
+      applicable on 2 August 2026, with some exceptions', and that the AI Omnibus proposal
+      reached political agreement on 7 May 2026 and 'entered into force on 27 July 2026'.
+      The Commission's news item of 27 July 2026
+      (https://digital-strategy.ec.europa.eu/en/news/ai-omnibus-enters-force) opens 'On 27
+      July 2026, the AI Omnibus enters into force across the EU' and lists, for high-risk
+      AI systems in Annex III, 'Rules apply starting 2 December 2027'. The Omnibus
+      regulation's own Official Journal text (OJ L 2026/1744) could not be fetched by an
+      automated client; these Commission pages are what was read.
+    accessed: 2026-09-29
+
+  - id: eu-ai-act-annex-iii-credit-scoring
+    claim: >-
+      Annex III of the EU AI Act lists, among high-risk uses, AI systems intended to
+      evaluate the creditworthiness of natural persons or establish their credit score, with
+      the exception of systems used to detect financial fraud. Credit models of natural
+      persons are therefore inside the Annex III regime.
+    where: "README.md, 'Why this programme, and why now'"
+    source_url: https://publications.europa.eu/resource/cellar/dc8116a1-3fe6-11ef-865a-01aa75ed71a1.0006.03/DOC_1
+    source_title: "Regulation (EU) 2024/1689 (Artificial Intelligence Act), Official Journal of the European Union, L series, 12 July 2024, Annex III, as served by the EU Publications Office"
+    quote: >-
+      AI systems intended to be used to evaluate the creditworthiness of natural persons or
+      establish their credit score, with the exception of AI systems used for the purpose of
+      detecting financial fraud
+    quote_context: >-
+      Annex III ('High-risk AI systems referred to in Article 6(2)'), point 5, 'Access to and
+      enjoyment of essential private services and essential public services and benefits',
+      item (b), read in the Official Journal text itself. EUR-Lex answered automated clients
+      with a challenge; the Publications Office serves the same OJ document. The author's
+      copy from artificialintelligenceact.eu/annex/3/ carries the identical wording. Checked on
+      2026-10-14 against the AI Omnibus itself, Regulation (EU) 2026/1744 of 8 July 2026 (OJ L
+      2026/1744, 24 July 2026, served by the Publications Office at
+      https://publications.europa.eu/resource/cellar/b459c07f-86fb-11f1-bf5e-01aa75ed71a1.0006.03/DOC_1):
+      it amends Annex I, deletes points 7 and 9 of section B of Annex VIII and adds an Annex
+      XIV, but does not amend Annex III, and the words 'creditworthiness' and 'credit score'
+      do not occur in it, so this point stands as quoted.
+    accessed: 2026-10-14
+
+  - id: cecl-lifetime-credit-losses
+    claim: >-
+      Under US CECL the allowance for credit losses is the difference between amortised cost
+      and the amount expected to be collected, that is, lifetime credit losses. Every module
+      after the first prices a loan over a lifetime for that reason.
+    where: "README.md, 'Why this programme'; MODULES.md, module 1"
+    source_url: https://www.federalreserve.gov/supervisionreg/srletters/sr1908a1.pdf
+    source_title: "Frequently Asked Questions on the New Accounting Standard on Financial Instruments - Credit Losses, Federal Reserve, FDIC, NCUA and OCC, 3 April 2019 (attachment to Federal Reserve SR 19-8, reposted 31 July 2020; also issued as the attachment to OCC Bulletin 2019-17)"
+    quote: >-
+      The allowance for credit losses under CECL is a valuation account, measured as the
+      difference between the financial assets’ amortized cost basis and the amount expected
+      to be collected on the financial assets (i.e., lifetime credit losses).
+    quote_context: >-
+      FAQ 3, under 'Introduction of a new credit loss methodology'; the sentence starts on page 5
+      and ends on page 6. Re-sourced on 2026-10-14: the FAQ cited before (the attachment to OCC
+      Bulletin 2016-45) was rescinded by OCC Bulletin 2019-17 of 3 April 2019 and replaced by this
+      consolidated FAQ, which the Federal Reserve lists as current; the quoted words are unchanged.
+    accessed: 2026-10-14
+
+  - id: ifrs9-twelve-month-and-lifetime
+    claim: >-
+      Under IFRS 9, 12-month expected credit loss is the portion of lifetime expected credit
+      loss associated with a loan defaulting in the next 12 months; a loan whose credit risk
+      has increased significantly since initial recognition and is not considered low
+      carries lifetime losses. Module 1 computes both.
+    where: "README.md, 'Why this programme'; MODULES.md, module 1"
+    source_url: https://publications.europa.eu/resource/cellar/8554e7e1-b603-11e6-9e3c-01aa75ed71a1.0006.03/DOC_1
+    source_title: "IFRS 9 Financial Instruments, as adopted by Commission Regulation (EU) 2016/2067 of 22 November 2016, Official Journal of the European Union L 323, 29 November 2016"
+    quote: >-
+      The portion of lifetime expected credit losses that represent the expected credit
+      losses that result from default events on a financial instrument that are possible
+      within the 12 months after the reporting date.
+    quote_context: >-
+      Appendix A, definition of '12-month expected credit losses'. Paragraph 5.5.3 reads
+      'Subject to paragraphs 5.5.13–5.5.16, at each reporting date, an entity shall measure
+      the loss allowance for a financial instrument at an amount equal to the lifetime
+      expected credit losses if the credit risk on that financial instrument has increased
+      significantly since initial recognition.' and paragraph 5.5.5 gives the 12-month
+      measure when it has not. This is the IASB text as endorsed in the EU; the IFRS
+      Foundation's own copy needs a login. The claim's 'not considered low' qualification is
+      the low-credit-risk simplification of paragraph 5.5.10, not quoted here.
+    accessed: 2026-09-29
+
+  - id: basel-definition-of-default
+    claim: >-
+      The Basel framework's reference definition of default is met when the obligor is
+      unlikely to pay in full without recourse to security, or is past due more than 90 days
+      on a material credit obligation (a supervisor may substitute up to 180 days for retail
+      and public sector entity obligations). Module 1 adopts it.
+    where: "MODULES.md, module 1"
+    source_url: https://www.bis.org/committees/bcbs/basel-framework/standard/cre/36/inforce/2023-01-01/published/2022-12-08
+    source_title: "CRE36, IRB approach: minimum requirements to use IRB approach, Basel Framework, Basel Committee on Banking Supervision, version in force from 1 January 2023"
+    quote: >-
+      The obligor is past due more than 90 days on any material credit obligation to the
+      banking group.
+    quote_context: >-
+      CRE36.68. Footnote 5 reads 'In the case of retail and public sector entity (PSE)
+      obligations, for the 90 days figure, a supervisor may substitute a figure up to 180
+      days for different products, as it considers appropriate to local conditions.' The
+      earlier URL https://www.bis.org/basel_framework/chapter/CRE/36.htm now lands on the CRE
+      overview page, not on the chapter. Re-sourced on 2026-10-14: the publication cited before
+      (.../published/2020-03-27) is marked 'Removed on 08 Dec 2022'; the current publication of
+      the same version, published 8 December 2022, adds FAQs on climate-related financial risks
+      and leaves CRE36.68 and its footnote unchanged.
+    accessed: 2026-10-14
+
+  - id: regulation-b-specific-reasons
+    claim: >-
+      Regulation B requires that the statement of reasons for adverse action be specific and
+      indicate the principal reason(s), and says that a statement that the applicant failed
+      to achieve a qualifying score on the creditor's credit scoring system is insufficient.
+      Module 4 builds reason codes against this text.
+    where: "README.md, 'Why this programme'; MODULES.md, module 4"
+    source_url: https://www.ecfr.gov/api/renderer/v1/content/enhanced/current/title-12?part=1002&section=1002.9
+    source_title: "12 CFR 1002.9(b)(2), Notifications, Regulation B, Electronic Code of Federal Regulations"
+    quote: >-
+      must be specific and indicate the principal reason(s) for the adverse action.
+    quote_context: >-
+      The same paragraph continues 'Statements that the adverse action was based on the
+      creditor's internal standards or policies or that the applicant, joint applicant, or
+      similar party failed to achieve a qualifying score on the creditor's credit scoring
+      system are insufficient.' Read through the eCFR renderer endpoint, which returns the
+      current text of 12 CFR 1002.9; the human page at
+      https://www.ecfr.gov/current/title-12/chapter-X/part-1002/section-1002.9 refused
+      automated access on the access date.
+    accessed: 2026-09-29
+
+  - id: cfpb-circular-2022-03
+    claim: >-
+      CFPB Circular 2022-03 (26 May 2022) stated that ECOA and Regulation B do not permit
+      creditors to use complex algorithms when doing so means they cannot provide the
+      specific and accurate reasons for adverse actions. The CFPB withdrew it with effect from
+      12 May 2025 (next entry), so the programme cites it as history and rests its reason-code
+      module on Regulation B's own text.
+    where: "README.md, 'Why this programme'; MODULES.md, module 4"
+    source_url: https://www.consumerfinance.gov/compliance/circulars/circular-2022-03-adverse-action-notification-requirements-in-connection-with-credit-decisions-based-on-complex-algorithms/
+    source_title: "Consumer Financial Protection Circular 2022-03, Adverse action notification requirements in connection with credit decisions based on complex algorithms, Consumer Financial Protection Bureau"
+    quote: >-
+      ECOA and Regulation B do not permit creditors to use complex algorithms when doing so
+      means they cannot provide the specific and accurate reasons for adverse actions.
+    quote_context: >-
+      Read on the access date from the circular's page (through a fetch tool; plain automated
+      requests got HTTP 403), which carried no withdrawal notice and the date May 26, 2022.
+      The withdrawal is recorded in the Federal Register, next entry.
+    accessed: 2026-09-29
+
+  - id: cfpb-circular-2022-03-withdrawn
+    claim: >-
+      On 12 May 2025 the CFPB withdrew 67 guidance documents, Consumer Financial Protection
+      Circular 2022-03 among them, with effect from that date.
+    where: "README.md, 'Why this programme, and why now'; MODULES.md, module 4"
+    source_url: https://www.federalregister.gov/documents/full_text/html/2025/05/12/2025-08286.html
+    source_title: "Interpretive Rules, Policy Statements, and Advisory Opinions; Withdrawal, Consumer Financial Protection Bureau, Federal Register document 2025-08286 (90 FR 20084), 12 May 2025"
+    quote: >-
+      The withdrawals are applicable as of May 12, 2025.
+    quote_context: >-
+      The notice's list of withdrawn documents includes item 14, 'Consumer Financial
+      Protection Circular 2022-03: Adverse action notification requirements in connection
+      with credit decisions based on complex algorithms'. Regulation B itself (12 CFR
+      1002.9(b)(2), entry above) is unchanged by the withdrawal.
+    accessed: 2026-09-29
+
+  - id: cfpb-bisg-proxy
+    claim: >-
+      A 2014 CFPB methodology paper describes the Bureau's research and fair-lending staff
+      relying on Bayesian Improved Surname Geocoding, which combines geography- and
+      surname-based information into a single proxy probability for race and ethnicity.
+      Module 5 implements the update on generated data. Whether the Bureau still relies on
+      it in 2026 was not checked.
+    where: "MODULES.md, module 5"
+    source_url: https://files.consumerfinance.gov/f/201409_cfpb_report_proxy-methodology.pdf
+    source_title: "Using publicly available information to proxy for unidentified race and ethnicity: a methodology and assessment, Consumer Financial Protection Bureau, Summer 2014"
+    quote: >-
+      Bayesian Improved Surname Geocoding (BISG) proxy method, which combines geography- and
+      surname-based information
+    quote_context: >-
+      Executive summary, page 3; the paper is dated Summer 2014. Plain automated requests got
+      HTTP 403; the PDF was read through a fetch tool and its text extracted with pdftotext.
+    accessed: 2026-09-29
+
+  - id: hmda-public-data
+    claim: >-
+      HMDA data are described by the CFPB as the most comprehensive source of publicly
+      available information on the US mortgage market, and the public data are modified to
+      protect applicant and borrower privacy. Module 5 names HMDA as an optional real-data
+      extension, not a required path.
+    where: "README.md, 'Compute and data'; MODULES.md, module 5"
+    source_url: https://www.consumerfinance.gov/data-research/hmda/
+    source_title: "Home Mortgage Disclosure Act, Consumer Financial Protection Bureau"
+    quote: >-
+      HMDA data are the most comprehensive source of publicly available information on the
+      U.S. mortgage market.
+    quote_context: >-
+      The next sentence on the page reads 'The public data are modified to protect applicant
+      and borrower privacy.' Plain automated requests got HTTP 403 on the review date; both
+      sentences were confirmed through a fetch tool.
+    accessed: 2026-09-29
+
+  - id: freddie-mac-registration-and-licence
+    claim: >-
+      Freddie Mac's Single-Family Loan-Level Dataset is reached by registering and signing
+      in to Clarity Data Intelligence, is free for non-commercial, academic, research and
+      limited use, and needs a licensing agreement for commercial redistribution. It is
+      therefore not committed here and not on any required path.
+    where: "README.md, 'Compute and data'"
+    source_url: https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset
+    source_title: "Single-Family Loan-Level Dataset, Freddie Mac"
+    quote: >-
+      To access the Single-Family Loan-Level Dataset, register and sign-in to Clarity Data
+      Intelligence.
+    quote_context: >-
+      The page also says 'Freddie Mac requires a licensing agreement for commercial
+      redistribution of the data in its Single-Family Loan-Level Dataset. Use of the dataset
+      continues to be free for non-commercial, academic/research and for limited use,
+      subject to the applicable terms and conditions.'
+    accessed: 2026-09-29
+
+  - id: freddie-mac-scale
+    claim: >-
+      The Standard and Non-Standard datasets cover approximately 56 million mortgages
+      originated between 1 January 1999 and 31 March 2026, with monthly performance
+      disclosed through 31 March 2026. The README uses this only to say why the full set is
+      not a cpu8 exercise.
+    where: "README.md, 'Compute and data'"
+    source_url: https://www.freddiemac.com/research/datasets/sf-loanlevel-dataset
+    source_title: "Single-Family Loan-Level Dataset, Freddie Mac"
+    quote: >-
+      The Standard and Non-Standard datasets cover approximately 56 million mortgages
+      originated between January 1, 1999 and March 31, 2026.
+    quote_context: >-
+      Read on the access date; the page's own words for the period end are 'March 31, 2026'.
+    accessed: 2026-09-29
+
+  - id: bank-account-fraud-licence
+    claim: >-
+      The Bank Account Fraud dataset suite is licensed under Creative Commons CC BY-NC-ND
+      4.0 according to its own datasheet. The non-commercial and no-derivatives terms are
+      why no extract of it is committed and why module 2 runs on generated applicants.
+    where: "README.md, 'Compute and data'; MODULES.md, module 2"
+    source_url: https://github.com/feedzai/bank-account-fraud/blob/main/documents/datasheet.pdf
+    source_title: "Datasheet for the Bank Account Fraud (BAF) dataset suite, Feedzai (NeurIPS 2022)"
+    quote: >-
+      The suite is licensed under the Creative Commons CC BY-NC-ND 4.0 license.
+    quote_context: >-
+      Answer A44 of the datasheet; the author statement repeats it. The repository's LICENSE
+      file is Apache-2.0 and covers code only.
+    accessed: 2026-09-29
+
+  - id: apache-fineract-licence
+    claim: >-
+      Apache Fineract is open source software for financial services, designed as a cloud-
+      ready core banking system, and its site states it is licensed under the Apache License
+      2.0. Module 6 does not depend on it: the transaction histories are generated in the
+      lesson.
+    where: "MODULES.md, module 6"
+    source_url: https://fineract.apache.org/
+    source_title: "Apache Fineract, The Apache Software Foundation"
+    quote: >-
+      Licensed under the Apache License, Version 2.0
+    quote_context: >-
+      Footer of the project's home page. The same page describes Fineract as 'open source
+      software for financial services, designed to create a cloud-ready core banking
+      system'.
+    accessed: 2026-09-29
+
+# --- deliberate non-claims -----------------------------------------------------------------
+#
+# 1. FANNIE MAE. The catalog names Fannie Mae loan performance data as the lab data for module 1.
+#    Its data page answered automated requests with HTTP 403 and a bot challenge on 2026-09-29,
+#    so its terms could not be read and NOTHING in this programme relies on it. The lesson's
+#    book is generated. Freddie Mac's terms were readable and are recorded above.
+#
+# 2. NO SALARY, DEMAND OR JOB-COUNT FIGURE. The catalog carries job-board figures for these
+#    roles. None is repeated here: a job board is not a primary source and the programme makes
+#    no claim about anyone's pay.
+#
+# 3. NO CLAIM ABOUT ANY LENDER'S PRACTICE. Module descriptions say what the student builds and
+#    measures on generated data. They do not claim that any real institution's model behaves
+#    as the generated ones do.
+#
+# 4. THE RBI DRAFT MODEL-RISK GUIDANCE that the catalog's demand note mentions was not
+#    fetched or read, so it is not cited.
+#
+# 5. A LATER CFPB CIRCULAR. Secondary reports seen on 2026-09-29 describe a 2026 CFPB circular on
+#    adverse action and complex algorithms. It could not be found at a primary source (the CFPB
+#    circulars page as fetched listed none), so nothing here relies on it. The owner should
+#    check consumerfinance.gov by hand before module 4 is built.

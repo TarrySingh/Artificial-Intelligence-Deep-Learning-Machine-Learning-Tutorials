@@ -1,0 +1,53 @@
+# models.yaml -- the role registry. Lessons and code name a ROLE; this file says which model
+# id sits behind it today, and what we believed about that model when we last checked.
+#
+# This copy is a fixture written for the lesson: it plays the part of a registry somebody
+# wrote a few months ago and never re-checked. It is stale in several places ON PURPOSE, so
+# the checker has something to find. The recorded prices, limits and cut-offs below are the
+# registry's beliefs, not the provider's facts: compare them with provider_snapshot.json.
+version: 1
+roles:
+  tier:api-cheap:
+    pin: claude-haiku-4-5                # a convenience alias, not a dated snapshot id
+    input_usd_per_mtok: 1
+    output_usd_per_mtok: 5
+    context_tokens: 200000
+    reliable_cutoff: "2025-07"          # the training cut-off, not the reliable one
+  tier:api-default:
+    pin: claude-sonnet-5-5
+    input_usd_per_mtok: 3                # recorded before anyone re-read the price list
+    output_usd_per_mtok: 15
+    context_tokens: 1000000
+    reliable_cutoff: "2026-06"
+  tier:api-strong:
+    pin: claude-opus-5-5
+    input_usd_per_mtok: 4
+    output_usd_per_mtok: 20
+    context_tokens: 1000000
+    reliable_cutoff: "2026-06"
+  tier:api-frontier:
+    pin: claude-fable-5-1
+    input_usd_per_mtok: 10
+    output_usd_per_mtok: 50
+    context_tokens: 200000               # recorded from an older, smaller model
+    reliable_cutoff: "2026-06"
+  tier:api-agent:
+    same_as: tier:api-default            # a role that follows another role
+  tier:api-long-running:
+    same_as: tier:api-agent              # a role that follows a role that follows a role
+  tier:eval-baseline:
+    pin: claude-opus-4-1-20250805        # pinned for a reproducible baseline, then forgotten
+    input_usd_per_mtok: 15
+    output_usd_per_mtok: 75
+  tier:api-previous:
+    pin: claude-sonnet-4-5-20250929
+    input_usd_per_mtok: 3
+    output_usd_per_mtok: 15
+  tier:api-next:
+    pin: claude-haiku-5                  # an id somebody expected to exist
+    input_usd_per_mtok: 1
+    output_usd_per_mtok: 5
+  tier:api-mid-cheap:
+    pin: claude-sonnet-4-6
+    input_usd_per_mtok: 3
+    output_usd_per_mtok: 15

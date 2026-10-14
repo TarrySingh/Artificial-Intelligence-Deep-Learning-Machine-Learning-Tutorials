@@ -1,0 +1,344 @@
+claims:
+- id: camels-aus-licence
+  claim: The CAMELS-AUS v2 dataset -- the source of the rainfall, PET and flow arrays in this lesson's
+    asset -- and the datasets it is based on are released under a Creative Commons Attribution (CC BY)
+    licence.
+  where: assets/SOURCE.md (licence row), meta.yaml datasets, lesson.py section 1
+  source_url: https://essd.copernicus.org/articles/17/4079/2025/
+  source_title: 'Fowler, Zhang and Hou, "CAMELS-AUS v2: updated hydrometeorological time series and landscape
+    attributes for an enlarged set of catchments in Australia", Earth System Science Data 17, 4079-4095,
+    2025 -- Data availability'
+  quote: The dataset (along with datasets on which it is based) is subject to a Creative Commons BY (attribution)
+    licence agreement
+  quote_context: 'Section 5, ''Data availability''; the sentence continues with a link to https://creativecommons.org/licenses/
+    and ''last access: 28 June 2024''. The dataset''s own Data Description PDF states the same sentence
+    in its introduction.'
+  accessed: 2026-09-29
+- id: camels-aus-zenodo-licence
+  claim: The Zenodo record this lesson's data was downloaded from (version DOI 10.5281/zenodo.14289037,
+    published 2024-12-07) declares the licence Creative Commons Attribution 4.0 (cc-by-4.0).
+  where: assets/SOURCE.md and meta.yaml datasets
+  source_url: https://zenodo.org/api/records/14289037
+  source_title: Zenodo record 14289037 (JSON metadata) -- CAMELS-AUS v2
+  quote: '"license": {"id": "cc-by-4.0"}'
+  quote_context: 'The record''s own machine-readable metadata; the human page https://zenodo.org/records/14289037
+    needs JavaScript. The same JSON gives "doi": "10.5281/zenodo.14289037" and "publication_date": "2024-12-07";
+    the concept DOI of all versions is 10.5281/zenodo.12575680.'
+  accessed: 2026-09-29
+- id: camels-aus-paper-citation
+  claim: The dataset paper to cite for CAMELS-AUS v2 is Fowler, Zhang and Hou, Earth System Science Data
+    17, 4079-4095, 2025 (DOI 10.5194/essd-17-4079-2025).
+  where: assets/SOURCE.md, 'Required attribution'
+  source_url: https://essd.copernicus.org/articles/17/4079/2025/
+  source_title: ESSD article page
+  quote: ESSD, 17, 4079–4095, 2025
+  quote_context: The article header of the journal page; the DOI is the DOI printed for the article at
+    the same page and resolves at https://doi.org/10.5194/essd-17-4079-2025
+  accessed: 2026-09-29
+- id: camels-aus-streamflow-units
+  claim: The flow series this lesson uses (streamflow_mmd.csv) is expressed in millimetres of equivalent
+    depth over the catchment area, the same unit as rainfall depth.
+  where: lesson.py section 1; assets/SOURCE.md
+  source_url: https://zenodo.org/api/records/14289037/files/03_streamflow.zip/content
+  source_title: CAMELS-AUS v2, 03_streamflow.zip, member README.txt
+  quote: streamflow_mmd.csv is the data from streamflow_MLd.csv expressed in millimeters equivalent depth,
+    assuming the catchment areas stated in location_boundary_area.csv
+  quote_context: Second bullet of the README.txt inside the zip archive (read with an HTTP range request
+    on the archive's central directory)
+  accessed: 2026-09-29
+- id: camels-aus-attribute-definitions
+  claim: In CAMELS-AUS v2 the rainfall seasonality index p_seasonality is 0 for uniform rainfall, positive
+    for a Dec/Jan peak and negative for a Jun/Jul peak, and the aridity index is the mean PET divided
+    by the mean precipitation. The catchment-selection rule in assets/SOURCE.md uses both.
+  where: assets/SOURCE.md 'How the two catchments were chosen'
+  source_url: https://zenodo.org/api/records/14289037/files/CAMELS_AUS_v2_Data_Description.pdf/content
+  source_title: CAMELS-AUS v2 Data Description (PDF), Table of climatic indices
+  quote: 'precipitation seasonality (0: uniform; +''ve: Dec/Jan peak; -''ve: Jun/Jul peak)'
+  quote_context: Climatic indices table, row p_seasonality; the row above is 'aridity (pet_mean / p_mean)'.
+    The PDF's text layer wraps the cell across two lines.
+  accessed: 2026-09-29
+- id: camels-aus-forcing-recommendation
+  claim: The CAMELS-AUS v2 authors recommend the SILO Morton wet-environment evaporation and a different
+    gridded rainfall product (AGCD) as forcing for hydrological modelling. This lesson uses the recommended
+    PET series; for rain it uses the dataset's SILO precipitation instead, for licensing reasons given
+    in assets/SOURCE.md.
+  where: lesson.py section 1; assets/SOURCE.md
+  source_url: https://essd.copernicus.org/articles/17/4079/2025/
+  source_title: Fowler, Zhang and Hou (2025), Sect. 4 'User guidance and recommendations'
+  quote: we recommend for standard users of these dataset to use the SILO Morton wet environment evaporation
+    and the AGDC precipitation data as forcing data for hydrological modelling studies.
+  quote_context: Last sentence of Sect. 4; 'AGDC' is the paper's own spelling of AGCD
+  accessed: 2026-09-29
+- id: bom-hrs-licence
+  claim: The Bureau of Meteorology's Hydrologic Reference Stations page, the origin of the gauged flow
+    records marked HRS-2022 in CAMELS-AUS v2, states that its material is licensed under Creative Commons
+    Attribution 4.0 International.
+  where: lesson.py section 1; assets/SOURCE.md (upstream sources)
+  source_url: http://www.bom.gov.au/water/hrs/
+  source_title: Bureau of Meteorology -- Hydrologic Reference Stations
+  quote: Unless otherwise noted, all material on this page is licensed under the Creative Commons Attribution
+    4.0 International Licence
+  quote_context: Footer licence statement of the page. This lesson relies on the dataset authors' statement
+    (camels-aus-licence) for the licence of the compiled data; this page is a second, independent statement
+    about the gauged flow source.
+  accessed: 2026-09-29
+- id: gr4j-reference-citation
+  claim: The model this lesson simplifies is GR4J, described in Perrin, Michel and Andreassian (2003),
+    Journal of Hydrology 279(1-4), 275-289 (DOI 10.1016/S0022-1694(03)00225-7); the reference implementation
+    in the airGR package cites exactly that paper.
+  where: lesson.py section 5
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (header of the GR4J routine)
+  quote: 'Perrin, C., Michel, C. and Andréassian, V. (2003). Improvement of a parsimonious model for streamflow
+    simulation. Journal of Hydrology, 279(1-4), 275-289, doi: 10.1016/S0022-1694(03)00225-7.'
+  quote_context: The REFERENCES block of the file header. The paper itself is behind a publisher paywall
+    and its full text could not be read while authoring; every equation in this lesson was instead checked
+    against this implementation (claims gr4j-*).
+  accessed: 2026-09-29
+- id: gr4j-original-author
+  claim: The airGR implementation of GR4J was written from original code by C. Perrin, the first author
+    of the GR4J paper, so it is an authoritative reference for the model's equations.
+  where: lesson.py section 5
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (header)
+  quote: 'Original code: Perrin, C.'
+  quote_context: AUTHORS block of the file header
+  accessed: 2026-09-29
+- id: gr4j-parameter-meanings
+  claim: GR4J's four parameters are X1, the production store capacity (mm); X2, the intercatchment exchange
+    coefficient (mm/day); X3, the routing store capacity (mm); and X4, the time constant of the unit hydrographs
+    (days).
+  where: lesson.py section 5 and PARAM_NAMES
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (frun_gr4j)
+  quote: 'Param(1) : production store capacity (X1 - PROD) [mm] Param(2) : intercatchment exchange coefficient
+    (X2 - CES) [mm/day] Param(3) : routing store capacity (X3 - ROUT) [mm] Param(4) : time constant of
+    unit hydrograph (X4 - TB) [day]'
+  quote_context: Four consecutive comment lines in the frun_gr4j subroutine
+  accessed: 2026-09-29
+- id: gr4j-production-fill
+  claim: When rain exceeds PET, the part of the net rainfall that fills the production store is Ps = X1
+    (1 - (S/X1)^2) tanh(Pn/X1) / (1 + (S/X1) tanh(Pn/X1)).
+  where: lesson.py exercise 5, step 1
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: PS=A*(1.-(X(2)/A)**2.)*tanHyp(WS)/(1.+X(2)/A*tanHyp(WS))
+  quote_context: A commented reference form of the line just above it; A is X1, X(2) is the store level
+    S, WS is Pn/A
+  accessed: 2026-09-29
+- id: gr4j-production-evaporation
+  claim: When PET exceeds rain, the production store loses Es = S (2 - S/X1) tanh(En/X1) / (1 + (1 - S/X1)
+    tanh(En/X1)), where En is the unmet PET.
+  where: lesson.py exercise 5, step 1
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: ER=X(2)*(2.-X(2)/A)*tanHyp(WS)/(1.+(1.-X(2)/A)*tanHyp(WS))
+  quote_context: A commented reference form of the line just above it; A is X1, X(2) is the store level
+    S, WS is En/A
+  accessed: 2026-09-29
+- id: gr4j-percolation
+  claim: Percolation from the production store is Perc = S (1 - (1 + (S/(9/4 X1))^4)^(-1/4)), i.e. the
+    exponent-4 term is scaled by 9/4 times the store capacity.
+  where: lesson.py exercise 5, step 2
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: PERC=X(2)*(1.-(1.+(X(2)/(9./4.*Param(1)))**4.)**(-0.25))
+  quote_context: A commented reference form; the code comment above it reads '(9/4)**4 = 25.62890625 =
+    stored_val'
+  accessed: 2026-09-29
+- id: gr4j-branch-split
+  claim: The water leaving the production store is split 90 percent to the first unit hydrograph (and
+    on into the routing store) and 10 percent to the second (the direct branch).
+  where: lesson.py section 5 and exercise 5, step 3
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: 'doubleprecision, parameter :: B=0.9'
+  quote_context: Declaration in MOD_GR4J; the split itself is 'PRHU1=PR*B' and 'PRHU2=PR*(1.-B)' under
+    the comment 'Split of effective rainfall into the two routing components'
+  accessed: 2026-09-29
+- id: gr4j-exchange
+  claim: The groundwater exchange term is F = X2 (R/X3)^3.5, applied to both the routing-store branch
+    and the direct branch.
+  where: lesson.py exercise 5, step 4
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: EXCH=Param(2)*(X(1)/Param(3))**3.5
+  quote_context: A commented reference form of the code beneath the heading 'Potential intercatchment
+    semi-exchange'; X(1) is the routing store level
+  accessed: 2026-09-29
+- id: gr4j-routing-outflow
+  claim: 'The routing store''s outflow is Qr = R (1 - (1 + (R/X3)^4)^(-1/4)), and total flow is the routing-store
+    outflow plus the direct branch: Q = Qr + Qd.'
+  where: lesson.py exercise 5, step 4
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (MOD_GR4J)
+  quote: Q=QR+QD
+  quote_context: Immediately after 'QR=St(2)*(1.-1./SQRT(SQRT(1.+Rr)))' where Rr is (R/X3) to the fourth
+    power (done by two squarings)
+  accessed: 2026-09-29
+- id: gr4j-uh-exponent
+  claim: Both unit hydrographs use the exponent 2.5 in their S-curves.
+  where: lesson.py exercise 4
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/frun_GR4J.f90
+  source_title: airGR 1.7.9, src/frun_GR4J.f90 (frun_gr4j)
+  quote: D=2.5
+  quote_context: Set immediately before CALL UH1(OrdUH1,Param(4),D) and CALL UH2(OrdUH2,Param(4),D)
+  accessed: 2026-09-29
+- id: gr4j-uh1-scurve
+  claim: UH1's S-curve rises as (t/X4)^2.5 up to t = X4 and is 1 afterwards; its ordinate for day i is
+    the S-curve at i minus the S-curve at i - 1.
+  where: lesson.py exercise 4
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/utils_D.f90
+  source_title: airGR 1.7.9, src/utils_D.f90 (functions SS1, UH1)
+  quote: OrdUH1(I)=SS1(I,C,D)-SS1(I-1,C,D)
+  quote_context: Subroutine UH1; function SS1 returns 0 for I<=0, (FI/C)**D for FI<C, and 1 otherwise
+  accessed: 2026-09-29
+- id: gr4j-uh2-scurve
+  claim: UH2's S-curve is 0.5 (t/X4)^2.5 up to t = X4, then 1 - 0.5 (2 - t/X4)^2.5 up to t = 2 X4, and
+    1 afterwards.
+  where: lesson.py exercise 4
+  source_url: https://raw.githubusercontent.com/cran/airGR/master/src/utils_D.f90
+  source_title: airGR 1.7.9, src/utils_D.f90 (function SS2)
+  quote: SS2=1.-0.5*(2.-FI/C)**D
+  quote_context: Third branch of function SS2 (the first is 'SS2=0.5*(FI/C)**D' for FI<=C)
+  accessed: 2026-09-29
+- id: nse-origin
+  claim: The Nash-Sutcliffe efficiency (NSE) is the metric of Nash and Sutcliffe (1970), and it normalises
+    model performance onto an interpretable scale.
+  where: lesson.py exercise 1; the original paper is behind a publisher paywall and was not read
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: 'Knoben, Freer and Woods, "Technical note: Inherent benchmark or not? Comparing Nash-Sutcliffe
+    and Kling-Gupta efficiency scores", HESS 23, 4323-4331, 2019'
+  quote: the Nash–Sutcliffe efficiency (NSE, Nash and Sutcliffe, 1970) is an often-used metric, in part
+    because it normalizes model performance into an interpretable scale
+  quote_context: Introduction, opening paragraph. Nash and Sutcliffe's own paper (J. Hydrol. 10, 282-290,
+    1970) is paywalled; its abstract could not be fetched.
+  accessed: 2026-09-29
+- id: knoben-nse-mean-benchmark
+  claim: NSE = 1 is perfect agreement; NSE = 0 means the model has the same explanatory power as the mean
+    of the observations; negative NSE means the model is a worse predictor than that mean.
+  where: lesson.py exercise 1
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), Sect. 1
+  quote: NSE = 0 indicates that the model simulations have the same explanatory power as the mean of the
+    observations
+  quote_context: Follows Eq. (1); the same sentence continues 'and NSE < 0 indicates that the model is
+    a worse predictor than the mean of the observations'
+  accessed: 2026-09-29
+- id: knoben-seasonal-benchmark
+  claim: 'The mean flow is not an equally representative benchmark for every flow regime: it is not representative
+    of very seasonal regimes, but a good approximation for regimes without a strong seasonal component.'
+  where: lesson.py exercise 3 and the calendar demo
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), Sect. 1 (citing Schaefli and Gupta, 2007)
+  quote: the mean is not representative of very seasonal regimes but it is a good approximation of regimes
+    without a strong seasonal component
+  quote_context: Parenthesis in the sentence 'It is not an equally representative benchmark for different
+    flow regimes (...; Schaefli and Gupta, 2007)'
+  accessed: 2026-09-29
+- id: gupta-2009-decomposition
+  claim: The Kling-Gupta efficiency comes from Gupta, Kling, Yilmaz and Martinez (2009), whose paper decomposes
+    NSE (and hence the mean squared error) into components.
+  where: lesson.py exercise 2
+  source_url: https://ntrs.nasa.gov/citations/20090027858
+  source_title: 'Gupta, Kling, Yilmaz and Martinez, "Decomposition of the Mean Squared Error and NSE Performance
+    Criteria: Implications for Improving Hydrological Modelling" (manuscript record, NASA NTRS; published
+    in J. Hydrol. 377, 80-91, 2009)'
+  quote: we present a diagnostically interesting decomposition of NSE (and hence MSE)
+  quote_context: Abstract of the NTRS record of the submitted manuscript; the journal version is paywalled
+    and was not read
+  accessed: 2026-09-29
+- id: knoben-kge-components
+  claim: KGE is based on a decomposition of NSE into correlation, variability bias and mean bias.
+  where: lesson.py exercise 2
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), Sect. 1
+  quote: is based on a decomposition of NSE into its constitutive components (correlation, variability
+    bias and mean bias)
+  quote_context: The sentence introducing 'The Kling-Gupta efficiency (KGE; Eq. 2, Gupta et al., 2009)'
+  accessed: 2026-09-29
+- id: knoben-kge-definitions
+  claim: alpha is the ratio of the standard deviation of the simulations to that of the observations and
+    beta is the ratio of the simulation mean to the observation mean, in KGE = 1 - sqrt((r-1)^2 + (alpha-1)^2
+    + (beta-1)^2).
+  where: lesson.py exercise 2
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), Eq. (3) and the sentence after it
+  quote: σ obs is the standard deviation in observations, σ sim the standard deviation in simulations,
+    μ sim the simulation mean, and μ obs the observation mean
+  quote_context: The sentence after Eq. (3), which writes alpha as sigma_sim / sigma_obs and beta as mu_sim
+    / mu_obs (subscripts flattened by the page's text)
+  accessed: 2026-09-29
+- id: knoben-kge-constant-r
+  claim: For a constant simulation the linear correlation is formally undefined; the convention used is
+    r = 0, because there is no relationship between the fluctuations of the observed and simulated hydrographs.
+  where: lesson.py exercise 2 and its constant-simulation check
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), Sect. 2
+  quote: it makes intuitive sense to assign r =0 in this case, since there is no relationship between
+    the fluctuations of the observed and simulated hydrographs.
+  quote_context: The case is a constant simulation equal to the observed mean (sigma_sim = 0)
+  accessed: 2026-09-29
+- id: knoben-kge-mean-flow
+  claim: Using the mean flow as the predictor gives KGE = 1 - sqrt(2), about -0.41, not 0; KGE values
+    above -0.41 improve on the mean-flow benchmark.
+  where: lesson.py the yardsticks demo
+  source_url: https://hess.copernicus.org/articles/23/4323/2019/
+  source_title: Knoben, Freer and Woods (2019), abstract and Sect. 2
+  quote: Thus, KGE values greater than −0.41 indicate that a model improves upon the mean flow benchmark
+    – even if the model's KGE value is negative.
+  quote_context: Abstract, fourth sentence
+  accessed: 2026-09-29
+- id: silo-licence
+  claim: SILO (Queensland Government), the source of the rain and PET series, licenses its products under
+    CC BY 4.0 and asks users to acknowledge SILO as the source and say whether the data were changed.
+  where: lesson.py section 1; assets/SOURCE.md (licence, upstream sources and attribution); meta.yaml
+    datasets
+  source_url: https://www.longpaddock.qld.gov.au/silo/about/access-data/
+  source_title: SILO -- Access to the Data
+  quote: SILO products are freely available under the Creative Commons Attribution 4.0 International (CC
+    BY 4.0) licence. Under this licence users can copy, modify and redistribute the data, provided you
+    acknowledge SILO as the data source and indicate if any changes were made to the data.
+  quote_context: Opening paragraph of the page's 'Access to the Data' section
+  accessed: 2026-09-29
+- id: bom-attribution
+  claim: For Bureau of Meteorology content licensed CC BY, the Bureau's preferred attribution wording
+    is the sentence quoted, which assets/SOURCE.md uses for the streamflow.
+  where: assets/SOURCE.md (required attribution)
+  source_url: https://www.bom.gov.au/copyright
+  source_title: Bureau of Meteorology -- Copyright (http://www.bom.gov.au/other/copyright.shtml redirects
+    here)
+  quote: Bureau of Meteorology, © Commonwealth of Australia. Licensed from the Commonwealth of Australia
+    under a Creative Commons Attribution 4.0 International licence.
+  quote_context: Follows 'If the content you're using is subject to this licence, we prefer that you attribute
+    us using the following words:'
+  accessed: 2026-09-29
+- id: gr4j-authors-open-description
+  claim: Every GR4J equation this lesson uses (production-store fill and evaporation, percolation with
+    the factor 4/9, the 90/10 split, both S-curves, the exchange F = X2 (R/X3)^(7/2), the routing store
+    update R = max(0, R + Q9 + F), its outflow Qr and Q = Qr + Qd) matches the description of the model
+    published openly by its first author in the appendix of Perrin (2002).
+  where: lesson.py section 5 and exercises 4-5
+  source_url: https://hal.science/hal-01098286/document
+  source_title: Charles Perrin, "Vers une amélioration d'un modèle global pluie-débit au travers d'une
+    approche comparative", La Houille Blanche 2002 (6-7), 84-91, doi:10.1051/lhb/2002089 (HAL open archive
+    copy), appendix 'Description du modèle pluie-débit GR4J'
+  quote: R = max (0 ; R + Q9 + F)
+  quote_context: Equation (A-19) of the appendix, from the PDF's text layer. The scanned PDF typesets
+    equations (A-3), (A-4), (A-6) and (A-20) as images; they were read from the rendered page 90 of the
+    journal and agree with this lesson's steps 1, 2 and 4.
+  accessed: 2026-09-29
+- id: camels-aus-silo-precipitation
+  claim: The CAMELS-AUS v2 file precipitation_silo.csv, the source of this lesson's rain series, holds
+    catchment-average precipitation computed from the grids of the SILO project (Queensland Government).
+  where: assets/SOURCE.md (upstream sources); lesson.py section 1
+  source_url: https://zenodo.org/api/records/14289037/files/CAMELS_AUS_v2_Data_Description.pdf/content
+  source_title: CAMELS-AUS v2 Data Description (PDF), table of hydrometeorological files, rows precipitation_silo.csv
+    to evap_syn_silo.csv
+  quote: Scientific Information for Land Owners (SILO) project, Government of Queensland (Jeffrey et al.,
+    2001)
+  quote_context: The merged 'Source data' cell that spans the rows from precipitation_silo.csv ('catchment
+    average precipitation') to evap_syn_silo.csv; the PDF's text layer wraps it over six lines. The same
+    table's page states 'All data were processed as part of the CAMELS-AUS v2 to extract catchment averages
+    from Australiawide AGCD/SILO grids.'
+  accessed: 2026-09-29

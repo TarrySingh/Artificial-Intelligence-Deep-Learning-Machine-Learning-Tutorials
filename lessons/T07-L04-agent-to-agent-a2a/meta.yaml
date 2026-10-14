@@ -1,0 +1,70 @@
+id: T07-L04-agent-to-agent-a2a
+title: The Agent2Agent (A2A) protocol from the wire up - Agent Card validator, task-lifecycle server,
+  streaming client and a conformance harness
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T07-L01-agent-loop-from-scratch
+- T07-L02-mcp-from-the-wire-up
+objectives:
+- Implement an Agent Card validator that applies the A2A 1.0 required-field rules, including that a required
+  array must not be empty while an empty capabilities object is valid, and reports each violation under
+  the JSON path of the offending field
+- Implement the task lifecycle as a state machine that refuses illegal transitions, and the SendMessage,
+  GetTask, CancelTask and SendStreamingMessage handlers of an in-memory JSON-RPC server that respect terminal-state
+  immutability, the input-required continuation rule and the streaming event sequence
+- Implement a client that follows a long-running task by polling (settling on terminal or interrupted
+  states, with exact call and wait counts) and by folding streamed events (append, replace and lastChunk
+  semantics), and that answers an input-required question on the same task and context
+- Implement four conformance rules from the specification's own MUST statements and run the whole harness
+  against your server and against planted-faulty servers, reading how many rules each single fault trips
+- Measure, from the wire record of a simulated delegation to a scripted opaque remote agent, how many
+  of its typed parameters and internal lookups a client can recover, against the same capability exposed
+  as MCP tools
+before_you_start:
+  assumed:
+  - write a state machine in Python as a table of allowed transitions and refuse any move that is not
+    in the table
+  - 'read a Server-Sent Events stream: lines that start with data:, with events separated by a blank line'
+  - name a field in nested JSON by its path, such as $.skills[0].id
+  resources:
+  - title: Agent2Agent (A2A) Protocol Specification
+    by: A2A project
+    url: https://a2a-protocol.org/latest/specification/
+    kind: free
+    why: 'the Agent Card section, TaskState, SendMessage, streaming and the JSON-RPC binding: the MUST
+      statements the exercises and the conformance harness are built from'
+  - title: Core Concepts and Components in A2A
+    by: A2A project
+    url: https://a2a-protocol.org/latest/topics/key-concepts/
+    kind: free
+    why: Agent Card, Task, Message, Artifact and context in plain words, before you meet them in the specification
+  - title: 'A2A and MCP: Detailed Comparison'
+    by: A2A project
+    url: https://a2a-protocol.org/latest/topics/a2a-and-mcp/
+    kind: free
+    why: why agent-to-agent calls are opaque tasks and not tool calls, the distinction section 14 measures
+  - title: Server-Sent Events (HTML Living Standard, section 9.2)
+    by: WHATWG
+    url: https://html.spec.whatwg.org/multipage/server-sent-events.html
+    kind: free
+    why: the text/event-stream format, data lines and blank-line dispatch that the streaming exercises
+      fold into a task view
+  - title: 'MCP specification 2025-11-25: Tools'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+    kind: free
+    why: 'the tool-call shape that section 14 compares with an A2A delegation: typed inputs the client
+      can see'
+datasets:
+- name: T07-L04 demo chain task (reuses T07-L01's synthetic lookup-chain generator, one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 582
+status: reviewed
+measured_seconds: 0.2
+measured_peak_mib: 27

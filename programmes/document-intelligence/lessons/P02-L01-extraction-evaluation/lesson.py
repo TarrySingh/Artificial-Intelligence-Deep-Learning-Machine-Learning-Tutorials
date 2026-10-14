@@ -108,6 +108,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 4. Implement a confidence-ordered review queue and measure the quality it buys per unit cost.
 # 5. Explain why the harness is built before the extractor, not after it.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions with loops, dicts and sets, and read a docstring with a worked example
+# - compute precision, recall and F1 by hand from counts of true positives, false positives and false negatives
+# - clean text with str methods and simple regular expressions (strip, lower, replace, re.sub)
+# - read a confusion matrix: rows are the true class, columns the predicted class
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Introduction to Information Retrieval, section 8.3: Evaluation of unranked retrieval sets](https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-unranked-retrieval-sets-1.html) · Manning, Raghavan and Schütze (Cambridge University Press; free online) · *free* — defines precision, recall and the F measure, the three quantities score_field computes per field
+# - [scikit-learn user guide: Metrics and scoring](https://scikit-learn.org/stable/modules/model_evaluation.html) · scikit-learn developers (official documentation) · *free* — the confusion-matrix and precision/recall/F-measure sections, including macro versus micro averaging, to check your scorer against
+# - [Speech and Language Processing, chapter: Words and Tokens](https://web.stanford.edu/~jurafsky/slp3/2.pdf) · Jurafsky and Martin (Stanford; free drafts) · *free* — section 2.9 (minimum edit distance) explains the Levenshtein distance behind the fuzzy matcher; section 2.6 (regular expressions) helps with normalise_value
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

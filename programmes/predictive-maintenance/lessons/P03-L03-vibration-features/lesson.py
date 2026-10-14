@@ -119,6 +119,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # it as synthetic and names a real, CC-BY-licensed bearing corpus you can point this same code
 # at afterwards.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - compute a mean, standard deviation and central moments of an array with numpy, and say what a z-score is
+# - say what a frequency spectrum shows: a signal written as a sum of sines, each with an amplitude
+# - fit a line or a plane by least squares with np.linalg.lstsq and read the residuals
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Think Stats, 2nd edition](https://greenteapress.com/thinkstats2/html/index.html) · Allen B. Downey (Green Tea Press; free online) · *free* — the probability density functions chapter (moments and skewness, the moment statistics kurtosis extends) and the linear least squares chapter (fits and residuals)
+# - [The Scientist and Engineer's Guide to Digital Signal Processing: Parseval's Relation](https://www.dspguide.com/ch10/7.htm) · Steven W. Smith (free online) · *free* — chapter 10, the statement that energy in the time domain equals energy in the frequency domain, which exercise 5's band energy has to satisfy
+# - [Introduction to Applied Linear Algebra: Vectors, Matrices, and Least Squares](https://web.stanford.edu/~boyd/vmls/) · Stephen Boyd and Lieven Vandenberghe (Cambridge University Press; free PDF) · *free* — chapters 12 and 13 on least squares and least-squares data fitting, the method that removes load and ambient from a bearing temperature
+# - [Vibration-based Condition Monitoring, 2nd edition](https://www.wiley.com/en-us/Vibration+based+Condition+Monitoring:+Industrial,+Automotive+and+Aerospace+Applications,+2nd+Edition-p-9781119477556) · Robert Bond Randall (Wiley) · *paid* — chapter 3, Basic Signal Processing Techniques (3.1 statistical measures, 3.2 Fourier analysis), then chapter 4 on fault detection and 7.3 on rolling element bearing diagnostics
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

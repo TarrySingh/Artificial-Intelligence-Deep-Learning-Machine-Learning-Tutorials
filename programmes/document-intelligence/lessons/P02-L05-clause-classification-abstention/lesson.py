@@ -113,6 +113,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # 5. Choose an abstention threshold from the coverage/accuracy curve, explain why it must not
 #    be tuned on the split you report, and price the abstention rate it implies.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write numpy code with matrix products, axis reductions and broadcasting (X @ W, sum(axis=1, keepdims=True))
+# - explain what a gradient is and take one gradient-descent step by hand on a one-variable function
+# - say what a train, validation and test split are each for, and why a threshold is not fitted on the test split
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Speech and Language Processing, chapter: Logistic Regression and Text Classification](https://web.stanford.edu/~jurafsky/slp3/4.pdf) · Jurafsky and Martin (Stanford; free drafts) · *free* — sections 4.5, 4.7 and 4.8: the cross-entropy loss, the softmax and the multinomial gradient, the maths of Exercises 2 and 3
+# - [CS231n: Linear Classification, softmax classifier section](https://cs231n.github.io/linear-classify/) · Stanford CS231n course notes · *free* — scores to probabilities with the softmax and cross-entropy, and the numerical-stability trick of subtracting the max that a stable softmax needs
+# - [On Calibration of Modern Neural Networks](https://arxiv.org/abs/1706.04599) · Guo, Pleiss, Sun and Weinberger (ICML 2017; arXiv) · *free* — reliability diagrams, the expected calibration error and temperature scaling: the calibration of Exercise 5, and what it leaves unchanged
+# - [Selective Classification for Deep Neural Networks](https://arxiv.org/abs/1705.08500) · Geifman and El-Yaniv (NeurIPS 2017; arXiv) · *free* — defines a classifier that may abstain, and the coverage and risk trade-off behind the coverage/accuracy curve and threshold choice
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

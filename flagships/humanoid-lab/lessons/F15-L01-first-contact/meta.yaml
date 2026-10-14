@@ -13,6 +13,41 @@ objectives:
 - Compute whole-body centre-of-mass height from model mass and data.xipos, and show it differs from root
   height
 - Measure this machine's real-time factor and explain why simulated time is not wall time
+before_you_start:
+  assumed:
+  - write Python functions with loops, and index and slice numpy arrays
+  - compute a weighted average of a few numbers by hand, and say why it differs from a plain average
+  - read a library function's signature and docstring, and call it with the right arguments
+  resources:
+  - title: The Python Tutorial
+    by: Python Software Foundation (official documentation)
+    url: https://docs.python.org/3/tutorial/
+    kind: free
+    why: chapter 4 (control flow and functions) and chapter 5 (lists, tuples and dictionaries) cover the
+      Python every exercise here uses
+  - title: 'NumPy: the absolute basics for beginners'
+    by: The NumPy project (official documentation)
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: array shape, indexing, slicing and arithmetic, which is how you read qpos, qvel and xipos out
+      of MuJoCo's data
+  - title: MuJoCo documentation, Overview
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/overview.html
+    kind: free
+    why: the mjModel and mjData split and the mj_step pipeline, the two ideas the whole lesson is organised
+      around
+  - title: MuJoCo documentation, Python
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/python.html
+    kind: free
+    why: how MjModel and MjData fields appear as numpy arrays, and named access to joints and bodies
+  - title: University Physics Volume 1, section 9.6 Center of Mass
+    by: OpenStax (CC BY-NC-SA)
+    url: https://openstax.org/books/university-physics-volume-1/pages/9-6-center-of-mass
+    kind: free
+    why: the centre of mass of a system as a mass-weighted average, which is what the com_height exercise
+      computes
 datasets:
 - name: MuJoCo humanoid model (model/humanoid/humanoid.xml)
   licence: Apache-2.0

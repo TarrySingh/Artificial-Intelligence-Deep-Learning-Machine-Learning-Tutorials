@@ -112,6 +112,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > statement about what any authority would accept. For a real system, read the Official
 # > Journal text and take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** none.
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions over dicts and lists of dicts, returning new values rather than mutating their inputs
+# - compare and sort datetime.date values, and say what comparing a date against an as-of date answers
+# - tell a statute's Articles, Annexes and Recitals apart, and follow a cross-reference from one to another
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Regulation (EU) 2024/1689 (the AI Act), full text in the Official Journal](https://eur-lex.europa.eu/eli/reg/2024/1689/oj) · EUR-Lex, Publications Office of the European Union · *free* — the authoritative text as adopted in 2024: Article 5, Article 6 with Annexes I and III, Article 50 and Article 4; its high-risk dates were later amended by the Digital Omnibus below
+# - [AI Act: shaping Europe's digital future](https://digital-strategy.ec.europa.eu/en/policies/regulatory-framework-ai) · European Commission · *free* — the Commission's plain-language page on the four risk levels, with an application timeline updated for the AI Omnibus, which the lesson's date ladder is checked against
+# - [AI Act Single Information Platform (AI Act Service Desk)](https://ai-act-service-desk.ec.europa.eu/en) · European Commission and the AI Office · *free* — the official AI Act Explorer for browsing articles and annexes by number, plus the Compliance Checker, FAQs and the Commission's high-risk guidelines
+# - [Regulation (EU) 2026/1744 (the Digital Omnibus on AI), full text in the Official Journal](https://eur-lex.europa.eu/eli/reg/2026/1744/oj) · EUR-Lex, Publications Office of the European Union · *free* — the July 2026 amending act that moves the Chapter III high-risk duties to 2 December 2027 (Annex III) and 2 August 2028 (Annex I), the last two rungs of the date ladder
+# - [datetime, basic date and time types](https://docs.python.org/3/library/datetime.html) · Python documentation · *free* — the date objects section, for constructing, comparing and subtracting dates, which is all the lesson's date ladder needs
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

@@ -122,6 +122,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # > what any authority would accept. For a real system, read the Official Journal text and
 # > take professional advice.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T10-L01`, `P01-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write Python functions over nested dicts and lists, including looking a value up without raising when a key is missing
+# - compute the SHA-256 digest of some text with hashlib and say what two equal digests tell you
+# - say, for an ML system you know, what its intended purpose, training data and evaluation metrics are
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [AI Act Annex IV: Technical documentation](https://ai-act-service-desk.ec.europa.eu/en/ai-act/annex-4) · European Commission, AI Act Service Desk · *free* — the nine numbered points the lesson's schema is built from; read points 2 (development and validation), 3 (monitoring and oversight) and 4 (performance metrics) first
+# - [AI Act Article 11: Technical documentation](https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-11) · European Commission, AI Act Service Desk · *free* — paragraph 1, the duty to draw the documentation up before placement and keep it up to date, which is the staleness check in exercise 6
+# - [Model Cards for Model Reporting](https://arxiv.org/abs/1810.03993) · Mitchell et al. (FAT* 2019, arXiv) · *free* — a worked example of structured model documentation: intended use, evaluation data and metrics, which map onto Annex IV's points 2 to 4
+# - [Datasheets for Datasets](https://arxiv.org/abs/1803.09010) · Gebru et al. (arXiv) · *free* — the dataset-side counterpart: the motivation, composition and collection questions behind Annex IV's data requirements in point 2
+# - [The EU Artificial Intelligence Act: A Commentary](https://academic.oup.com/oxford-law-pro/book/62212) · Michèle Finck (Oxford University Press, 2026) · *paid* — per the publisher an article-by-article commentary; its contents page was not checkable, so no entry numbers are given: look up Article 11 and Annex IV for a lawyer's reading
+
 # %%
 # Setup: everything the lesson needs, in one cell. Standard library only — a documentation
 # generator you cannot run without a vendor's SDK is a generator an auditor cannot re-run.

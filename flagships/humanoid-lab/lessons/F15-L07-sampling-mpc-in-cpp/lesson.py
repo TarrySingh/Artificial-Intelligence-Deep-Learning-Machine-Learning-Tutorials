@@ -112,6 +112,27 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # drives it, checks it and measures it. Two small exercises at the end are in Python, and they
 # exist to let you feel the difference the language makes.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `F15-L01`, `F15-L03`, `F15-L06`
+#
+# **This lesson assumes you can already:**
+#
+# - write C++ that uses std::vector, references and functions, and read a struct definition
+# - draw numbers from a Gaussian with a given mean and standard deviation, and say what the mean and spread control
+# - compute a weighted average of vectors when the weights are not equal
+# - build a small C++ program with make against an installed library
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Learn C++](https://www.learncpp.com/) · learncpp.com · *free* — chapters 12 (references and pointers) and 16 (std::vector), plus lesson 8.14 on std::mt19937 random numbers, the C++ the three stages use
+# - [Predictive Sampling: Real-time Behaviour Synthesis with MuJoCo](https://arxiv.org/abs/2212.00541) · Howell, Gileadi, Tunyasuvunakool, Zakka, Erez and Tassa (arXiv) · *free* — sampling-based MPC on MuJoCo, the simple sample-and-pick relative of the MPPI you implement, run in real time
+# - [Model Predictive Path Integral Control using Covariance Variable Importance Sampling](https://arxiv.org/abs/1509.01149) · Williams, Aldrich and Theodorou (arXiv) · *free* — the MPPI algorithm itself, with the exponentiated-cost weights that the refit stage computes
+# - [What Every Computer Scientist Should Know About Floating-Point Arithmetic](https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html) · David Goldberg (Oracle-hosted reprint) · *free* — the sections on denormalized numbers and on exceptions, for how a result too small to represent underflows to zero, as exp of a large negative number does
+# - [A Tour of C++, 3rd edition](https://www.informit.com/store/tour-of-c-plus-plus-9780136816485) · Bjarne Stroustrup (Addison-Wesley) · *paid* — a compact modern-C++ overview from the language's creator, if you know C but not C++
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import math

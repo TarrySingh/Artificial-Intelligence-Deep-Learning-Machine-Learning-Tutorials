@@ -116,6 +116,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # without running the training loop. A Jupyter kernel sets `__name__` to `"__main__"`, so
 # every guarded cell still runs when you execute the notebook top to bottom.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - multiply matrices by hand and with @ in numpy, and predict the shape of the result
+# - index, slice and broadcast numpy arrays, including indexing with an integer array
+# - differentiate a composition of functions with the chain rule
+# - say what one step of gradient descent does to a parameter
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [The spelled-out intro to neural networks and backpropagation: building micrograd](https://karpathy.ai/zero-to-hero.html) · Andrej Karpathy (Neural Networks: Zero To Hero) · *free* — the first video in the series, a step-by-step backward pass by hand, which is the habit exercises 4 and 5 ask of you
+# - [CS231n: Backpropagation, Intuitions](https://cs231n.github.io/optimization-2/) · Stanford CS231n (Karpathy and Li) · *free* — the chain rule on computation graphs, then gradients for vectorised operations including the matrix-matrix multiply gradient used in attention_backward
+# - [NumPy user guide: Broadcasting](https://numpy.org/doc/stable/user/basics.broadcasting.html) · NumPy project · *free* — the broadcasting rules that decide the shape of every batched product, mask and bias addition in the attention code
+# - [Mathematics for Machine Learning, chapter 5: Vector Calculus](https://mml-book.github.io/) · Deisenroth, Faisal and Ong (Cambridge University Press; PDF free from the authors) · *free* — sections 5.3 and 5.4 on gradients of vector-valued functions and of matrices, and 5.6 on backpropagation, the maths behind a hand-derived backward pass
+
 # %%
 # Setup. Everything the lesson needs, in one cell, with versions printed by the code itself.
 import contextlib

@@ -21,6 +21,44 @@ objectives:
   both
 - Implement the worst-case reproduction bound and its three verdicts, and explain why only bit-for-bit
   equality closes a finding
+before_you_start:
+  assumed:
+  - write, compile and run a C program from the command line with a loop over an array of double and a
+    function that takes a pointer and a length
+  - write a Makefile with a build target and a test target, and run it with make
+  - explain why 0.1 + 0.2 != 0.3 in Python, i.e. that a double is a binary number with about 16 decimal
+    digits of precision
+  resources:
+  - title: What Every Computer Scientist Should Know About Floating-Point Arithmetic
+    by: David Goldberg (Oracle-hosted reprint)
+    url: https://docs.oracle.com/cd/E19957-01/806-3568/ncg_goldberg.html
+    kind: free
+    why: the definition of an ulp and of relative error, and Theorem 8 (the Kahan summation formula) with
+      its error bound against naive summation
+  - title: 'math: Mathematical functions (Python documentation)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/math.html
+    kind: free
+    why: 'math.fsum, an exactly-rounded sum, and math.ulp and math.nextafter: the Python reference and
+      the distance-in-doubles instrument the lesson reproduces in C'
+  - title: Beej's Guide to C Programming
+    by: Brian Hall (Beej), free online
+    url: https://beej.us/guide/bgc/
+    kind: free
+    why: the chapters on variables, pointers, arrays and compiling with clang get you through the C the
+      exercises need
+  - title: Automation and Make
+    by: Software Carpentry (free online)
+    url: https://swcarpentry.github.io/make-novice/
+    kind: free
+    why: 'episodes 1 and 2, Introduction and Makefiles: targets, dependencies and recipes, enough to read
+      and run the lesson''s make test'
+  - title: Handbook of Floating-Point Arithmetic, 2nd edition
+    by: Muller, Brunie, de Dinechin, Jeannerod, Joldes, Lefevre et al. (Birkhauser/Springer)
+    url: https://link.springer.com/book/10.1007/978-3-319-76526-6
+    kind: paid
+    why: 'chapter 5, Enhanced Floating-Point Sums, Dot Products, and Polynomial Values: summing more accurately
+      than the naive loop, in depth'
 datasets: []
 points: 75
 status: reviewed

@@ -115,6 +115,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # a measurement chain *reports*, and you can only see that difference when you are allowed to
 # know the truth. `meta.yaml` declares it as synthetic.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P03-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - generate a sine wave of a given amplitude and frequency in numpy and say what its sample rate in Hz means
+# - call np.fft.rfft on a real signal and map a bin index to a frequency
+# - read a difference equation and run it sample by sample in a Python loop
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [The Scientist and Engineer's Guide to Digital Signal Processing, chapter 3: ADC and DAC](https://www.dspguide.com/ch3.htm) · Steven W. Smith (free online) · *free* — quantisation noise, the sampling theorem and aliasing, and choosing an anti-alias filter, the three failures this lesson makes you measure
+# - [The Scientist and Engineer's Guide to Digital Signal Processing, chapter 19: Recursive Filters](https://www.dspguide.com/ch19.htm) · Steven W. Smith (free online) · *free* — single-pole recursive filters and their phase response, the one-pole low-pass whose gain and lag you derive and measure
+# - [Think DSP](https://greenteapress.com/thinkdsp/html/index.html) · Allen B. Downey (Green Tea Press; free online) · *free* — chapter 2 on harmonics, aliasing and computing the spectrum, in Python with numpy, before you scale a spectrum yourself
+# - [Understanding Digital Signal Processing, 3rd edition](https://www.informit.com/store/understanding-digital-signal-processing-9780137027415) · Richard G. Lyons (Pearson) · *paid* — chapter 2 on periodic sampling and aliasing, chapter 6 on IIR filters, and section 12.3 on the effects of finite fixed-point word length, including A/D quantisation noise
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

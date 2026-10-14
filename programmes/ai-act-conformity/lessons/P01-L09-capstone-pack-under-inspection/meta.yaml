@@ -28,6 +28,44 @@ objectives:
   that turn a red check green and change nothing about the system
 - Plan the honest repair as operations against the pack, and measure that every check goes green with
   no evidence removed, no threshold moved and no number that fails to reproduce
+before_you_start:
+  assumed:
+  - run a lesson's functions on a fixture and read their structured output without opening their source
+  - read and walk nested dict records in Python
+  - explain what a hash digest of a document proves, and what it does not prove about whether the document
+    is true
+  resources:
+  - title: 'Closing the AI Accountability Gap: Defining an End-to-End Framework for Internal Algorithmic
+      Auditing'
+    by: Raji et al. (FAT* 2020, arXiv)
+    url: https://arxiv.org/abs/2001.00973
+    kind: free
+    why: 'the audit stages from scoping to reflection and the artefacts each produces: the shape of the
+      inspection the capstone has you carry out'
+  - title: Categorizing Variants of Goodhart's Law
+    by: Manheim and Garrabrant (arXiv)
+    url: https://arxiv.org/abs/1803.04585
+    kind: free
+    why: why a check turned green by optimising the check is not the same as a system made safe, the failure
+      the repaired-versus-silenced audit looks for
+  - title: Artificial Intelligence Risk Management Framework (AI RMF 1.0)
+    by: NIST
+    url: https://www.nist.gov/publications/artificial-intelligence-risk-management-framework-ai-rmf-10
+    kind: free
+    why: free PDF; sections 5.3 Measure and 5.4 Manage on testing, evidence and documented residual risk
+      (MANAGE 1.4), a second lens on what the inspector asks for
+  - title: 'Regulation (EU) 2024/1689 (the AI Act): official text'
+    by: European Parliament and Council, EUR-Lex
+    url: https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng
+    kind: free
+    why: the original 2024 text, without the Digital Omnibus (EUR-Lex links the consolidated version);
+      Chapter III Section 2 (Articles 8 to 15) holds the requirements the pack evidences
+  - title: 'The EU Artificial Intelligence Act: A Commentary'
+    by: Michèle Finck (Oxford University Press, 2026)
+    url: https://academic.oup.com/oxford-law-pro/book/62212
+    kind: paid
+    why: 'per the publisher an article-by-article commentary; its contents page was not checkable, so
+      no entry numbers are given: look up Articles 8 to 15 and 43'
 datasets:
 - name: loan-copilot synthetic conformity pack
   kind: synthetic

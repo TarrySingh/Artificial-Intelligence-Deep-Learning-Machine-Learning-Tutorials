@@ -109,6 +109,25 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 #    show a case where they disagree.
 # 5. Measure, with module 1's own scorer, how much field F1 a wrong reading order costs.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T00-L01`, `P02-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - sort and group records with key functions, and use numpy sorting and boolean masks (np.argsort, a[a > t])
+# - read a bounding box as (x0, y0, x1, y1) with y growing downward, and say whether two boxes overlap or are separated by a gap
+# - write a recursive function with a base case that calls itself on two parts of its input
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [XY-Cut++: Advanced Layout Ordering via Hierarchical Mask Mechanism on a Novel Benchmark](https://arxiv.org/abs/2504.10258) · Liu, Li and Wei (arXiv) · *free* — section 2.1 and Fig. 2 explain the recursive XY-Cut that splits on projection gaps (the algorithm of xy_cut) and where it fails on complex layouts
+# - [LayoutReader: Pre-training of Text and Layout for Reading Order Detection](https://arxiv.org/abs/2108.11591) · Wang, Xu, Cui, Shang and Wei (arXiv) · *free* — a learned reading-order model and its benchmark: the step after the geometric rules built here, and a view of how reading order is scored
+# - [scipy.stats.kendalltau](https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html) · SciPy developers (official documentation) · *free* — reference definition of Kendall's tau between two orderings, to check your token-order score against
+# - [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html) · NumPy developers (official documentation) · *free* — the indexing and slicing, conditional indexing and sorting (argsort, lexsort) sections used throughout the exercises
+
 # %%
 # Setup: everything the lesson needs, in one cell, with versions printed.
 import contextlib

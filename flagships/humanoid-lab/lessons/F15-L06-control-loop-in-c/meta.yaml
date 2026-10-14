@@ -19,6 +19,43 @@ objectives:
   and ratio between them
 - Explain why a PD law leaves a steady-state error, from a measured comparison of that error against qfrc_bias
   divided by the gain
+before_you_start:
+  assumed:
+  - 'read and write C: declare variables, call functions, and use arrays and pointers to double'
+  - pass a struct by pointer and read its fields with ->
+  - build a C program with make, read a compiler warning, and run the resulting binary
+  - read a C function prototype in a header and call the function with arguments of the right types
+  resources:
+  - title: Beej's Guide to C Programming
+    by: Brian "Beej Jorgensen" Hall
+    url: https://beej.us/guide/bgc/
+    kind: free
+    why: chapters 5 (pointers), 6 (arrays), 8 (structs) and 17 (multifile projects), which is all the
+      C you write in lesson.c
+  - title: Makefile Tutorial by Example
+    by: theicfire (makefiletutorial.com)
+    url: https://makefiletutorial.com/
+    kind: free
+    why: targets, prerequisites and variables, enough to read this lesson's Makefile and rebuild after
+      an edit
+  - title: MuJoCo documentation, Simulation
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/programming/simulation.html
+    kind: free
+    why: the simulation loop, the "State and control" section and mj_makeData, the C API calls the loop
+      you write is built from
+  - title: MuJoCo documentation, Programming
+    by: Google DeepMind (official documentation)
+    url: https://mujoco.readthedocs.io/en/stable/programming/index.html
+    kind: free
+    why: the Getting started and Header files sections, how a C program includes mujoco.h and links the
+      library
+  - title: 'C Programming: A Modern Approach'
+    by: K. N. King (W. W. Norton)
+    url: https://wwnorton.com/books/9780393979503
+    kind: paid
+    why: a widely used C textbook; chapters 11 and 12 (pointers, pointers and arrays), 15 (writing large
+      programs) and 16 (structures), if Beej's guide is not enough
 datasets:
 - name: arm2.xml — pinned two-link planar arm, authored for this lesson
   licence: CC-BY-NC-SA-4.0

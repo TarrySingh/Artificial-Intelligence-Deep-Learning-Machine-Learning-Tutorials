@@ -34,6 +34,38 @@ objectives:
 - Explain why a repair that only makes the validator quieter -- widening a tolerance, loosening a boundary
   by one step, or dropping a check from the combination -- leaves the pack no more honest, and why the
   rubric fails each such repair
+before_you_start:
+  assumed:
+  - write Python regular expressions with groups, and use re.finditer to walk every match in a string
+  - explain why 0.1 + 0.2 != 0.3, and compare floats within a stated tolerance or to a stated number of
+    decimals
+  - tell a dict, a list, a string, a bool and a number apart with isinstance, and say why isinstance(True,
+    int) is True
+  resources:
+  - title: Regular Expression HOWTO
+    by: Python documentation
+    url: https://docs.python.org/3/howto/regex.html
+    kind: free
+    why: the finditer and groups sections are the tools for extract_figures, which must find every number
+      a document prints
+  - title: 'Floating-Point Arithmetic: Issues and Limitations'
+    by: Python documentation (tutorial)
+    url: https://docs.python.org/3/tutorial/floatingpoint.html
+    kind: free
+    why: representation error, and math.isclose and rounding as the way to compare a computed value with
+      a printed one at the precision the document claims
+  - title: Model Cards for Model Reporting
+    by: Mitchell et al. (FAT* 2019; arXiv)
+    url: https://arxiv.org/abs/1810.03993
+    kind: free
+    why: 'what a model-reporting document should state (intended use, evaluation data, per-group results):
+      the kind of document the conformity pack is'
+  - title: Improving Reproducibility in Machine Learning Research
+    by: Pineau et al. (NeurIPS 2019 reproducibility programme; arXiv)
+    url: https://arxiv.org/abs/2003.12206
+    kind: free
+    why: 'the reproducibility checklist and what the programme found when reported results were re-checked:
+      the motive for a gate that regenerates every figure'
 datasets:
 - name: synthetic remittance-advice extraction records, drift replay and cost/measurement registry
   kind: synthetic

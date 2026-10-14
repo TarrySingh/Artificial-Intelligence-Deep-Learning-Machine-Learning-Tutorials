@@ -21,6 +21,44 @@ objectives:
   rate a conventional threshold carries there
 - Generate a calibration-and-stability appendix from the results, in which every threshold is reported
   with its false-alarm rate
+before_you_start:
+  assumed:
+  - 'read a chi-square test result: what degrees of freedom and a p-value mean for a test statistic'
+  - write a seeded bootstrap or resampling loop with a numpy Generator and read off percentiles from the
+    draws
+  - explain what log-odds are, and that a logistic model's score is a sum of one term per input
+  resources:
+  - title: Studies on the Validation of Internal Rating Systems (Working Paper 14, revised)
+    by: Basel Committee on Banking Supervision, 2005
+    url: https://www.bis.org/publications/studies-validation-internal-rating-systems-revised
+    kind: free
+    why: 'section III''s calibration tests: the binomial test and the chi-square (Hosmer-Lemeshow) test
+      of several rating categories at once, with their assumptions and weaknesses'
+  - title: Statistical Properties of Population Stability Index
+    by: Bilal Yurdakul, Western Michigan University dissertation (open access)
+    url: https://scholarworks.wmich.edu/dissertations/3208/
+    kind: free
+    why: studies the statistical properties of PSI and proposes recommendations for the usual 0.10 and
+      0.25 thresholds, which have no stated error rate; the question the lesson's false-alarm measurement
+      asks
+  - title: 'DLMF Chapter 8: Incomplete Gamma and Related Functions'
+    by: NIST Digital Library of Mathematical Functions
+    url: https://dlmf.nist.gov/8
+    kind: free
+    why: §8.2 defines the normalised functions P(a,z) and Q(a,z), §8.23 ties them to the chi-square distribution,
+      and §8.9 gives continued fractions for computing them
+  - title: Applied Logistic Regression, 3rd edition
+    by: Hosmer, Lemeshow and Sturdivant (Wiley)
+    url: https://www.wiley.com/en-us/Applied+Logistic+Regression%2C+3rd+Edition-p-9780470582473
+    kind: paid
+    why: 'chapter 5, Assessing the Fit of the Model: 5.2.2 on the Hosmer-Lemeshow tests and 5.4 on assessing
+      fit by external validation'
+  - title: Intelligent Credit Scoring, 2nd edition
+    by: Naeem Siddiqi (Wiley)
+    url: https://www.wiley.com/en-us/Intelligent+Credit+Scoring%3A+Building+and+Implementing+Better+Credit+Risk+Scorecards%2C+2nd+Edition-p-9781119279150
+    kind: paid
+    why: 'chapter 12''s pre-implementation validation (system stability and characteristic analysis reports)
+      and chapter 14''s monitoring reports: how population stability is tracked in credit practice'
 datasets:
 - name: synthetic retail credit book with a twenty-grade master scale
   kind: synthetic

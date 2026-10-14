@@ -16,6 +16,38 @@ objectives:
   a setting where the two disagree
 - Measure, with the P02-L01 scorer, how much field F1 a wrong reading order costs against a gold-order
   ceiling
+before_you_start:
+  assumed:
+  - sort and group records with key functions, and use numpy sorting and boolean masks (np.argsort, a[a
+    > t])
+  - read a bounding box as (x0, y0, x1, y1) with y growing downward, and say whether two boxes overlap
+    or are separated by a gap
+  - write a recursive function with a base case that calls itself on two parts of its input
+  resources:
+  - title: 'XY-Cut++: Advanced Layout Ordering via Hierarchical Mask Mechanism on a Novel Benchmark'
+    by: Liu, Li and Wei (arXiv)
+    url: https://arxiv.org/abs/2504.10258
+    kind: free
+    why: section 2.1 and Fig. 2 explain the recursive XY-Cut that splits on projection gaps (the algorithm
+      of xy_cut) and where it fails on complex layouts
+  - title: 'LayoutReader: Pre-training of Text and Layout for Reading Order Detection'
+    by: Wang, Xu, Cui, Shang and Wei (arXiv)
+    url: https://arxiv.org/abs/2108.11591
+    kind: free
+    why: 'a learned reading-order model and its benchmark: the step after the geometric rules built here,
+      and a view of how reading order is scored'
+  - title: scipy.stats.kendalltau
+    by: SciPy developers (official documentation)
+    url: https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.kendalltau.html
+    kind: free
+    why: reference definition of Kendall's tau between two orderings, to check your token-order score
+      against
+  - title: 'NumPy: the absolute basics for beginners'
+    by: NumPy developers (official documentation)
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: the indexing and slicing, conditional indexing and sorting (argsort, lexsort) sections used throughout
+      the exercises
 datasets: []
 points: 94
 status: reviewed

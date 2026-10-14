@@ -1,0 +1,171 @@
+claims:
+- id: anthropic-json-outputs-parameter
+  claim: As of the access date, Anthropic's Claude API exposes schema-constrained JSON responses through
+    the `output_config.format` parameter. This is the feature name the lesson uses when it says hosted
+    structured outputs are built on the same kind of token mask the student builds.
+  where: lesson.py section 11 (where providers differ)
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs'
+  quote: 'JSON outputs ( output_config.format ): Get Claude''s response in a specific JSON format'
+  quote_context: The bulleted introduction at the top of the page, first of two features
+  accessed: 2026-09-29
+- id: anthropic-strict-tool-use-parameter
+  claim: 'As of the access date, Anthropic''s second structured-output feature is strict tool use, switched
+    on per tool with `strict: true`, which guarantees schema validation on tool names and inputs. The
+    lesson names it as the typed-tool-call form of the same idea.'
+  where: lesson.py section 11 (where providers differ)
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs'
+  quote: 'Strict tool use ( strict: true ): Guarantee schema validation on tool names and inputs'
+  quote_context: The bulleted introduction at the top of the page, second of two features
+  accessed: 2026-09-29
+- id: anthropic-constrained-decoding
+  claim: Anthropic's documentation says its schema-compliant responses are produced through constrained
+    decoding, which is the technique this lesson builds from scratch.
+  where: lesson.py section 11
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''Why use structured outputs'''
+  quote: 'Structured outputs guarantee schema-compliant responses through constrained decoding:'
+  quote_context: Sentence closing the list of failure modes under 'Why use structured outputs'
+  accessed: 2026-09-29
+- id: anthropic-unsupported-recursive-schemas
+  claim: As of the access date, Anthropic's structured outputs list recursive schemas among the JSON Schema
+    features that are not supported.
+  where: lesson.py section 11
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''JSON Schema limitations'''
+  quote: Recursive schemas
+  quote_context: First item under the 'Not supported' heading of the JSON Schema limitations section
+  accessed: 2026-09-29
+- id: anthropic-unsupported-numeric-constraints
+  claim: As of the access date, Anthropic's structured outputs list numerical constraints such as minimum,
+    maximum and multipleOf among the unsupported JSON Schema features.
+  where: lesson.py section 11
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''JSON Schema limitations'''
+  quote: Numerical constraints (such as minimum , maximum , multipleOf )
+  quote_context: An item under the 'Not supported' heading (on 2026-10-14 the fourth of seven, after recursive
+    schemas, complex types within enums and external $ref)
+  accessed: 2026-10-14
+- id: anthropic-unsupported-string-length
+  claim: As of the access date, Anthropic's structured outputs list string length constraints (minLength,
+    maxLength) among the unsupported JSON Schema features, so the `maxLength` this lesson's own machine
+    enforces is a property of the lesson's machine, not of that API.
+  where: lesson.py section 5 (the schema) and section 11
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''JSON Schema limitations'''
+  quote: String constraints ( minLength , maxLength )
+  quote_context: An item under the 'Not supported' heading (on 2026-10-14 the fifth of seven, directly
+    after numerical constraints)
+  accessed: 2026-10-14
+- id: anthropic-unsupported-feature-is-an-error
+  claim: As of the access date, Anthropic answers a request that uses an unsupported schema feature with
+    a 400 error rather than ignoring the feature, the behaviour this lesson's schema_to_regex copies by
+    raising ValueError.
+  where: lesson.py exercise 1 and section 11
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''JSON Schema limitations'''
+  quote: If you use an unsupported feature, you'll receive a 400 error with details.
+  quote_context: Sentence closing the 'Not supported' list
+  accessed: 2026-09-29
+- id: anthropic-additional-properties-false
+  claim: As of the access date, Anthropic requires `additionalProperties` to be false for objects, the
+    rule this lesson's object compiler follows (no extra keys).
+  where: lesson.py exercise 1
+  source_url: https://platform.claude.com/docs/en/build-with-claude/structured-outputs
+  source_title: 'Claude Platform Docs: Structured outputs, ''Supported features'''
+  quote: required and additionalProperties (must be set to false for objects)
+  quote_context: Item in the 'Supported features' list
+  accessed: 2026-09-29
+- id: openai-structured-outputs-guarantee
+  claim: OpenAI documents Structured Outputs as a feature that ensures the model always generates responses
+    that adhere to the supplied JSON Schema, distinct from JSON mode, which ensures valid JSON only.
+  where: lesson.py section 11
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs (platform.openai.com/docs/guides/structured-outputs
+    redirects here)'
+  quote: Structured Outputs is a feature that ensures the model will always generate responses that adhere
+    to your supplied JSON Schema
+  quote_context: Introduction of the guide
+  accessed: 2026-09-29
+- id: openai-strict-true-and-errors
+  claim: 'As of the access date, OpenAI switches Structured Outputs on with `strict: true` (in a `json_schema`
+    response format, or on a function definition) and returns an error, not a silent fallback, when the
+    schema uses an unsupported feature.'
+  where: lesson.py section 11
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''Some type-specific keywords are not yet supported'''
+  quote: 'If you turn on Structured Outputs by supplying strict: true and call the API with an unsupported
+    JSON Schema, you will receive an error.'
+  quote_context: Closing sentence of the list of unsupported keywords
+  accessed: 2026-09-29
+- id: openai-recursive-schemas-supported
+  claim: 'As of the access date, OpenAI''s documentation says recursive schemas are supported, where Anthropic''s
+    lists them as unsupported: the same feature is treated differently per provider.'
+  where: lesson.py section 11
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''Recursive schemas are supported'''
+  quote: Recursive schemas are supported
+  quote_context: Heading in the supported-schemas part of the guide
+  accessed: 2026-09-29
+- id: openai-supported-numeric-and-array-properties
+  claim: As of the access date, OpenAI lists minimum (and maximum) among supported number properties and
+    maxItems among supported array properties for Structured Outputs, in contrast to Anthropic's list
+    of unsupported numerical constraints.
+  where: lesson.py section 11
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''Supported properties'''
+  quote: maxItems — The array must have at most this many items.
+  quote_context: Under 'Supported array properties'; the number properties minimum and maximum are listed
+    in the preceding list
+  accessed: 2026-09-29
+- id: openai-fine-tuned-models-differ
+  claim: 'As of the access date, OpenAI documents a different, narrower set of supported keywords for
+    fine-tuned models: the same API feature depends on which model sits behind it.'
+  where: lesson.py section 11
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''Some type-specific keywords are not yet supported'''
+  quote: 'For fine-tuned models, we additionally do not support the following:'
+  quote_context: Second paragraph of the unsupported-keywords section
+  accessed: 2026-09-29
+- id: openai-key-order-and-required
+  claim: As of the access date, OpenAI documents that outputs are produced in the order of the keys in
+    the schema, the rule this lesson's object compiler mirrors by emitting properties in schema order.
+  where: lesson.py exercise 1
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''Key ordering'''
+  quote: When using Structured Outputs, outputs will be produced in the same order as the ordering of
+    keys in the schema.
+  quote_context: The 'Key ordering' section
+  accessed: 2026-09-29
+- id: openai-all-fields-required
+  claim: As of the access date, OpenAI requires every field to be required and offers a union with null
+    to emulate an optional one, the reason this lesson's compiler refuses a `required` list that omits
+    a property.
+  where: lesson.py exercise 1
+  source_url: https://developers.openai.com/api/docs/guides/structured-outputs
+  source_title: 'OpenAI API docs: Structured Outputs, ''All fields must be required'''
+  quote: Although all fields must be required (and the model will return a value for each parameter),
+    it is possible to emulate an optional parameter by using a union type with null.
+  quote_context: Section on required fields
+  accessed: 2026-09-29
+- id: rfc8259-integer-no-leading-zeros
+  claim: The JSON grammar allows no leading zeros in a number, so "007" is not a JSON integer. This is
+    why this lesson's integer machine has a special case for a leading zero.
+  where: lesson.py exercise 1 (integer branch)
+  source_url: https://www.rfc-editor.org/rfc/rfc8259.txt
+  source_title: RFC 8259, The JavaScript Object Notation (JSON) Data Interchange Format, section 6
+  quote: Leading zeros are not allowed.
+  quote_context: Section 6 (Numbers), first paragraph
+  accessed: 2026-09-29
+- id: rfc8259-string-characters-that-must-be-escaped
+  claim: A JSON string may not contain an unescaped quotation mark, backslash (reverse solidus) or control
+    character. The lesson's string machine simplifies further by forbidding escapes altogether, so it
+    excludes those characters and the backslash escape mechanism.
+  where: lesson.py exercise 1 (string branch, PRINTABLE)
+  source_url: https://www.rfc-editor.org/rfc/rfc8259.txt
+  source_title: RFC 8259, section 7 (Strings)
+  quote: 'All Unicode characters may be placed within the quotation marks, except for the characters that
+    MUST be escaped: quotation mark, reverse solidus, and the control characters (U+0000 through U+001F).'
+  quote_context: Section 7 (Strings), first paragraph
+  accessed: 2026-09-29

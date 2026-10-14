@@ -110,6 +110,26 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # **You edit `lesson.cpp`, not this file.** This notebook builds your C++, feeds it cases, and
 # checks its answers against a Python trainer that is given to you, already working.
 
+# %% [markdown]
+# <!-- COMMONS BEFORE v1 · generated from meta.yaml by tools/notebooks.py · do not edit by hand -->
+# ## Before you start
+#
+# **Lessons to do first:** `T03-L01`
+#
+# **This lesson assumes you can already:**
+#
+# - write a C++17 program that uses std::vector, std::unordered_map, range-for loops and pass-by-reference parameters, and compile it with clang++ or g++
+# - run make in a terminal and read the first compiler error, which usually names the real line
+# - explain why scanning n items k times costs about k times n, and what a constant-factor speedup is
+#
+# **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
+#
+# - [Learn C++](https://www.learncpp.com/) · Alex on learncpp.com · *free* — the free C++ course; chapter 12 (references and pointers) and chapter 16 (dynamic arrays: std::vector) cover the language you need for the four functions
+# - [std::unordered_map](https://en.cppreference.com/w/cpp/container/unordered_map) · cppreference.com · *free* — the reference page for the hash map the pair counts live in, including operator[], find and average constant-time lookup
+# - [Introduction to Algorithms (6.006, Spring 2020)](https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/) · MIT OpenCourseWare · *free* — Lecture 1 notes on efficiency and asymptotic notation, which ignores constant factors, and Lecture 4 on hashing: the background to why the speedup is a constant factor
+# - [Makefile Tutorial by Example](https://makefiletutorial.com/) · makefiletutorial.com · *free* — the Makefile syntax section (targets, prerequisites, commands), enough to read the lesson's Makefile and the make output when a build fails
+# - [A Tour of C++, 3rd edition](https://www.informit.com/store/tour-of-c-plus-plus-9780136816485) · Bjarne Stroustrup (Addison-Wesley) · *paid* — a compact tour of the standard library; chapter 12, Containers, covers vector (12.2) and unordered_map (12.6) as used in this lesson
+
 # %%
 # Setup: one cell, everything the lesson needs, with versions printed.
 import platform
