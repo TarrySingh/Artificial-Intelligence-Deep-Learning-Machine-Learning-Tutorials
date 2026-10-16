@@ -151,7 +151,6 @@ adduct ions, and the false-annotation rate at each confidence level and as evide
 
 ## Module 4 — Integration: factor models versus deep generative models *(specified)*
 
-**Lesson:** `lessons/P07-L04-.../` (directory name to be chosen) · tier `cpu8`.
 
 **The lab, as the catalogue words it.** Run MOFA+ and totalVI on matched CITE-seq data and check
 recovered factors against known biology.

@@ -1,0 +1,75 @@
+claims:
+- id: arena-bradley-terry-logistic
+  claim: 'The Chatbot Arena paper scores models with Bradley-Terry coefficients: the probability that
+    one model beats another in a pairwise vote is a logistic function of the difference of the two coefficients.
+    This is the model the lesson fits.'
+  where: lesson.py section 1 (the arena described) and section 2 (the Bradley-Terry model)
+  source_url: https://arxiv.org/abs/2403.04132
+  source_title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference (Chiang et al.),
+    section 4, From Pairwise Comparisons to Rankings'
+  quote: the probability model m beats model m′ is modeled via a logistic relationship
+  quote_context: Section 4, the paragraph 'Picking a score', introducing the Bradley-Terry (BT) coefficients
+    (the sentence runs across the two-column PDF layout; read it in the arXiv HTML rendering, https://arxiv.org/html/2403.04132)
+  accessed: 2026-09-29
+- id: arena-bradley-terry-shift-invariance
+  claim: The Bradley-Terry model is invariant to adding a constant to every coefficient, so one coefficient
+    is fixed to remove the freedom. The lesson removes the same freedom by centring the ratings to mean
+    zero, and says that only differences between ratings matter.
+  where: lesson.py section 2 and fit_bt / fit_bt_biased (ratings returned with mean zero)
+  source_url: https://arxiv.org/abs/2403.04132
+  source_title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference (Chiang et al.),
+    section 4, From Pairwise Comparisons to Rankings'
+  quote: Without loss of generality, we take ξ1 = 0 (since the model is invariant to addition in ξ).
+  quote_context: Section 4, directly after the definition of the BT probability model
+  accessed: 2026-09-29
+- id: arena-maximum-likelihood-estimation
+  claim: 'The Chatbot Arena paper estimates its Bradley-Terry coefficients by maximum likelihood estimation
+    on the collected battles (a reweighted version, which the lesson does not use: the lesson''s fit is
+    the unweighted maximum-likelihood estimate).'
+  where: lesson.py section 1 and exercise 2 (fit_bt)
+  source_url: https://arxiv.org/abs/2403.04132
+  source_title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference (Chiang et al.),
+    section 5, Efficient Approximate Ranking'
+  quote: To estimate the BT coefficients, mirroring (3), we perform (reweighted) maximum likelihood estimation
+    on our data points
+  quote_context: Section 5, paragraph 'Estimating the BT scores'
+  accessed: 2026-09-29
+- id: arena-bootstrap-and-sandwich-intervals
+  claim: The paper computes confidence intervals on the Bradley-Terry coefficients with two strategies,
+    a pivot bootstrap and sandwich robust standard errors, and reports that it deploys the sandwich intervals.
+    This lesson uses a plain percentile bootstrap over votes (the brief's method), not the pivot bootstrap
+    and not the sandwich estimator, and does not claim they agree.
+  where: lesson.py exercise 4 (bootstrap_theta) and the percentile_interval helper
+  source_url: https://arxiv.org/abs/2403.04132
+  source_title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference (Chiang et al.),
+    section 5, Efficient Approximate Ranking'
+  quote: 'To compute confidence intervals on the BT coefficients, we employ two strategies: (1) the pivot
+    bootstrap (DiCiccio & Efron, 1996), and (2) the “sandwich” robust standard errors'
+  quote_context: Section 5, the paragraph after 'Estimating the BT scores', on confidence intervals
+  accessed: 2026-09-29
+- id: arena-swaps-slots-to-avoid-positional-bias
+  claim: The paper's automatic benchmark guards against positional bias by presenting the same baseline
+    answer in slot A for one judgment and in slot B for the other. The lesson's "randomise the sides"
+    advice is the same idea; the paper's own arena is not described by this quote, only its benchmark.
+  where: lesson.py section 1 and section 6 (why arenas randomise the slots)
+  source_url: https://arxiv.org/abs/2403.04132
+  source_title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference (Chiang et al.),
+    appendix D.3 (Arena Bench System Prompt) region'
+  quote: 'To avoid positional bias, we conduct two judgments per prompt: the first judgment presents the
+    baseline answer as Assistant A while the second judgment presents the baseline answer as Assistant
+    B.'
+  quote_context: Appendix D, in the description of the pairwise judgment set-up used for the Arena Bench
+    prompts
+  accessed: 2026-09-29
+- id: position-bias-is-a-documented-judge-bias
+  claim: 'Position bias is a documented concern in pairwise evaluation: the MT-Bench paper names position
+    bias among the limitations of LLM judges. That paper is about LLM judges, not human voters; the lesson
+    plants a position bias in its simulated voters as a modelling choice and does not claim a size for
+    it in any real arena.'
+  where: lesson.py section 1 (position bias planted) and section 6
+  source_url: https://arxiv.org/abs/2306.05685
+  source_title: Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena (Zheng et al.), abstract
+  quote: We examine the usage and limitations of LLM-as-a-judge, including position, verbosity, and self-enhancement
+    biases
+  quote_context: Abstract
+  accessed: 2026-09-29

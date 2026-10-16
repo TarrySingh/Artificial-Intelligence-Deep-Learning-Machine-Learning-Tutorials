@@ -1,0 +1,70 @@
+id: T00-L03-one-client-three-backends
+title: Build a provider-agnostic LLM client, and the compatibility suite that shows what three hand-written
+  stand-in backends keep, rename, drop or reject
+track: T00
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement parse_tool_calls, which reads a tool call whose arguments arrive as a JSON string, an object,
+  an empty string or a legacy function_call, and raises ValueError on a malformed call instead of returning
+  it
+- Implement split_reasoning, which recovers a model's reasoning from four different places and removes
+  it from the visible answer
+- Implement recover_json, which returns the first JSON object in an answer that was meant to be pure JSON
+  but arrived inside prose or a code fence
+- Implement normalise, which composes those three into one Turn and maps error bodies, finish reasons
+  and token counts onto one vocabulary
+- Classify each backend-and-feature cell of a compatibility suite as kept, renamed, dropped or rejected,
+  and explain why an HTTP 200 does not show that a request field was honoured
+before_you_start:
+  assumed:
+  - write a Python function that walks nested dicts and lists, such as the JSON a web API returns
+  - parse JSON with the json module and handle a JSONDecodeError
+  - write a regular expression that matches the text between two tags, and say what greedy and non-greedy
+    matching do
+  - say what an HTTP 200 and a 4xx status mean, and what a chat request body looks like (a list of role
+    and content messages)
+  resources:
+  - title: Regular Expression HOWTO
+    by: Python Software Foundation
+    url: https://docs.python.org/3/howto/regex.html
+    kind: free
+    why: greedy versus non-greedy matching and re.DOTALL, the two things that decide whether a think block
+      is removed cleanly in split_reasoning
+  - title: 'json: JSON encoder and decoder'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/json.html
+    kind: free
+    why: json.loads, JSONDecodeError and JSONDecoder.raw_decode, the building blocks for reading tool
+      arguments and for recover_json
+  - title: HTTP response status codes
+    by: MDN Web Docs
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status
+    kind: free
+    why: the 2xx and 4xx families, which is the vocabulary behind sorting error bodies and the point that
+      a 200 does not mean a field was honoured
+  - title: OpenAI SDK compatibility (Claude Platform docs)
+    by: Anthropic
+    url: https://platform.claude.com/docs/en/cli-sdks-libraries/libraries/openai-sdk
+    kind: free
+    why: a real backend's table of OpenAI request fields it fully supports, caps, restricts or silently
+      ignores, the kept-or-dropped question the compatibility suite asks
+  - title: LLaMA.cpp HTTP Server
+    by: ggml-org / llama.cpp project
+    url: https://github.com/ggml-org/llama.cpp/tree/master/tools/server
+    kind: free
+    why: the README of a local OpenAI-compatible server, including its reasoning_content and --reasoning-format
+      options that the local stand-in backend imitates
+datasets:
+- name: T00-L03 recorded chat-completions answers (three stand-in backends by four probes, hand-written
+    to each backend's documented shape and embedded in lesson.py)
+  kind: synthetic
+  licence: not applicable - authored for this lesson and embedded in lesson.py; no third-party data
+points: 63
+status: reviewed
+measured_seconds: 0.0
+measured_peak_mib: 20

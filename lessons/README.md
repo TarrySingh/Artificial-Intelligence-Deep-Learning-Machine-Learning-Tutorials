@@ -9,6 +9,7 @@ than exist so far, the rest are planned, not specified in this repository yet.
 |---|---|---|---|
 | T00 · orientation | [`T00-L01-the-8gb-track`](T00-L01-the-8gb-track/) | The profiler and the tier gate that decide whether any lesson in this repository may ship. Most programmes start here. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L01-the-8gb-track/lesson.ipynb) |
 | T00 · orientation | [`T00-L02-model-registry`](T00-L02-model-registry/) | A role-based model registry, a retirement detector run against a dated snapshot of a provider's model pages, and a golden test that survives a model swap. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L02-model-registry/lesson.ipynb) |
+| T00 · orientation | [`T00-L03-one-client-three-backends`](T00-L03-one-client-three-backends/) | The normalising half of a provider-agnostic LLM client, which reads tool calls, reasoning and JSON out of whatever shape a backend returns, and a compatibility suite that shows what three stand-in backends keep, rename, drop or reject. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T00-L03-one-client-three-backends/lesson.ipynb) |
 | T03 · language models | [`T03-L01-bpe-from-scratch`](T03-L01-bpe-from-scratch/) | Byte-level byte pair encoding from scratch, and the token tax it imposes on five writing systems. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T03-L01-bpe-from-scratch/lesson.ipynb) |
 | T03 · language models | [`T03-L02-bpe-merge-loop-in-cpp`](T03-L02-bpe-merge-loop-in-cpp/) | The BPE merge loop in C++, and its speed-up over the Python trainer on one identical corpus. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T03-L02-bpe-merge-loop-in-cpp/lesson.ipynb) |
 | T03 · language models | [`T03-L03-nanolm-cpu-slice`](T03-L03-nanolm-cpu-slice/) | A character-level language model trained on a CPU with numpy alone, its backward pass derived by hand and checked against finite differences. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T03-L03-nanolm-cpu-slice/lesson.ipynb) |
@@ -27,12 +28,14 @@ than exist so far, the rest are planned, not specified in this repository yet.
 | T08 · AI engineering | [`T08-L01-agent-observability`](T08-L01-agent-observability/) | The agent loop instrumented with OpenTelemetry GenAI spans, and a cost-per-task report rebuilt from the spans alone. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T08-L01-agent-observability/lesson.ipynb) |
 | T10 · evaluation and governance | [`T10-L01-ai-act-conformity-pack`](T10-L01-ai-act-conformity-pack/) | An AI system registry turned into a machine-checkable EU AI Act conformity evidence pack. The EU AI Act programme starts here. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T10-L01-ai-act-conformity-pack/lesson.ipynb) |
 | T10 · evaluation and governance | [`T10-L02-evaluating-across-languages`](T10-L02-evaluating-across-languages/) | The instruments that evaluate a system across six generated languages: token fertility, cost per correct answer, paired bootstrap intervals, aggregation traps, a translation-artefact detector and a power curve. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T10-L02-evaluating-across-languages/lesson.ipynb) |
+| T10 · evaluation and governance | [`T10-L03-a-mini-arena`](T10-L03-a-mini-arena/) | A mini arena's ranking engine: Bradley-Terry ratings from pairwise votes, a position-bias fit, bootstrap intervals, and the number of votes before neighbouring systems stop swapping places. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T10-L03-a-mini-arena/lesson.ipynb) |
 | T12 · AI for science | [`T12-L01-find-gw150914`](T12-L01-find-gw150914/) | The first gravitational wave ever detected, found in the raw LIGO data on a laptop: noise spectra, whitening, a chirp template and matched filtering, from scratch. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T12-L01-find-gw150914/lesson.ipynb) |
 | T12 · AI for science | [`T12-L02-rainfall-runoff-honestly`](T12-L02-rainfall-runoff-honestly/) | A four-parameter rainfall-runoff model, a calibrator and a lagged-rain baseline, with the hold-out, split and flow-band traps measured on two real Australian catchments. | [Colab](https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/lessons/T12-L02-rainfall-runoff-honestly/lesson.ipynb) |
 
 Each lesson's `meta.yaml` lists its prerequisites. T00-L01 and T10-L01 need none; beyond them:
 
 - T00-L02 builds on T00-L01.
+- T00-L03 builds on T00-L01.
 - T03-L01 builds on T00-L01.
 - T03-L02 builds on T03-L01.
 - T03-L03 builds on T00-L01.
@@ -50,6 +53,7 @@ Each lesson's `meta.yaml` lists its prerequisites. T00-L01 and T10-L01 need none
 - T07-L05 builds on T03-L01 and T07-L01.
 - T08-L01 builds on T07-L01 and T07-L03.
 - T10-L02 builds on T03-L01.
+- T10-L03 builds on T00-L01.
 - T12-L01 builds on T00-L01.
 - T12-L02 builds on T00-L01.
 

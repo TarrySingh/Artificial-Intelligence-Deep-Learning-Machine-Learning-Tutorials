@@ -1,0 +1,67 @@
+id: T10-L03-a-mini-arena
+title: Build a mini arena's ranking engine — Bradley-Terry ratings from pairwise votes, a position-bias
+  fit, bootstrap intervals, and the votes needed before neighbours stop swapping
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a win-count matrix from pairwise votes and a maximum-likelihood Bradley-Terry fit by fixed-point
+  iteration, with a pseudo-count that keeps an undefeated system finite
+- Implement a Bradley-Terry fit with a position-bias term by Newton's method, and measure how much an
+  unrandomised side assignment distorts the ratings with and without it
+- Implement a bootstrap over votes that returns rating replicates, and turn them into percentile intervals
+  and into the share of replicates in which two neighbouring systems swap places
+- Measure, on simulated vote streams, how many votes each neighbouring pair needs before its order stops
+  flipping and stays stopped, with a printed comparison across independent streams
+- Measure how a rising share of random voters compresses the fitted rating scale relative to the planted
+  one
+before_you_start:
+  assumed:
+  - write the logistic (sigmoid) function and say what it does to a difference of two scores
+  - say what maximum likelihood estimation means, and read a log-likelihood
+  - explain what a gradient and a Hessian are, and how one Newton step uses them
+  - write numpy array expressions with broadcasting, a matrix transpose product and np.linalg.solve
+  resources:
+  - title: 'Chatbot Arena: An Open Platform for Evaluating LLMs by Human Preference'
+    by: Chiang et al. (arXiv)
+    url: https://arxiv.org/abs/2403.04132
+    kind: free
+    why: 'section 4, From Pairwise Comparisons to Rankings: the Bradley-Terry fit, confidence intervals
+      by bootstrap or sandwich errors, and approximate ranks that allow for that uncertainty'
+  - title: 'Speech and Language Processing (3rd ed. draft), chapter 4: Logistic Regression and Text Classification'
+    by: Dan Jurafsky and James H. Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/4.pdf
+    kind: free
+    why: '4.2 the sigmoid, 4.5 the likelihood-based cross-entropy loss and 4.6 its gradient: the position-bias
+      model of exercise 3 is exactly a logistic regression'
+  - title: Convex Optimization, section 9.5 (Newton's method)
+    by: Stephen Boyd and Lieven Vandenberghe (Cambridge University Press; free PDF from the authors)
+    url: https://web.stanford.edu/~boyd/cvxbook/
+    kind: free
+    why: the Newton step, built from the gradient and the Hessian, that fit_bt_biased takes for its logistic
+      loss
+  - title: Computational and Inferential Thinking, section 13.2 (the bootstrap)
+    by: Ani Adhikari, John DeNero and David Wagner
+    url: https://inferentialthinking.com/chapters/13/2/bootstrap/index.html
+    kind: free
+    why: resampling the data with replacement and reading percentile intervals off the replicates, the
+      idea behind bootstrap_theta
+  - title: An Introduction to the Bootstrap
+    by: Bradley Efron and R. J. Tibshirani (Chapman & Hall/CRC)
+    url: https://www.routledge.com/An-Introduction-to-the-Bootstrap/Efron-Tibshirani/p/book/9780412042317
+    kind: paid
+    why: the standard text on the bootstrap; chapter 6 (bootstrap standard errors) and chapter 13 (percentile
+      intervals) are the theory behind the rating intervals and swap shares
+datasets:
+- name: T10-L03 synthetic arena votes (eight systems with planted strengths, a planted position bias and
+    a planted share of random voters, all from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 80
+status: reviewed
+measured_seconds: 3.0
+measured_peak_mib: 45
