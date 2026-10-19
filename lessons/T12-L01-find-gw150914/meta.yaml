@@ -1,6 +1,8 @@
 id: T12-L01-find-gw150914
 title: Find GW150914 in the raw LIGO data — Welch PSD, whitening, a Newtonian chirp template and a matched
   filter, from scratch
+summary: 'Find the first gravitational wave ever detected in the raw LIGO data, on a laptop: noise spectra,
+  whitening, a chirp template and matched filtering, from scratch.'
 track: T12
 flagship: ''
 tier: cpu8

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Document intelligence</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="12" height="18" rx="2"/><path d="M6 7.5h6M6 16.5h6"/><rect x="5.5" y="10.5" width="8" height="3" rx="1.5"/><path d="M13.5 12Q16.6 7.4 19.3 11.2"/><circle cx="19.8" cy="12" r="2.25" fill="#1a47f9" stroke="none"/></g>
+</svg>

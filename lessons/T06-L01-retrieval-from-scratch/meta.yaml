@@ -1,6 +1,9 @@
 id: T06-L01-retrieval-from-scratch
 title: Build BM25, a from-scratch dense retriever and the evaluation harness that proves which one to
   trust
+short_title: Retrieval from scratch
+summary: Build BM25, a dense retriever with no external model and hybrid fusion, scored by an evaluation
+  harness whose intervals say when one retriever is really better.
 track: T06
 flagship: ''
 tier: cpu8

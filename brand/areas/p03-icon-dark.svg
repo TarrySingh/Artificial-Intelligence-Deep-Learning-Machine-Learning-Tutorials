@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Predictive maintenance</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#0a0a0a" stroke="#242424" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#f5f5f5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="10" cy="14" r="4.8"/><circle cx="10" cy="14" r="1.8"/><path d="M10 9.2V7.2M14.2 11.6l1.7-1M14.2 16.4l1.7 1M10 18.8v2M5.8 16.4l-1.7 1M5.8 11.6l-1.7-1"/><path d="M12.5 9.7Q13.2 5.9 17.2 5.8"/><circle cx="19.6" cy="5.8" r="2.25" fill="#476cff" stroke="none"/></g>
+</svg>

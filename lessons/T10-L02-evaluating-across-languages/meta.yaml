@@ -2,6 +2,9 @@ id: T10-L02-evaluating-across-languages
 title: Build the instruments that evaluate a simulated system across six generated languages, from token
   fertility and cost per correct answer to item-level and paired bootstrap intervals, aggregation traps,
   a translation-artefact detector and an items-per-language power curve
+summary: 'Build the instruments that evaluate a system across six generated languages: token fertility,
+  cost per correct answer, paired bootstrap intervals, aggregation traps, a translation-artefact detector
+  and a power curve.'
 track: T10
 flagship: ''
 tier: cpu8

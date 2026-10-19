@@ -1,6 +1,7 @@
 id: F15-L06-control-loop-in-c
 title: Write a PD control loop against MuJoCo's C API and measure the per-tick overhead that separates
   it from the same loop in Python
+summary: Write the control loop in C against MuJoCo's own API, built with `clang` and `make`.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

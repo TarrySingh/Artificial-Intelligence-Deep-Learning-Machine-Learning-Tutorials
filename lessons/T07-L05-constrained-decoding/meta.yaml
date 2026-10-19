@@ -1,6 +1,8 @@
 id: T07-L05-constrained-decoding
 title: 'Build a JSON-schema constrained decoder: a token mask over a BPE vocabulary, and a measurement
   of what it does to the output distribution'
+summary: Build a JSON-schema constrained decoder, a token mask over a BPE vocabulary, and measure what
+  the mask does to the output distribution.
 track: T07
 flagship: ''
 tier: cpu8

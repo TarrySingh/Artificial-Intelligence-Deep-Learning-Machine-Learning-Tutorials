@@ -1,6 +1,8 @@
 id: F15-L01-first-contact
 title: Load MuJoCo's humanoid, step its physics, and read centre-of-mass height and real-time factor from
   state
+summary: Load MuJoCo's humanoid, step its physics, and read centre-of-mass height and this machine's real-time
+  factor out of state.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

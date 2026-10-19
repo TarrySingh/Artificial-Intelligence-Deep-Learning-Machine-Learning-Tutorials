@@ -1,6 +1,8 @@
 id: T12-L02-rainfall-runoff-honestly
 title: Rainfall to runoff, honestly — build a four-parameter runoff model, a calibrator and a lagged-rain
   baseline, and measure the hold-out, split and flow-band traps on two real Australian catchments
+summary: Build a four-parameter rainfall-runoff model, a calibrator and a lagged-rain baseline, and measure
+  the hold-out, split and flow-band traps on two real Australian catchments.
 track: T12
 flagship: ''
 tier: cpu8

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Credit underwriting</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 3.5V20H20.5"/><path d="M4 20Q9 9.5 17.2 9.1"/><path d="M4 20Q10 13 19 12.4"/><path d="M4 20Q11 16.2 19 15.6"/><circle cx="19.4" cy="9" r="2.25" fill="#1a47f9" stroke="none"/></g>
+</svg>

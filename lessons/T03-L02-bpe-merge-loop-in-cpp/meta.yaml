@@ -1,6 +1,8 @@
 id: T03-L02-bpe-merge-loop-in-cpp
 title: Implement the BPE merge loop in C++ and measure the speedup over the Python trainer on one identical
   corpus
+summary: Write the BPE merge loop in C++, and measure its speed-up over the Python trainer on one identical
+  corpus.
 track: T03
 flagship: F02
 tier: cpu8

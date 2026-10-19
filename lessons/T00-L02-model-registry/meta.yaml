@@ -1,6 +1,9 @@
 id: T00-L02-model-registry
 title: Build a role-based model registry, a retirement detector and a golden test that survives a model
   swap
+short_title: A model registry that survives a swap
+summary: Build a role-based model registry, a retirement detector run against a dated snapshot of a provider's
+  model pages, and a golden test that survives a model swap.
 track: T00
 flagship: ''
 tier: cpu8

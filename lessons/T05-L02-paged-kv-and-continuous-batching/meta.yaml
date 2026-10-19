@@ -1,6 +1,8 @@
 id: T05-L02-paged-kv-and-continuous-batching
 title: Build a paged KV cache and a continuous-batching scheduler for a small language model, prove they
   change no token, and measure what they buy against a contiguous cache with static batching
+summary: Build a paged KV cache and a continuous-batching scheduler for a small language model, prove
+  that they change no token, and measure what they buy against a contiguous cache with static batching.
 track: T05
 flagship: ''
 tier: cpu8

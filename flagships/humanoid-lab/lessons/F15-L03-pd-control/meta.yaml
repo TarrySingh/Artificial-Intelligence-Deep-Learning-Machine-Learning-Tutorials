@@ -1,6 +1,8 @@
 id: F15-L03-pd-control
 title: Build a joint PD controller with gravity compensation, measure the droop it removes, and find your
   loop's stability ceiling by sweeping the gain
+summary: Build state feedback with gravity compensation, recovering the bias force from `qfrc_bias`, and
+  find where a high gain stops being free.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

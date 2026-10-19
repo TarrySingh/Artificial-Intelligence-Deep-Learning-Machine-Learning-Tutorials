@@ -1,6 +1,8 @@
 id: F15-L04-standing-balance
 title: Compute the centre of mass and the support polygon of a standing machine, push it over, and build
   the centre-of-mass feedback controller that catches it
+summary: Push a standing humanoid with an impulse and detect the fall, then close a centre-of-mass feedback
+  loop and measure the largest push it survives.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

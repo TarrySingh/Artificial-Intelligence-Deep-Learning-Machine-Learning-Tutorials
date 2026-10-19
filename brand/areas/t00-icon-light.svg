@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Orientation</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 16.5A8 8 0 0 1 20 16.5"/><path d="M4 16.5h1.6M6.3 10.8l1.1 1.1M12 8.5v1.6M17.7 10.8l-1.1 1.1M20 16.5h-1.6"/><path d="M12 16.5L15.6 11"/><path d="M3.5 20.5H20.5"/><circle cx="12" cy="16.5" r="2.25" fill="#1a47f9" stroke="none"/></g>
+</svg>

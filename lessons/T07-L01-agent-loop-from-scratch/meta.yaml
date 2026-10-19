@@ -1,5 +1,8 @@
 id: T07-L01-agent-loop-from-scratch
 title: The agent loop from scratch, and why reliability compounds
+short_title: The agent loop from scratch
+summary: Build an agent harness with validated tools, budgets, retries and traces, and measure how per-step
+  reliability compounds over long tasks.
 track: T07
 flagship: ''
 tier: cpu8

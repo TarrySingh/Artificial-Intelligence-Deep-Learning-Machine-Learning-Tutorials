@@ -1,6 +1,8 @@
 id: F15-L08-sim-to-real-honesty
 title: Measure what a simulator lies about — latency, saturation, noise and mass — then build a domain-randomisation
   wrapper and show it narrows the held-out gap
+summary: Turn each reality gap into a number, build a domain-randomisation wrapper and show it narrows
+  the held-out gap, then decide from published requirements what this course cannot give you.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

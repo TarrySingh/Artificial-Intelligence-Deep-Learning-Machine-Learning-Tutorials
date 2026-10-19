@@ -1,5 +1,7 @@
 id: T06-L03-reranking-measured
 title: Reranking, and what it costs — nDCG and MRR gains, the depth curve, and the test-leakage trap
+summary: Build a learned reranker, pointwise and pairwise, state its gain with its interval, measure what
+  reranking depth costs, and meet the trap of tuning on test queries.
 track: T06
 flagship: ''
 tier: cpu8

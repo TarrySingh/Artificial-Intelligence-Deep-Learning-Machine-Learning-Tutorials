@@ -1,6 +1,8 @@
 id: T04-L01-grpo-from-scratch
 title: Build GRPO from scratch in numpy, and measure its traps - zero-variance groups, length and standard-deviation
   normalisation, group size, and a reward hack
+summary: 'Build GRPO from scratch in numpy on a tiny model, and measure its traps: zero-variance groups,
+  length and standard-deviation normalisation, group size and a reward hack.'
 track: T04
 flagship: ''
 tier: cpu8

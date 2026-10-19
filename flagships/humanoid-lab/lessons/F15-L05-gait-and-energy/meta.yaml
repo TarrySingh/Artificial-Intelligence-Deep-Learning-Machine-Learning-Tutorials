@@ -1,6 +1,8 @@
 id: F15-L05-gait-and-energy
 title: Generate an open-loop gait for a planar biped, account for its energy as the integral of torque
   times velocity, and cut its cost of transport with a budgeted search
+summary: Generate a gait for a planar biped and account for its energy honestly, in cost-of-transport
+  terms.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

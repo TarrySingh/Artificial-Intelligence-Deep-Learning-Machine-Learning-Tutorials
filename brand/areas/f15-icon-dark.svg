@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Humanoid Lab</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#0a0a0a" stroke="#242424" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#f5f5f5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7.6V13.4"/><path d="M7.2 14.2L8.2 9.6L12 8.7L15.8 9.6L16.8 14.2"/><path d="M9.8 13.4H14.2M10.2 13.4L9.4 21M13.8 13.4L14.6 21"/><circle cx="12" cy="4.6" r="2.25" fill="#476cff" stroke="none"/></g>
+</svg>

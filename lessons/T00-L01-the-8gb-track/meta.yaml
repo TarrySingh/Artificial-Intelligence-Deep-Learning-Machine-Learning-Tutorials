@@ -1,6 +1,9 @@
 id: T00-L01-the-8gb-track
 title: Build the profiler and the tier gate that decide whether any lesson in this repository is allowed
   to ship
+summary: Build a profiler that measures what any piece of Python really costs in time and memory, rank
+  four implementations of one task on the numbers, and reproduce the compute-tier check every lesson here
+  has to pass.
 track: T00
 flagship: F13
 tier: cpu8

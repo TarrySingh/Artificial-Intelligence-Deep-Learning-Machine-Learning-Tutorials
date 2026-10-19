@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Agents and protocols</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.8"/><path d="M7.6 10Q12 4.6 16.6 10.2"/><path d="M16.6 13.8Q12 19.4 7.6 14"/><circle cx="19" cy="12" r="2.25" fill="#1a47f9" stroke="none"/></g>
+</svg>

@@ -1,6 +1,9 @@
 id: T03-L01-bpe-from-scratch
 title: Implement byte-level byte pair encoding from scratch and measure the token tax it imposes on five
   writing systems
+short_title: Byte-level BPE from scratch
+summary: Build byte-level byte pair encoding from scratch, and measure the token tax it imposes on five
+  writing systems.
 track: T03
 flagship: F02
 tier: cpu8

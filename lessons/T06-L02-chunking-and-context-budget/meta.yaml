@@ -1,5 +1,7 @@
 id: T06-L02-chunking-and-context-budget
 title: Chunking and the context budget — measure evidence coverage, not chunk hits
+summary: Chunk documents and assemble context under a token budget, measured by whether the evidence an
+  answer needs actually reaches the model.
 track: T06
 flagship: ''
 tier: cpu8

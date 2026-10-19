@@ -1,5 +1,7 @@
 id: T07-L02-mcp-from-the-wire-up
 title: The Model Context Protocol, from the wire up
+summary: Build a Model Context Protocol server and client from the specification, checked by a conformance
+  harness built from the same specification.
 track: T07
 flagship: ''
 tier: cpu8

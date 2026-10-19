@@ -1,5 +1,7 @@
 id: T07-L03-evaluating-agents
 title: Evaluating agents -- reliability you can report
+summary: 'Evaluate agents with numbers that carry intervals: pass^k against pass@k, trajectory metrics,
+  a failure taxonomy from traces, and a paired comparison of two configurations.'
 track: T07
 flagship: ''
 tier: cpu8

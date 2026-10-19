@@ -1,6 +1,8 @@
 id: T05-L01-serving-on-a-cpu
 title: Serve a small transformer on a CPU the way an inference engine does - a KV cache and static batching,
   with the operation, memory and latency accounting that shows what each buys
+summary: Serve a small transformer on a CPU the way an inference engine does, with a KV cache and static
+  batching, and account for the operations, memory and latency each one buys.
 track: T05
 flagship: ''
 tier: cpu8

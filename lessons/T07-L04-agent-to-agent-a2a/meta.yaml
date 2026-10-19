@@ -1,6 +1,8 @@
 id: T07-L04-agent-to-agent-a2a
 title: The Agent2Agent (A2A) protocol from the wire up - Agent Card validator, task-lifecycle server,
   streaming client and a conformance harness
+summary: Build an Agent2Agent (A2A) Agent Card validator, task-lifecycle server and streaming client from
+  the specification, checked by a conformance harness built from the same specification.
 track: T07
 flagship: ''
 tier: cpu8

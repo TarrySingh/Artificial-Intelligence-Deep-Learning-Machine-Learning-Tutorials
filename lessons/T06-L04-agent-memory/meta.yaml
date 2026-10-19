@@ -1,5 +1,7 @@
 id: T06-L04-agent-memory
 title: Agent memory — what to keep, what to retrieve, what to forget
+summary: 'Build memory for a long-running assistant: what to store, how recency, importance and relevance
+  combine at retrieval, and why an updated fact must beat the stale one.'
 track: T06
 flagship: ''
 tier: cpu8

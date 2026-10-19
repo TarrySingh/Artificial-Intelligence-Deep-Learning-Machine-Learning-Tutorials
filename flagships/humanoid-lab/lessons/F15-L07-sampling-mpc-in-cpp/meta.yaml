@@ -1,6 +1,7 @@
 id: F15-L07-sampling-mpc-in-cpp
 title: Implement the MPPI sampling loop in C++ and measure the rollout throughput a 100 Hz control tick
   can afford
+summary: Write sampling-based MPC in C++ on a cart-pole, measured in rollouts per second.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

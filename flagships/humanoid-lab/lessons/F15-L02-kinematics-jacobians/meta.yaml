@@ -1,6 +1,8 @@
 id: F15-L02-kinematics-jacobians
 title: Build the translational Jacobian of a humanoid hand, verify it against finite differences of forward
   kinematics, and drive the hand onto a Cartesian target with damped least squares
+summary: Build a translational Jacobian, verify it against finite differences of forward kinematics, and
+  drive a 9-DoF upper body's palm onto a Cartesian target with damped least squares.
 track: T11
 flagship: F15-humanoid-lab
 tier: cpu8

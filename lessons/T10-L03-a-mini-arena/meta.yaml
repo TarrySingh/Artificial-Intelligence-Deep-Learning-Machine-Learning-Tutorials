@@ -1,6 +1,8 @@
 id: T10-L03-a-mini-arena
 title: Build a mini arena's ranking engine — Bradley-Terry ratings from pairwise votes, a position-bias
   fit, bootstrap intervals, and the votes needed before neighbours stop swapping
+summary: 'Build a mini arena''s ranking engine: Bradley-Terry ratings from pairwise votes, a position-bias
+  fit, bootstrap intervals, and the number of votes before neighbouring systems stop swapping places.'
 track: T10
 flagship: ''
 tier: cpu8

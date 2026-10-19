@@ -1,6 +1,8 @@
 id: T08-L01-agent-observability
 title: Instrumenting the agent loop with OpenTelemetry GenAI spans, and a cost-per-task report rebuilt
   from the spans alone
+summary: Instrument the agent loop with OpenTelemetry GenAI spans, and rebuild a cost-per-task report
+  from the spans alone.
 track: T08
 flagship: ''
 tier: cpu8

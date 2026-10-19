@@ -183,9 +183,27 @@ if _missing:
 '''
 
 
+def launch_urls(nb: str) -> dict:
+    """The four launch links for a notebook, given its path from the repository root. The one
+    source for them: the launcher cell's badges and the Markdown indexes tools/status.py writes
+    both call this, so a link on a page can never drift from the badge in the notebook."""
+    return {
+        "colab": f"https://colab.research.google.com/github/{REPO}/blob/{BRANCH}/{nb}",
+        "kaggle": f"https://kaggle.com/kernels/welcome?src=https://github.com/{REPO}/blob/{BRANCH}/{nb}",
+        "binder": f"https://mybinder.org/v2/gh/{LAUNCH_REPO}/{BRANCH}?labpath={nb}",
+        "codespaces": f"https://codespaces.new/{LAUNCH_REPO}",
+    }
+
+
+def notebook_path(d: Path) -> str:
+    """A lesson's notebook, from the root of the published repository."""
+    return "/".join(p for p in (PREFIX, lesson_rel(d)) if p) + "/lesson.ipynb"
+
+
 def launcher(d: Path, src: str) -> str:
     rel = "/".join(p for p in (PREFIX, lesson_rel(d)) if p)
-    nb = f"{rel}/lesson.ipynb"
+    nb = notebook_path(d)
+    url = launch_urls(nb)
     raw = f"https://raw.githubusercontent.com/{REPO}/{BRANCH}/{rel}/"
     badge = "/".join(p for p in (PREFIX, BRAND_BADGE) if p)
     synapsa = f"[Synapsa]({SYNAPSA_URL})" if SYNAPSA_URL else "Synapsa"
@@ -205,13 +223,13 @@ def launcher(d: Path, src: str) -> str:
 
     badges = (
         f"# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)]"
-        f"(https://colab.research.google.com/github/{REPO}/blob/{BRANCH}/{nb})\n"
+        f"({url['colab']})\n"
         f"# [![Open in Kaggle](https://kaggle.com/static/images/open-in-kaggle.svg)]"
-        f"(https://kaggle.com/kernels/welcome?src=https://github.com/{REPO}/blob/{BRANCH}/{nb})\n"
+        f"({url['kaggle']})\n"
         f"# [![Open in Binder](https://mybinder.org/badge_logo.svg)]"
-        f"(https://mybinder.org/v2/gh/{LAUNCH_REPO}/{BRANCH}?labpath={nb})\n"
+        f"({url['binder']})\n"
         f"# [![Open in Codespaces](https://github.com/codespaces/badge.svg)]"
-        f"(https://codespaces.new/{LAUNCH_REPO})\n"
+        f"({url['codespaces']})\n"
     )
     compiled = any(s.startswith("lesson.") and s != "lesson.h" for s in sibs)
     base = [p for p in ("numpy", "matplotlib") if p in third_party(src)]

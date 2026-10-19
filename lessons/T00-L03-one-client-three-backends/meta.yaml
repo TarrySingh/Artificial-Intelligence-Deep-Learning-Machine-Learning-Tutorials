@@ -1,6 +1,9 @@
 id: T00-L03-one-client-three-backends
 title: Build a provider-agnostic LLM client, and the compatibility suite that shows what three hand-written
   stand-in backends keep, rename, drop or reject
+summary: Build the normalising half of a provider-agnostic LLM client, which reads tool calls, reasoning
+  and JSON out of whatever shape a backend returns, and a compatibility suite that shows what three stand-in
+  backends keep, rename, drop or reject.
 track: T00
 flagship: ''
 tier: cpu8

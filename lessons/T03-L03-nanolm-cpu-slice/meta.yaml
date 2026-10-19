@@ -1,6 +1,8 @@
 id: T03-L03-nanolm-cpu-slice
 title: Train a character-level language model on a CPU with numpy alone, deriving the backward pass by
   hand and proving it against finite differences
+summary: Train a character-level language model on a CPU with numpy alone, its backward pass derived by
+  hand and checked against finite differences.
 track: T03
 flagship: F01-nanolm
 tier: cpu8

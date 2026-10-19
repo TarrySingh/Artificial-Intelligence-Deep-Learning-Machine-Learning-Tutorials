@@ -11,16 +11,18 @@ have no directory.
 
 **2 of 8 modules built.** A module is built when its lesson directory exists and has passed all 14 gates in `QUALITY.md` and an independent review; everything else is specified here and has no directory. Seconds and peak memory are measured by `tools/execute.py`; rubric size is read from each lesson's `tests/test_lesson.py`. Regenerate with `python tools/status.py`.
 
-| # | Module | Status | Lesson | Language | Measured | Rubric |
-|---|---|---|---|---|---|---|
-| 1 | PD modelling with vintages and macro overlays | **built** | `P05-L01-pd-vintages-and-macro` | python | 1.2 s · 100 MiB | 164 pts / 46 cases |
-| 2 | Reject inference and selection bias | **built** | `P05-L02-reject-inference` | python | 6.7 s · 115 MiB | 100 pts / 42 cases |
-| 3 | Scorecards versus boosting, with monotonicity | specified | — | — | — | — |
-| 4 | Adverse action and reason codes | specified | — | — | — | — |
-| 5 | Disparity testing without protected attributes | specified | — | — | — | — |
-| 6 | Thin-file and cash-flow underwriting | specified | — | — | — | — |
-| 7 | Monitoring and the model risk file | specified | — | — | — | — |
-| 8 | Capstone: a consumer-credit decisioning repo | specified | — | — | — | — |
+1. **[PD modelling with vintages and macro overlays](lessons/P05-L01-pd-vintages-and-macro/lesson.ipynb)** · built · ~90 minutes · Python<br>
+   <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open PD modelling with vintages and macro overlays in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open PD modelling with vintages and macro overlays in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/credit-underwriting/lessons/P05-L01-pd-vintages-and-macro/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open PD modelling with vintages and macro overlays in Binder"></picture></a><br>
+   <sub>measured 1.2 s · 100 MiB · rubric 164 points in 46 cases</sub>
+2. **[Reject inference and selection bias](lessons/P05-L02-reject-inference/lesson.ipynb)** · built · ~2 hours · Python<br>
+   <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/credit-underwriting/lessons/P05-L02-reject-inference/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open Reject inference and selection bias in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/credit-underwriting/lessons/P05-L02-reject-inference/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open Reject inference and selection bias in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/credit-underwriting/lessons/P05-L02-reject-inference/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open Reject inference and selection bias in Binder"></picture></a><br>
+   <sub>measured 6.7 s · 115 MiB · rubric 100 points in 42 cases</sub>
+3. Scorecards versus boosting, with monotonicity · *specified*
+4. Adverse action and reason codes · *specified*
+5. Disparity testing without protected attributes · *specified*
+6. Thin-file and cash-flow underwriting · *specified*
+7. Monitoring and the model risk file · *specified*
+8. Capstone: a consumer-credit decisioning repo · *specified*
 
 <!-- STATUS:END -->
 

@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Evaluation and governance</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#f7f7f7" stroke="#e6e6e6" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#1a1a1a" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 20.5H21"/><rect x="6" y="11" width="4" height="9.5" rx="1"/><rect x="14" y="8" width="4" height="12.5" rx="1"/><path d="M8 7V11M7 7h2M16 2.5V5.6M15 2.5h2"/><circle cx="16" cy="8" r="2.25" fill="#1a47f9" stroke="none"/></g>
+</svg>
