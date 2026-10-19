@@ -124,6 +124,8 @@ computed by code you run, and every claim it makes about the world cites a prima
 
 New lessons three times a week, every Monday, Wednesday and Friday. Watch or star this repository to hear about each one as it lands.
 
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="brand/readme/roadmap-dark.svg"><img src="brand/readme/roadmap-light.svg" width="380" alt="Roadmap. September 2026, done: Document intelligence for regulated operations. October 2026, under way now: AI agents and the protocols they speak. November 2026, to come: The credit decisions and the proteomics and multiomics programmes continue. December 2026, to come: Deeper courses in the industries we already cover."></picture></p>
+
 - **September 2026.** Document intelligence for regulated operations, retrieval and RAG, and the agents track begins.
 - **October 2026.** AI agents and the protocols they speak, two new industry programmes on proteomics and multiomics and on evidence-based credit decisions, AI for science, serving models on modest hardware, post-training from scratch, and evaluating across languages.
 - **November 2026.** The credit decisions and the proteomics and multiomics programmes continue, module by module.

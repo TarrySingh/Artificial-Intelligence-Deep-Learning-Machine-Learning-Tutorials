@@ -487,6 +487,57 @@ def invite(t: dict) -> str:
     return svg.render()
 
 
+def roadmap(t: dict, months: list) -> str:
+    """The pathway: one node per public month down a 2 px line. Done months are green with a tick,
+    the current month is Synapse Blue with a flat halo, upcoming months are outlined. Month level
+    only; every word comes from calendar.yaml's public lines."""
+    W, R, CX, TX = 380, 26, 50, 96
+    soft = "#ebefff" if t["panel"] == "#ffffff" else "#081549"
+    edge = "#949494" if t["panel"] == "#ffffff" else "#757575"     # fg-subtle: 3:1 or better on the panel
+    rows, top = [], 28
+    for m in months:
+        full = W - TX - 24
+        lines = wrap(m["theme"], "g400", 17, 0, full, 4)
+        for narrower in range(int(full), 80, -4):       # balance: the narrowest measure that keeps the line count
+            try:
+                again = wrap(m["theme"], "g400", 17, 0, narrower, len(lines))
+            except SystemExit:
+                break
+            lines = again
+        base = top + 33 + 28
+        last = base + 24 * (len(lines) - 1)
+        rows.append((top, lines, base))
+        top = max(top + 2 * R + 34, last + 26)
+    H = top - 34 + 28
+    state = {"done": "done", "now": "under way now", "next": "to come"}
+    svg = Svg(W, H, "Roadmap. " + " ".join(f"{m['name']}, {state[m['state']]}: {m['theme']}." for m in months).replace("..", "."))
+    panel(svg, t, 16)
+    for i, (m, (tp, lines, base)) in enumerate(zip(months, rows)):
+        cy = tp + R
+        if i + 1 < len(months):      # the connector to the next node, green while the path is walked
+            nxt = rows[i + 1][0] + R
+            live = m["state"] == "done"
+            svg.add(path(f"M{CX} {cy + R + 6}V{nxt - R - 6}", t["done"] if live else edge, 2))
+        if m["state"] == "done":
+            svg.add(circle(CX, cy, R, t["done"]),
+                    path(f"M{CX - 10} {cy + 1}l7 7 13-15", t["panel"], 3.5))
+        elif m["state"] == "now":
+            svg.add(circle(CX, cy, R + 7, soft), circle(CX, cy, R, t["blue"]))
+            svg.text(f"{m['month']:02d}", "g600", 19, CX, cy + 7, t["panel"], 0, "middle")
+        else:
+            svg.add(circle(CX, cy, R - 1, t["panel"], edge, 2))
+            svg.text(f"{m['month']:02d}", "g600", 19, CX, cy + 7, t["muted"], 0, "middle")
+        w = svg.text(m["name"], "g600", 21, TX, tp + 33, t["head"] if m["state"] == "now" else t["ink"], -0.01)
+        if m["state"] == "now":
+            pw = faces()["g600"].width("This month", 14, 0) + 24
+            px = TX + w + 12
+            svg.add(rect(px + 0.5, tp + 14.5, pw, 26, 13, t["panel"], t["blue"], 1.5))
+            svg.text("This month", "g600", 14, px + 12.5, tp + 32, t["blue"])
+        for j, line in enumerate(lines):
+            svg.text(line, "g400", 17, TX, base + 24 * j, t["ink"] if m["state"] == "now" else t["muted"])
+    return svg.render()
+
+
 # ----------------------------------------------------------------------------------- the areas
 
 def public_areas() -> list:
@@ -511,6 +562,9 @@ def public_areas() -> list:
 
 def outputs() -> dict:
     """Every file this tool owns, path -> text."""
+    sys.path.insert(0, str(ROOT / "internal"))
+    from release import roadmap_months
+    months = roadmap_months()
     areas = public_areas()
     reg = {a["id"]: a for a in areas}
     out = {}
@@ -536,6 +590,7 @@ def outputs() -> dict:
             out[AREA_DIR / f"{a['id'].lower()}-tile-{name}.svg"] = tile(t, a)
             out[AREA_DIR / f"{a['id'].lower()}-icon-{name}.svg"] = icon(t, a)
         out[r("synapsa-invite")] = invite(t)
+        out[r("roadmap")] = roadmap(t, months)
     return out
 
 
