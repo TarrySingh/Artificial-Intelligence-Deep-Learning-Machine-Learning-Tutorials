@@ -354,6 +354,7 @@ typedef struct {
   long n;
   long dump;
   double a, b, sum_abs;
+  long only;        // selftest --only N: run just the Nth check (the notebook runs each exercise's own)
 } Options;
 
 // ---------------------------------------------------------------------------------------
@@ -677,7 +678,6 @@ static int run_check(const char* name, void (*fn)(void)) {
 }
 
 static int cmd_selftest(const Options* o) {
-  (void)o;
   int todos = 0, fails = 0;
   struct { const char* name; void (*fn)(void); } checks[] = {
       {"exercise 1  naive_sum", check_naive},
@@ -687,6 +687,7 @@ static int cmd_selftest(const Options* o) {
       {"exercise 4  reproduce", check_reproduce},
   };
   for (size_t i = 0; i < sizeof checks / sizeof checks[0]; i++) {
+    if (o->only && (long)(i + 1) != o->only) continue;
     int rc = run_check(checks[i].name, checks[i].fn);
     if (rc == 1) fails++;
     if (rc == 2) todos++;
@@ -709,13 +710,13 @@ static int usage(void) {
           "  order       the same values summed in four different orders\n"
           "  wmean       the exposure-weighted mean PD under each summation\n"
           "  reproduce   --a A --b B --n N --sum-abs S\n"
-          "options: --n --dump --a --b --sum-abs\n");
+          "options: --n --dump --a --b --sum-abs --only\n");
   return 3;
 }
 
 int main(int argc, char** argv) {
   if (argc < 2) return usage();
-  Options o = {kDefaultN, kDefaultDump, 0.0, 0.0, 0.0};
+  Options o = {kDefaultN, kDefaultDump, 0.0, 0.0, 0.0, 0};
   const char* cmd = argv[1];
   for (int i = 2; i < argc; i++) {
     const char* k = argv[i];
@@ -726,6 +727,7 @@ int main(int argc, char** argv) {
     else if (!strcmp(k, "--a")) o.a = strtod(v, NULL);
     else if (!strcmp(k, "--b")) o.b = strtod(v, NULL);
     else if (!strcmp(k, "--sum-abs")) o.sum_abs = strtod(v, NULL);
+    else if (!strcmp(k, "--only")) o.only = strtol(v, NULL, 10);
     else { fprintf(stderr, "error: unknown option %s\n", k); return 3; }
   }
   if (!strcmp(cmd, "selftest")) return cmd_selftest(&o);

@@ -68,3 +68,5 @@ points: 348
 status: reviewed
 measured_seconds: 0.3
 measured_peak_mib: 33
+guard_allow:
+- _serve_stdio

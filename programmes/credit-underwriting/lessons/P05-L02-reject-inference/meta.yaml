@@ -1,0 +1,80 @@
+id: P05-L02-reject-inference
+title: Build an approve/decline policy simulator and the reject-inference toolkit (augmentation weights,
+  parcelling and bounds), and measure how much a scorecard trained on approvals alone loses on the whole
+  through-the-door population
+track: P05
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- P04-L01-validation-suite
+- P05-L01-pd-vintages-and-macro
+objectives:
+- Implement an approval policy with a fixed cut-off, a tie-aware Gini and a calibration table by score
+  band, and use them to judge a scorecard trained on approvals against one trained on everyone
+- Measure how far an approvals-only scorecard's Gini and actual-over-expected ratio fall on the whole
+  through-the-door population as the old policy gets stricter and as it leans more on a variable the scorecard
+  cannot see
+- Implement augmentation weights (inverse probability of approval, capped) and the effective sample size
+  they leave behind
+- Implement parcelling (inferred outcomes by score band with an uplift) and the weighted training set
+  built from it, and measure how much calibration each remedy recovers against the planted truth
+- Implement bounds on the through-the-door default rate that state their assumption, and explain why no
+  remedy can recover a variable the data never contained
+datasets:
+- name: synthetic-through-the-door-applicants
+  kind: synthetic
+  description: 20,000 historical applicants and a 30,000-applicant test sample, each with five observed
+    features, a hidden risk variable, a planted default outcome and an old approve/decline policy score,
+    generated in lesson.py by simulate_applicants (seed 20261002; replicate books from fixed seeds)
+  generator: 'lesson.py :: simulate_applicants'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+before_you_start:
+  assumed:
+  - write numpy code that sorts an array, builds a boolean mask from the sorted order and uses it to index
+    another array
+  - explain what a logistic regression predicts, and what a weighted fit means (a weight of 2 counts a
+    row twice)
+  - read a Gini coefficient as a measure of how well scores rank outcomes, and an actual-over-expected
+    ratio as a measure of whether the predicted rates are the right size
+  - say what an applicant's probability of default is, and compare it with the observed 0/1 outcome
+  resources:
+  - title: Indexing on ndarrays (NumPy user guide)
+    by: NumPy developers
+    url: https://numpy.org/doc/stable/user/basics.indexing.html
+    kind: free
+    why: 'the sections on boolean array indexing and index arrays: how a mask built in sorted order is
+      applied back to the applicants in their original order'
+  - title: Mann-Whitney U test (Wikipedia)
+    by: Wikipedia contributors
+    url: https://en.wikipedia.org/wiki/Mann%E2%80%93Whitney_U_test
+    kind: free
+    why: the rank-sum calculation behind exercise 2, ties counted as one half, and its link to the area
+      under the ROC curve and to the Gini coefficient
+  - title: Best Practices for Responsible Machine Learning in Credit Scoring
+    by: Valdrighi et al., arXiv 2409.20536 (2024)
+    url: https://arxiv.org/abs/2409.20536
+    kind: free
+    why: 'the ''Reject Inference'' section and its methods: sample bias, augmentation, extrapolation and
+      fuzzy parcelling, the vocabulary of this lesson''s section 8'
+  - title: 'Causal Inference: What If (chapter 12, IP weighting)'
+    by: Miguel Hernan and James Robins
+    url: https://miguelhernan.org/whatifbook
+    kind: free
+    why: 'inverse-probability weighting explained from first principles: why weighting by 1 over the probability
+      of being observed makes the observed group stand for the population; skim the causal notation'
+  - title: Intelligent Credit Scoring, 2nd edition (chapter 10, section 'Reject Inference')
+    by: Naeem Siddiqi, Wiley (2017)
+    url: https://www.wiley.com/en-us/intelligent-credit-scoring-building-and-implementing-better-credit-risk-scorecards-2nd-edition-p-9781119279150
+    kind: paid
+    why: 'the practitioner''s account of reject inference (pages 215-236 in the publisher''s table of
+      contents): why it is done, simple and fuzzy augmentation and parcelling, the methods of sections
+      9 to 12'
+points: 100
+status: reviewed
+measured_seconds: 6.7
+measured_peak_mib: 115

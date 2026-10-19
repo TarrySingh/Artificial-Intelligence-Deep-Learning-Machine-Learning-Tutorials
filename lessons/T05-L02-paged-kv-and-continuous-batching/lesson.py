@@ -184,12 +184,36 @@ def _named(labels: list[str]) -> str:
     return "exercises " + ", ".join(nums[:-1]) + " and " + nums[-1]
 
 
+# How long an exercise's check may run before it counts as stuck, and how long any other cell that runs your
+# code (a demonstration, a table) may: a right answer needs a small fraction of either, measured on the worked
+# solution (internal/retrofit_guard.py, 10x or more). tools/verify_all.py reads both numbers.
+_CHECK_SECONDS = 2
+_DEMO_SECONDS = 10
+
+
 class _Timeout(BaseException):
     """Raised by `_watchdog`. A BaseException, so a student's `except Exception` cannot swallow it."""
 
 
+def _resident() -> float:
+    """This process's resident memory now, in MiB (Linux: /proc; macOS: libproc); its peak so far elsewhere."""
+    try:
+        if sys.platform.startswith("linux"):
+            with open("/proc/self/statm") as f:
+                return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
+        if sys.platform == "darwin":
+            import ctypes, struct
+            info = ctypes.create_string_buffer(96)           # struct proc_taskinfo
+            if ctypes.CDLL("/usr/lib/libproc.dylib").proc_pidinfo(os.getpid(), 4, 0, info, 96) == 96:
+                return struct.unpack_from("QQ", info.raw)[1] / 2**20     # pti_resident_size
+    except Exception:
+        pass
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**20 if sys.platform == "darwin" else 2**10)
+
+
 @contextlib.contextmanager
-def _watchdog(seconds: float):
+def _watchdog(seconds: float, memory_mib: float = 2048):
     """Stop a block that runs longer than `seconds`, so a loop that never ends becomes a message
     instead of a frozen notebook. It uses SIGALRM, which exists on Linux and macOS (Colab, Kaggle,
     Binder, Codespaces and most laptops) and only in the main thread; where it does not exist the
@@ -199,31 +223,43 @@ def _watchdog(seconds: float):
             and threading.current_thread() is threading.main_thread()):
         yield
         return
+    if getattr(_watchdog, "stopped", False):           # a stopped block's frames keep what they built in a
+        _watchdog.stopped = False                      # reference cycle until now: free it, so it is not counted
+        import gc
+        gc.collect()                                     # as the growth of this block
     message = f"still running after {seconds:g} s"
     started = time.monotonic()
+    used_mib = None
+    if memory_mib:
+        used_mib = _resident
+        base_mib = used_mib()                            # resident memory now; only growth beyond it counts
     previous = signal.getsignal(signal.SIGALRM)
     outer_left, outer_every = signal.getitimer(signal.ITIMER_REAL)   # an alarm already running
     # One alarm at a time, never a repeating one. next: when ours is due; outer: when the alarm we
     # found is due (every: its interval); unseen: an alarm is armed and has not reached _fire yet.
     state = {"next": started + seconds, "outer": started + outer_left if outer_left > 0 else None,
-             "every": outer_every, "unseen": False, "fired": False, "done": False,
+             "every": outer_every, "unseen": False, "fired": False, "done": False, "message": message, "count": 0, "budget": 0,
+             "traced": False, "tracer": None, "tool": None, "at": None, "thread": threading.get_ident(),
              "me": sys._getframe(), "owner": None}
     owner = state["me"].f_back
     while owner is not None and owner.f_globals is vars(contextlib):    # contextlib's __enter__
         owner = owner.f_back
-    state["owner"] = owner                               # the frame running the `with`
+    state["owner"], state["at"] = owner, owner.f_lineno   # the frame running the `with`, and its line
 
     def _arm(now, soonest=0.001):                        # one shot, at whichever deadline is next
         due = [t for t in (state["next"], state["outer"]) if t is not None]
+        if used_mib and state["next"] is not None and not state["fired"]:
+            due.append(now + 0.1)                        # and look at the memory every 0.1 s
         if due:
             signal.setitimer(signal.ITIMER_REAL, max(min(due) - now, soonest))
             state["unseen"] = True
 
-    def _in_guard(frame):                                # is the alarm landing in this guard's own
-        while frame is not None and frame is not state["owner"]:     # set-up, exit or clean-up (or
-            if (frame is state["me"] or frame.f_code in (_fire.__code__, _arm.__code__)    # in code
-                    or (frame.f_back is state["owner"] and frame.f_globals is vars(contextlib))):
-                return True                              # run from contextlib's __exit__ under the `with`)?
+    def _in_guard(frame):                                # is the alarm landing in a guard's own set-up, exit
+        while frame is not None and frame is not state["owner"]:     # or clean-up (this one's or another's:
+            code = frame.f_code                          # guards nest), or in contextlib's __exit__ under
+            if (frame is state["me"] or code in _own_code or code.co_name in _GUARDS   # a `with`?
+                    or frame.f_globals.get("__name__") == "contextlib"):
+                return True
             frame = frame.f_back
         return False
 
@@ -253,12 +289,61 @@ def _watchdog(seconds: float):
                     state["outer"], state["every"] = time.monotonic() + left, every
                 _arm(time.monotonic())
             now = time.monotonic()
+        grown = used_mib() - base_mib if used_mib and not state["fired"] else 0
+        if grown > memory_mib and state["next"] is not None:       # out of memory before out of time
+            state["message"] = (f"was using over {memory_mib:g} MiB more memory than when it started, "
+                                f"after {now - started:.1f} s: a loop that keeps adding to a list or a string "
+                                "never stops; give every loop a cap")
+            state["next"] = now
         if state["next"] is not None and now >= state["next"] - 0.005:
+            swallowed = state["fired"]                   # a second stop: the first did not end the block
             state["fired"] = True
+            state["count"] += 1
             state["next"] = now + 0.25                   # again, in case a bare `except:` swallows it
             _arm(now)
-            raise _Timeout(message, state)
+            if swallowed:
+                state["budget"] = state["count"] - 1     # the tracer raises this many times, then leaves clean-up alone
+                _trace_from(frame)
+            raise _Timeout(state["message"], state)
         _arm(now)
+
+    def _trace(frame, event, arg):                       # raises the stop at the next line of code that
+        if state["done"] or _in_guard(frame):            # runs: inside the handler that swallowed the last
+            return None                                  # (the interpreter then unsets it; the next alarm
+        if event == "line":                              # sets it again)
+            raise _Timeout(state["message"], state)
+        return _trace
+
+    def _line(code, line):                               # Python 3.12+: sys.monitoring, which is not unset
+        if state["done"] or state["budget"] <= 0 or threading.get_ident() != state["thread"]:   # not unset when a
+            return                                       # callback raises: the next line the code runs raises too, handlers
+        frame = sys._getframe(1)                         # included (this thread only), but only `budget` times:
+        if _in_guard(frame) or (frame is state["owner"] and line == state["at"]):   # clean-up that runs once the stop has
+            return                                       # left the swallowing loops must not be interrupted again
+        state["budget"] -= 1                             # (not the `with` line: its exit runs the guard)
+        raise _Timeout(state["message"], state)
+
+    def _trace_from(frame):                              # trace the running frames, and the ones called next
+        if not state["traced"]:
+            state["traced"] = True
+            mon = getattr(sys, "monitoring", None)
+            for tool in (5, 4, 3, 2, 1, 0) if mon is not None else ():
+                try:
+                    mon.use_tool_id(tool, "commons-time-limit")
+                except ValueError:                       # a debugger or a profiler has this one
+                    continue
+                state["tool"] = tool
+                mon.register_callback(tool, mon.events.LINE, _line)
+                mon.set_events(tool, mon.events.LINE)
+                return
+            state["tracer"] = sys.gettrace()
+            sys.settrace(_trace)
+        while frame is not None and frame is not state["owner"]:
+            frame.f_trace = _trace
+            frame = frame.f_back
+
+    _GUARDS = ("_time_limit", "_deadline", "_resident", "_watchdog", "_fire", "_arm", "_trace", "_trace_from", "_line", "_in_guard")
+    _own_code = (_fire.__code__, _arm.__code__, _trace.__code__, _trace_from.__code__, _line.__code__)
 
     signal.signal(signal.SIGALRM, _fire)
     _arm(time.monotonic())
@@ -267,6 +352,14 @@ def _watchdog(seconds: float):
             yield
         finally:
             state["done"] = True                         # from here on an alarm of ours only counts
+            if state["traced"]:
+                state["traced"] = False
+                if state["tool"] is not None:
+                    sys.monitoring.set_events(state["tool"], 0)
+                    sys.monitoring.register_callback(state["tool"], sys.monitoring.events.LINE, None)
+                    sys.monitoring.free_tool_id(state["tool"])
+                else:
+                    sys.settrace(state["tracer"])        # the tracer that was there before, if any
             mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
             try:
                 if signal.setitimer(signal.ITIMER_REAL, 0)[0] == 0 and state["unseen"]:
@@ -290,13 +383,15 @@ def _watchdog(seconds: float):
     except _Timeout as exc:
         if exc.args[-1] is not state:                    # an enclosing guard's: not ours to report
             raise
-        raise _Timeout(message) from None
+        _watchdog.stopped = True
+        raise _Timeout(state["message"]) from None
     if state["fired"]:                                   # the block caught our alarm and carried on
-        raise _Timeout(message)
+        _watchdog.stopped = True
+        raise _Timeout(state["message"])
 
 
 def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = (),
-         seconds: float = 8) -> None:
+         seconds: float = 0) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
@@ -314,7 +409,7 @@ def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = (),
         print(f"{label}: skipped — needs {_named(waiting)} to pass first.")
         return
     try:
-        with _watchdog(seconds):
+        with _watchdog(seconds or (_CHECK_SECONDS if label in _EXERCISES else _DEMO_SECONDS)):
             check()
     except NotImplementedError as exc:
         _STATUS[label] = "not started"
@@ -1695,7 +1790,7 @@ def _show_engine() -> None:
 
 if __name__ == "__main__":
     _try("the whole engine", _show_engine, needs=("exercise 1", "exercise 2", "exercise 3", "exercise 4",
-                                                    "exercise 5", "exercise 6"), seconds=60)
+                                                    "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 11. Exercise 7: memory lost to fragmentation, counted exactly
@@ -2019,7 +2114,7 @@ def _show_accounting() -> None:
 
 if __name__ == "__main__":
     _try("accounting matches the allocators", _show_accounting,
-         needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6", "exercise 7"), seconds=60)
+         needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6", "exercise 7"))
 
 # %% [markdown]
 # ### The comparison
@@ -2053,7 +2148,7 @@ def _show_comparison() -> None:
 
 
 if __name__ == "__main__":
-    _try("three servers", _show_comparison, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"), seconds=60)
+    _try("three servers", _show_comparison, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 13. When does paging help, and by how much?
@@ -2119,9 +2214,9 @@ def _show_slack() -> None:
 
 
 if __name__ == "__main__":
-    _try("budget sweep", _show_pool_sweep, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"), seconds=60)
-    _try("block size sweep", _show_block_size_sweep, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"), seconds=60)
-    _try("stopping early", _show_slack, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"), seconds=60)
+    _try("budget sweep", _show_pool_sweep, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"))
+    _try("block size sweep", _show_block_size_sweep, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"))
+    _try("stopping early", _show_slack, needs=("exercise 1", "exercise 2", "exercise 5", "exercise 6"))
 
 # %% [markdown]
 # ## 14. Common mistakes

@@ -1,0 +1,83 @@
+claims:
+- id: reject-inference-sample-bias
+  claim: The reject-inference literature calls the problem of training a credit model only on previously
+    accepted applicants "sample bias". Section 8 (the introduction to the three remedies) uses the name
+    as of 2 October 2026.
+  where: 'lesson.py section 8 (Reject inference: three answers to a missing column)'
+  source_url: https://arxiv.org/abs/2409.20536
+  source_title: Best Practices for Responsible Machine Learning in Credit Scoring, Valdrighi et al., arXiv:2409.20536v1,
+    30 September 2024 (section 'Reject Inference')
+  quote: the data used comprises only previously accepted clients, known as sample bias
+  quote_context: 'Read on 2026-10-02 from the full text at https://arxiv.org/pdf/2409.20536, first paragraph
+    of the ''Reject Inference'' section: "a secondary source of bias in the data emerges when the data
+    used comprises only previously accepted clients, known as sample bias". The abstract page confirms
+    the title, author list and the 30 September 2024 date.'
+  accessed: 2026-10-02
+- id: augmentation-definition
+  claim: The survey defines augmentation as adjusting the weights of accepted applicants so that they
+    represent the rejected population. Section 8 gives this as the literature's meaning of the word; the
+    lesson's own augmentation (inverse probability of approval, capped) is one way to do it, and the lesson
+    says that names vary and fixes its own.
+  where: lesson.py section 8; exercise 4 (augmentation_weights)
+  source_url: https://arxiv.org/pdf/2409.20536
+  source_title: Best Practices for Responsible Machine Learning in Credit Scoring, Valdrighi et al., arXiv:2409.20536v1,
+    30 September 2024 (section 'Methods', 'Augmentation')
+  quote: adjusts the weights of accepted applicants in a way to represent the rejected population
+  quote_context: 'Read on 2026-10-02 from the full text: "Augmentation is a strategy that adjusts the
+    weights of accepted applicants in a way to represent the rejected population [Banasik and Crook, 2007]".
+    The same section describes a soft cut-off variant whose factor is inversely proportional to the probability
+    of a sample in its group being accepted, which is the weight the lesson builds.'
+  accessed: 2026-10-02
+- id: parcelling-name-varies
+  claim: 'Authors use "parcelling" inconsistently: the survey records that some call the plain extrapolation
+    of rejected applicants'' outcomes from a model fitted on the accepted ones by that name, and also
+    describes a fuzzy variant that duplicates each rejected sample with a weight on each outcome. Section
+    8 says the names vary and that this lesson fixes its own meaning (inferred outcomes by score band
+    with an uplift, stacked as duplicated weighted rows).'
+  where: lesson.py section 8 and exercises 6 and 7
+  source_url: https://arxiv.org/pdf/2409.20536
+  source_title: Best Practices for Responsible Machine Learning in Credit Scoring, Valdrighi et al., arXiv:2409.20536v1,
+    30 September 2024 (section 'Methods', 'Extrapolation')
+  quote: Some authors also sometimes call parceling.
+  quote_context: 'Read on 2026-10-02 from the full text, in the ''Extrapolation'' subsection: "Siddiqi
+    [2012] refers to this technique as a hard cutoff and a simple augmentation. Some authors also sometimes
+    call parceling." The ''Augmentation'' subsection describes fuzzy-parcelling as duplicating each rejected
+    sample, one copy labelled bad and one good, with the two weights coming from the probabilities of
+    being rejected and accepted.'
+  accessed: 2026-10-02
+- id: plain-extrapolation-assumption
+  claim: 'The survey names the weakness of the plain extrapolation approach to reject inference: it assumes
+    that the rejected population would behave exactly like the accepted one. Section 8 and exercise 6
+    use this to explain why an uplift of 1 is an assumption and not a neutral choice.'
+  where: lesson.py section 8; exercise 6; common mistakes; self-check 4
+  source_url: https://arxiv.org/pdf/2409.20536
+  source_title: Best Practices for Responsible Machine Learning in Credit Scoring, Valdrighi et al., arXiv:2409.20536v1,
+    30 September 2024 (section 'Methods', 'Extrapolation')
+  quote: the assumption that the population of rejected clients would behave exactly like the population
+    of the accepted clients
+  quote_context: 'Read on 2026-10-02 from the full text: "The main problem of using simple extrapolation
+    lies in the assumption that the population of rejected clients would behave exactly like the population
+    of the accepted clients and have the same risk of defaulting".'
+  accessed: 2026-10-02
+- id: sr-26-2-data-relevance-testing
+  claim: The attachment to SR 26-2 (17 April 2026) lists, among the forms model testing may take, a critical
+    assessment of data quality, relevance and inputs. The closing section of the lesson says that who
+    taught a model is a question about the relevance of its data.
+  where: lesson.py closing section ('What you built, and where it goes next')
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+  source_title: Supervisory Guidance on Model Risk Management, attachment to SR 26-2, Federal Reserve,
+    FDIC and OCC, 17 April 2026
+  quote: a critical assessment of data quality, relevance, and inputs
+  quote_context: 'Read on 2026-10-02 from the attachment PDF, in the passage on model testing: "Testing
+    may include a range of activities, from out-of-sample and out-of-time testing, to a comparison of
+    alternative assumptions and methodologies, to a critical assessment of data quality, relevance, and
+    inputs."'
+  accessed: 2026-10-02
+- id: not-a-claim-synthetic-population
+  claim: 'NOT A CLAIM: the applicant population, the hidden variable, the old policy and every default
+    rate, Gini, A/E, weight and bound printed by the notebook are generated by the lesson from a fixed
+    seed. They describe no real lender, and the lesson says so where it introduces the data. The reject-inference
+    methods are taught as methods and none is asserted to be the practice of any institution.'
+  where: lesson.py throughout
+  source_url: ''
+  accessed: ''

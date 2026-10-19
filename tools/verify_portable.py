@@ -37,6 +37,11 @@ import argparse, json, os, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "tools"))
+# One source for which files hold pins and which package comes from which index on Linux:
+# what the launcher installs and what a completed run installs must never differ.
+from notebooks import LINUX_INDEX, REQUIREMENTS   # stdlib-only module
+
 CACHE = Path.home() / ".cache" / "synapsa-commons" / "portable"
 OPTIONAL = ["mujoco", "tokenizers"]
 
@@ -126,12 +131,16 @@ BUILD_JUNK = shutil.ignore_patterns("lesson_bin", "lesson_bin *", "*.o", "*.dSYM
 
 
 def pins() -> dict:
-    """name -> version from requirements.txt, so a completed run installs what was measured."""
+    """name -> version from the requirements files (requirements.txt, and requirements-torch.txt
+    for PyTorch), so a completed run installs what was measured."""
     out = {}
-    for line in (ROOT / "requirements.txt").read_text().splitlines():
-        m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(;|#|$)", line)
-        if m and ";" not in line:
-            out[m.group(1).lower()] = m.group(2)
+    for name in REQUIREMENTS:
+        if not (ROOT / name).exists():
+            continue
+        for line in (ROOT / name).read_text().splitlines():
+            m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(;|#|$)", line)
+            if m and ";" not in line:
+                out[m.group(1).lower()] = m.group(2)
     return out
 
 
@@ -146,9 +155,15 @@ def completed(d: Path, env: str, timeout: int) -> dict:
     pin = pins()
     missing = [pip for imp, pip in required(d)
                if subprocess.run([str(py), "-c", f"import {imp}"], capture_output=True).returncode]
-    if missing:
-        subprocess.run([str(py), "-m", "pip", "install", "-q",
-                        *[f"{m}=={pin[m.lower()]}" if m.lower() in pin else m for m in missing]],
+    # On Linux a package in LINUX_INDEX (torch) comes from its own index, in a call of its own,
+    # exactly as the launcher installs it; "" is PyPI.
+    linux = sys.platform.startswith("linux")
+    index = {m: LINUX_INDEX.get(re.split(r"[=<>!~;\s\[]", m)[0].lower(), "") if linux else ""
+             for m in missing}
+    for url in sorted(set(index.values())):
+        subprocess.run([str(py), "-m", "pip", "install", "-q", *(["--index-url", url] if url else []),
+                        *[f"{m}=={pin[m.lower()]}" if m.lower() in pin else m
+                          for m in missing if index[m] == url]],
                        capture_output=True, check=False)
     idents = env_identity(py)
     with tempfile.TemporaryDirectory(prefix="commons-done-") as tmp:

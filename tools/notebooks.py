@@ -60,6 +60,16 @@ PIP_NAME = {"sklearn": "scikit-learn", "cv2": "opencv-python-headless", "PIL": "
 # Present in every environment worth supporting; never worth an install line.
 ALWAYS_THERE = {"numpy", "matplotlib"}
 SIBLINGS = ("Makefile", "lesson.c", "lesson.cpp", "lesson.h")
+# Where the pins live. requirements.txt is the one environment every lesson shares, and Binder,
+# Codespaces and a local install read it. PyTorch is pinned in a second, optional file instead:
+# only a few lessons use it and its Linux wheel is gigabytes, so it must not reach every Binder
+# build and every Codespace. A lesson that imports torch still gets this exact pin in its launcher.
+REQUIREMENTS = ("requirements.txt", "requirements-torch.txt")
+# pip name -> the package index its Linux install comes from. PyPI's torch wheel for Linux
+# depends on gigabytes of CUDA libraries; PyTorch's own CPU index serves the CPU build, which is
+# the build the torch lessons are checked with. PyPI's macOS and Windows wheels are CPU builds
+# already, and the CPU index has no macOS wheel with a "+cpu" tag, so the index is Linux only.
+LINUX_INDEX = {"torch": "https://download.pytorch.org/whl/cpu"}
 
 
 def stdlib() -> set:
@@ -67,14 +77,17 @@ def stdlib() -> set:
 
 
 def pinned() -> dict:
-    """pip name -> "name==version" from requirements.txt, so a notebook installs what every
+    """pip name -> "name==version" from the requirements files, so a notebook installs what every
     number in the lessons was measured with. Lines carrying an environment marker (numpy's
     per-Python pins) are skipped: those packages are never installed by the launcher."""
     out = {}
-    for line in (ROOT / "requirements.txt").read_text().splitlines():
-        m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(#.*)?$", line)
-        if m:
-            out[m.group(1).lower()] = f"{m.group(1)}=={m.group(2)}"
+    for name in REQUIREMENTS:
+        if not (ROOT / name).exists():
+            continue
+        for line in (ROOT / name).read_text().splitlines():
+            m = re.match(r"^\s*([A-Za-z0-9_.-]+)==([^\s;#]+)\s*(#.*)?$", line)
+            if m:
+                out[m.group(1).lower()] = f"{m.group(1)}=={m.group(2)}"
     return out
 
 
@@ -130,6 +143,46 @@ def lesson_rel(d: Path) -> str:
     return d.relative_to(ROOT).as_posix()
 
 
+# The launcher's install step. Every lesson that installs nothing from a special index gets
+# exactly this text, so adding the indexed variant below changed no existing notebook.
+INSTALL = '''_missing = [pip for imp, pip in COMMONS_PIP if importlib.util.find_spec(imp) is None]
+if _missing:
+    print("installing " + ", ".join(_missing) + " ...")
+    # pip everywhere a student is likely to be; uv-managed local venvs ship without pip.
+    if importlib.util.find_spec("pip") is not None:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-q", *_missing], check=True)
+    else:
+        subprocess.run(["uv", "pip", "install", "-q", "--python", sys.executable, *_missing],
+                       check=True)
+    importlib.invalidate_caches()
+'''
+# The same step for a lesson that imports a package in LINUX_INDEX (torch): on Linux that package
+# is installed in a call of its own with --index-url, so the CPU index serves only what it is
+# named for and everything else still comes from PyPI.
+INSTALL_INDEXED = '''# PyPI's Linux wheel of {names} brings gigabytes of CUDA libraries with it. On Linux this cell
+# installs the CPU build from PyTorch's own package index instead, the build this lesson was
+# checked with; on macOS and Windows the wheel on PyPI is a CPU build already.
+COMMONS_INDEX = {{{index}}}
+if not sys.platform.startswith("linux"):
+    COMMONS_INDEX = {{}}
+
+_missing = [(imp, pip) for imp, pip in COMMONS_PIP if importlib.util.find_spec(imp) is None]
+if _missing:
+    print("installing " + ", ".join(pip for imp, pip in _missing) + " ...")
+    # pip everywhere a student is likely to be; uv-managed local venvs ship without pip.
+    if importlib.util.find_spec("pip") is not None:
+        _install = [sys.executable, "-m", "pip", "install", "-q"]
+    else:
+        _install = ["uv", "pip", "install", "-q", "--python", sys.executable]
+    # one install per package index ("" is PyPI)
+    for _index in sorted({{COMMONS_INDEX.get(imp, "") for imp, pip in _missing}}):
+        subprocess.run([*_install, *(["--index-url", _index] if _index else []),
+                        *[pip for imp, pip in _missing if COMMONS_INDEX.get(imp, "") == _index]],
+                       check=True)
+    importlib.invalidate_caches()
+'''
+
+
 def launcher(d: Path, src: str) -> str:
     rel = "/".join(p for p in (PREFIX, lesson_rel(d)) if p)
     nb = f"{rel}/lesson.ipynb"
@@ -140,6 +193,11 @@ def launcher(d: Path, src: str) -> str:
     pins = pinned()
     specs = [pins.get(PIP_NAME.get(p, p).lower(), PIP_NAME.get(p, p)) for p in pkgs]
     pairs = ", ".join(f'("{p}", "{s}")' for p, s in zip(pkgs, specs)) or ""
+    indexed = [(p, LINUX_INDEX[PIP_NAME.get(p, p).lower()]) for p in pkgs
+               if PIP_NAME.get(p, p).lower() in LINUX_INDEX]
+    install = INSTALL if not indexed else INSTALL_INDEXED.format(
+        names=" and ".join(p for p, _ in indexed),
+        index=", ".join(f'"{p}": "{u}"' for p, u in indexed))
     sibs = [s for s in SIBLINGS if (d / s).exists()]
     if (d / "assets").is_dir():
         sibs += [f"assets/{f.name}" for f in sorted((d / "assets").iterdir()) if f.is_file()]
@@ -222,17 +280,7 @@ def commons_host() -> str:
     return "a local Python environment"
 
 
-_missing = [pip for imp, pip in COMMONS_PIP if importlib.util.find_spec(imp) is None]
-if _missing:
-    print("installing " + ", ".join(_missing) + " ...")
-    # pip everywhere a student is likely to be; uv-managed local venvs ship without pip.
-    if importlib.util.find_spec("pip") is not None:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-q", *_missing], check=True)
-    else:
-        subprocess.run(["uv", "pip", "install", "-q", "--python", sys.executable, *_missing],
-                       check=True)
-    importlib.invalidate_caches()
-
+{install}
 _fetched = []
 for _name in COMMONS_SIBLINGS:
     if not (COMMONS_DIR / _name).exists():

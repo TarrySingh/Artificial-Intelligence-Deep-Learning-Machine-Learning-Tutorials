@@ -54,15 +54,15 @@ before_you_start:
     why: a real retirement table, with states, tentative retirement dates and replacements, which is what
       the provider snapshot in this lesson mirrors
 datasets:
-- name: provider_snapshot.json - Anthropic model list, lifecycle and prices as of 2026-09-29
+- name: provider_snapshot.json - Anthropic model list, lifecycle and prices as of 2026-10-17
   licence: CC-BY-NC-SA-4.0 for the transcription; the facts come from the source pages
   url: https://platform.claude.com/docs/en/about-claude/model-deprecations
   licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
   copyright: Model identifiers, dates, prices and limits transcribed by the Synapsa Commons project (c)
-    2026 RealAI from the four Anthropic documentation pages listed in assets/SOURCE.md; none of the pages'
+    2026 RealAI from the six Anthropic documentation pages listed in assets/SOURCE.md; none of the pages'
     prose or tables is reproduced
   cached_at: assets/provider_snapshot.json
-  retrieved: 2026-09-29
+  retrieved: 2026-10-17
   gated: false
 - name: models.yaml - a deliberately stale role registry (fixture)
   licence: CC-BY-NC-SA-4.0
@@ -76,4 +76,4 @@ datasets:
 points: 70
 status: reviewed
 measured_seconds: 0.1
-measured_peak_mib: 20
+measured_peak_mib: 21

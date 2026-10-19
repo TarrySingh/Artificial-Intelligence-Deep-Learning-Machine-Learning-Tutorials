@@ -1,0 +1,69 @@
+id: P07-L03-metabolomics-from-peaks
+title: Build an LC-MS metabolomics pipeline from raw peaks (mass-trace clustering, peak picking, retention-time
+  alignment, isotope and adduct grouping, a neutral mass per group) and annotate every feature at a stated
+  Metabolomics Standards Initiative level, with the false-annotation rate measured against the planted
+  compounds
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- P07-L02-imputation-and-batch-effects
+objectives:
+- Implement mass-trace clustering with a parts-per-million gap rule, and chromatographic peak picking
+  with smoothing, a signal-to-noise rule and a prominence rule
+- Implement one-to-one feature matching across runs and piecewise-linear retention-time warping, and measure
+  what the warp and a minimum number of runs do to the feature table's recall and precision against the
+  planted ions
+- Implement isotope grouping, adduct grouping and the choice of a neutral mass for a group, and measure
+  how many features, groups and planted compounds there are at each step, and how often a lone ion read
+  as [M+H]+ gives a wrong neutral mass
+- Implement an annotation that reports Metabolomics Standards Initiative levels 1 to 4 from accurate mass,
+  isotope pattern and the retention time of authentic standards, and the scoring of those levels against
+  a planted answer key
+- Explain, from the counts the notebook prints, why a name given to a feature by mass alone is a claim
+  that is often wrong, and how the false-annotation rate at each level moves as evidence is added or taken
+  away
+before_you_start:
+  assumed:
+  - write Python functions and loops, and index and mask numpy arrays
+  - read a chromatogram (intensity against retention time) and a mass spectrum (intensity against m/z)
+    as two views of the same LC-MS data
+  - say what a false discovery proportion measured against a planted answer key is (P07-L02 builds the
+    habit)
+  resources:
+  - title: Proposed minimum reporting standards for chemical analysis (Chemical Analysis Working Group,
+      Metabolomics Standards Initiative)
+    by: Sumner et al., Metabolomics 2007 (open access on PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+    kind: free
+    why: the source of the four identification levels the lesson reports, and of the minimum evidence
+      it asks for at level 1
+  - title: LC-MS data preprocessing and analysis with xcms (package vignette)
+    by: Philippine Louail and Johannes Rainer, Bioconductor
+    url: https://bioconductor.org/packages/release/bioc/vignettes/xcms/inst/doc/xcms.html
+    kind: free
+    why: the peak detection, retention-time alignment and correspondence sections show the production
+      versions of what exercises 1 to 4 build
+  - title: 'CAMERA: Collection of annotation related methods for mass spectrometry data (package page)'
+    by: Bioconductor (package by Carsten Kuhl, Ralf Tautenhahn, Hendrik Treutler and Steffen Neumann)
+    url: https://bioconductor.org/packages/release/bioc/html/CAMERA.html
+    kind: free
+    why: the documentation of a published tool that groups isotope and adduct peaks into compound spectra,
+      the job of exercises 5 to 7
+datasets:
+- name: synthetic-lc-ms-runs
+  kind: synthetic
+  description: four LC-MS runs of 300 scans with 73 invented compounds (adducts, isotope peaks, retention-time
+    drift), noise, steady background ions and bumps, plus a 320-entry invented compound library with authentic-standard
+    retention times for about half of it, generated in lesson.py by generate_world(seed=20261002)
+  generator: 'lesson.py :: generate_world'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 127
+status: reviewed
+measured_seconds: 1.9
+measured_peak_mib: 93

@@ -1,28 +1,26 @@
 claims:
 - id: current-lineup-ids-limits-cutoffs
-  claim: The provider's models overview lists the Claude API ids claude-fable-5-1, claude-opus-5-5 and
-    claude-sonnet-5-5, each with a 1M-token context window and a reliable knowledge cutoff of Jun 2026
+  claim: The provider's models overview lists the Claude API ids claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5
+    and claude-haiku-5-5, each with a 1M-token context window and a reliable knowledge cutoff of Jun 2026
     (training data cutoff also Jun 2026). The snapshot transcribes these, reading 1M as 1,000,000 tokens.
-    When the snapshot was taken (2026-09-29) the overview's fourth current model was Claude Haiku 4.5;
-    on 2026-10-14 it is Claude Haiku 5.5 (claude-haiku-5-5, released October 7, 2026), which the dated
-    snapshot does not contain. Haiku 4.5's own facts are in claim haiku-4-5-limits-cutoffs.
-  where: assets/provider_snapshot.json; lesson.py setup, section 3 (the note that the live table has moved),
-    exercises 2 and 3 demo output; models.yaml stale entries
+    (When the snapshot was first taken, on 2026-09-29, the overview's fourth current model was Claude
+    Haiku 4.5; its facts are in claim haiku-4-5-limits-cutoffs and Haiku 5.5's release in claim haiku-5-5-release-and-retirement.)
+  where: assets/provider_snapshot.json; lesson.py setup, exercises 2 and 3 demo output; models.yaml stale
+    entries
   source_url: https://platform.claude.com/docs/en/models/overview
   source_title: 'Claude Platform Docs: Models overview'
   quote: Context window | 1M tokens | 1M tokens | 1M tokens | 1M tokens
   quote_context: the 'Compare models' table, columns Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5; the same
-    table has 'Reliable knowledge cutoff | Jun 2026 | Jun 2026 | Jun 2026 | Jun 2026' and 'Claude API
-    ID | claude-fable-5-1 | claude-opus-5-5 | claude-sonnet-5-5 | claude-haiku-5-5'. The URL used on 2026-09-29,
-    https://platform.claude.com/docs/en/about-claude/models/overview, now redirects here. Haiku 5.5's
-    release date is on https://platform.claude.com/docs/en/models/haiku-5-5/overview ('Released | October
-    7, 2026').
-  accessed: 2026-10-14
+    table has 'Reliable knowledge cutoff | Jun 2026 | Jun 2026 | Jun 2026 | Jun 2026', 'Training data
+    cutoff | Jun 2026 | Jun 2026 | Jun 2026 | Jun 2026' and 'Claude API ID | claude-fable-5-1 | claude-opus-5-5
+    | claude-sonnet-5-5 | claude-haiku-5-5'. The URL used on 2026-09-29, https://platform.claude.com/docs/en/about-claude/models/overview,
+    now redirects here.
+  accessed: 2026-10-17
 - id: haiku-4-5-limits-cutoffs
   claim: Claude Haiku 4.5 has the Claude API id claude-haiku-4-5-20251001, a 200K-token context window,
     a reliable knowledge cutoff of Feb 2025, distinct from its training data cutoff of Jul 2025, and the
     status 'Active (legacy)' with a retirement 'Not sooner than October 15, 2026'. On 2026-09-29 these
-    facts were on the models overview; on 2026-10-14 they are on Haiku 4.5's own legacy model page, with
+    facts were on the models overview; on 2026-10-17 they are on Haiku 4.5's own legacy model page, with
     the same values. The snapshot transcribes them, reading 200K as 200,000 tokens.
   where: assets/provider_snapshot.json (claude-haiku-4-5-20251001); exercise 2 and 3 demo output; models.yaml
     tier:api-cheap
@@ -32,11 +30,11 @@ claims:
   quote_context: the page's Capabilities list; the same page lists 'Context window | 200K tokens', 'Training
     data cutoff | Jul 2025', 'Claude API | claude-haiku-4-5-20251001', 'Status | Active (legacy)' and
     'Retirement | Not sooner than October 15, 2026'
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: haiku-alias-and-dated-id
   claim: The provider gives claude-haiku-4-5 as the Claude API alias of claude-haiku-4-5-20251001. The
     snapshot's alias table records that pair, which is what the lesson's 'renamed' finding is built on.
-    (On 2026-09-29 the pair was in the models overview's alias row; on 2026-10-14 it is on Haiku 4.5's
+    (On 2026-09-29 the pair was in the models overview's alias row; on 2026-10-17 it is on Haiku 4.5's
     legacy model page.)
   where: assets/provider_snapshot.json (aliases); exercise 2
   source_url: https://platform.claude.com/docs/en/models/haiku-4-5/overview
@@ -44,16 +42,31 @@ claims:
   quote: claude-haiku-4-5 is a convenience alias that resolves to the pinned snapshot claude-haiku-4-5-20251001.
   quote_context: the 'Good to know' section; the Model IDs list on the same page reads 'Claude API alias
     | claude-haiku-4-5'
-  accessed: 2026-10-14
+  accessed: 2026-10-17
+- id: haiku-5-5-release-and-retirement
+  claim: Claude Haiku 5.5 (Claude API id claude-haiku-5-5) was released on October 7, 2026, has the status
+    'Active (latest)' and a retirement 'Not sooner than October 7, 2027', a 1M-token context window and
+    a Jun 2026 reliable knowledge cutoff (training data cutoff also Jun 2026). It is the one model in
+    the snapshot that the first reading, of 2026-09-29, did not have. The snapshot transcribes these,
+    reading 1M as 1,000,000 tokens and the retirement date as a floor.
+  where: 'assets/provider_snapshot.json (claude-haiku-5-5); the count of models in the setup output; models.yaml
+    tier:api-next (an id somebody expected to exist: claude-haiku-5 is not the id)'
+  source_url: https://platform.claude.com/docs/en/models/haiku-5-5/overview
+  source_title: 'Claude Platform Docs: Claude Haiku 5.5'
+  quote: Released | October 7, 2026
+  quote_context: the page's Availability list; the same page lists 'Status | Active (latest)' and 'Retirement
+    | Not sooner than October 7, 2027', its Capabilities list has 'Context window | 1M tokens', 'Reliable
+    knowledge cutoff | Jun 2026' and 'Training data cutoff | Jun 2026', and its Model IDs list has 'Claude
+    API | claude-haiku-5-5'
+  accessed: 2026-10-17
 - id: current-lineup-prices
   claim: 'The provider''s pricing page lists base-token prices in USD per million tokens: Claude Fable
     5.1 at $10 input and $50 output, Claude Opus 5.5 at $4 and $20, Claude Sonnet 5.5 at $2 and $10. Its
     ''Additional models'' rows give the prices the snapshot records for older ids, among them Claude Haiku
     4.5 at $1 and $5, Claude Opus 4.1 at $15 and $75, Claude Sonnet 4.5 at $3 and $15 and Claude Haiku
-    3.5 at $0.80 and $4. (On 2026-09-29 Haiku 4.5 was in the table''s lead rows; on 2026-10-14 Claude
-    Haiku 5.5 is, priced by prompt length from $0.10 input and $0.50 output, and is not in the dated snapshot.)
-    The pricing page names models by product name; the snapshot maps each name to the single id in the
-    deprecations table that carries it (see assets/SOURCE.md).'
+    3.5 at $0.80 and $4. The pricing page names models by product name; the snapshot maps each name to
+    the single id in the deprecations table that carries it (see assets/SOURCE.md). Claude Haiku 5.5''s
+    price depends on the prompt length (claim haiku-5-5-priced-by-prompt-length).'
   where: assets/provider_snapshot.json (input_usd_per_mtok, output_usd_per_mtok); the 'repriced' finding
   source_url: https://platform.claude.com/docs/en/about-claude/pricing
   source_title: 'Claude Platform Docs: Pricing'
@@ -61,53 +74,71 @@ claims:
   quote_context: the table beneath it; the row for Claude Sonnet 5.5 reads '$2 / MTok' for input and '$10
     / MTok' for output, and the 'Additional models' row for Claude Haiku 4.5 reads '$1 / MTok' and '$5
     / MTok'
-  accessed: 2026-10-14
+  accessed: 2026-10-17
+- id: haiku-5-5-priced-by-prompt-length
+  claim: 'Claude Haiku 5.5 is the one model priced by prompt length: $0.10 per million input tokens and
+    $0.50 per million output tokens for prompts up to 100,000 tokens, and higher prices ($0.50 and $2.50)
+    for prompts over 100,000 tokens. The snapshot has one price per model, so it records the first tier,
+    0.1 and 0.5, and nothing about the second; no role in models.yaml pins this model, so no printed finding
+    uses the price.'
+  where: 'assets/provider_snapshot.json (claude-haiku-5-5: input_usd_per_mtok, output_usd_per_mtok); assets/SOURCE.md
+    (hand-made choices)'
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Claude Platform Docs: Pricing'
+  quote: 'Claude Haiku 5.5 is priced by prompt length: a request whose prompt is over 100,000 tokens pays
+    higher prices.'
+  quote_context: the note under the pricing tables; the 'Model pricing' table has two Claude Haiku 5.5
+    rows, '$0.10 / MTok' for prompts up to 100,000 tokens with '$0.50 / MTok' output and '$0.50 / MTok'
+    for prompts over 100,000 tokens with '$2.50 / MTok' output; the model page https://platform.claude.com/docs/en/models/haiku-5-5/overview
+    has the pair 'Input | $0.10 / MTok for prompts up to 100,000 tokens $0.50 / MTok for prompts over
+    100,000 tokens'
+  accessed: 2026-10-17
 - id: model-status-and-retirement-table
   claim: The deprecations page lists each API model name with a current state (Active, Deprecated or Retired),
     a deprecation date and a tentative retirement date. The snapshot transcribes the table as read on
-    2026-09-29, when it listed claude-opus-4-1-20250805 as Retired (deprecated June 5, 2026; retired August
-    5, 2026), claude-sonnet-4-5-20250929 as Active with 'Not sooner than September 29, 2026', claude-haiku-4-5-20251001
-    as Active with 'Not sooner than October 15, 2026', and claude-mythos-preview as Deprecated on June
-    9, 2026 with the retirement date 'To be announced'. Re-read on 2026-10-14, every row the snapshot
-    holds is unchanged except claude-sonnet-4-5-20250929 (claim live-table-moved-since-snapshot), and
-    the table has one new row, claude-haiku-5-5.
+    2026-10-17, when it listed claude-opus-4-1-20250805 as Retired (deprecated June 5, 2026; retired August
+    5, 2026), claude-sonnet-4-5-20250929 as Deprecated (claim sonnet-4-5-deprecation), claude-haiku-4-5-20251001
+    as Active with 'Not sooner than October 15, 2026', claude-haiku-5-5 as Active with 'Not sooner than
+    October 7, 2027' and claude-mythos-preview as Deprecated on June 9, 2026 with the retirement date
+    'To be announced'. Compared with the first reading (2026-09-29), the only rows that differ are claude-sonnet-4-5-20250929,
+    the new claude-haiku-5-5, and the replacements of two retired Sonnet models (claim recommended-replacements).
   where: assets/provider_snapshot.json (status, deprecated, retirement); the audit demo
   source_url: https://platform.claude.com/docs/en/about-claude/model-deprecations
   source_title: 'Claude Platform Docs: Model deprecations'
   quote: claude-opus-4-1-20250805 | Retired | June 5, 2026 | August 5, 2026
-  quote_context: the 'Model status' table; on 2026-10-14 it also has 'claude-haiku-4-5-20251001 | Active
-    | N/A | Not sooner than October 15, 2026' and 'claude-mythos-preview | Deprecated | June 9, 2026 |
-    To be announced'
-  accessed: 2026-10-14
-- id: live-table-moved-since-snapshot
-  claim: After the snapshot was taken, the provider deprecated claude-sonnet-4-5-20250929 (the model behind
-    the registry's tier:api-previous) on September 30, 2026, with the retirement date November 30, 2026
-    and the recommended replacement claude-sonnet-5-5, and added claude-haiku-5-5 as an Active model with
-    a retirement not sooner than October 7, 2027. On 2026-09-29 the same row read Active, 'Not sooner
-    than September 29, 2026', so the floor had just passed when the deprecation came, and the retirement
-    date is more than the provider's stated minimum notice (claim notice-window) after the announcement.
-    The snapshot keeps its 2026-09-29 reading; lesson section 3 says the live table has moved.
-  where: lesson.py section 3 (the paragraph on the dated snapshot)
+  quote_context: the 'Model status' table; it also has 'claude-haiku-4-5-20251001 | Active | N/A | Not
+    sooner than October 15, 2026', 'claude-haiku-5-5 | Active | N/A | Not sooner than October 7, 2027'
+    and 'claude-mythos-preview | Deprecated | June 9, 2026 | To be announced'
+  accessed: 2026-10-17
+- id: sonnet-4-5-deprecation
+  claim: The provider deprecated claude-sonnet-4-5-20250929 (the model behind the registry's tier:api-previous)
+    on September 30, 2026, with the retirement date November 30, 2026 and the recommended replacement
+    claude-sonnet-5-5. On 2026-09-29, the first reading, the same row read Active, 'Not sooner than September
+    29, 2026', so the floor had just passed when the deprecation came. The retirement date is more than
+    the provider's stated minimum notice (claim notice-window) after the announcement, which lesson section
+    3 computes from the snapshot's two dates.
+  where: assets/provider_snapshot.json (claude-sonnet-4-5-20250929); lesson.py section 3 (the paragraph
+    on the dated snapshot and the notice printed under it); the audit demo (tier:api-previous)
   source_url: https://platform.claude.com/docs/en/about-claude/model-deprecations
   source_title: 'Claude Platform Docs: Model deprecations'
   quote: claude-sonnet-4-5-20250929 | Deprecated | September 30, 2026 | November 30, 2026
   quote_context: 'the ''Model status'' table; the deprecation history entry ''2026-09-30: Claude Sonnet
-    4.5 model'' has the row ''November 30, 2026 | claude-sonnet-4-5-20250929 | claude-sonnet-5-5'', and
-    the status table has ''claude-haiku-5-5 | Active | N/A | Not sooner than October 7, 2027'''
-  accessed: 2026-10-14
+    4.5 model'' has the row ''November 30, 2026 | claude-sonnet-4-5-20250929 | claude-sonnet-5-5'''
+  accessed: 2026-10-17
 - id: recommended-replacements
-  claim: The deprecation history names a recommended replacement for each retired model, for example claude-opus-4-8
-    for claude-opus-4-1-20250805, the one replacement the lesson's output prints. On 2026-10-14 the history
-    names claude-sonnet-5-5 for claude-sonnet-4-20250514 and for claude-3-7-sonnet-20250219; the snapshot,
-    read on 2026-09-29, records claude-sonnet-4-6 for both, which is what the page said then. No role
-    in models.yaml pins either model, so no printed finding uses them.
+  claim: The deprecation history names a recommended replacement for each retired or deprecated model,
+    for example claude-opus-4-8 for claude-opus-4-1-20250805, the one replacement the lesson's output
+    prints. It names claude-sonnet-5-5 for claude-sonnet-4-5-20250929, for claude-sonnet-4-20250514 and
+    for claude-3-7-sonnet-20250219, and the snapshot records these. (The first reading, of 2026-09-29,
+    recorded claude-sonnet-4-6 for the last two, which is what the page said that day; the page has changed
+    since.) No role in models.yaml pins either of those two models, so no printed finding uses them.
   where: assets/provider_snapshot.json (replacement); the 'retired' finding
   source_url: https://platform.claude.com/docs/en/about-claude/model-deprecations
   source_title: 'Claude Platform Docs: Model deprecations'
   quote: August 5, 2026 | claude-opus-4-1-20250805 | claude-opus-4-8
   quote_context: 'the deprecation history entry ''2026-06-05: Claude Opus 4.1 model''; the entry ''2026-04-14:
     Claude Sonnet 4 and Claude Opus 4 models'' has ''June 15, 2026 | claude-sonnet-4-20250514 | claude-sonnet-5-5'''
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: notice-window
   claim: The provider states it gives at least 60 days' notice before retiring a publicly released model.
     The lesson's default warning window (NOTICE_DAYS) is that figure.
@@ -116,7 +147,7 @@ claims:
   source_url: https://platform.claude.com/docs/en/about-claude/model-deprecations
   source_title: 'Claude Platform Docs: Model deprecations'
   quote: providing at least 60 days' notice before model retirement for publicly released models.
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: retired-means-requests-fail-and-dates-are-tentative
   claim: A retired model no longer accepts requests, and the retirement dates the provider publishes for
     active models are labelled tentative ('Not sooner than ...'), which is why the snapshot records retirement_is_earliest
@@ -127,7 +158,7 @@ claims:
   quote: 'Retired: The model is no longer available for use. Requests to retired models will fail.'
   quote_context: the lifecycle definitions; the status table's column heading is 'Tentative retirement
     date'
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: alias-versus-pinned-id
   claim: On the Claude API, models before the 4.6 generation also have shorter aliases that point at the
     most recent dated snapshot for that minor version, while a dated (or, from 4.6, dateless) model id
@@ -138,7 +169,7 @@ claims:
   source_title: 'Claude Platform Docs: Model IDs and versioning'
   quote: On the Claude API, these models also have shorter aliases (for example, claude-sonnet-4-5) that
     point to the most recent dated snapshot for that minor version.
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: weights-fixed-behaviour-can-shift
   claim: The provider states that it does not update the weights or configuration of an existing model
     id, but also that serving infrastructure around a model can change and occasionally produces minor
@@ -149,7 +180,7 @@ claims:
   source_title: 'Claude Platform Docs: Model IDs and versioning'
   quote: Occasionally, infrastructure updates produce minor differences in observable behavior even when
     the model ID and weights have not changed.
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: models-api-exists
   claim: The provider offers a Models API that returns capabilities and token limits programmatically;
     this is the live source a real nightly job would read instead of the committed snapshot. The lesson
@@ -158,7 +189,7 @@ claims:
   source_url: https://platform.claude.com/docs/en/models/overview
   source_title: 'Claude Platform Docs: Models overview'
   quote: You can query model capabilities and token limits programmatically with the Models API.
-  accessed: 2026-10-14
+  accessed: 2026-10-17
 - id: github-schedule-default-branch-and-auto-disable
   claim: GitHub Actions scheduled workflows run only on the default branch, and in a public repository
     they are automatically disabled when there has been no repository activity for 60 days. The schedule

@@ -60,3 +60,5 @@ points: 49
 status: reviewed
 measured_seconds: 10.4
 measured_peak_mib: 589
+guard_allow:
+- measure_subprocess

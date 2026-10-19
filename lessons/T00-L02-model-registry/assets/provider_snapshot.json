@@ -1,11 +1,13 @@
 {
  "provider": "anthropic",
- "snapshot_date": "2026-09-29",
+ "snapshot_date": "2026-10-17",
  "sources": [
-  "https://platform.claude.com/docs/en/about-claude/models/overview",
+  "https://platform.claude.com/docs/en/models/overview",
   "https://platform.claude.com/docs/en/about-claude/model-deprecations",
   "https://platform.claude.com/docs/en/about-claude/pricing",
-  "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions"
+  "https://platform.claude.com/docs/en/about-claude/models/model-ids-and-versions",
+  "https://platform.claude.com/docs/en/models/haiku-5-5/overview",
+  "https://platform.claude.com/docs/en/models/haiku-4-5/overview"
  ],
  "aliases": {
   "claude-haiku-4-5": "claude-haiku-4-5-20251001",
@@ -222,11 +224,11 @@
   },
   {
    "id": "claude-sonnet-4-5-20250929",
-   "status": "active",
-   "deprecated": null,
-   "retirement": "2026-09-29",
-   "retirement_is_earliest": true,
-   "replacement": null,
+   "status": "deprecated",
+   "deprecated": "2026-09-30",
+   "retirement": "2026-11-30",
+   "retirement_is_earliest": false,
+   "replacement": "claude-sonnet-5-5",
    "input_usd_per_mtok": 3,
    "output_usd_per_mtok": 15,
    "context_tokens": null,
@@ -239,7 +241,7 @@
    "deprecated": "2026-04-14",
    "retirement": "2026-06-15",
    "retirement_is_earliest": false,
-   "replacement": "claude-sonnet-4-6",
+   "replacement": "claude-sonnet-5-5",
    "input_usd_per_mtok": 3,
    "output_usd_per_mtok": 15,
    "context_tokens": null,
@@ -252,12 +254,25 @@
    "deprecated": "2025-10-28",
    "retirement": "2026-02-19",
    "retirement_is_earliest": false,
-   "replacement": "claude-sonnet-4-6",
+   "replacement": "claude-sonnet-5-5",
    "input_usd_per_mtok": null,
    "output_usd_per_mtok": null,
    "context_tokens": null,
    "reliable_cutoff": null,
    "training_cutoff": null
+  },
+  {
+   "id": "claude-haiku-5-5",
+   "status": "active",
+   "deprecated": null,
+   "retirement": "2027-10-07",
+   "retirement_is_earliest": true,
+   "replacement": null,
+   "input_usd_per_mtok": 0.1,
+   "output_usd_per_mtok": 0.5,
+   "context_tokens": 1000000,
+   "reliable_cutoff": "2026-06",
+   "training_cutoff": "2026-06"
   },
   {
    "id": "claude-haiku-4-5-20251001",

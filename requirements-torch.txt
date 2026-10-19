@@ -1,0 +1,13 @@
+# Synapsa Commons -- PyTorch, for the few lessons that use it. Optional.
+#
+# Kept out of requirements.txt on purpose: Binder, Codespaces and `pip install -r
+# requirements.txt` never pull it, and every lesson that does not import torch runs without it.
+# A lesson that imports torch installs this exact version from its own first cell when torch is
+# missing, and does nothing where torch is already there (Colab and Kaggle ship their own).
+#
+# Local, on macOS (Apple silicon, macOS 14 or later) or Windows:
+#     .venv/bin/pip install -r requirements-torch.txt
+# Local, on Linux: PyPI's Linux wheel brings gigabytes of CUDA libraries with it. The CPU build,
+# which the lessons are checked with, comes from PyTorch's own package index:
+#     .venv/bin/pip install -r requirements-torch.txt --index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1

@@ -9,6 +9,7 @@
 # Local:        python -m venv .venv && .venv/bin/pip install -r requirements.txt
 # Binder:       read automatically via binder/requirements.txt
 # Codespaces:   read automatically via .devcontainer/devcontainer.json
+# PyTorch is pinned separately, in requirements-torch.txt: only a few lessons use it.
 numpy==2.5.3; python_version >= "3.12"
 # numpy 2.5 ships no wheels for Python 3.11, which Kaggle still runs. 2.4.6 is the newest
 # that does, and tools/verify_portable.py runs every lesson against it on 3.11.

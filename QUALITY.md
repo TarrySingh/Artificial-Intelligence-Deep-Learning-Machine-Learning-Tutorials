@@ -55,7 +55,8 @@ directory, in a Python it chose. These two gates are about that moment.
     edited by hand (`tools/notebooks.py --check`). Its first two cells are the launcher that
     `tools/notebooks.py --inject` generates: Open in Colab / Kaggle / Binder / Codespaces
     badges, and a cell that installs only what the lesson requires and is missing — pinned to
-    `requirements.txt` — and fetches only the sibling files it needs. Never hand-edit it; fix
+    `requirements.txt`, or for PyTorch to `requirements-torch.txt` and, on Linux, from PyTorch's
+    CPU index — and fetches only the sibling files it needs. Never hand-edit it; fix
     the generator. `tools/verify_portable.py` must pass: the notebook alone, in an empty
     directory, in a real kernel, in a minimal environment, on Python 3.11 and 3.12; and with
     `--completed`, the finished lesson must print the same results in both.
@@ -75,6 +76,22 @@ directory, in a Python it chose. These two gates are about that moment.
     - each exercise offers progressive hints in collapsed `<details>` blocks — first what to
       think about, then the approach in words. A hint never contains code that solves the
       exercise, a value the rubric checks, or a path under `solutions/`;
+    - every check that runs the student's code stops after a time limit, so an answer with a loop
+      that never ends fails its own row instead of freezing the notebook, and the board still
+      appears. The canonical guard (`tools/lesson_template/lesson.py`, enforced by gate T in
+      `tools/verify_all.py`) gives an exercise's check `_CHECK_SECONDS` (never more than 10 s unless
+      `meta.yaml` says why), any other cell `_DEMO_SECONDS` (within the lesson's budget), and stops a
+      check whose process grows by more than `_MEMORY_MIB` (2048) of peak memory, so an answer that
+      appends to a list for ever fails in seconds, not after gigabytes. A loop whose whole body sits
+      in a bare `except:` is stopped too (on Python 3.12 and later also when it is inside two nested
+      ones). A program the notebook starts (a compiled exercise) runs in a process group with a
+      1 GiB ceiling, a 64 MiB bound on what it may print, and the same time limit; the autograder (`tools/grade.py`) stops a rubric row
+      after 45 s or 2 GiB of growth. What this does **not** cover: native Windows, which has no alarm
+      clock, so a looping answer still hangs there (use WSL, Colab or Codespaces); a stopped check
+      whose answer has already damaged state it shares with later cells; and code that is inside
+      one native call (a very large numpy operation, a hand-written extension), which is stopped
+      only when that call returns, while `time.sleep` and a read from a pipe are interrupted at
+      once. A time limit is not a security boundary;
     - the notebook ends with a progress board: one line per exercise marked ✅ passed,
       ❌ failed or ⏳ not started, then how many of how many are complete;
     - `sys.exit` / `raise SystemExit` happen only outside a notebook kernel. In a script or

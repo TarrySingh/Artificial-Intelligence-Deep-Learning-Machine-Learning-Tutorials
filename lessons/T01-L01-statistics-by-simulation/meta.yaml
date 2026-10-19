@@ -1,0 +1,65 @@
+id: T01-L01-statistics-by-simulation
+title: Build a simulation toolkit for experiment analysis -- sampling distributions, bootstrap intervals,
+  a permutation test and power calculator -- and audit how peeking and testing twenty metrics inflate
+  false positives
+track: T01
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a sampling-distribution simulator and measure how the standard error of a mean and of a median
+  shrink with sample size for a heavy-tailed population, fitting the log-log slope
+- Implement a percentile bootstrap interval and measure how often it covers the true mean and median at
+  three sample sizes, against its nominal 95%
+- Implement a permutation test for a difference in means and a simulation-based power estimate, and use
+  them to choose a sample size and to check the test's false-positive rate under the null
+- Measure the false-positive rate of a test peeked at repeatedly, and of twenty metrics tested at once,
+  against the nominal 5%
+- Implement the Bonferroni and Holm corrections and measure the false-alarm rate and the power each one
+  gives up
+before_you_start:
+  assumed:
+  - write Python functions, including one that takes another function as an argument and calls it
+  - 'use numpy arrays: read a shape, take a mean or a sum along an axis, and compare an array with a number
+    to get a boolean array'
+  - say in words what a mean, a median and a standard deviation measure, and what a histogram shows
+  - read "p < 0.05" or "95% confidence interval" in a report, even if you could not yet say exactly what
+    it promises
+  resources:
+  - title: Think Stats, 3rd edition (chapters on Estimation and Hypothesis Testing)
+    by: Allen B. Downey
+    url: https://allendowney.github.io/ThinkStats/
+    kind: free
+    why: a Python book that teaches sampling distributions, confidence intervals and tests by simulation;
+      the closest match to this lesson's method
+  - title: 'Statistical Inference via Data Science: Bootstrapping and Confidence Intervals, Hypothesis
+      Testing'
+    by: Chester Ismay and Albert Y. Kim (ModernDive)
+    url: https://moderndive.com/
+    kind: free
+    why: chapters 8 and 9 build the bootstrap and permutation-style tests from shuffling and resampling;
+      the code is in R but the pictures carry over to exercises 3 and 5
+  - title: 'NumPy: the absolute basics for beginners'
+    by: NumPy documentation
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: shapes, axes and boolean comparisons, which every exercise here uses
+  - title: 'Computer Age Statistical Inference: Algorithms, Evidence and Data Science'
+    by: Bradley Efron and Trevor Hastie
+    url: https://hastie.su.domains/CASI/
+    kind: free
+    why: a PDF the authors offer free for personal use, with the publisher's permission; its chapters
+      on the jackknife, the bootstrap and bootstrap confidence intervals go further than this lesson does
+      on exercises 3 and 4
+datasets:
+- name: T01-L01 synthetic heavy-tailed population (a seeded Pareto, inverse-CDF sampled from numpy uniform
+    draws)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 253
+status: reviewed
+measured_seconds: 13.8
+measured_peak_mib: 627

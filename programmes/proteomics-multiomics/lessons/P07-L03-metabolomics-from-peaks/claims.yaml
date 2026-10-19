@@ -1,0 +1,172 @@
+claims:
+- id: msi-four-levels
+  claim: The Metabolomics Standards Initiative's chemical-analysis working group reports that, as of its
+    2007 paper, four levels of metabolite identification can be found in the published metabolomics literature,
+    and asks authors to differentiate and report the level of identification rigour for every metabolite
+    they report. The lesson reports every annotation at one of four levels for that reason.
+  where: lesson.py section 1 and section 9 (exercise 8, annotate)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+  source_title: Sumner LW, et al. Proposed minimum reporting standards for chemical analysis, Chemical
+    Analysis Working Group (CAWG) Metabolomics Standards Initiative (MSI). Metabolomics 2007;3(3):211-221.
+    PMC3772505
+  quote: Currently, four levels of metabolite identifications can be found in the published metabolomics
+    literature.
+  quote_context: the paragraph that goes on to list the four levels; two sentences after the list the
+    paper says "Authors should clearly differentiate and report the level of identification rigor for
+    all metabolites reported."
+  accessed: 2026-10-02
+- id: msi-level-1-minimum
+  claim: 'The paper''s level 1 is "identified compounds", and its proposed minimum for it is two independent
+    and orthogonal data compared with an authentic compound analysed under identical experimental conditions;
+    it lists, as examples, retention time and mass spectrum, and accurate mass and isotope pattern. The
+    lesson''s level 1 (exercise 8) is built on an authentic standard''s retention time and the accurate
+    mass, and is the lesson''s own operationalisation. It is weaker than the paper''s minimum, and the
+    notebook says so: only the retention time is compared with the authentic standard; the accurate mass
+    is compared with the library''s calculated mass.'
+  where: lesson.py section 9 (exercise 8, annotate)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+  source_title: Sumner LW, et al. Metabolomics 2007;3(3):211-221 (PMC3772505)
+  quote: A minimum of two independent and orthogonal data relative to an authentic compound analyzed under
+    identical experimental conditions are proposed as necessary to validate non-novel metabolite identifications
+  quote_context: the sentence after "the following minimum standards for level 1, non-novel metabolite
+    identification are proposed"; its parenthetical lists "retention time/index and mass spectrum, retention
+    time and NMR spectrum, accurate mass and tandem MS, accurate mass and isotope pattern"
+  accessed: 2026-10-02
+- id: msi-level-2
+  claim: 'The paper''s level 2 is "putatively annotated compounds": without chemical reference standards,
+    on physicochemical properties and/or spectral similarity with libraries. The lesson''s level 2 (a
+    name from accurate mass and isotope pattern, no standard) is the lesson''s own illustration of that
+    form.'
+  where: lesson.py section 9 (exercise 8, annotate)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+  source_title: Sumner LW, et al. Metabolomics 2007;3(3):211-221 (PMC3772505)
+  quote: Putatively annotated compounds (e.g. without chemical reference standards, based upon physicochemical
+    properties and/or spectral similarity with public/commercial spectral libraries).
+  quote_context: the second of the four levels in the list
+  accessed: 2026-10-02
+- id: msi-level-3
+  claim: 'The paper''s level 3 is "putatively characterized compound classes": on characteristic properties
+    of a chemical class, or spectral similarity to known compounds of a class. The lesson''s level 3 (a
+    class when the surviving candidates share one) is the lesson''s own illustration of that form.'
+  where: lesson.py section 9 (exercise 8, annotate)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+  source_title: Sumner LW, et al. Metabolomics 2007;3(3):211-221 (PMC3772505)
+  quote: Putatively characterized compound classes (e.g. based upon characteristic physicochemical properties
+    of a chemical class of compounds, or by spectral similarity to known compounds of a chemical class).
+  quote_context: the third of the four levels in the list
+  accessed: 2026-10-02
+- id: msi-level-4
+  claim: The paper's level 4 is "unknown compounds", which can still be differentiated and quantified
+    from spectral data. The lesson's level 4 makes no claim about a compound's identity.
+  where: lesson.py section 9 (exercise 8, annotate)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3772505/
+  source_title: Sumner LW, et al. Metabolomics 2007;3(3):211-221 (PMC3772505)
+  quote: Unknown compounds—although unidentified or unclassified these metabolites can still be differentiated
+    and quantified based upon spectral data.
+  quote_context: the fourth of the four levels in the list; the dash is the em dash of the page
+  accessed: 2026-10-02
+- id: nist-carbon-13-mass
+  claim: The relative atomic mass of carbon-13 is 13.00335483507 (carbon-12 is 12 by definition), so the
+    isotope step of the lesson, ISO_DELTA, is 1.00335483507.
+  where: lesson.py setup cell (ISO_DELTA)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=C&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Carbon
+  quote: Relative Atomic Mass = 13.00335483507(23)
+  quote_context: the record with Mass Number = 13; the record with Mass Number = 12 reads Relative Atomic
+    Mass = 12.0000000(00)
+  accessed: 2026-10-02
+- id: nist-carbon-13-abundance
+  claim: The isotopic composition of carbon-13 is 0.0107 (uncertainty in the last digit, 8), which sets
+    the expected M+1 / M intensity ratio of an ion with n carbon atoms to n x 0.0107 / (1 - 0.0107) to
+    first order, and the isotope patterns the world plants and the annotation tests.
+  where: lesson.py setup cell (C13_ABUNDANCE); exercise 8
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=C&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Carbon
+  quote: Isotopic Composition = 0.0107(8)
+  quote_context: the record with Mass Number = 13
+  accessed: 2026-10-02
+- id: nist-other-isotope-peaks
+  claim: 'The lesson''s isotope model is carbon-13 only. In real molecules other isotopes add peaks of
+    their own near the M+1 and M+2 positions, some a few millidaltons from the carbon-13 step: nitrogen-15
+    (relative atomic mass 15.00010889888 against 14.00307400443 for nitrogen-14, a step about 6.3 mDa
+    short of the carbon-13 step), deuterium (2.01410177812 against 1.00782503223, about 2.9 mDa longer),
+    and in a potassium adduct potassium-41, whose isotopic composition is 0.067302.'
+  where: lesson.py section 6 (exercise 5, context)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=N&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Nitrogen
+    (and the pages for Hydrogen and Potassium, same URL with ele=H and ele=K)
+  quote: Relative Atomic Mass = 15.00010889888(64)
+  quote_context: the nitrogen record with Mass Number = 15; the hydrogen page's record with Mass Number
+    = 2 reads "Relative Atomic Mass = 2.01410177812(12)"; the potassium page's record with Mass Number
+    = 41 reads "Isotopic Composition = 0.067302(44)"
+  accessed: 2026-10-03
+- id: nist-hydrogen-1-mass
+  claim: The relative atomic mass of hydrogen-1 is 1.00782503223, used for the ammonium adduct and the
+    H2 relative in the library.
+  where: lesson.py setup cell (MASS_H)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=H&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Hydrogen
+  quote: Relative Atomic Mass = 1.00782503223(9)
+  quote_context: the record with Mass Number = 1
+  accessed: 2026-10-02
+- id: nist-nitrogen-14-mass
+  claim: The relative atomic mass of nitrogen-14 is 14.00307400443, used for the ammonium adduct.
+  where: lesson.py setup cell (MASS_N)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=N&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Nitrogen
+  quote: Relative Atomic Mass = 14.00307400443(20)
+  quote_context: the record with Mass Number = 14
+  accessed: 2026-10-02
+- id: nist-sodium-23-mass
+  claim: The relative atomic mass of sodium-23 (its only isotope) is 22.9897692820, used for the sodium
+    adduct.
+  where: lesson.py setup cell (MASS_NA)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=Na&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Sodium
+  quote: Relative Atomic Mass = 22.9897692820(19)
+  quote_context: the record with Mass Number = 23
+  accessed: 2026-10-02
+- id: nist-potassium-39-mass
+  claim: The relative atomic mass of potassium-39 is 38.9637064864, used for the potassium adduct.
+  where: lesson.py setup cell (MASS_K)
+  source_url: https://physics.nist.gov/cgi-bin/Compositions/stand_alone.pl?ele=K&ascii=ascii2&isotype=some
+  source_title: NIST Physical Measurement Laboratory, Atomic Weights and Isotopic Compositions for Potassium
+  quote: Relative Atomic Mass = 38.9637064864(49)
+  quote_context: the record with Mass Number = 39
+  accessed: 2026-10-02
+- id: codata-proton-mass-in-u
+  claim: The proton mass is 1.0072764665789 u (2022 CODATA recommended value), which is the amount the
+    lesson adds to a neutral molecule for [M+H]+. The other adducts add the mass of the cation's atoms
+    less one electron.
+  where: lesson.py setup cell (PROTON, ADDUCTS)
+  source_url: https://physics.nist.gov/cgi-bin/cuu/Value?mpu
+  source_title: 'NIST, CODATA Value: proton mass in u'
+  quote: Numerical value 1.007 276 466 5789 u
+  quote_context: 'the page is headed CODATA Value: proton mass in u and cites the 2022 CODATA recommended
+    values'
+  accessed: 2026-10-02
+- id: codata-electron-mass-in-u
+  claim: The electron mass is 5.485 799 090 441 x 10^-4 u (2022 CODATA recommended value), subtracted
+    from an atom's mass to give the mass of the singly charged cation in the Na, K and NH4 adducts.
+  where: lesson.py setup cell (ELECTRON, ADDUCTS)
+  source_url: https://physics.nist.gov/cgi-bin/cuu/Value?meu
+  source_title: 'NIST, CODATA Value: electron mass in u'
+  quote: Numerical value 5.485 799 090 441 x 10 -4 u
+  quote_context: 'the page is headed CODATA Value: electron mass in u; the exponent''s sign is printed
+    as a separate token on the page'
+  accessed: 2026-10-02
+- id: camera-isotope-adduct-annotation
+  claim: CAMERA is a Bioconductor package that annotates isotope and adduct peaks and proposes the accurate
+    compound mass, published in Analytical Chemistry in 2012. It is the production tool for the job exercises
+    5 to 7 do in a small, readable form, and the lesson's reading list names it; the lesson does not claim
+    its code resembles CAMERA's.
+  where: meta.yaml before_you_start; lesson.py section 6 (context)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:22111785%20AND%20SRC:MED&format=json&resultType=core
+  source_title: 'Kuhl C, Tautenhahn R, Boettcher C, Larson TR, Neumann S. CAMERA: an integrated strategy
+    for compound spectra extraction and annotation of liquid chromatography/mass spectrometry data sets.
+    Anal Chem 2012;84(1):283-289. DOI 10.1021/ac202450g. PMID 22111785 (Europe PMC''s copy of the PubMed
+    record)'
+  quote: Here we present CAMERA, a Bioconductor package integrating algorithms to extract compound spectra,
+    annotate isotope and adduct peaks, and propose the accurate compound mass even in highly complex data.
+  quote_context: the abstract
+  accessed: 2026-10-02

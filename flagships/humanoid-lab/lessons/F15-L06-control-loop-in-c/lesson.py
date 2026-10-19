@@ -190,6 +190,134 @@ def build(verbose: bool = True):
     return ok, out
 
 
+# --- COMMONS CHILD LIMIT v2 --- a program a check starts has a memory ceiling too
+import os, signal, subprocess, sys, threading
+
+_CHILD_MIB = 1024      # how much memory a program started by a check, and what it starts, may use before it is stopped
+_CHILD_OUTPUT_MIB = 64  # how much it may print (stdout and stderr together) before it is stopped
+
+
+def _group_mib(pgid: int) -> float:
+    """Resident memory, in MiB, of every process in the process group `pgid` (Linux: /proc; macOS: ps)."""
+    pages = kib = 0
+    try:
+        if os.path.isdir("/proc/self"):
+            for entry in os.listdir("/proc"):
+                if entry.isdigit():
+                    try:
+                        with open(f"/proc/{entry}/stat") as f:
+                            fields = f.read().rsplit(")", 1)[1].split()
+                        if int(fields[2]) == pgid:
+                            with open(f"/proc/{entry}/statm") as f:
+                                pages += int(f.read().split()[1])
+                    except (OSError, ValueError, IndexError):
+                        continue
+            return pages * os.sysconf("SC_PAGE_SIZE") / 2**20
+        listing = subprocess.run(["ps", "-A", "-o", "pgid=,rss="], capture_output=True, text=True, timeout=10).stdout
+        for row in listing.splitlines():
+            parts = row.split()
+            if len(parts) == 2 and parts[0] == str(pgid):
+                kib += int(parts[1])
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return 0.0
+    return kib / 1024
+
+
+class _Ceiling:
+    """`with _Ceiling(proc):` around the wait for a program started with `start_new_session=True`: stops its whole
+    process group if the group's memory passes `_CHILD_MIB`, and on the way out (an exception, a time limit
+    arriving, or a normal end) leaves nothing of the group running. Afterwards `.check(name)` raises the
+    AssertionError that says why, if the ceiling is what stopped it."""
+
+    def __init__(self, proc):
+        self.proc, self.over, self._done = proc, [], threading.Event()
+        self._thread = threading.Thread(target=self._watch, daemon=True)
+
+    def kill(self):
+        try:
+            if hasattr(os, "killpg"):
+                os.killpg(self.proc.pid, signal.SIGKILL)
+            else:                                            # Windows: no process groups, so the program alone
+                self.proc.kill()
+        except OSError:
+            pass
+
+    def _watch(self):
+        while not self._done.wait(0.05):
+            used = _group_mib(self.proc.pid)
+            if used > _CHILD_MIB:
+                self.over.append(used)
+                self.kill()
+                return
+
+    def __enter__(self):
+        self._thread.start()
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        self._done.set()
+        self._thread.join(2)
+        self.kill()
+        if exc_type is not None:
+            self.proc.wait()
+        return False
+
+    def check(self, name: str) -> None:
+        if self.over:
+            raise AssertionError(f"{os.path.basename(str(name))} was stopped after it used over {_CHILD_MIB} MiB of memory "
+                                 f"(it had reached {self.over[0]:.0f} MiB): a loop in your C code that keeps allocating or "
+                                 "appending never stops; give every loop a cap")
+        if getattr(self, "printed", 0) > _CHILD_OUTPUT_MIB * 2**20:
+            raise AssertionError(f"{os.path.basename(str(name))} was stopped after it printed over {_CHILD_OUTPUT_MIB} MiB: a loop "
+                                 "in your C code that prints on every turn never stops; give every loop a cap")
+
+
+def _run_child(cmd, *, cwd=None, env=None, input=None, stdin=None, timeout=None):
+    """`subprocess.run(cmd, capture_output=True, text=True, ...)` for a program that runs the student's code, under
+    the memory ceiling above and a bound on what it prints: an AssertionError that says so if it passes either,
+    `subprocess.TimeoutExpired` if `timeout` passes (as subprocess.run raises it), and nothing left running in its
+    group whatever happens. Returns a CompletedProcess."""
+    if not (hasattr(os, "killpg") and hasattr(signal, "SIGKILL")):          # Windows: no process groups, no ceiling
+        return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=env, timeout=timeout,
+                              **({"input": input} if input is not None else {"stdin": stdin}))
+    proc = subprocess.Popen(cmd, cwd=cwd, env=env, stdin=subprocess.PIPE if input is not None else stdin,
+                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
+    chunks, printed = ([], []), [0]
+
+    def read(pipe, into):
+        for block in iter(lambda: pipe.read1(65536), b""):
+            into.append(block)
+            printed[0] += len(block)
+            if printed[0] > _CHILD_OUTPUT_MIB * 2**20:
+                ceiling.printed = printed[0]
+                ceiling.kill()
+                break
+
+    with _Ceiling(proc) as ceiling:
+        readers = [threading.Thread(target=read, args=(proc.stdout, chunks[0]), daemon=True),
+                   threading.Thread(target=read, args=(proc.stderr, chunks[1]), daemon=True)]
+        for r in readers:
+            r.start()
+        if input is not None:
+            try:
+                proc.stdin.write(input.encode())
+                proc.stdin.close()
+            except BrokenPipeError:
+                pass
+        try:
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            raise subprocess.TimeoutExpired(cmd, timeout) from None
+        for r in readers:
+            r.join(5)
+    ceiling.check(cmd[0])
+    import locale
+    out, err = (b"".join(c).decode(locale.getpreferredencoding(False), "replace").replace("\r\n", "\n").replace("\r", "\n")
+                for c in chunks)
+    return subprocess.CompletedProcess(cmd, proc.returncode, out, err)
+# --- END COMMONS CHILD LIMIT ---
+
+
 def run_c(*args, timeout: int = 300) -> str:
     """Run the compiled binary and return its stdout.
 
@@ -199,8 +327,7 @@ def run_c(*args, timeout: int = 300) -> str:
     ok, out = build(verbose=False)
     if not ok:
         raise RuntimeError("the C build failed; run build() to see the compiler output\n" + out)
-    proc = subprocess.run([str(LESSON_DIR / BIN), *args],
-                          cwd=LESSON_DIR, capture_output=True, text=True, timeout=timeout)
+    proc = _run_child([str(LESSON_DIR / BIN), *args], cwd=LESSON_DIR, timeout=timeout)
     if proc.returncode == 2:
         raise NotImplementedError(proc.stderr.strip())
     if proc.returncode != 0:
@@ -231,8 +358,7 @@ def make_test():
     ok, out = build(verbose=False)
     if not ok:
         return 1, out
-    proc = subprocess.run([str(LESSON_DIR / BIN), "selftest", "--model", MODEL_REL],
-                          cwd=LESSON_DIR, capture_output=True, text=True, timeout=600)
+    proc = _run_child([str(LESSON_DIR / BIN), "selftest", "--model", MODEL_REL], cwd=LESSON_DIR, timeout=600)
     return proc.returncode, (proc.stdout + proc.stderr).strip()
 
 
@@ -268,6 +394,323 @@ def _unfinished(exc: BaseException) -> str:
     return f"{name}() is still a stub; fill it in above, then re-run this cell."
 
 
+# --- COMMONS TIME LIMIT v4 --- every check in this notebook runs under a time limit
+import contextlib, gc, os, signal, subprocess, sys, threading, time
+
+
+# A time limit for every check that calls the student's code: a loop that never ends must fail
+# its check, not freeze the notebook or the grader (which imports the notebook). Copy this block
+# unchanged; change only the three limits below it. Why it is this careful:
+#  * Whoever runs the notebook may already have an alarm running (tools/grade.py stops every
+#    rubric row after 45 s; a harness may have one whose default action ends the process). This
+#    guard saves it, lets whichever deadline comes first win (handing the signal to the outer
+#    handler when it is the outer's turn) and on the way out re-arms it with the time it had left
+#    and its interval. Switching it off instead would let the NEXT hang run for ever.
+#  * Its own alarm is one-shot, re-armed by hand every 0.25 s once the time is up (in case a bare
+#    `except:` swallows the first). A second alarm alone is not enough: `while True: try: ...
+#    except: pass` is interrupted inside the `try` every time and carries on. So from the second
+#    stop on, a line tracer (sys.settrace, on the running frames too) raises the stop again at the
+#    first line the code runs afterwards, which is in the handler, outside the `try`; it is put
+#    back as it was on the way out. A repeating alarm kept firing while a runaway loop's huge list
+#    was being torn down; a repeat that arrived after the default handler was back ended the
+#    process (exit -14, a dead Jupyter kernel), and one that arrived inside contextlib's exit
+#    escaped as a raw timeout and left this handler installed.
+#    On Python 3.12+ that tracer is sys.monitoring, which stays on after it raises, so a loop
+#    inside TWO bare `except:` blocks is stopped as well: the Nth stop lets it raise N-1 times in
+#    a row (one per handler it has to leave), and no more, so the `finally:` blocks and context
+#    managers that run as the stop travels out are not interrupted again. On 3.11 sys.settrace is
+#    unset by the interpreter each time it raises, so only the innermost one is peeled per alarm.
+#  * It also watches memory: every 0.1 s it compares the process's resident memory with what it
+#    was when the block started, and stops the block as soon as the growth passes `memory_mib`.
+#    A loop that appends to a list reaches gigabytes in seconds, long before any sensible time
+#    limit, so the time limit alone does not bound it. (Resident memory NOW, not the peak so
+#    far: a peak only ever rises, so after one runaway check the next would be allowed another
+#    `memory_mib` on top of it, and five looping exercises would reach ten gigabytes. Where the
+#    system will not say, /proc on Linux and libproc on macOS being the two that do, it falls
+#    back to the peak.)
+#  * It never raises inside its own set-up, exit or clean-up (nor inside another guard's: guards
+#    nest, the grader's wraps this one), and on the way out it takes any alarm of its own that has
+#    gone off but not yet been handled (with SIGALRM blocked) before the old handler is put back.
+# tools/verify_all.py fails a lesson whose guard does less.
+class _OutOfTime(BaseException):
+    """Raised inside the guarded block when its time is up. A BaseException, so `except
+    Exception:` in the code under test cannot swallow it; it repeats every 0.25 s, and from the
+    second time on a line tracer raises it again at the next line the code runs (inside the
+    handler that swallowed the first), in case a bare `except:` does. `_time_limit` turns it into
+    an AssertionError once it has left that code."""
+
+
+def _resident() -> float:
+    """This process's resident memory now, in MiB (Linux: /proc; macOS: libproc); its peak so far elsewhere."""
+    try:
+        if sys.platform.startswith("linux"):
+            with open("/proc/self/statm") as f:
+                return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
+        if sys.platform == "darwin":
+            import ctypes, struct
+            info = ctypes.create_string_buffer(96)           # struct proc_taskinfo
+            if ctypes.CDLL("/usr/lib/libproc.dylib").proc_pidinfo(os.getpid(), 4, 0, info, 96) == 96:
+                return struct.unpack_from("QQ", info.raw)[1] / 2**20     # pti_resident_size
+    except Exception:
+        pass
+    import resource
+    return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / (2**20 if sys.platform == "darwin" else 2**10)
+
+
+@contextlib.contextmanager
+def _time_limit(seconds: float, what: str, memory_mib: float = 0):
+    """Fail the block with an AssertionError naming `what` if it runs longer than `seconds`, or
+    (when `memory_mib` is set) if the process's resident memory grows by more than that while it runs.
+    Uses the operating system's alarm (Linux and macOS, main thread); a no-op elsewhere."""
+    if not (all(hasattr(signal, name) for name in ("setitimer", "SIGALRM", "pthread_sigmask", "sigpending", "sigwait"))
+            and threading.current_thread() is threading.main_thread()):
+        yield
+        return
+    if getattr(_time_limit, "stopped", False):           # a stopped check's frames keep what they built in a
+        _time_limit.stopped = False                      # reference cycle until now: free it, so it is not counted
+        gc.collect()                                     # as the growth of this block
+    message = (f"{what} was still running after {seconds:g} s: a loop whose stopping condition "
+               "is never met runs for ever; give every loop a cap")
+    started = time.monotonic()
+    used_mib = None
+    if memory_mib:
+        used_mib = _resident
+        base_mib = used_mib()                            # resident memory now; only growth beyond it counts
+    previous = signal.getsignal(signal.SIGALRM)
+    outer_left, outer_every = signal.getitimer(signal.ITIMER_REAL)   # an alarm already running
+    # One alarm at a time, never a repeating one. next: when ours is due; outer: when the alarm we
+    # found is due (every: its interval); unseen: an alarm is armed and has not reached _fire yet.
+    state = {"next": started + seconds, "outer": started + outer_left if outer_left > 0 else None,
+             "every": outer_every, "unseen": False, "fired": False, "done": False, "message": message, "count": 0, "budget": 0,
+             "traced": False, "tracer": None, "tool": None, "at": None, "thread": threading.get_ident(),
+             "me": sys._getframe(), "owner": None}
+    owner = state["me"].f_back
+    while owner is not None and owner.f_globals is vars(contextlib):    # contextlib's __enter__
+        owner = owner.f_back
+    state["owner"], state["at"] = owner, owner.f_lineno   # the frame running the `with`, and its line
+
+    def _arm(now, soonest=0.001):                        # one shot, at whichever deadline is next
+        due = [t for t in (state["next"], state["outer"]) if t is not None]
+        if used_mib and state["next"] is not None and not state["fired"]:
+            due.append(now + 0.1)                        # and look at the memory every 0.1 s
+        if due:
+            signal.setitimer(signal.ITIMER_REAL, max(min(due) - now, soonest))
+            state["unseen"] = True
+
+    def _in_guard(frame):                                # is the alarm landing in a guard's own set-up, exit
+        while frame is not None and frame is not state["owner"]:     # or clean-up (this one's or another's:
+            code = frame.f_code                          # guards nest), or in contextlib's __exit__ under
+            if (frame is state["me"] or code in _own_code or code.co_name in _GUARDS   # a `with`?
+                    or frame.f_globals.get("__name__") == "contextlib"):
+                return True
+            frame = frame.f_back
+        return False
+
+    def _fire(signum, frame):
+        state["unseen"] = False
+        if state["done"]:
+            return                                       # a late alarm of ours: already handled
+        if _in_guard(frame):                             # never raise inside the guard: it is
+            _arm(time.monotonic(), 0.01)                 # finishing; look again shortly
+            return
+        now = time.monotonic()
+        if state["outer"] is not None and now >= state["outer"] - 0.005:
+            every = state["every"]                       # the outer alarm is due: act as it would
+            state["outer"] = state["outer"] + every * (1 + (now - state["outer"]) // every) if every else None
+            try:
+                if callable(previous):
+                    previous(signum, frame)
+                elif previous != signal.SIG_IGN:         # its default action ends the process
+                    signal.signal(signal.SIGALRM, signal.SIG_DFL)
+                    os.kill(os.getpid(), signal.SIGALRM)
+            except BaseException:
+                state["next"] = None                     # the outer one is stopping the block
+                raise
+            finally:
+                left, every = signal.getitimer(signal.ITIMER_REAL)
+                if left > 0:                             # the outer handler armed its next alarm
+                    state["outer"], state["every"] = time.monotonic() + left, every
+                _arm(time.monotonic())
+            now = time.monotonic()
+        grown = used_mib() - base_mib if used_mib and not state["fired"] else 0
+        if grown > memory_mib and state["next"] is not None:       # out of memory before out of time
+            state["message"] = (f"{what} was using over {memory_mib:g} MiB more memory than when it started, "
+                                f"after {now - started:.1f} s: a loop that keeps adding to a list or a string "
+                                "never stops; give every loop a cap")
+            state["next"] = now
+        if state["next"] is not None and now >= state["next"] - 0.005:
+            swallowed = state["fired"]                   # a second stop: the first did not end the block
+            state["fired"] = True
+            state["count"] += 1
+            state["next"] = now + 0.25                   # again, in case a bare `except:` swallows it
+            _arm(now)
+            if swallowed:
+                state["budget"] = state["count"] - 1     # the tracer raises this many times, then leaves clean-up alone
+                _trace_from(frame)
+            raise _OutOfTime(state["message"], state)
+        _arm(now)
+
+    def _trace(frame, event, arg):                       # raises the stop at the next line of code that
+        if state["done"] or _in_guard(frame):            # runs: inside the handler that swallowed the last
+            return None                                  # (the interpreter then unsets it; the next alarm
+        if event == "line":                              # sets it again)
+            raise _OutOfTime(state["message"], state)
+        return _trace
+
+    def _line(code, line):                               # Python 3.12+: sys.monitoring, which is not unset
+        if state["done"] or state["budget"] <= 0 or threading.get_ident() != state["thread"]:   # not unset when a
+            return                                       # callback raises: the next line the code runs raises too, handlers
+        frame = sys._getframe(1)                         # included (this thread only), but only `budget` times:
+        if _in_guard(frame) or (frame is state["owner"] and line == state["at"]):   # clean-up that runs once the stop has
+            return                                       # left the swallowing loops must not be interrupted again
+        state["budget"] -= 1                             # (not the `with` line: its exit runs the guard)
+        raise _OutOfTime(state["message"], state)
+
+    def _trace_from(frame):                              # trace the running frames, and the ones called next
+        if not state["traced"]:
+            state["traced"] = True
+            mon = getattr(sys, "monitoring", None)
+            for tool in (5, 4, 3, 2, 1, 0) if mon is not None else ():
+                try:
+                    mon.use_tool_id(tool, "commons-time-limit")
+                except ValueError:                       # a debugger or a profiler has this one
+                    continue
+                state["tool"] = tool
+                mon.register_callback(tool, mon.events.LINE, _line)
+                mon.set_events(tool, mon.events.LINE)
+                return
+            state["tracer"] = sys.gettrace()
+            sys.settrace(_trace)
+        while frame is not None and frame is not state["owner"]:
+            frame.f_trace = _trace
+            frame = frame.f_back
+
+    _GUARDS = ("_time_limit", "_deadline", "_resident", "_fire", "_arm", "_trace", "_trace_from", "_line", "_in_guard")
+    _own_code = (_fire.__code__, _arm.__code__, _trace.__code__, _trace_from.__code__, _line.__code__)
+    signal.signal(signal.SIGALRM, _fire)
+    _arm(time.monotonic())
+    try:
+        try:
+            yield
+        finally:
+            state["done"] = True                         # from here on an alarm of ours only counts
+            if state["traced"]:
+                state["traced"] = False
+                if state["tool"] is not None:
+                    sys.monitoring.set_events(state["tool"], 0)
+                    sys.monitoring.register_callback(state["tool"], sys.monitoring.events.LINE, None)
+                    sys.monitoring.free_tool_id(state["tool"])
+                else:
+                    sys.settrace(state["tracer"])        # the tracer that was there before, if any
+            mask = signal.pthread_sigmask(signal.SIG_BLOCK, {signal.SIGALRM})
+            try:
+                if signal.setitimer(signal.ITIMER_REAL, 0)[0] == 0 and state["unseen"]:
+                    # Ours went off and has not reached _fire: it is pending here, or on its way to
+                    # another thread. Take it before the old handler (by default, one that ends the
+                    # process) is back.
+                    give_up = time.monotonic() + 0.5
+                    while state["unseen"] and time.monotonic() < give_up:
+                        if signal.SIGALRM in signal.sigpending():
+                            signal.sigwait({signal.SIGALRM})
+                            state["unseen"] = False
+                        else:
+                            time.sleep(0.001)            # another thread has it: _fire runs next
+                signal.signal(signal.SIGALRM, signal.SIG_DFL if previous is None else previous)
+                outer = state["outer"]                   # re-arm the alarm we found, last
+                signal.setitimer(signal.ITIMER_REAL, *((max(outer - time.monotonic(), 0.001), state["every"])
+                                                       if outer is not None else (0, 0)))
+            finally:
+                signal.pthread_sigmask(signal.SIG_SETMASK, mask)
+                state["me"] = state["owner"] = None
+    except _OutOfTime as exc:
+        if exc.args[-1] is not state:                    # an enclosing guard's: not ours to report
+            raise
+        _time_limit.stopped = True
+        raise AssertionError(state["message"]) from None
+    if state["fired"]:                                   # the block caught our alarm and carried on
+        _time_limit.stopped = True
+        raise AssertionError(state["message"])
+
+
+# The three limits. A correct answer needs a small fraction of the first two (at least five times
+# less, measured on the worked solution, on the slower of a Mac and an emulated Linux machine), so
+# only a loop that never stops, or one that keeps appending until memory runs out, ever meets one.
+_CHECK_SECONDS = 10    # an exercise's check
+_DEMO_SECONDS = 10     # any other cell that runs your code: a demo, a table, a figure
+_MEMORY_MIB = 2048     # how far a check may grow the process's resident memory before it is stopped
+
+
+def _limited(label: str, check):
+    """Run `check()` under `_time_limit` and return what it returns: _CHECK_SECONDS for an
+    exercise's check, _DEMO_SECONDS for anything else. A check that is stopped (too long, or too
+    much memory) fails with an AssertionError that says so; whatever the stopped code had built (a
+    runaway list can hold gigabytes) is freed at once, not whenever the garbage collector next
+    runs; and every program it had started that is still running is stopped too."""
+    seconds = _CHECK_SECONDS if label.lower().startswith("exercise") else _DEMO_SECONDS
+    before = _processes()
+    try:
+        with _time_limit(seconds, "this check", _MEMORY_MIB):
+            return check()
+    except AssertionError as exc:
+        if not str(exc).startswith("this check was "):
+            raise                                        # the check's own verdict, unchanged
+        message = str(exc)
+    gc.collect()          # the stopped frames hold what they built in a reference cycle until now
+    _stop_strays(before)
+    raise AssertionError(message)
+
+
+def _processes() -> dict:
+    """{pid: (parent, process group)} of every process (Linux: /proc; macOS: ps); {} if unreadable."""
+    table = {}
+    try:
+        if os.path.isdir("/proc/self"):
+            for entry in os.listdir("/proc"):
+                if entry.isdigit():
+                    try:
+                        with open(f"/proc/{entry}/stat") as f:
+                            fields = f.read().rsplit(")", 1)[1].split()
+                        table[int(entry)] = (int(fields[1]), int(fields[2]))
+                    except (OSError, ValueError, IndexError):
+                        continue
+        else:
+            listing = subprocess.run(["ps", "-A", "-o", "pid=,ppid=,pgid="], capture_output=True, text=True,
+                                     timeout=10).stdout
+            for row in listing.splitlines():
+                pid, ppid, pgid = (int(x) for x in row.split())
+                table[pid] = (ppid, pgid)
+    except (OSError, ValueError, subprocess.SubprocessError):
+        return {}
+    return table
+
+
+def _stop_strays(before: dict) -> None:
+    """Stopping a check stops the program it was waiting for, but not what THAT program started:
+    stop `make test` and the test binary make launched runs on, at full speed, for ever. Stop every
+    process that did not exist before the check (`before`, from _processes()) and either descends
+    from this one or sits in its process group (an orphan: its parent is gone, so it now belongs to
+    pid 1 or to a subreaper, whichever this machine has). Nothing that was already running is
+    touched, the launcher that started this notebook included. Best effort."""
+    now, me, group = _processes(), os.getpid(), os.getpgrp()
+    if not before or not now:
+        return
+    def descends(pid):
+        seen = set()
+        while pid in now and pid not in seen:
+            seen.add(pid)
+            pid = now[pid][0]
+            if pid == me:
+                return True
+        return False
+    for pid, (_, pgid) in now.items():
+        if pid != me and pid not in before and (pgid == group or descends(pid)):
+            try:
+                os.kill(pid, signal.SIGKILL)
+            except OSError:
+                pass
+# --- END COMMONS TIME LIMIT ---
+
+
 def _try(label: str, check, needs: tuple = ()):
     """Run a check, or a table that depends on your code, without derailing the notebook.
 
@@ -294,7 +737,7 @@ def _try(label: str, check, needs: tuple = ()):
         return None
     _BUILD = None
     try:
-        result = check()
+        result = _limited(label, check)
     except NotImplementedError as exc:
         _STATUS[label] = "not started"
         print(f"{label}: not started yet — {_unfinished(exc)}")
@@ -372,11 +815,14 @@ if _IS_MAIN:
 # %%
 # Your feedback loop is `make test`. Run it now — it should report three TODOs. Re-run this
 # cell after each save of lesson.c: it rebuilds from whatever the file holds now.
-if _IS_MAIN:
-    _BUILD = None
+def _show_make_test() -> None:
     _code, _out = make_test()
     print(_out)
     print(f"exit code {_code}  (0 = all pass, 2 = something is still a stub, 1 = a real failure)")
+
+
+if _IS_MAIN:
+    _try("make test", _show_make_test)
 
 # %% [markdown]
 # ## 3. Exercise 1 — `actuator_addresses` in `lesson.c`
@@ -768,7 +1214,7 @@ def _check_python_loop() -> None:
         f"the two trajectories diverge by {worst:.3e} at some sampled tick. Same engine, same "
         "start, same gains: they must agree bit for bit.")
     print(f"exercise 4 looks right: {len(c_trace)} sampled ticks agree between C and Python "
-          f"to within {worst:.1e}; both end {mine['final_abs_err']:.9f} rad from target")
+          f"to within 1e-12 (the bound checked); both end {mine['final_abs_err']:.9f} rad from target")
 
 
 if _IS_MAIN:
@@ -904,7 +1350,8 @@ def report() -> None:
     print(f"  both agree on the physics: C ended {c['final_abs_err']:.12f} rad from target, "
           f"Python {py['final_abs_err']:.12f}")
 
-    print(f"\nwhere each loop's ceiling actually is, one tick per control period")
+    print("\nwhere each loop's ceiling actually is, one tick per control period "
+          "(a measurement of THIS machine: a slower one misses more rows)")
     print(f"  {'rate':>12} {'budget/tick':>14} {'C':>10} {'Python':>10}")
     for hz in (1_000, 10_000, 100_000, 500_000, 1_000_000):
         budget_us = 1e6 / hz

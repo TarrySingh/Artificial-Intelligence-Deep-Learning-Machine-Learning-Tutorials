@@ -1,0 +1,62 @@
+claims:
+- id: efron-bootstrap-introduced
+  claim: The bootstrap, as this lesson uses it (resample the observed sample with replacement and read
+    the spread of the statistic over the resamples as an estimate of its sampling distribution), was introduced
+    by Efron in 1979 as a general method for estimating the sampling distribution of a statistic from
+    the observed data alone.
+  where: lesson.py exercise 3 (bootstrap_distribution, percentile_interval) and section 6
+  source_url: https://projecteuclid.org/journals/annals-of-statistics/volume-7/issue-1/Bootstrap-Methods-Another-Look-at-the-Jackknife/10.1214/aos/1176344552.full
+  source_title: 'Efron, B. (1979). Bootstrap Methods: Another Look at the Jackknife. The Annals of Statistics
+    7(1): 1-26.'
+  quote: A general method, called the "bootstrap," is introduced, and shown to work satisfactorily on
+    a variety of estimation problems.
+  quote_context: 'The abstract on the journal''s own page (the first half of the abstract states the problem:
+    estimating the sampling distribution of a prespecified random variable on the basis of the observed
+    data).'
+  accessed: 2026-10-02
+- id: phipson-smyth-permutation-p-never-zero
+  claim: 'A permutation p-value computed from randomly drawn shuffles should never be reported as exactly
+    zero, and the standard way to avoid it is to count the observed arrangement as one of the possible
+    ones: p = (b + 1) / (m + 1), where b is the number of shuffles at least as extreme as the observation
+    and m is the number of shuffles. When shuffles are drawn WITH replacement, as this lesson''s permutation_test
+    draws them, that value is slightly larger than the exact p-value, so the rule is conservative.'
+  where: lesson.py exercise 5 (permutation_test), the add-one rule, and common mistakes
+  source_url: https://arxiv.org/pdf/1603.05766
+  source_title: 'Phipson, B. and Smyth, G. K. (2010). Permutation p-values should never be zero: calculating
+    exact p-values when permutations are randomly drawn. Statistical Applications in Genetics and Molecular
+    Biology 9(1), Article 39 (arXiv:1603.05766).'
+  quote: it makes no inferential sense to assert that the p-value can be reduced to zero by considering
+    only a subset of the permutations.
+  quote_context: 'Section 1, Introduction. The with-replacement point is Section 6.1 of the same paper:
+    "The exact p-value is now slightly less than (b + 1)/(m + 1), because of the possibility that the
+    original data is included at least once as one of the random permutations." Both read on 2026-10-02.'
+  accessed: 2026-10-02
+- id: johari-continuous-monitoring-invalidates-p-values
+  claim: Classical p-values and confidence intervals from an A/B test are unreliable when the experimenter
+    chooses when to stop by continuously monitoring the test; this is the problem the lesson's peeking
+    audit (sections 14 and 15) measures by simulation.
+  where: lesson.py section 14 (peeking), exercises 8 and 9
+  source_url: https://arxiv.org/abs/1512.04922
+  source_title: 'Johari, R., Koomen, P., Pekelis, L. and Walsh, D. Always Valid Inference: Bringing Sequential
+    Analysis to A/B Testing (arXiv:1512.04922; an earlier version appeared as "Peeking at A/B Tests",
+    KDD 2017).'
+  quote: A/B tests are typically analyzed via frequentist p-values and confidence intervals; but these
+    inferences are wholly unreliable if users endogenously choose samples sizes by *continuously monitoring*
+    their tests.
+  quote_context: The first sentence of the abstract on the arXiv listing; the asterisks around the two
+    words are the abstract's own emphasis markup.
+  accessed: 2026-10-02
+- id: numpy-generator-stream-compatibility
+  claim: 'numpy does not promise that a Generator produces the same stream of numbers across numpy releases:
+    it reserves the right to change a Generator''s stream in a feature release. This is why the lesson
+    draws only from rng.random and rng.integers, derives every stream from one seed and a label, and is
+    checked on two numpy versions (gate 13) rather than assumed reproducible.'
+  where: lesson.py section 1 ('Randomness in this lesson')
+  source_url: https://numpy.org/doc/stable/reference/random/compatibility.html
+  source_title: 'NumPy manual, Random sampling: Compatibility policy'
+  quote: Breaking stream-compatibility in order to introduce new features or improve performance in Generator
+    or default_rng will be allowed with caution.
+  quote_context: Compatibility policy page, the paragraph after the note about drawing one value at a
+    time versus an array. The page is versioned; read as 'NumPy v2.5 Manual'. The page's markup puts a
+    space before the full stop after 'caution'; it is not reproduced.
+  accessed: 2026-10-02
