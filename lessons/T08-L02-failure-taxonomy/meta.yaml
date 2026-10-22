@@ -1,0 +1,55 @@
+id: T08-L02-failure-taxonomy
+title: A failure taxonomy built from 100 agent traces by open coding, with two coders' kappa, five executable
+  checks and a per-check CI gate
+track: T08
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T07-L03-evaluating-agents
+- T08-L01-agent-observability
+objectives:
+- 'Implement axial coding: normalise free-text open codes, merge them into failure categories and count
+  the traces (not the phrases) in each category'
+- Implement Cohen's kappa and use it, with a confusion table, to measure how far two coders agree beyond
+  chance before and after a definition is tightened
+- Implement three executable binary checks (ungrounded numbers, unsafe refunds, wrong entity) and score
+  every check's precision and recall against labelled traces
+- Implement a CI gate that compares per-check failure rates of a candidate agent against a baseline, and
+  measure what an aggregate failure rate hides and how many false alarms run-to-run noise causes at each
+  margin
+datasets:
+- name: T08-L02 synthetic support-agent traces (a seeded shop world, a scripted agent with planted failure
+    modes, and two scripted coders)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+before_you_start:
+  assumed:
+  - write Python functions that loop over lists of dictionaries, and use collections.Counter
+  - 'read a tool-calling agent trace: the steps, their arguments and results, and the final answer (T07-L01
+    and T08-L01 build and instrument one)'
+  - say why a failure rate measured on a hundred cases is noisy (T07-L03 builds the bootstrap that measures
+    it)
+  resources:
+  - title: Frequently Asked Questions (And Answers) About AI Evals
+    by: Hamel Husain and Shreya Shankar
+    url: https://hamel.dev/blog/posts/evals-faq/
+    kind: free
+    why: the error-analysis loop this lesson follows (open coding, axial coding, binary checks, a repeatable
+      eval set), and the opinions it is built on
+  - title: sklearn.metrics.cohen_kappa_score
+    by: scikit-learn developers (documentation)
+    url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+    kind: free
+    why: the definition of Cohen's kappa that exercise 2 implements, with p_o and p_e named
+  - title: 'decimal: Decimal fixed-point and floating-point arithmetic'
+    by: Python documentation
+    url: https://docs.python.org/3/library/decimal.html
+    kind: free
+    why: why money is compared as a Decimal and not as text or a float, which exercise 3's refund check
+      relies on
+points: 79
+status: reviewed
+measured_seconds: 0.9
+measured_peak_mib: 23

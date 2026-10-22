@@ -1,0 +1,58 @@
+id: T04-L02-chat-templates-and-masking
+title: Plant five chat-template, loss-masking, end-token and packing bugs in a numpy fine-tuning pipeline,
+  measure what each does to held-out behaviour, and write the five tests that catch them before training
+  starts
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T03-L01-bpe-from-scratch
+- T03-L03-nanolm-cpu-slice
+objectives:
+- Implement a chat-template renderer, an assistant-only loss mask and a padding-free packer whose attention
+  mask is block-diagonal and whose position ids restart at every sample
+- Fine-tune one pretrained numpy transformer seven times (five planted template, masking, end-token or
+  packing bugs, and the two clean runs they are compared with) and measure held-out exact match, first-token
+  accuracy and stop rate for every run
+- Measure which planted bugs leave the training loss within a stated margin of the clean run's while held-out
+  behaviour breaks
+- Write five pre-training tests, one per bug, each returning True on a buggy pipeline and False on a correct
+  one, including a packing-invariance test that compares a sample's logits packed against alone
+before_you_start:
+  assumed:
+  - write Python functions, loops and list comprehensions, and index, slice and mask numpy arrays
+  - 'say what next-token prediction trains: inputs, targets shifted left by one, and a loss averaged over
+    positions (T03-L03 builds it)'
+  - explain what a token and a special token are, and why a tokeniser reserves ids that text cannot produce
+    (T03-L01 builds a tokeniser)
+  resources:
+  - title: Chat templates (Transformers documentation)
+    by: Hugging Face
+    url: https://huggingface.co/docs/transformers/chat_templating
+    kind: free
+    why: how apply_chat_template turns messages into tokens, what add_generation_prompt does and the special-token
+      pitfalls the lesson plants in miniature
+  - title: Chat Templates (LLM Course, chapter 11)
+    by: Hugging Face
+    url: https://huggingface.co/learn/llm-course/chapter11/2
+    kind: free
+    why: a gentler walk through the same ground, with the supervised fine-tuning chapter that follows
+      it
+  - title: The Annotated Transformer
+    by: Harvard NLP (Rush et al.)
+    url: https://nlp.seas.harvard.edu/annotated-transformer/
+    kind: free
+    why: the attention block and its mask, line by line, which is what the lesson's model and its block-diagonal
+      packing mask are built from
+datasets:
+- name: T04-L02 synthetic fine-tuning conversations (a user sends four lowercase letters from a to h and
+    the assistant answers in capitals; 300 training payloads and 128 held-out payloads drawn without replacement
+    from a fixed seed) and a seeded word-grammar corpus for the base model's pretraining
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 197
+status: reviewed
+measured_seconds: 6.5
+measured_peak_mib: 53

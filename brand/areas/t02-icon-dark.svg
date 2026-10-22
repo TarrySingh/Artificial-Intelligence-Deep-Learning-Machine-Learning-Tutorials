@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 48 48" role="img">
+<title>Deep learning foundations</title>
+<rect x="0.5" y="0.5" width="47" height="47" rx="12" fill="#0a0a0a" stroke="#242424" stroke-width="1"/>
+<g transform="translate(10 10) scale(1.167)" fill="none" stroke="#f5f5f5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="6.5" r="2.5"/><circle cx="5.5" cy="17.5" r="2.5"/><circle cx="12" cy="12" r="2.5"/><path d="M7.6 7.9L9.9 10.6M7.6 16.1L9.9 13.4M14.5 12H16.6"/><circle cx="19" cy="12" r="2.25" fill="#476cff" stroke="none"/></g>
+</svg>

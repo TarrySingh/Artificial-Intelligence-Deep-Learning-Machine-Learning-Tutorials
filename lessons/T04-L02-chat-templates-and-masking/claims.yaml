@@ -1,0 +1,164 @@
+claims:
+- id: qwen35-chatml-turn-format
+  claim: 'As of 2 October 2026, the chat template of Qwen/Qwen3.5-0.8B renders a user turn as the marker
+    `<|im_start|>`, the role name, a newline, the content, `<|im_end|>` and a newline: the ChatML style.
+    The lesson''s section 2 describes this format and contrasts it with the other three families.'
+  where: lesson.py section 2 (what real chat templates look like)
+  source_url: https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/chat_template.jinja
+  source_title: Qwen/Qwen3.5-0.8B, chat_template.jinja (Hugging Face model repository)
+  source_kind: primary (the model publisher's own template file)
+  quote: '{{- ''<|im_start|>'' + message.role + ''\n'' + content + ''<|im_end|>'' + ''\n'' }}'
+  quote_context: The `elif message.role == "user"` branch of the message loop
+  accessed: 2026-10-02
+- id: qwen35-generation-prompt-empty-think-block
+  claim: As of 2 October 2026, when `add_generation_prompt` is set, the Qwen3.5-0.8B template appends
+    `<|im_start|>assistant\n` and then, unless `enable_thinking` is explicitly true, an empty thinking
+    block `<think>\n\n</think>\n\n`. A served prompt therefore ends with a think block that the same template
+    does not write after the assistant header of a turn from the earlier history (a turn before the last
+    user query is rendered as the header, then the content). This is the real-world shape of the prompt-versus-training
+    prefix property that exercise 4 tests.
+  where: lesson.py section 2; exercise 4 (detects_template_drift)
+  source_url: https://huggingface.co/Qwen/Qwen3.5-0.8B/blob/main/chat_template.jinja
+  source_title: Qwen/Qwen3.5-0.8B, chat_template.jinja (Hugging Face model repository)
+  source_kind: primary (the model publisher's own template file)
+  quote: '{{- ''<think>\n\n</think>\n\n'' }}'
+  quote_context: The `else` branch under `{%- if add_generation_prompt %}`, after `{{- '<|im_start|>assistant\n'
+    }}`
+  accessed: 2026-10-02
+- id: smollm3-chatml-turns-and-generation-keywords
+  claim: As of 2 October 2026, the chat template of HuggingFaceTB/SmolLM3-3B uses ChatML-style turn markers
+    (`<|im_start|>`, the role, a newline, the content, `<|im_end|>` and a newline) and wraps each assistant
+    turn in `{% generation %}` and `{% endgeneration %}` keywords, which is the hook that TRL's assistant-only
+    loss reads.
+  where: lesson.py section 2
+  source_url: https://huggingface.co/HuggingFaceTB/SmolLM3-3B/blob/main/chat_template.jinja
+  source_title: HuggingFaceTB/SmolLM3-3B, chat_template.jinja (Hugging Face model repository)
+  source_kind: primary (the model publisher's own template file)
+  quote: '{% generation %}'
+  quote_context: Opens the assistant branch of the message loop; the matching close is `{% endgeneration
+    %}`. The user branch just above it is `{{ "<|im_start|>" + message.role + "\n"  + content + "<|im_end|>\n"
+    }}` (two spaces before the plus sign, as in the file).
+  accessed: 2026-10-02
+- id: llama3-header-format-and-eot
+  claim: As of 2 October 2026, Meta's Llama 3 prompt-format page describes a turn as the role enclosed
+    in `<|start_header_id|>` and `<|end_header_id|>`, followed by the message, closed by `<|eot_id|>`;
+    the model expects the assistant header at the end of the prompt to start completing it.
+  where: lesson.py section 2
+  source_url: https://www.llama.com/docs/model-cards-and-prompt-formats/meta-llama-3/
+  source_title: Llama 3 | Model Cards and Prompt formats (llama.com)
+  source_kind: primary (the model publisher's own documentation)
+  quote: The model expects the assistant header at the end of the prompt to start completing it.
+  quote_context: 'Bullet under ''Notes'' of the Llama 3 page (on 2 October 2026 the llama.com address
+    redirects to dev.meta.ai/llama/docs/model-cards-and-prompt-formats/meta-llama-3, which serves the
+    same page). Same page, special-token list: ''<|start_header_id|>{role}<|end_header_id|>'' ... ''These
+    tokens enclose the role for a particular message.'' and ''<|eot_id|>'' ... ''This signifies the end
+    of the message in a turn.'''
+  accessed: 2026-10-02
+- id: gemma-turn-markers-and-prompt-prefix
+  claim: As of 2 October 2026, Google's Gemma prompt-structure documentation gives the turn markers `<start_of_turn>`
+    and `<end_of_turn>`, with the role name (`user` or `model`) after the opening marker, `<end_of_turn>`
+    plus a newline as the turn separator, and `<start_of_turn>model` plus a newline as the prefix of a
+    reply.
+  where: lesson.py section 2
+  source_url: https://ai.google.dev/gemma/docs/core/prompt-structure
+  source_title: Gemma formatting and system instructions (ai.google.dev)
+  source_kind: primary (the model publisher's own documentation)
+  quote: The token "<end_of_turn>\n" is the turn separator, and the prompt prefix is "<start_of_turn>model\n".
+  quote_context: Paragraph directly after the example dialogue under 'Control tokens'
+  accessed: 2026-10-02
+- id: hf-add-generation-prompt
+  claim: Hugging Face's `apply_chat_template` documentation describes the `add_generation_prompt` argument
+    as adding tokens to the end of the chat that indicate the start of an assistant response. The lesson's
+    `render_chat(..., add_generation_prompt=True)` and its serving test (exercise 4) are the toy version
+    of that mechanism.
+  where: lesson.py section 2; exercise 1; common mistakes
+  source_url: https://huggingface.co/docs/transformers/chat_templating
+  source_title: Chat templates (Transformers documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: This argument adds tokens to the end of the chat that indicate the start of an assistant response.
+  quote_context: The 'add_generation_prompt' subsection
+  accessed: 2026-10-02
+- id: hf-duplicated-special-tokens
+  claim: The same documentation warns that formatting with `apply_chat_template(tokenize=False)` and tokenising
+    afterwards can duplicate special tokens unless `add_special_tokens=False` is set. The lesson names
+    this as a bug it does not plant ('what this lesson does not cover').
+  where: lesson.py section 19 (what this lesson does not cover)
+  source_url: https://huggingface.co/docs/transformers/chat_templating
+  source_title: Chat templates (Transformers documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: When you format text with apply_chat_template(tokenize=False), make sure you set add_special_tokens=False
+    if you tokenize later to avoid duplicating these tokens.
+  quote_context: Paragraph before the 'add_generation_prompt' subsection (the page sets `apply_chat_template(tokenize=False)`
+    and `add_special_tokens=False` in a code font).
+  accessed: 2026-10-02
+- id: trl-assistant-only-loss-needs-generation-keywords
+  claim: As of 2 October 2026, TRL's SFTTrainer documentation says that training on assistant messages
+    only (`assistant_only_loss=True`) requires the chat template to contain the `{% generation %}` and
+    `{% endgeneration %}` keywords, and points to the SmolLM3-3B template as an example. This is the mechanism
+    that exercise 2's `build_example` rebuilds in miniature.
+  where: lesson.py section 2; exercise 2; common mistakes
+  source_url: https://huggingface.co/docs/trl/sft_trainer
+  source_title: SFT Trainer (TRL documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: This functionality requires the chat template to include {% generation %} and {% endgeneration
+    %} keywords.
+  quote_context: The 'Train on assistant messages only' subsection
+  accessed: 2026-10-02
+- id: trl-pad-token-defaults-to-eos
+  claim: As of 2 October 2026, TRL's SFTTrainer documentation says that when the processing class has
+    not set a padding token, the EOS token is used as the padding token by default. This is the real-world
+    setting behind the lesson's third planted bug, where a pad id equal to the end id combined with masking
+    padding by token id removes every real end-of-turn token from the loss.
+  where: lesson.py section 9 (bug 3); common mistakes
+  source_url: https://huggingface.co/docs/trl/sft_trainer
+  source_title: SFT Trainer (TRL documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: If the processing class has not set a padding token, tokenizer.eos_token will be used as the
+    default.
+  quote_context: The `processing_class` entry of the SFTTrainer parameter list
+  accessed: 2026-10-02
+- id: trl-eos-must-match-chat-template
+  claim: As of 2 October 2026, TRL's SFTTrainer documentation says the EOS token has to be aligned with
+    the chat template so that the model's responses terminate correctly, and gives the example of setting
+    `eos_token="<|im_end|>"` for a Qwen model. This is why the lesson treats the end-of-turn token as
+    the model's stop signal.
+  where: lesson.py section 9 (bug 3); exercise 6
+  source_url: https://huggingface.co/docs/trl/sft_trainer
+  source_title: SFT Trainer (TRL documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: it is necessary to align the EOS token with the chat template to ensure the model’s responses
+    terminate correctly.
+  quote_context: The paragraph on training with a custom chat template, immediately before the `eos_token`
+    example
+  accessed: 2026-10-02
+- id: trl-padding-free-batch-contamination
+  claim: As of 22 October 2026, TRL's memory-reduction documentation describes padding-free batching as
+    flattening a batch into a single sequence without padding and says that, unlike packing, which can
+    result in incomplete sequences by combining parts of different samples, padding-free batching ensures
+    that all sequences remain complete and intact. The lesson's fifth planted bug, and exercise 8's invariance
+    test, are the toy version of the leakage between examples that sharing a row invites. (The sentence
+    about "batch contamination issues" that this entry quoted on 2 October 2026 is no longer on the page,
+    so the lesson no longer cites it.)
+  where: lesson.py section 18 (common mistakes, packing bullet)
+  source_url: https://huggingface.co/docs/trl/reducing_memory_usage
+  source_title: Reducing Memory Usage (TRL documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: padding-free batching ensures that all sequences remain complete and intact.
+  quote_context: The 'Padding-free' section, second sentence, after 'Unlike packing, which can result
+    in incomplete sequences by combining parts of different samples,'
+  accessed: 2026-10-22
+- id: trl-packing-strategies-and-wrapped-mixing
+  claim: As of 2 October 2026, TRL's memory-reduction documentation lists three packing strategies, "bfd"
+    (the default, best-fit decreasing, which discards the overflow of a sequence longer than max_length),
+    "bfd_split" and "wrapped", and says that "wrapped" concatenates all tokens into a stream split into
+    fixed-length blocks, which may mix unrelated examples. The lesson uses this to say that the wrapped
+    strategy gives up the packing invariance of exercise 8 by design.
+  where: lesson.py section 19 (what this lesson does not cover)
+  source_url: https://huggingface.co/docs/trl/reducing_memory_usage
+  source_title: Reducing Memory Usage (TRL documentation, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: This minimizes padding but may mix unrelated examples.
+  quote_context: The '"wrapped"' item of the list that follows 'TRL supports three strategies:' in the
+    'Packing' section; the item opens 'All tokens are concatenated into a stream and split into fixed-length
+    blocks.'
+  accessed: 2026-10-02

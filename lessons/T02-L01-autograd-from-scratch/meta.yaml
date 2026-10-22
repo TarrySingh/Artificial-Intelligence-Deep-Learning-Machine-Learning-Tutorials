@@ -1,0 +1,59 @@
+id: T02-L01-autograd-from-scratch
+title: Build a scalar and a tensor reverse-mode autodiff engine, plus a forward-mode one, and hold every
+  gradient to a finite-difference check
+track: T02
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement a central-difference numerical gradient and a relative-error comparison, and use them as the
+  oracle every other gradient in this lesson is checked against
+- 'Implement reverse-mode autodiff for scalars: an iterative topological sort of the computation graph,
+  and local backward rules that accumulate where a value is reused'
+- Implement forward-mode autodiff with dual numbers, and measure how many passes forward and reverse mode
+  each need to produce a full gradient
+- Implement broadcasting-aware tensor gradients (unbroadcast, sum, matmul) and a numerically stable softmax
+  cross-entropy built from them, each verified to a stated tolerance
+- Measure how the gradient norm changes from layer to layer in a deep network, for different activations
+  and weight scales, using an engine you built yourself
+before_you_start:
+  assumed:
+  - write Python functions and classes, including operator methods such as __add__ and __mul__, and pass
+    a function as an argument to another function
+  - 'use numpy arrays: read a shape, pass an axis to sum, and use @ for a matrix product'
+  - differentiate a product, a composition and tanh on paper with the chain rule
+  resources:
+  - title: 'The spelled-out intro to neural networks and backpropagation: building micrograd'
+    by: Andrej Karpathy
+    url: https://www.youtube.com/watch?v=VMj-3S1tku0
+    kind: free
+    why: a long video that builds a scalar reverse-mode engine live; it is the picture to have in mind
+      for exercises 2 and 3
+  - title: 'NumPy user guide: Broadcasting'
+    by: NumPy documentation
+    url: https://numpy.org/doc/stable/user/basics.broadcasting.html
+    kind: free
+    why: the shape-matching rules whose gradient exercise 5 undoes
+  - title: 'CS231n: Neural Networks Part 3, Gradient checks'
+    by: Stanford CS231n course notes
+    url: https://cs231n.github.io/neural-networks-3/
+    kind: free
+    why: why gradients are compared by relative error, and what size of error to worry about, as in exercise
+      1
+  - title: 'Automatic Differentiation in Machine Learning: a Survey'
+    by: Baydin, Pearlmutter, Radul and Siskind, JMLR
+    url: https://jmlr.org/papers/v18/17-468.html
+    kind: free
+    why: forward and reverse mode, dual numbers and the cost of each, for exercise 4 and the pass counts
+datasets:
+- name: T02-L01 synthetic arrays (seeded random inputs for the gradient checks, and a three-armed spiral
+    classification set)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 314
+status: reviewed
+measured_seconds: 0.3
+measured_peak_mib: 54

@@ -1,0 +1,146 @@
+claims:
+- id: ad-is-a-family-of-techniques
+  claim: Automatic differentiation is a family of techniques, similar to but more general than backpropagation,
+    for evaluating derivatives of numeric functions expressed as computer programs. Section 1 says it
+    is a family and not one algorithm.
+  where: lesson.py section 1 (three ways to get a derivative)
+  source_url: https://jmlr.org/papers/v18/17-468.html
+  source_title: 'Baydin, Pearlmutter, Radul, Siskind: Automatic Differentiation in Machine Learning: a
+    Survey, JMLR 18(153), 2018 (abstract)'
+  quote: is a family of techniques similar to but more general than backpropagation for efficiently and
+    accurately evaluating derivatives of numeric functions expressed as computer programs.
+  quote_context: Abstract, second sentence (the sentence begins 'Automatic differentiation (AD), also
+    called algorithmic differentiation or simply autodiff,')
+  accessed: 2026-10-02
+- id: reverse-mode-is-generalised-backprop
+  claim: 'Reverse-mode (reverse accumulation) AD corresponds to a generalised backpropagation algorithm:
+    it propagates derivatives backward from a given output. Section 1 says reverse mode is a generalised
+    backpropagation, and exercise 3 builds it.'
+  where: lesson.py section 1 and exercises 2-3
+  source_url: https://jmlr.org/papers/volume18/17-468/17-468.pdf
+  source_title: 'Baydin et al., Automatic Differentiation in Machine Learning: a Survey, JMLR 18(153),
+    2018, section 3.2 (Reverse Mode)'
+  quote: corresponds to a generalized backpropagation algorithm, in that it propagates derivatives backward
+    from a given output.
+  quote_context: Section 3.2, first sentence ('AD in the reverse accumulation mode ... corresponds to');
+    the footnote marker after 'mode' is a layout artefact omitted from the quote
+  accessed: 2026-10-02
+- id: forward-mode-needs-n-evaluations
+  claim: For a function of n inputs and one output, forward-mode AD needs n evaluations to compute the
+    gradient. The forward-versus-reverse demonstration counts exactly this, from its own counter, and
+    the self-check asks the consequence.
+  where: lesson.py section 5 (forward vs reverse demonstration) and self-check question 3
+  source_url: https://jmlr.org/papers/volume18/17-468/17-468.pdf
+  source_title: 'Baydin et al., Automatic Differentiation in Machine Learning: a Survey, JMLR 18(153),
+    2018, section 3.1 (Forward Mode)'
+  quote: forward mode AD requires n evaluations to compute the gradient
+  quote_context: 'Section 3.1, ''Conversely, in the other extreme of f : R^n -> R, forward mode AD requires
+    n evaluations to compute the gradient'''
+  accessed: 2026-10-02
+- id: numpy-broadcasting-rule
+  claim: 'NumPy broadcasting compares shapes from the trailing dimension leftwards, and two dimensions
+    are compatible when they are equal or one of them is 1; arrays need not have the same number of dimensions.
+    Exercise 5 (unbroadcast) is the inverse of exactly this rule: it sums a gradient over every axis that
+    was added on the left or stretched from 1.'
+  where: lesson.py section 6 (broadcasting) and exercise 5
+  source_url: https://numpy.org/doc/stable/user/basics.broadcasting.html
+  source_title: 'NumPy user guide: Broadcasting, General broadcasting rules'
+  quote: It starts with the trailing (i.e. rightmost) dimension and works its way left. Two dimensions
+    are compatible when they are equal, or one of them is 1.
+  quote_context: General broadcasting rules, first paragraph
+  accessed: 2026-10-02
+- id: cs231n-centered-difference
+  claim: In practice the numerical gradient is better computed with the centred difference formula (f(x+h)
+    - f(x-h)) / 2h than with the one-sided difference. Exercise 1 implements the centred form and the
+    step-size table shows both.
+  where: lesson.py section 2 (exercise 1) and the step-size demonstration
+  source_url: https://cs231n.github.io/optimization-1/
+  source_title: 'CS231n Convolutional Neural Networks for Visual Recognition: Optimization 1, computing
+    the gradient numerically'
+  quote: in practice it often works better to compute the numeric gradient using the centered difference
+    formula
+  quote_context: Paragraph following the numerical-gradient code, before the CIFAR-10 example
+  accessed: 2026-10-02
+- id: cs231n-relative-error-and-zero-case
+  claim: Gradients should be compared by relative error, |fa - fn| / max(|fa|, |fn|), not by the raw difference,
+    and the case where both are zero must be tracked explicitly and passed. Exercise 1's relative_error
+    implements exactly this definition, and every gradient check in the lesson uses it with the tolerance
+    TOL.
+  where: lesson.py exercise 1 (relative_error) and every gradient check
+  source_url: https://cs231n.github.io/neural-networks-3/
+  source_title: 'CS231n: Neural Networks Part 3 (Learning and Evaluation), Gradient checks'
+  quote: However, one must explicitly keep track of the case where both are zero and pass the gradient
+    check in that edge case.
+  quote_context: Gradient checks, 'Use relative error for the comparison', after the max(|fa|, |fn|) denominator
+    is given
+  accessed: 2026-10-02
+- id: micrograd-scalar-reverse-mode-engine
+  claim: 'The scalar engine in this lesson follows the design of Andrej Karpathy''s micrograd, a tiny
+    reverse-mode autodiff engine over a dynamically built DAG of scalar values: each scalar operation
+    is its own node, which is also why the lesson then builds a tensor engine and counts nodes.'
+  where: lesson.py section 4 (Value) and the node-count demonstration
+  source_url: https://github.com/karpathy/micrograd
+  source_title: karpathy/micrograd README
+  quote: The DAG only operates over scalar values, so e.g. we chop up each neuron into all of its individual
+    tiny adds and multiplies.
+  quote_context: README introduction, second sentence of the project description
+  accessed: 2026-10-02
+- id: pytorch-autograd-scope
+  claim: torch.autograd provides automatic differentiation of arbitrary scalar-valued functions, requiring
+    only that tensors needing gradients be declared with requires_grad=True. The optional comparison cell
+    in section 11 uses it as the reference implementation and runs only if PyTorch is already installed.
+  where: lesson.py section 11 (optional comparison with PyTorch)
+  source_url: https://docs.pytorch.org/docs/2.14/autograd.html
+  source_title: 'PyTorch 2.14 documentation: Automatic differentiation package - torch.autograd'
+  quote: torch.autograd provides classes and functions implementing automatic differentiation of arbitrary
+    scalar valued functions.
+  quote_context: Opening paragraph of the page
+  accessed: 2026-10-02
+- id: pytorch-forward-mode-is-beta
+  claim: 'PyTorch also ships forward-mode automatic differentiation (dual tensors), documented as a beta
+    API as of the 2.14 documentation. The lesson mentions it only to say that the forward mode of exercise
+    4 is not a toy: a mainstream framework offers it too.'
+  where: lesson.py section 5 (forward mode), not stated in the printed output
+  source_url: https://docs.pytorch.org/docs/2.14/autograd.html
+  source_title: 'PyTorch 2.14 documentation: Automatic differentiation package - torch.autograd, Forward-mode
+    Automatic Differentiation'
+  quote: This API is in beta.
+  quote_context: Warning box at the head of the 'Forward-mode Automatic Differentiation' section
+  accessed: 2026-10-02
+- id: python-recursion-limit
+  claim: Python limits the maximum depth of the interpreter stack so that infinite recursion cannot overflow
+    the C stack, which is why a recursive topological sort fails on a long chain of recorded operations.
+    The lesson reads the limit from sys.getrecursionlimit() at run time and never prints or types its
+    value.
+  where: lesson.py section 3 (exercise 2) and its check
+  source_url: https://docs.python.org/3/library/sys.html
+  source_title: 'Python documentation: sys.getrecursionlimit'
+  quote: Return the current value of the recursion limit, the maximum depth of the Python interpreter
+    stack.
+  quote_context: Entry for sys.getrecursionlimit(); the next sentence says the limit prevents infinite
+    recursion from overflowing the C stack
+  accessed: 2026-10-02
+- id: forward-mode-one-pass-for-many-outputs
+  claim: For a function of one input and m outputs, forward-mode AD computes every output's derivative
+    in a single forward pass. Section 5 names this as the mirror case of the pass counts it measures,
+    and says the lesson does not build it.
+  where: lesson.py section 5 (forward vs reverse demonstration, markdown)
+  source_url: https://jmlr.org/papers/volume18/17-468/17-468.pdf
+  source_title: 'Baydin et al., Automatic Differentiation in Machine Learning: a Survey, JMLR 18(153),
+    2018, section 3.1 (Forward Mode)'
+  quote: can be computed with just one forward pass
+  quote_context: 'Section 3.1, ''Forward mode AD is efficient and straightforward for functions f : R
+    -> R^m, as all the derivatives dy_i/dx can be computed with just one forward pass''; the derivative
+    symbol is typeset maths and is paraphrased here'
+  accessed: 2026-10-02
+- id: pytorch-backward-accumulates
+  claim: PyTorch's backward() accumulates into an existing .grad rather than replacing it, so a PyTorch
+    training loop zeroes gradients explicitly. The common-mistakes list contrasts this with this lesson's
+    engine, which resets the gradients of the graph it sweeps.
+  where: lesson.py 'Common mistakes', last bullet
+  source_url: https://docs.pytorch.org/docs/2.14/autograd.html
+  source_title: 'PyTorch 2.14 documentation: Automatic differentiation package - torch.autograd, Default
+    gradient layouts'
+  quote: If create_graph=False, backward() accumulates into .grad in-place, which preserves its strides.
+  quote_context: Default gradient layouts, 'If param already has a non-sparse .grad attribute:'
+  accessed: 2026-10-02

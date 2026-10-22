@@ -1,0 +1,157 @@
+claims:
+- id: faq-axial-coding-failure-taxonomy
+  claim: The error-analysis workflow the lesson follows has an axial-coding step that groups open-ended
+    notes about traces into a failure taxonomy and counts the failures in each category.
+  where: lesson.py section 1 and section 4 (exercise 1)
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Categorize the open-ended notes into a “failure taxonomy.” In other words, group similar failures
+    into distinct categories.
+  quote_context: The Axial Coding step of the error-analysis loop, which follows the Open Coding step;
+    the next sentences say to count the failures in each category
+  accessed: 2026-10-02
+- id: faq-open-coding-notes
+  claim: Open coding is the step in which a human annotator reviews traces and writes open-ended notes
+    about issues, adapted from qualitative research.
+  where: lesson.py section 1
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: review and write open-ended notes about traces, noting any issues
+  quote_context: The Open Coding step, which says this process is akin to journaling and adapted from
+    qualitative research methodologies
+  accessed: 2026-10-02
+- id: faq-first-failure
+  claim: When beginning open coding the FAQ recommends noting the first failure observed in a trace, because
+    upstream errors can cause downstream issues; the lesson's primary label for kappa follows that advice.
+  where: lesson.py section 3 (the MODES comment) and primary_label
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: it is recommended to focus on noting the first failure observed in a trace, as upstream errors
+    can cause downstream issues
+  quote_context: The Open Coding step; the sentence continues that you can also tag all independent failures
+    if feasible
+  accessed: 2026-10-02
+- id: faq-review-at-least-100-traces
+  claim: The FAQ recommends reviewing at least 100 traces when building a failure taxonomy.
+  where: lesson.py section 1
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: We recommend reviewing at least 100 traces.
+  quote_context: The paragraph on theoretical saturation, in the answer on how error analysis is performed
+  accessed: 2026-10-02
+- id: faq-code-based-eval-when-rule
+  claim: The FAQ says to use a code-based evaluator when an objective rule can identify the failure and
+    an LLM judge when the failure requires human judgment.
+  where: lesson.py sections 1, 6 and 7
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Use a code-based eval when an objective rule can identify the failure.
+  quote_context: Stage 2 of the overview, which continues "Include Pass and Fail examples for every condition
+    and important edge case. Use an LLM judge when the failure requires human judgment."
+  accessed: 2026-10-02
+- id: faq-binary-evals
+  claim: The FAQ recommends binary pass/fail evaluations over 1-5 ratings because they force clearer thinking
+    and more consistent labeling.
+  where: lesson.py section 1 and section 6
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Binary evaluations force clearer thinking and more consistent labeling.
+  quote_context: The answer to "Why do you recommend binary (pass/fail) evaluations instead of 1-5 ratings
+    (Likert scales)?"
+  accessed: 2026-10-02
+- id: faq-cohens-kappa-for-agreement
+  claim: The FAQ names Cohen's kappa as the metric for measuring agreement between several annotators,
+    because it accounts for agreement beyond chance.
+  where: lesson.py section 5 (exercise 2)
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: you’ll need to measure their agreement using metrics like Cohen’s Kappa, which accounts for agreement
+    beyond chance
+  quote_context: In the answer on how many annotators are needed, after "When you do use multiple people"
+  accessed: 2026-10-02
+- id: faq-resolve-disagreements
+  claim: The FAQ's advice for resolving annotator disagreements is to label independently, measure agreement
+    and collect the cases where labels differ, then work out which part of the rubric caused each difference
+    and update the definition.
+  where: lesson.py section 5, the paragraph after the agreement cell
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Have annotators label the same examples independently before they discuss them. Measure agreement
+    and collect the cases where their labels differ.
+  quote_context: The answer to "How should annotators resolve disagreements?", which goes on to describe
+    an alignment session that updates the rubric
+  accessed: 2026-10-02
+- id: faq-repeatable-eval-set
+  claim: The FAQ describes a repeatable eval set built from important workflows and confirmed failures
+    and run when the application changes.
+  where: lesson.py section 8 and section 10
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Collect examples that represent important workflows and confirmed failures. Run this set when
+    you change your application.
+  quote_context: Stage 3 of the overview, "Build a repeatable eval set"
+  accessed: 2026-10-02
+- id: faq-last-modified
+  claim: On the access date the FAQ page showed a modified date of 21 September 2026, which is the date
+    the lesson prints as the page's last modification.
+  where: lesson.py section 1
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Modified September 21, 2026
+  quote_context: The page header, beside "Published September 18, 2026" (the page's own text order; extracted
+    from the HTML without markup)
+  accessed: 2026-10-02
+- id: evals-skills-repository-archived
+  claim: The original eval-skills repository hamelsmu/evals-skills was archived by its owner on 16 August
+    2026 and is read-only; the lesson does not use it.
+  where: lesson.py section 1
+  source_url: https://github.com/hamelsmu/evals-skills
+  source_title: 'GitHub: hamelsmu/evals-skills'
+  quote: This repository was archived by the owner on Aug 16, 2026. It is now read-only.
+  quote_context: The banner at the top of the repository page
+  accessed: 2026-10-02
+- id: sklearn-cohen-kappa-definition
+  claim: Cohen's kappa expresses the level of agreement between two annotators on a classification problem
+    and is defined as kappa = (p_o - p_e) / (1 - p_e), where p_o is the observed agreement ratio and p_e
+    the agreement expected by chance from each annotator's own label frequencies.
+  where: lesson.py section 5 and the cohens_kappa docstring
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: 'scikit-learn: sklearn.metrics.cohen_kappa_score'
+  quote: a score that expresses the level of agreement between two annotators on a classification problem
+  quote_context: First paragraph of the function's description; the formula itself is typeset maths on
+    that page (kappa = (p_o - p_e) / (1 - p_e)) and is transcribed here rather than quoted. The same paragraph
+    defines p_o as the empirical probability of agreement on the label assigned to any sample and p_e
+    as estimated using a per-annotator empirical prior over the class labels
+  accessed: 2026-10-02
+- id: evals-skills-moved
+  claim: The notice on hamelsmu/evals-skills says the repository is deprecated and the skills moved to
+    ai-evals-course/evals-skills, a plugin called evals that the two authors of the FAQ maintain together.
+  where: lesson.py section 1
+  source_url: https://github.com/hamelsmu/evals-skills
+  source_title: 'GitHub: hamelsmu/evals-skills'
+  quote: This repository is deprecated. The skills moved to ai-evals-course/evals-skills, a plugin called
+    evals that Shreya Shankar and Hamel Husain maintain together.
+  quote_context: The "Important" notice at the top of the repository's README, beside the archived banner
+    (the page text renders a space before the comma after the link)
+  accessed: 2026-10-02
+- id: faq-evals-plugin-link
+  claim: The FAQ itself now links ai-evals-course/evals-skills as "our evals plugin", which is why the
+    lesson names it as the successor of the archived repository.
+  where: lesson.py section 1
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Our evals plugin can help with sampling and build an annotation interface for your traces.
+  quote_context: Stage 1 of the overview; the words "evals plugin" are a link to https://github.com/ai-evals-course/evals-skills
+    in the page's HTML
+  accessed: 2026-10-02
+- id: faq-single-expert-default
+  claim: The FAQ's default is a single domain expert (a benevolent dictator) as annotator, with Cohen's
+    kappa for the case where several annotators are used, and says that even in larger companies one expert
+    is often enough.
+  where: lesson.py section 5
+  source_url: https://hamel.dev/blog/posts/evals-faq/
+  source_title: 'Hamel Husain and Shreya Shankar: Frequently Asked Questions (And Answers) About AI Evals'
+  quote: Even in larger companies, a single expert is often enough.
+  quote_context: The answer on how many annotators are needed, straight after the sentence recommending
+    Cohen's Kappa when you do use multiple people
+  accessed: 2026-10-02
