@@ -1,0 +1,70 @@
+id: T07-L06-agent-client-protocol
+title: Build an Agent Client Protocol agent's session lifecycle over JSON-RPC and drive it from three
+  toy editors
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 30
+language: python
+prerequisites:
+- T07-L02-mcp-from-the-wire-up
+objectives:
+- 'Implement the initialize exchange: protocol-version negotiation (the same version if supported, otherwise
+  the latest supported) and a capability record in which every capability the editor omits counts as unsupported'
+- Implement the permission round trip, deciding allow, reject or cancelled from an option's kind rather
+  than its id, and failing closed on a reply that cannot be read
+- Implement a response matcher for a JSON-RPC connection on which both sides send requests, so a cancel
+  notification or a request from the editor that arrives while waiting is handled and never mistaken for
+  the reply
+- Implement a prompt turn that streams session/update notifications, gates file access on the editor's
+  advertised capabilities, asks permission before an edit, and ends with the stop reason cancelled, never
+  an error, when the editor cancels
+- Measure one unchanged agent against three toy editors from the wire logs, and classify the messages
+  on a mixed ACP and MCP wire into two columns by what they say
+before_you_start:
+  assumed:
+  - tell a JSON-RPC request, notification and response apart by their fields (id, method, result, error),
+    as T07-L02 does for MCP
+  - read a small Python class with state and call its methods (the lesson hands you Conn, Session and
+    AgentState to use, not to write), and loop over and index into lists of dicts
+  - raise and catch your own exception class with try and except
+  - read an assert-based check and use its failure message to find the bug in a function
+  resources:
+  - title: JSON-RPC 2.0 Specification
+    by: JSON-RPC Working Group
+    url: https://www.jsonrpc.org/specification
+    kind: free
+    why: 'the short base this lesson sits on: requests and notifications, ids, and the error codes the
+      agent returns'
+  - title: 'Agent Client Protocol: Overview'
+    by: Agent Client Protocol project
+    url: https://agentclientprotocol.com/protocol/v1/overview
+    kind: free
+    why: the message flow, the agent and client methods and the conventions the three editors and the
+      classifier in exercise 5 are built from
+  - title: 'Agent Client Protocol: Prompt Turn'
+    by: Agent Client Protocol project
+    url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+    kind: free
+    why: the session updates, stop reasons and cancellation rules that exercise 4 implements, with the
+      JSON examples
+  - title: 'The Python Tutorial, section 8: Errors and Exceptions'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/errors.html
+    kind: free
+    why: try, except and defining your own exception class, which is how RpcError travels between the
+      wire and the code that waits for a reply
+  - title: 'The Python Tutorial, section 9: Classes'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/classes.html
+    kind: free
+    why: objects, methods and instance state, which is how the given Conn, Session and AgentState hold
+      what the agent remembers and what your run_turn calls
+datasets:
+- name: Three toy editors and a scripted agent (hand-written, in the lesson)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 76
+status: reviewed
+measured_seconds: 0.0
+measured_peak_mib: 21

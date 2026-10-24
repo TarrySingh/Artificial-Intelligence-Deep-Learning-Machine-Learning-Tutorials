@@ -1,0 +1,136 @@
+{
+ "snapshot_date": "2026-10-24",
+ "dates": "snapshot_date is the day this file was last changed. Every block carries read_on, the day its figures were read from the source pages (2026-10-24 for the prices, billing rules and exchange rates re-read that day, 2026-10-03 for the benchmark; the Tinker block's read_on dates its prices, and the small model's params and arch were added to its row from models.json on 2026-10-03); the fx block carries the ECB rates' own date.",
+ "currency_base": "USD",
+ "fx": {
+  "source": "ECB euro foreign exchange reference rates",
+  "rate_date": "2026-10-23",
+  "units_per_eur": {
+   "EUR": 1.0,
+   "USD": 1.1193,
+   "INR": 106.272
+  }
+ },
+ "api_models": {
+  "claude-sonnet-5-5": {
+   "provider": "Anthropic",
+   "read_on": "2026-10-24",
+   "input_usd_per_mtok": 2.0,
+   "output_usd_per_mtok": 10.0,
+   "cache_read_usd_per_mtok": 0.1
+  }
+ },
+ "open_models": {
+  "Qwen/Qwen3.5-397B-A17B": {
+   "provider": "Together AI serverless",
+   "licence": "Apache-2.0",
+   "read_on": "2026-10-24",
+   "input_usd_per_mtok": 0.6,
+   "output_usd_per_mtok": 3.6
+  }
+ },
+ "tinker": {
+  "provider": "Thinking Machines Lab (Tinker)",
+  "read_on": "2026-10-24",
+  "storage_usd_per_gb_month": 0.1,
+  "models": {
+   "Qwen/Qwen3.5-9B": {
+    "train_usd_per_mtok": 1.463,
+    "params": 9000000000,
+    "arch": "Dense"
+   }
+  }
+ },
+ "together": {
+  "provider": "Together AI",
+  "read_on": "2026-10-24",
+  "lora_sft": {
+   "Qwen3.5 9B": {
+    "usd_per_mtok": 0.34,
+    "minimum_charge_usd": 4.0
+   }
+  },
+  "dedicated_usd_per_gpu_hour": {
+   "NVIDIA HGX H100": 5.49
+  },
+  "dedicated_docs_table": {
+   "NVIDIA HGX H100": {
+    "usd_per_gpu_hour": 5.49,
+    "promotion_usd_per_gpu_hour": 3.99,
+    "promotion_ended": "2026-09-30",
+    "read_on": "2026-10-24"
+   }
+  }
+ },
+ "fireworks": {
+  "provider": "Fireworks AI",
+  "read_on": "2026-10-24",
+  "embedding_usd_per_mtok": 0.008,
+  "embedding_applies_to": "embedding models with up to 150M parameters"
+ },
+ "serving_a_fine_tune": {
+  "read_on": "2026-10-24",
+  "Together AI": "on a dedicated endpoint billed by the minute, not per token; serverless LoRA inference has been discontinued",
+  "Fireworks AI": "a trained LoRA model needs a dedicated deployment, billed per GPU second for hosting; serverless deployment is not supported for it",
+  "Tinker": "sampling a trained model is priced per token as part of its training service; its serverless inference is a beta, for Inkling and Inkling-Small only and not recommended for intensive production use"
+ },
+ "serving_benchmark": {
+  "source": "NVIDIA NIM LLMs Benchmarking guide, version 1.0.0, Performance page",
+  "read_on": "2026-10-03",
+  "model": "Llama-3.1-8B-Instruct",
+  "model_params": 8000000000,
+  "model_arch": "Dense",
+  "software": "NIM container 1.8.0",
+  "gpu": "1 x H100 80GB",
+  "throughput": "output tokens per second, all requests in flight together",
+  "runs": [
+   {"precision": "FP8", "input_tokens": 200, "output_tokens": 200, "rows": [
+    {"concurrency": 1, "ttft_ms": 10.26, "itl_ms": 4.63, "output_tokens_per_s": 214.56},
+    {"concurrency": 5, "ttft_ms": 16.81, "itl_ms": 4.58, "output_tokens_per_s": 1076.88},
+    {"concurrency": 25, "ttft_ms": 36.34, "itl_ms": 5.19, "output_tokens_per_s": 4678.88},
+    {"concurrency": 50, "ttft_ms": 67.41, "itl_ms": 5.91, "output_tokens_per_s": 8018.23},
+    {"concurrency": 100, "ttft_ms": 119.97, "itl_ms": 7.57, "output_tokens_per_s": 12214.97},
+    {"concurrency": 150, "ttft_ms": 346.53, "itl_ms": 9.81, "output_tokens_per_s": 12988.89},
+    {"concurrency": 200, "ttft_ms": 465.18, "itl_ms": 12.65, "output_tokens_per_s": 13348.4},
+    {"concurrency": 250, "ttft_ms": 605.6, "itl_ms": 16.14, "output_tokens_per_s": 12964.72}]},
+   {"precision": "FP8", "input_tokens": 1000, "output_tokens": 1000, "rows": [
+    {"concurrency": 1, "ttft_ms": 19.03, "itl_ms": 4.53, "output_tokens_per_s": 220.1},
+    {"concurrency": 5, "ttft_ms": 55.87, "itl_ms": 4.8, "output_tokens_per_s": 1031.3},
+    {"concurrency": 25, "ttft_ms": 268.42, "itl_ms": 5.84, "output_tokens_per_s": 4098.01},
+    {"concurrency": 50, "ttft_ms": 414.87, "itl_ms": 7.26, "output_tokens_per_s": 6514.66},
+    {"concurrency": 100, "ttft_ms": 615.16, "itl_ms": 10.04, "output_tokens_per_s": 9392.43},
+    {"concurrency": 150, "ttft_ms": 885.53, "itl_ms": 14.14, "output_tokens_per_s": 9982.74},
+    {"concurrency": 200, "ttft_ms": 1258.79, "itl_ms": 16.02, "output_tokens_per_s": 11553.34},
+    {"concurrency": 250, "ttft_ms": 1885.04, "itl_ms": 19.68, "output_tokens_per_s": 11527.61}]},
+   {"precision": "BF16", "input_tokens": 1000, "output_tokens": 1000, "rows": [
+    {"concurrency": 1, "ttft_ms": 27.36, "itl_ms": 6.52, "output_tokens_per_s": 152.84},
+    {"concurrency": 5, "ttft_ms": 95.23, "itl_ms": 7.55, "output_tokens_per_s": 654.5},
+    {"concurrency": 25, "ttft_ms": 332.13, "itl_ms": 9.34, "output_tokens_per_s": 2585.01},
+    {"concurrency": 50, "ttft_ms": 589.89, "itl_ms": 11.46, "output_tokens_per_s": 4152.55},
+    {"concurrency": 100, "ttft_ms": 922.41, "itl_ms": 15.99, "output_tokens_per_s": 5914.93},
+    {"concurrency": 150, "ttft_ms": 1151.54, "itl_ms": 20.92, "output_tokens_per_s": 6800.02},
+    {"concurrency": 200, "ttft_ms": 1273.42, "itl_ms": 25.68, "output_tokens_per_s": 7424.87},
+    {"concurrency": 250, "ttft_ms": 5362.51, "itl_ms": 28.09, "output_tokens_per_s": 7435.16}]}
+  ]
+ },
+ "sources": [
+  "https://platform.claude.com/docs/en/about-claude/pricing",
+  "https://www.together.ai/pricing",
+  "https://www.together.ai/models/qwen3-5-397b-a17b",
+  "https://huggingface.co/Qwen/Qwen3.5-397B-A17B/blob/main/LICENSE",
+  "https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/",
+  "https://tinker-docs.thinkingmachines.ai/tinker/models.json",
+  "https://docs.together.ai/docs/fine-tuning/lora-vs-full",
+  "https://docs.together.ai/docs/dedicated-endpoints/pricing",
+  "https://web.archive.org/web/20260930201344/https://www.together.ai/pricing",
+  "https://web.archive.org/web/20260821030659/https://docs.together.ai/docs/dedicated-endpoints/pricing",
+  "https://fireworks.ai/pricing",
+  "https://docs.fireworks.ai/faq-new/billing-pricing/are-there-extra-fees-for-serving-fine-tuned-models",
+  "https://docs.fireworks.ai/fine-tuning/deploying-loras",
+  "https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/performance.html",
+  "https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/metrics.html",
+  "https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct",
+  "https://arxiv.org/abs/2407.21783",
+  "https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml"
+ ]
+}

@@ -1,0 +1,392 @@
+claims:
+- id: hosted-large-model-prices-and-cache-hit
+  claim: The provider's pricing page lists Claude Sonnet 5.5 at 2 USD per million input tokens and 10
+    USD per million output tokens, with a prompt-cache hit priced at 0.10 USD per million tokens. The
+    snapshot transcribes those three numbers as the hosted large model's input, output and cache-read
+    prices. All prices on the page are in USD.
+  where: assets/price_snapshot.json (api_models); lesson.py section 1, exercise 2 (request_cost_usd)
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Claude Platform Docs: Pricing'
+  quote: $2 / MTok | $10 / MTok | $2.50 / MTok | $4 / MTok | $0.10 / MTok
+  quote_context: the row for 'Claude Sonnet 5.5' in the Model pricing table; the columns are Input, Output,
+    5m writes, 1h writes, Hits and refreshes
+  accessed: 2026-10-24
+- id: hosted-model-api-id
+  claim: The hosted large model priced in the snapshot, Claude Sonnet 5.5, has the API model ID claude-sonnet-5-5.
+    The scenario file names it by that ID so the snapshot and the scenario point at the same row.
+  where: assets/scenario.json (prompt_model); assets/price_snapshot.json (api_models)
+  source_url: https://platform.claude.com/docs/en/models/overview
+  source_title: 'Claude Platform Docs: Models overview'
+  quote: Claude API ID | claude-fable-5-1 | claude-opus-5-5 | claude-sonnet-5-5 | claude-haiku-4-5-20251001
+  quote_context: the model comparison table's Claude API ID row, cells joined with ' | '; the column order
+    matches the model names in the row above it, so claude-sonnet-5-5 is Claude Sonnet 5.5
+  accessed: 2026-10-02
+- id: cache-hit-is-a-fraction-of-input-price
+  claim: A prompt-cache hit is billed at a fraction of the ordinary input price (5% on this model), so
+    the lesson prices the cached share of a repeated instruction at the cache-read price and everything
+    else at the ordinary input price.
+  where: lesson.py exercise 2
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Claude Platform Docs: Pricing'
+  quote: Cache hits and refreshes on Claude Opus 5.5 and Claude Sonnet 5.5 are priced at 0.05x the base
+    input price.
+  accessed: 2026-10-24
+- id: open-teacher-licence
+  claim: The open-weights teacher, Qwen3.5-397B-A17B, is released under the Apache License, Version 2.0,
+    whose text contains no restriction on what the model's outputs are used for. The lesson names it as
+    the example of a teacher's licence to read before training another model on the teacher's answers,
+    and says that the terms of the service the teacher is called through must permit that too. It does
+    not say what any licence or terms permit in the reader's own case, and it is not legal advice.
+  where: lesson.py section 1 and the decision cell (section 7); assets/price_snapshot.json (open_models,
+    licence)
+  source_url: https://huggingface.co/Qwen/Qwen3.5-397B-A17B/blob/main/LICENSE
+  source_title: 'Hugging Face: Qwen/Qwen3.5-397B-A17B, LICENSE'
+  quote: Subject to the terms and conditions of this License, each Contributor hereby grants to You a
+    perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to reproduce,
+    prepare Derivative Works of, publicly display, publicly perform, sublicense, and distribute the Work
+    and such Derivative Works in Source or Object form.
+  quote_context: 'section 2, ''Grant of Copyright License'', of the Apache License, Version 2.0, which
+    is the whole of the repository''s LICENSE file: apart from its filled-in line ''Copyright 2026 Alibaba
+    Cloud'' the file matches the Apache Software Foundation''s text at https://www.apache.org/licenses/LICENSE-2.0.txt
+    word for word. The model card, https://huggingface.co/Qwen/Qwen3.5-397B-A17B, declares ''license:
+    apache-2.0''.'
+  accessed: 2026-10-24
+- id: open-teacher-is-a-larger-model-of-the-same-family
+  claim: 'The teacher is a much larger model of the same Qwen3.5 family as the small model it teaches:
+    its model card gives 397B parameters in total, 17B of them activated per token (a mixture of experts),
+    and the small model''s card gives 9B. The lesson calls it a large open-weights teacher.'
+  where: lesson.py section 1
+  source_url: https://huggingface.co/Qwen/Qwen3.5-397B-A17B
+  source_title: 'Hugging Face: Qwen/Qwen3.5-397B-A17B (model card)'
+  quote: 'Number of Parameters: 397B in total and 17B activated'
+  quote_context: 'the card''s model overview; https://huggingface.co/Qwen/Qwen3.5-9B reads ''Number of
+    Parameters: 9B'''
+  accessed: 2026-10-03
+- id: open-teacher-serverless-price
+  claim: Together AI's serverless (per-token) API lists the open teacher, Qwen3.5-397B-A17B, at 0.60 USD
+    per million input tokens and 3.60 USD per million output tokens. The snapshot transcribes those two
+    numbers as the teacher's prices. The cached-input price on the same row is not used, because the lesson
+    prices every teacher call without a cache. The lesson names this host only to price the teacher; it
+    recommends no provider.
+  where: assets/price_snapshot.json (open_models); lesson.py section 1, exercise 3 (fixed_costs_usd)
+  source_url: https://www.together.ai/pricing
+  source_title: 'Together AI: Pricing (Serverless Inference, Chat)'
+  quote: Qwen3.5-397B-A17B | $0.60$0.35 (cached) | $3.60
+  quote_context: the Serverless Inference table under 'Chat', headed 'Price per 1M tokens' with the 'Batch
+    API price' toggle off; columns Model, Input (the cached-input price beneath it), output. The model's
+    own page, https://www.together.ai/models/qwen3-5-397b-a17b, gives the endpoint 'Qwen/Qwen3.5-397B-A17B'
+    and reads 'Input price $0.60 / 1M tokens $0.35 (cached) / 1M Output price $3.60 / 1M tokens'
+  accessed: 2026-10-24
+- id: tinker-small-model-train-price
+  claim: 'Tinker''s price table lists Qwen3.5-9B at 1.463 USD per million training tokens (the same row
+    gives 0.30 per million prefill tokens and 0.807 per million sampled tokens, both lower than on 2026-10-02,
+    which the lesson does not use). The snapshot transcribes the training price only: the lesson trains
+    the distilled small model on Tinker but does not serve it there. The same page says its prices are
+    per million tokens.'
+  where: assets/price_snapshot.json (tinker.models); lesson.py section 1, exercise 3, section 9
+  source_url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+  source_title: 'Tinker documentation: Models & Pricing'
+  quote: Qwen3.5-9B | 64K | 9B | 9B | Dense | Hybrid + Vision | Qwen/Qwen3.5-9B | $0.30$0.06 (cached)
+    | $0.807 | $1.463
+  quote_context: the Training table; columns Prefill (with the cached price beneath it), Sample, Train.
+    The same model's entry in https://tinker-docs.thinkingmachines.ai/tinker/models.json reads train "$1.463"
+    (prefill and sample were $0.66 and $1.995 on 2026-10-02)
+  accessed: 2026-10-24
+- id: tinker-per-token-serving-is-beta
+  claim: Tinker's serverless inference, its per-token serving, is in beta, available for Inkling and Inkling-Small
+    only, and not recommended for intensive production use, so it does not cover this lesson's small model.
+    Tinker does price per-token sampling of the small model (prefill and sample prices in the table headed
+    Training), through the sampling client of its training service, which generates from base or trained
+    weights. The lesson does not treat that sampling as a production serving offer (an assumption, in
+    line with Tinker's deployment guide, which serves a checkpoint outside Tinker after downloading it),
+    so it does not price serving at Tinker's prices; it prints both statements among how the cited hosts
+    serve a fine-tuned model.
+  where: assets/price_snapshot.json (serving_a_fine_tune); lesson.py section 1
+  source_url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+  source_title: 'Tinker documentation: Models & Pricing (Serverless Inference (Beta))'
+  quote: Serverless inference is currently in beta and available for Inkling and Inkling-Small only. We
+    do not recommend it for intensive production use until it is out of beta.
+  quote_context: 'the Serverless Inference (Beta) table beneath it prices Inkling-Small and Inkling per
+    million input and output tokens; https://tinker-docs.thinkingmachines.ai/tinker/serverless.json lists
+    the same two models. The same page''s Pricing Terms read ''Sample : Generating output tokens'' and
+    give the Tinker ID as ''The exact string to pass to create_lora_training_client(base_model=...) or
+    create_sampling_client(base_model=...)''; https://tinker-docs.thinkingmachines.ai/tinker/api-reference/samplingclient/
+    describes the sampling client as ''Client for text generation and inference from trained or base models.'''
+  accessed: 2026-10-24
+- id: tinker-trained-adapter-can-be-served-elsewhere
+  claim: A model trained on Tinker is a LoRA adapter kept in Tinker's checkpoint storage, which can be
+    downloaded and turned into an artifact another serving stack can load. The lesson trains the distilled
+    small model on Tinker, keeps paying Tinker's storage price for its checkpoint, and serves it on a
+    dedicated endpoint elsewhere.
+  where: lesson.py section 1 and exercise 3
+  source_url: https://tinker-docs.thinkingmachines.ai/cookbook/deployment/basics/
+  source_title: 'Tinker cookbook: Deployment Basics'
+  quote: Tinker trains LoRA adapters and keeps the resulting checkpoints in Tinker storage. To serve a
+    checkpoint outside Tinker, download it and use tinker_cookbook.weights to turn it into an artifact
+    your serving stack understands.
+  accessed: 2026-10-03
+- id: tinker-storage-price
+  claim: Tinker charges for checkpoint storage at 0.10 USD per GB per month, on the page that says all
+    its prices are per million tokens. The snapshot records that storage price; the lesson uses it as
+    a small standing cost.
+  where: assets/price_snapshot.json (tinker.storage_usd_per_gb_month); exercise 3
+  source_url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+  source_title: 'Tinker documentation: Models & Pricing'
+  quote: All prices are per million tokens. Checkpoint storage is charged at $0.10 per GB per month.
+  accessed: 2026-10-24
+- id: tinker-publishes-machine-readable-prices
+  claim: Tinker publishes its price table as models.json (and its serverless table as serverless.json)
+    and tells programmatic users to read those files rather than scrape the HTML; prices there are strings
+    in the form "$0.374". The lesson's parse_price() helper and its refresh paragraph rest on this; the
+    lesson itself never fetches.
+  where: lesson.py section 9
+  source_url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+  source_title: 'Tinker documentation: Models & Pricing (Machine-Readable Pricing)'
+  quote: If you want to use this data programmatically (cost estimation, model pickers, dashboards), don't
+    scrape the tables above.
+  quote_context: the same section says models.json has per-million-token prices 'prefill, cached_prefill,
+    sample, train (strings like "$0.374")'
+  accessed: 2026-10-02
+- id: together-lora-sft-price-and-minimum
+  claim: Together AI's pricing page lists LoRA supervised fine-tuning of Qwen3.5 9B at 0.34 USD per million
+    tokens with a minimum charge of 4.00 USD per job (the first table, under the 'LoRA fine-tuning' tab;
+    the 'Full fine-tuning' tab shows higher prices). Billing is on the training dataset's tokens times
+    the number of epochs, and every job is subject to the minimum charge for its model.
+  where: assets/price_snapshot.json (together.lora_sft); exercise 3 (the minimum-charge rule)
+  source_url: https://www.together.ai/pricing
+  source_title: 'Together AI: Pricing (Fine-Tuning)'
+  quote: Qwen3.5 9B | $0.34 | $0.84 | $4.00
+  quote_context: columns Supervised Fine-Tuning, Direct Preference Optimization, Minimum charge; the note
+    under the table reads 'Price is based on the sum of tokens processed in the fine-tuning training dataset
+    (training dataset size × number of epochs) plus any tokens in the optional evaluation dataset (validation
+    dataset size × number of evaluations). Each job is subject to the minimum charge shown for its model.'
+  accessed: 2026-10-24
+- id: together-dedicated-gpu-hour
+  claim: Together AI's pricing page lists an NVIDIA HGX H100 for dedicated inference at 5.49 USD per GPU
+    per hour on demand, with reserved capacity quoted by sales, and shows no promotion on it. The lesson
+    assumes each small model, finetune's and distillation's, is served on one such GPU running all month
+    (an assumption in scenario.json, not a claim about any deployment). Together's dedicated-inference
+    pricing documentation listed 3.99 USD per hour for an H100 80GB in its hardware table on 2026-10-03
+    while its own worked example used 5.49; on 2026-10-24 the table reads 5.49 again. 3.99 is the promotional
+    price the pricing page showed from early September 2026 beside a struck-through 5.49, with the note
+    'Promotion valid until 09/30/26'; the documentation's table read 5.49 on 2026-08-21 and 3.99 from
+    2026-09-06 (archived copies below). The snapshot keeps the on-demand 5.49 and also records the documentation's
+    promotional 3.99 with the promotion's end date; the notebook prints both.
+  where: assets/price_snapshot.json (together.dedicated_usd_per_gpu_hour, together.dedicated_docs_table);
+    lesson.py section 1, exercise 3, section 8
+  source_url: https://www.together.ai/pricing
+  source_title: 'Together AI: Pricing (Dedicated Inference)'
+  quote: NVIDIA HGX H100 | $5.49 | Contact sales
+  quote_context: 'columns Hardware, On-demand (Pay as you go), Reserved; the table is headed ''All prices
+    per gpu per hour''. The price was transcribed on 2026-10-02 and was the same, with no promotion on
+    the page, when re-read on 2026-10-03 and 2026-10-24. On 2026-10-03 https://docs.together.ai/docs/dedicated-endpoints/pricing
+    had the table row ''H100 80GB | 1xnvidia-h100-80gb | $3.99'' (on 2026-10-24 it reads ''$5.49'') and
+    the sentence ''A single H100 replica at $5.49/hour costs about $132/day, or roughly $3,950 over a
+    30-day month, if running continuously.'' Archived copies: https://web.archive.org/web/20260930201344/https://www.together.ai/pricing
+    reads ''NVIDIA HGX H100 | Promo | Promotion valid until 09/30/26 | $5.49 | $3.99 | Contact sales''
+    (5.49 struck through; the same on the copies of 2026-09-02, 2026-09-07 and 2026-09-18, while the copy
+    of 2026-08-29 reads ''$5.49'' with no promotion); https://web.archive.org/web/20260821030659/https://docs.together.ai/docs/dedicated-endpoints/pricing
+    has the row ''H100 80GB | 1xnvidia-h100-80gb | $5.49'', and https://web.archive.org/web/20260906090149/https://docs.together.ai/docs/dedicated-endpoints/pricing
+    has ''$3.99''. The documentation of the older v1 dedicated endpoints, https://docs.together.ai/docs/dedicated-endpoints/v1/overview,
+    which says v1 ''will be deprecated by the end of 2026'', lists ''H100 80GB SXM | 1x_nvidia_h100_80gb_sxm
+    | $5.40''; the lesson prices the current (v2) service.'
+  accessed: 2026-10-24
+- id: together-dedicated-inference-for-production
+  claim: Together AI presents its dedicated model inference as a service for production workloads that
+    serves custom models. The lesson prices serving each small model on one dedicated GPU there, running
+    all month, at the on-demand hourly price in the snapshot.
+  where: lesson.py section 1; assets/price_snapshot.json (together.dedicated_usd_per_gpu_hour)
+  source_url: https://www.together.ai/dedicated-model-inference
+  source_title: 'Together AI: Dedicated Model Inference'
+  quote: Designed for production workloads that need consistent performance and operational control.
+  quote_context: the page is headed 'Dedicated inference, tuned for production' and also says 'Bring any
+    open-weight model, deploy it to a dedicated endpoint in minutes, and run it in production with full
+    control and optimized performance.' and 'Deploy custom models directly from Hugging Face or S3 onto
+    dedicated endpoints via the UI or CLI.'
+  accessed: 2026-10-03
+- id: together-serves-an-uploaded-qwen3-5-9b-adapter
+  claim: Together AI serves a custom LoRA adapter, uploaded from Hugging Face or S3, on a dedicated endpoint
+    when the adapter targets a base model it supports for dedicated inference; Qwen3.5 9B is one, with
+    one H100 80GB as its smallest published hardware. The lesson assumes the small model distilled on
+    Tinker is exported as such an adapter and served this way; it does not check that a particular adapter
+    passes Together's upload validation.
+  where: lesson.py section 1; assets/scenario.json (gpu, endpoint_gpus)
+  source_url: https://docs.together.ai/docs/dedicated-endpoints/adapter
+  source_title: 'Together AI documentation: Upload a LoRA adapter'
+  quote: The adapter must target a base model that Together AI supports for dedicated inference.
+  quote_context: 'the page''s summary reads ''Serve a custom LoRA adapter uploaded from Hugging Face or
+    S3.'' The supported-models list, which the HTML page at https://docs.together.ai/docs/dedicated-endpoints/models
+    draws by script, reads as text at https://docs.together.ai/docs/dedicated-endpoints/models.md, where
+    the entry is ''name: "Qwen3.5 9B", apiName: "Qwen/Qwen3.5-9B", type: "chat", minHardware: "1xnvidia-h100-80gb"'''
+  accessed: 2026-10-03
+- id: together-lora-served-on-dedicated-endpoint
+  claim: On Together AI a LoRA fine-tune is served on a dedicated endpoint, not through the per-token
+    serverless API (serverless LoRA inference has been discontinued), and that hosting is billed by the
+    minute, separately from the training job. This is one reason the lesson prices a small model's serving
+    as a standing cost rather than a cost per request.
+  where: assets/price_snapshot.json (serving_a_fine_tune); lesson.py section 1 and exercises 2 and 3
+  source_url: https://docs.together.ai/docs/fine-tuning/lora-vs-full
+  source_title: 'Together AI documentation: LoRA vs. full fine-tuning'
+  quote: Fine-tuned adapters are served on dedicated endpoints, not through the per-token serverless API.
+    Serverless LoRA inference (including Serverless Multi-LoRA) has been discontinued.
+  quote_context: 'https://docs.together.ai/docs/lora-training-and-inference redirects to this page. https://docs.together.ai/docs/fine-tuning/pricing
+    says: ''After training, hosting on a dedicated endpoint is billed separately by the minute.'' https://docs.together.ai/docs/dedicated-endpoints/pricing
+    says a deployment ''bills for as long as it runs, not per token or per request.'''
+  accessed: 2026-10-24
+- id: fireworks-embedding-price
+  claim: Fireworks AI lists embeddings from a base model of up to 150M parameters at 0.008 USD per million
+    input tokens. The snapshot uses that price for embedding a retrieval corpus and the search query.
+  where: assets/price_snapshot.json (fireworks.embedding_usd_per_mtok); exercises 2 and 3
+  source_url: https://fireworks.ai/pricing
+  source_title: 'Fireworks AI: Pricing (Embeddings)'
+  quote: up to 150M | $0.008
+  quote_context: columns 'Base model parameter count' and '$ / 1M input tokens'
+  accessed: 2026-10-24
+- id: fireworks-serves-trained-models-on-dedicated-deployments
+  claim: Fireworks AI serves a trained (LoRA) model only on a dedicated (on-demand) deployment, whose
+    hosting is billed per GPU second; serverless deployment is not supported for such models. The lesson
+    prints this beside Together's and Tinker's statements and does not price a Fireworks deployment.
+  where: assets/price_snapshot.json (serving_a_fine_tune); lesson.py section 1
+  source_url: https://docs.fireworks.ai/faq-new/billing-pricing/are-there-extra-fees-for-serving-fine-tuned-models
+  source_title: 'Fireworks AI documentation: Are there extra fees for serving fine-tuned models?'
+  quote: Trained (LoRA) models require a dedicated deployment to serve.
+  quote_context: under 'What you pay for' the same answer lists 'Deployment costs on a per-GPU-second
+    basis for hosting the model'. (On 2026-10-03 the answer was at https://docs.fireworks.ai/faq/billing-pricing-usage/pricing/cost-structure
+    and also listed a per-token usage line, which the page no longer carries.) https://docs.fireworks.ai/fine-tuning/deploying-loras
+    says 'Trained LoRA models, whether created on the Fireworks platform or imported, can only be deployed
+    to on-demand (dedicated) deployments. Serverless deployment is not supported for LoRA models.'
+  accessed: 2026-10-24
+- id: proxy-benchmark-llama-3-1-8b-on-one-h100
+  claim: 'NVIDIA''s NIM LLMs benchmarking guide (version 1.0.0, Performance page) publishes, for Llama-3.1-8B-Instruct
+    served by NIM container 1.8.0 on one H100 80GB GPU with FP8 weights (tensor parallelism 1) and requests
+    of 200 input and 200 output tokens, the time to first token, the inter-token latency and the throughput
+    at concurrencies 1, 5, 25, 50, 100, 150, 200 and 250; at concurrency 50 they are 67.41 ms, 5.91 ms
+    and 8,018.23 tokens per second. The same page gives the same model on the same GPU with FP8 weights
+    for 1000 input and 1000 output tokens, and with BF16 weights for 1000 and 1000 (its only 16-bit run
+    of this model on the H100 in that container version). The snapshot transcribes those three tables,
+    24 rows. The lesson uses them as a PROXY for its own small model, which none of the sources benchmarks,
+    and derives the endpoint''s capacity, and the small model''s latency on it, from them as of 2026-10-03:
+    the results are estimates under stated assumptions, not measurements of the small model. The same
+    page''s FP8 table for 5000 input and 500 output tokens gives 2,765.71 output tokens a second at concurrency
+    50, about 30,400 tokens a second in and out together, against about 16,000 for 200 and 200 at the
+    same concurrency: the GPU gets through more tokens a second when more of them are input, which is
+    why the lesson says that counting an input token as dear as an output token errs low.'
+  where: assets/price_snapshot.json (serving_benchmark); assets/scenario.json (endpoint_capacity_requests_per_month);
+    lesson.py section 4 (How many requests one endpoint carries), used by sections 6, 7 and 8, and the
+    cell after the common mistakes (section 10)
+  source_url: https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/performance.html
+  source_title: 'NVIDIA NIM LLMs Benchmarking: Performance'
+  quote: 50 | 67.41 | 5.91 | 8018.23
+  quote_context: 'the concurrency-50 row of the table under ''Llama-3.1-8b-instruct Results'', ''NIM Container:
+    Llama-3.1-8b-Instruct'', ''Version: 1.8.0'', ''1 x H100 80G'', ''fp8 TP1'', ''200 Input Tokens / 200
+    Output Tokens'', whose columns are ''Concurrency | TTFT (ms) | ITL (ms) | Throughput(Tokens/s)'';
+    the next row reads ''100 | 119.97 | 7.57 | 12214.97''. The page opens ''This section shows the latency
+    and throughput numbers for Llama models powered by NVIDIA NIM.'', its Hardware Specifications give
+    the GPU as ''H100 80GB HBM3(GH100)'' in an NVIDIA DGX H100, and it reads ''Last updated on Apr 01,
+    2026''. The FP8 table for ''1000 Input Tokens / 1000 Output Tokens'' follows under the same heading,
+    and the BF16 one under ''bf16 TP1'', before ''1 x H200 141GB''; the FP8 table for ''5000 Input Tokens
+    / 500 Output Tokens'' has the row ''50 | 817.73 | 16.47 | 2765.71''. The guide''s latest version,
+    https://docs.nvidia.com/nim/benchmarking/llm/latest/, no longer lists a Performance page (its /latest/performance.html
+    returned 404 on 2026-10-03); the versioned page above is live, and https://web.archive.org/web/20260915150912/https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/performance.html
+    holds the same rows.'
+  accessed: 2026-10-03
+- id: proxy-benchmark-metric-definitions
+  claim: In that guide the throughput is the output tokens per second of all requests in flight together;
+    the inter-token latency (ITL) is the average time between consecutive output tokens after the first,
+    so that a request lasts its time to first token plus ITL times one less than its output tokens; the
+    time to first token includes queueing and prefill and grows with the prompt; and a concurrency of
+    N keeps N requests in flight. The lesson's estimate of one request's time, and its conversion of the
+    throughput into requests a second, rest on these definitions.
+  where: lesson.py section 4
+  source_url: https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/metrics.html
+  source_title: 'NVIDIA NIM LLMs Benchmarking: Metrics'
+  quote: Total TPS per system represents the total output tokens per seconds throughput, accounting for
+    all the requests happening simultaneously.
+  quote_context: the same page reads 'This is defined as the average time between consecutive tokens and
+    is also known as time per output token (TPOT).', gives GenAI-Perf's ITL as (e2e_latency - TTFT) /
+    (Total_output_tokens - 1) (typeset as a formula), adds 'The equation used for this metric does not
+    include the first token (hence subtracts 1 in the denominator).', and says 'Time to first token generally
+    includes both request queuing time, prefill time and network latency. The longer the prompt, the larger
+    the TTFT.' https://docs.nvidia.com/nim/benchmarking/llm/1.0.0/parameters.html reads 'Concurrency N
+    is the number of concurrent users each having one active request, or equivalently the number of requests
+    concurrently being served by an LLM service.'
+  accessed: 2026-10-03
+- id: proxy-and-small-model-are-dense-and-of-similar-size
+  claim: 'The benchmark''s model and the lesson''s small model are both dense (every parameter is used
+    for every token) and of similar size and shape: Meta gives Llama 3.1 8B as 8B parameters with 32 layers
+    of width 4,096, and Tinker''s table gives Qwen3.5-9B 9B parameters, all of them active, ''Dense'',
+    while its card gives 32 layers of width 4,096. The lesson therefore scales the benchmark''s times
+    up, and its rates down, by the ratio of the two sizes as their publishers state them. Qwen3.5-9B differs
+    in that three of every four of its layers use linear attention (Gated DeltaNet); the estimate does
+    not model that, nor the cost of serving a LoRA adapter.'
+  where: assets/price_snapshot.json (serving_benchmark model_params and model_arch; tinker.models params
+    and arch); lesson.py section 4
+  source_url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+  source_title: 'Tinker documentation: Models & Pricing'
+  quote: Architecture is either Dense (all parameters active per token) or MoE (mixture-of-experts, only
+    a subset of parameters active per token).
+  quote_context: 'the Training table''s row reads ''Qwen3.5-9B | 64K | 9B | 9B | Dense | Hybrid + Vision
+    | Qwen/Qwen3.5-9B | ...'' (Size, Active, Architecture, Type), and the page defines ''Size: Total parameters,
+    as stated by the model''s publisher''; https://tinker-docs.thinkingmachines.ai/tinker/models.json
+    gives the same model ''params'': 9000000000, ''active_params'': 9000000000, ''arch'': ''Dense''. The
+    Qwen3.5-9B card, https://huggingface.co/Qwen/Qwen3.5-9B, gives its type as ''Causal Language Model
+    with Vision Encoder'' and, under ''Language Model'', lists ''Number of Parameters: 9B'', ''Hidden
+    Dimension: 4096'', ''Number of Layers: 32'' and ''Hidden Layout: 8 × (3 × (Gated DeltaNet → FFN) →
+    1 × (Gated Attention → FFN))'' (the page''s file metadata counts 9,653,104,368 parameters, the vision
+    encoder included, which a text-only request does not use). Meta''s card, https://huggingface.co/meta-llama/Llama-3.1-8B-Instruct,
+    reads ''The Meta Llama 3.1 collection of multilingual large language models (LLMs) is a collection
+    of pretrained and instruction tuned generative models in 8B, 70B and 405B sizes (text in/text out).''
+    (the page''s file metadata counts 8,030,261,248 parameters). The Llama 3 paper, https://arxiv.org/abs/2407.21783,
+    read in its HTML version https://arxiv.org/html/2407.21783, reads ''Llama 3 uses a standard, dense
+    Transformer architecture (Vaswani et al., 2017).'', and its Table 3 gives the 8B model 32 layers and
+    a model dimension of 4,096.'
+  accessed: 2026-10-03
+- id: ecb-reference-rates-2026-10-23
+  claim: The ECB's euro foreign exchange reference rates dated 2026-10-23 give 1.1193 US dollars and 106.2720
+    Indian rupees per euro. The snapshot transcribes both. The ECB quotes every currency against the euro
+    as base.
+  where: assets/price_snapshot.json (fx); exercise 1; every figure shown in EUR or INR
+  source_url: https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml
+  source_title: 'ECB: euro foreign exchange reference rates (daily XML)'
+  quote: <Cube currency='INR' rate='106.2720'/>
+  quote_context: inside <Cube time='2026-10-23'>, beside <Cube currency='USD' rate='1.1193'/>. https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html
+    says 'All currencies quoted against the euro (base currency)'
+  accessed: 2026-10-24
+- id: ecb-rates-are-for-information
+  claim: The ECB publishes its reference rates for information only and strongly discourages using them
+    for transactions; the lesson uses them to compare prices, never to settle one.
+  where: lesson.py exercise 1 demo
+  source_url: https://www.ecb.europa.eu/stats/policy_and_exchange_rates/euro_reference_exchange_rates/html/index.en.html
+  source_title: 'ECB: Euro foreign exchange reference rates'
+  quote: The reference rates are published for information purposes only. Using the rates for transaction
+    purposes is strongly discouraged.
+  accessed: 2026-10-02
+- id: ecb-reuse-conditions
+  claim: The ECB allows free use of the information on its website provided it is reproduced accurately
+    and the ECB is cited as the source. The two rates transcribed into the snapshot are attributed to
+    the ECB in assets/SOURCE.md.
+  where: assets/SOURCE.md; meta.yaml datasets
+  source_url: https://www.ecb.europa.eu/services/using-our-site/disclaimer/html/index.en.html
+  source_title: 'ECB: Disclaimers and copyright'
+  quote: When such information is distributed or reproduced, it must appear accurately and the ECB must
+    be cited as the source.
+  accessed: 2026-10-02
+- id: NOT A CLAIM scenario-and-assumptions
+  claim: 'NOT A CLAIM. Everything in assets/scenario.json is authored by this lesson: the ticket sizes,
+    volumes, cache-hit share, labelling cost, drift interval, router share, the choice of teacher and
+    small model, the always-on endpoint each small model is served on with its size, and above all the
+    assumed quality and latency of each strategy and the quality target and latency budget. They are labelled
+    as assumptions in the notebook and are not measurements of any model or facts about any company. The
+    endpoint''s capacity is the author''s estimate, derived in the notebook from the proxy benchmark above
+    (claims proxy-benchmark-*) under authored assumptions, each printed: that the endpoint serves FP8
+    weights (serving_precision), that its busiest hour carries peak_to_average (4) times the average one,
+    that a request reaches the small model as the ticket and the answer without the instruction, that
+    the time to first token scales with the prompt''s length, that times and rates scale with the parameter
+    count, and that an input token costs the GPU as much as an output token; scenario.json holds the result
+    rounded down to a multiple of 100,000. The small models'' latency in scenario.json, the same for finetune
+    and distillation (one model on one GPU), is the same proxy''s time for one request on an idle endpoint,
+    rounded up to a multiple of 10 ms, and the mix''s latency is the average over its traffic of that
+    and the hosted model''s assumed latency; the notebook prints both checks.'
+  where: assets/scenario.json; lesson.py sections 1, 4 and 7
+  source_url: n/a
+  accessed: 2026-10-03

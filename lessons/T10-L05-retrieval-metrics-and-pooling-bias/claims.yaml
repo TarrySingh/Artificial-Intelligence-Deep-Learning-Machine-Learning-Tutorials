@@ -1,0 +1,70 @@
+claims:
+- id: pooling-is-top-documents-of-several-systems
+  claim: 'For large collections relevance is usually assessed for only a subset of the documents of each
+    query, and the standard way to choose that subset is pooling: the top documents returned by a number
+    of different retrieval systems. This is the procedure that pooled_qrels implements.'
+  where: lesson.py section 5 (exercise 3, pooled_qrels)
+  source_url: https://nlp.stanford.edu/IR-book/html/htmledition/assessing-relevance-1.html
+  source_title: Manning, C.D., Raghavan, P. & Schütze, H. (2008). Introduction to Information Retrieval,
+    section 8.5.1 (Assessing relevance), Cambridge University Press.
+  quote: relevance is assessed over a subset of the collection that is formed from the top documents returned
+    by a number of different IR systems
+  quote_context: the sentence defining pooling, in the paragraph beginning 'For large modern collections,
+    it is usual for relevance to be assessed only for a subset of the documents for each query.'
+  accessed: 2026-10-24
+- id: pooling-assumes-unjudged-nonrelevant-and-can-bias
+  claim: Pooling rests on treating unjudged documents as non-relevant, and a pool that is too small relative
+    to the collection can produce judgements biased toward the relevant documents that contain the topic's
+    title words. The lesson's lexical-bias demonstration is a planted, simulated version of this effect,
+    not a reproduction of the paper's measurement.
+  where: lesson.py sections 5 and 6 (the one-system pool and the pool sweep)
+  source_url: https://www.nist.gov/publications/bias-and-limits-pooling-large-collections
+  source_title: Buckley, C., Dimmick, D., Soboroff, I. & Voorhees, E. (2007). Bias and the Limits of Pooling
+    for Large Collections. Information Retrieval 10(6), 491-508.
+  quote: when unjudged documents are assumed to be nonrelevant the resulting judgment set is sufficiently
+    complete and unbiased
+  quote_context: the abstract's second sentence ('The idea behind pooling is to find enough relevant documents
+    such that ...'); the abstract's fourth sentence continues that the judgment sets 'can be biased in
+    that they favor relevant documents that contain topic title words'.
+  accessed: 2026-10-24
+- id: pooled-judgements-biased-toward-title-words
+  claim: The same paper reports that judgement sets produced by traditional pooling, when the pools are
+    too small relative to the collection, can favour relevant documents that contain the topic's title
+    words.
+  where: lesson.py section 6 (why a pool of word-matching systems is incomplete for other kinds of system)
+  source_url: https://www.nist.gov/publications/bias-and-limits-pooling-large-collections
+  source_title: Buckley, C., Dimmick, D., Soboroff, I. & Voorhees, E. (2007). Bias and the Limits of Pooling
+    for Large Collections. Information Retrieval 10(6), 491-508.
+  quote: the judgment sets produced by traditional pooling when the pools are too small relative to the
+    total document set size can be biased in that they favor relevant documents that contain topic title
+    words
+  quote_context: the abstract, fourth sentence
+  accessed: 2026-10-24
+- id: ndcg-textbook-gain-is-two-to-the-grade-minus-one
+  claim: The textbook form of nDCG (Introduction to Information Retrieval, equation 44) uses the gain
+    2^R - 1 for a document of grade R, discounted by log2(1 + rank), and a normalisation factor that makes
+    a perfect ranking score 1. This lesson's ndcg_at_k uses the grade itself as the gain (T06-L01's convention),
+    so its numbers are not comparable with a library that follows the textbook gain.
+  where: lesson.py section 4 (exercise 2, ndcg_at_k)
+  source_url: https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-of-ranked-retrieval-results-1.html
+  source_title: Manning, C.D., Raghavan, P. & Schütze, H. (2008). Introduction to Information Retrieval,
+    section 8.4 (Evaluation of ranked retrieval results), equation (44).
+  quote: \frac{2^{R(j,m)}-1}{\log_2(1+m)}
+  quote_context: the LaTeX source of equation (44), inside \mbox{NDCG}(Q, k) = \frac{1}{|Q|} \sum_{j=1}^{|Q|}
+    Z_{kj} \sum_{m=1}^{k}; the page text beside it says Z_kj 'is a normalization factor calculated to
+    make it so that a perfect ranking's NDCG at k for query j is 1'.
+  accessed: 2026-10-24
+- id: llm-relevance-labelling-deployed-and-needs-gold-labels
+  claim: Language models have been used to produce relevance labels at scale (a 2023 paper reports deploying
+    them at Bing), and measuring how far such labels agree with real searchers needs high-quality gold
+    labels. This is why the lesson treats a labeller's error rates as something to measure against trusted
+    labels, as the planted truth is here.
+  where: lesson.py section 7 (synthetic labels)
+  source_url: https://arxiv.org/abs/2309.10621
+  source_title: Thomas, P., Spielman, S., Craswell, N. & Mitra, B. (2023). Large language models can accurately
+    predict searcher preferences. arXiv:2309.10621.
+  quote: We present ideas and observations from deploying language models for large-scale relevance labelling
+    at Bing
+  quote_context: abstract; the same abstract says 'To measure agreement with real searchers needs high-quality
+    "gold" labels'.
+  accessed: 2026-10-24

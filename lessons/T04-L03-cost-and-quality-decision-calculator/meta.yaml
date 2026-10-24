@@ -1,0 +1,75 @@
+id: T04-L03-cost-and-quality-decision-calculator
+title: Build a cost and quality decision calculator that prices prompting, retrieval, fine-tuning, distillation
+  and a mix over a year in three currencies and finds the volumes at which each overtakes the last
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 30
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement convert() so an amount moves between EUR, USD and INR through the ECB's per-euro reference
+  rates, in the right direction
+- Implement request_cost_usd() and fixed_costs_usd() so five strategies are priced per request and per
+  month, with cache hits, a minimum charge, labelling, retraining and an always-on endpoint
+- Implement breakeven_volume() and ladder() so the cheapest strategy is a function of monthly volume,
+  and a dominated strategy drops out
+- Measure, on a dated price snapshot, which feasible strategy is cheapest, at what volumes the cheapest
+  changes, and how far the break-even volumes move under price changes
+before_you_start:
+  assumed:
+  - write Python functions that take dictionaries and lists and return numbers or lists, with loops and
+    conditionals
+  - solve a linear equation in one unknown, such as 120 + 6x = 12x, and check the answer by substituting
+    it back
+  - say what a token is and why model APIs quote prices per million tokens
+  resources:
+  - title: Patterns for Building LLM-based Systems & Products
+    by: Eugene Yan
+    url: https://eugeneyan.com/writing/llm-patterns/
+    kind: free
+    why: a practitioner's tour of fine-tuning, retrieval, caching and evaluation as separate levers, most
+      of the strategies this lesson prices
+  - title: Prompt caching
+    by: Anthropic (Claude Platform docs)
+    url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+    kind: free
+    why: how a repeated instruction is cached and billed at a fraction of the input price, the mechanism
+      behind the lesson's prompting cost
+  - title: Tinker documentation, Models & Pricing
+    by: Thinking Machines Lab
+    url: https://tinker-docs.thinkingmachines.ai/tinker/models/models_and_pricing/
+    kind: free
+    why: the page where a managed training service lists its per-million-token training prices, which
+      is how the lesson prices training the distilled small model
+datasets:
+- name: price_snapshot.json - hosted-model, open-teacher, Tinker, Together and Fireworks prices, ECB EUR/USD/INR
+    reference rates and one published serving benchmark (NVIDIA NIM, Llama-3.1-8B-Instruct on one H100),
+    read on 2026-10-02, 2026-10-03 and again, the prices, in full on 2026-10-24
+  licence: CC-BY-NC-SA-4.0 for the transcription; the facts come from the source pages
+  url: https://platform.claude.com/docs/en/about-claude/pricing
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  copyright: Prices, billing structure, one licence name, exchange rates, two parameter counts and a serving
+    benchmark's figures transcribed by the Synapsa Commons project (c) 2026 RealAI from the pages listed
+    in assets/SOURCE.md, with the ECB cited as the source of the exchange rates and NVIDIA as the source
+    of the benchmark; none of the pages' prose is reproduced, and of their tables only the benchmark's
+    figures, as numbers
+  cached_at: assets/price_snapshot.json
+  retrieved: 2026-10-24
+  gated: false
+- name: scenario.json - an authored support-ticket triage scenario with assumed quality and latency, the
+    endpoint's capacity and the small models' latency derived in the notebook from a published benchmark
+    (fixture)
+  licence: CC-BY-NC-SA-4.0
+  url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode
+  copyright: Authored for this lesson by the Synapsa Commons project; (c) 2026 RealAI, licensed CC BY-NC-SA
+    4.0 with the rest of the course
+  cached_at: assets/scenario.json
+  retrieved: 2026-10-03
+  gated: false
+points: 71
+status: reviewed
+measured_seconds: 0.1
+measured_peak_mib: 21

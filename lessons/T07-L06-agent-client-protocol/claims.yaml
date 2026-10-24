@@ -1,0 +1,515 @@
+claims:
+- id: acp-current-revision
+  claim: On 2026-10-24 the Agent Client Protocol documentation presents protocol version 1 as the latest
+    (with a version 2 marked as a draft), and the newest published schema release is schema-v1.26.0, published
+    2026-10-16 (the lesson's wire shapes were checked against schema-v1.24.1, published 2026-09-30). The
+    lesson speaks protocol version 1 only.
+  where: lesson.py section 1 (which revision), SPEC_AS_OF and PROTOCOL_VERSION in the setup cells
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview (the version switcher in the page''s navigation)'
+  quote: v1Latest
+  quote_context: the navigation's version switcher, rendered 'Protocol / v1Latest / Overview ...' with
+    'v2Draft' beside it; the page text shows both
+  accessed: 2026-10-24
+- id: acp-schema-release-1-24-1
+  claim: The lesson's wire shapes follow the schema release tagged schema-v1.24.1 (published 2026-09-30),
+    which was the newest on 2026-10-02. By 2026-10-24 the newest was schema-v1.26.0 (published 2026-10-16);
+    comparing schema/v1/schema.json at the two tags shows only added definitions (session notices and
+    compaction, unused here) and stricter parsing annotations on terminal creation, file reading and session
+    set-up requests; nothing the lesson relies on is removed or changed.
+  where: lesson.py section 1; meta.yaml comments
+  source_url: https://github.com/agentclientprotocol/agent-client-protocol/releases/tag/schema-v1.24.1
+  source_title: 'agentclientprotocol/agent-client-protocol: release schema-v1.24.1'
+  quote: schema-v1.24.1
+  quote_context: the release page's heading; the same page marks the release 'Latest'. The releases API
+    reported published_at 2026-09-30T15:53:45Z
+  accessed: 2026-10-24
+- id: acp-protocol-version-is-a-major-integer
+  claim: An ACP protocolVersion is a single integer that identifies a MAJOR protocol version, incremented
+    only for breaking changes. This is why the lesson's constant is the integer 1 and why a protocolVersion
+    that is a date string is taken to belong to MCP.
+  where: lesson.py section 1; exercise 1; exercise 5
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: The protocol versions that appear in the initialize requests and responses are a single integer
+    that identifies a MAJOR protocol version.
+  accessed: 2026-10-24
+- id: acp-version-negotiation
+  claim: If the agent supports the version the client requested it must answer with that same version;
+    otherwise it must answer with the latest version it supports. Exercise 1 implements this rule.
+  where: lesson.py exercise 1; its public check and rubric
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: If the Agent supports the requested version, it MUST respond with the same version. Otherwise,
+    the Agent MUST respond with the latest version it supports.
+  accessed: 2026-10-24
+- id: acp-omitted-capabilities-unsupported
+  claim: Every capability the client leaves out of its initialize request is to be treated as unsupported,
+    and all of the client's capabilities are optional. Exercise 1 records the capabilities; the given
+    client_can helper treats anything but the value true as unsupported.
+  where: lesson.py exercise 1 and client_can; exercise 4
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: Therefore, Clients and Agents MUST treat all capabilities omitted in the initialize request as
+    UNSUPPORTED.
+  accessed: 2026-10-24
+- id: acp-initialize-response-fields
+  claim: The agent answers initialize with the chosen protocol version and the capabilities it supports,
+    and should provide its name and version. The example response carries protocolVersion, agentCapabilities
+    (loadSession, promptCapabilities), agentInfo and authMethods. The client's example carries clientCapabilities
+    with fs.readTextFile, fs.writeTextFile and terminal.
+  where: lesson.py exercise 1
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: 'The Agent MUST respond with the chosen protocol version and the capabilities it supports. It
+    SHOULD also provide a name and version to the Client as well:'
+  accessed: 2026-10-24
+- id: acp-load-session-must-be-advertised
+  claim: An agent that does not advertise loadSession does not support session/load, and the client must
+    not call it. The lesson's agent has no session/load and so advertises loadSession as false.
+  where: 'lesson.py exercise 1 (rubric: loadSession is false); section 8'
+  source_url: https://agentclientprotocol.com/protocol/v1/session-setup
+  source_title: 'Agent Client Protocol: Session Setup'
+  quote: If loadSession is false or not present, the Agent does not support loading sessions and Clients
+    MUST NOT attempt to call session/load.
+  accessed: 2026-10-24
+- id: acp-baseline-prompt-content
+  claim: As a baseline every agent must accept text and resource_link content blocks in a prompt; image,
+    audio and embedded context are optional capabilities. The lesson's handle_prompt accepts exactly the
+    two baseline block types and advertises the optional ones as false.
+  where: lesson.py handle_prompt and exercise 1
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: As a baseline, all Agents MUST support ContentBlock::Text and ContentBlock::ResourceLink in session/prompt
+    requests.
+  accessed: 2026-10-24
+- id: acp-session-new
+  claim: The client creates a session with session/new, giving a working directory and a list of MCP servers;
+    the agent must answer with a unique session id.
+  where: lesson.py handle_session_new; the three editors
+  source_url: https://agentclientprotocol.com/protocol/v1/session-setup
+  source_title: 'Agent Client Protocol: Session Setup'
+  quote: 'The Agent MUST respond with a unique Session ID that identifies this conversation:'
+  accessed: 2026-10-24
+- id: acp-absolute-paths
+  claim: All file paths in the protocol must be absolute, which is why handle_session_new rejects a relative
+    cwd as invalid params.
+  where: lesson.py handle_session_new
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: All file paths in the protocol MUST be absolute.
+  accessed: 2026-10-24
+- id: acp-mcp-servers-passed-to-agent
+  claim: The editor passes the agent the configuration of its user-configured MCP servers (in session/new),
+    and the agent then connects to those servers itself. The editor does not speak MCP to them on the
+    agent's behalf, and MCP and ACP do not share a socket.
+  where: lesson.py section 1, the table after the three editors, and the two-column demo
+  source_url: https://agentclientprotocol.com/get-started/architecture
+  source_title: 'Agent Client Protocol: Architecture'
+  quote: it passes configuration for these to the agent. This allows the agent to connect directly to
+    the MCP server.
+  quote_context: the 'MCP' section; the preceding sentence is 'Commonly the code editor will have user-configured
+    MCP servers. When forwarding the prompt from the user,'
+  accessed: 2026-10-24
+- id: acp-both-sides-send-requests
+  claim: ACP uses JSON-RPC notifications to stream updates and JSON-RPC's bidirectional requests so the
+    agent can make requests of the editor, for example to ask permission for a tool call. This is the
+    structural fact behind exercise 3.
+  where: lesson.py section 1 and exercise 3
+  source_url: https://agentclientprotocol.com/get-started/architecture
+  source_title: 'Agent Client Protocol: Architecture'
+  quote: 'It also uses JSON-RPC’s bidirectional requests to allow the agent to make requests of the code
+    editor: for example to request permissions for a tool call.'
+  accessed: 2026-10-24
+- id: acp-agent-is-a-subprocess
+  claim: Agents typically run as subprocesses of the client (the editor); the editor boots the agent on
+    demand and all communication happens over stdin and stdout. The lesson's in-memory wire stands in
+    for those pipes.
+  where: lesson.py section 1, section 2 and section 8
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: They typically run as subprocesses of the Client.
+  accessed: 2026-10-24
+- id: acp-stdio-framing
+  claim: Over the stdio transport ACP messages are individual JSON-RPC requests, notifications or responses,
+    UTF-8 encoded, delimited by newlines, and containing no embedded newline. The agent writes nothing
+    to stdout that is not a valid ACP message.
+  where: lesson.py encode(), LoopWire.write (the one-line assertion) and section 1
+  source_url: https://agentclientprotocol.com/protocol/v1/transports
+  source_title: 'Agent Client Protocol: Transports'
+  quote: Messages are delimited by newlines (\n), and MUST NOT contain embedded newlines.
+  quote_context: the stdio bullet list; the same list says 'The agent MUST NOT write anything to its stdout
+    that is not a valid ACP message.'
+  accessed: 2026-10-24
+- id: acp-http-transport-draft
+  claim: On 2026-10-24 the HTTP transport was still a draft proposal, while agents and clients are asked
+    to support stdio whenever possible.
+  where: lesson.py section 8
+  source_url: https://agentclientprotocol.com/protocol/v1/transports
+  source_title: 'Agent Client Protocol: Transports'
+  quote: Streamable HTTP (draft proposal in progress)
+  accessed: 2026-10-24
+- id: acp-notifications-never-answered
+  claim: ACP notifications never receive responses, neither success nor error; session/cancel is such
+    a notification, with no response expected.
+  where: lesson.py section 1 (the encoded session/cancel), the cancel cases, self-check question 5
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: Notifications never receive responses (success or error)
+  accessed: 2026-10-24
+- id: acp-session-update-variants
+  claim: 'The agent reports progress with session/update notifications whose sessionUpdate field names
+    the variant: agent_message_chunk is a streamed chunk of the agent''s response, tool_call announces
+    a new tool call and tool_call_update changes its status or results.'
+  where: lesson.py say(), announce(), report() and exercise 4
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: agent_message_chunk | A streamed chunk of the Agent’s response.
+  quote_context: the 'Session Updates' table, where the same page lists 'tool_callA new tool call.' and
+    'tool_call_updateA change to a tool call’s status or results.'
+  accessed: 2026-10-24
+- id: acp-prompt-turn-ends-with-stop-reason
+  claim: A prompt turn ends when the agent answers the original session/prompt request with a stop reason;
+    end_turn means the model finished without requesting more tools, and cancelled means the client cancelled
+    the turn.
+  where: lesson.py exercise 4, STOP_REASONS
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: 'If there are no pending tool calls, the turn ends and the Agent MUST respond to the original
+    session/prompt request with a StopReason:'
+  accessed: 2026-10-24
+- id: acp-stop-reason-values
+  claim: The stop reasons are end_turn, max_tokens, max_turn_requests, refusal and cancelled.
+  where: lesson.py STOP_REASONS
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: The Client cancels the turn
+  quote_context: 'the ''Stop Reasons'' list: ''end_turn'', ''max_tokens'', ''max_turn_requests'', ''refusal''
+    and ''cancelled'' each with a one-line description; this is the description of cancelled'
+  accessed: 2026-10-24
+- id: acp-permission-request
+  claim: 'Before running a tool the agent may ask the user''s permission with the client method session/request_permission,
+    naming the tool call and a list of options. The client answers with an outcome: selected with the
+    chosen optionId, or cancelled.'
+  where: lesson.py exercise 2 and exercise 4
+  source_url: https://agentclientprotocol.com/protocol/v1/tool-calls
+  source_title: 'Agent Client Protocol: Tool Calls'
+  quote: 'The Agent MAY request permission from the user before executing a tool call by calling the session/request_permission
+    method:'
+  accessed: 2026-10-24
+- id: acp-permission-cancelled-outcome
+  claim: If the current prompt turn is cancelled the client must answer the permission request with the
+    cancelled outcome.
+  where: lesson.py exercise 2 and the cancel cases
+  source_url: https://agentclientprotocol.com/protocol/v1/tool-calls
+  source_title: 'Agent Client Protocol: Tool Calls'
+  quote: 'If the current prompt turn gets cancelled, the Client MUST respond with the "cancelled" outcome:'
+  accessed: 2026-10-24
+- id: acp-permission-option-kinds
+  claim: A permission option's kind is one of allow_once, allow_always, reject_once and reject_always,
+    a hint to the client about how to present it; the option's optionId is a string the agent chose. Exercise
+    2 decides by kind.
+  where: lesson.py exercise 2, PERMISSION_OPTIONS
+  source_url: https://agentclientprotocol.com/protocol/v1/tool-calls
+  source_title: 'Agent Client Protocol: Tool Calls'
+  quote: allow_always - Allow this operation and remember the choice
+  quote_context: the 'Permission Options' list; the other three kinds are allow_once, reject_once and
+    reject_always
+  accessed: 2026-10-24
+- id: acp-tool-call-statuses
+  claim: A tool call's status is pending, in_progress, completed or failed; the agent reports the tool
+    call as pending when it is announced, as in_progress once it is running, and finishes with completed
+    or failed. File modifications can be shown as a diff content block with a path, an old text and a
+    new text.
+  where: lesson.py TOOL_STATUSES, report(), exercise 4
+  source_url: https://agentclientprotocol.com/protocol/v1/tool-calls
+  source_title: 'Agent Client Protocol: Tool Calls'
+  quote: The tool call failed with an error
+  quote_context: the 'Status' list (pending, in_progress, completed, failed); the same page's 'Diffs'
+    section opens 'File modifications shown as diffs:'
+  accessed: 2026-10-24
+- id: acp-fs-capability-gate
+  claim: An agent must not call fs/read_text_file or fs/write_text_file unless the client advertised the
+    matching capability as true in initialize.
+  where: lesson.py exercise 4 (capability gating) and its rubric
+  source_url: https://agentclientprotocol.com/protocol/v1/file-system
+  source_title: 'Agent Client Protocol: File System'
+  quote: If readTextFile or writeTextFile is false or not present, the Agent MUST NOT attempt to call
+    the corresponding filesystem method.
+  accessed: 2026-10-24
+- id: acp-fs-reads-unsaved-state
+  claim: fs/read_text_file reads from the client's environment including unsaved changes in the editor,
+    which is why the agent reads through the editor rather than from disk.
+  where: lesson.py section 3 (the scripted brain) and the three editors
+  source_url: https://agentclientprotocol.com/protocol/v1/file-system
+  source_title: 'Agent Client Protocol: File System'
+  quote: The fs/read_text_file method allows Agents to read text file contents from the Client’s filesystem,
+    including unsaved changes in the editor.
+  accessed: 2026-10-24
+- id: acp-cancel-answers-with-cancelled
+  claim: After a session/cancel notification the agent must, once ongoing operations are aborted and pending
+    updates sent, answer the original session/prompt request with the cancelled stop reason.
+  where: lesson.py exercise 4 and the cancel cases of the rubric; self-check question 3
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: After all ongoing operations have been successfully aborted and pending updates have been sent,
+    the Agent MUST respond to the original session/prompt request with the cancelled stop reason.
+  accessed: 2026-10-24
+- id: acp-cancel-errors-become-cancelled
+  claim: An error raised by aborting an operation must be caught and reported as the cancelled stop reason,
+    not as an error response to session/prompt.
+  where: lesson.py exercise 4 (an RpcError while session.cancelled is set); rubric case test_turn_cancel_shows_through_an_error
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: Agents MUST catch these errors and return the semantically meaningful cancelled stop reason,
+    so that Clients can reliably confirm the cancellation.
+  accessed: 2026-10-24
+- id: acp-cancel-stop-requests
+  claim: On receiving session/cancel the agent should stop all model requests and all tool call invocations
+    as soon as possible; it may still send updates, but only before it answers the prompt.
+  where: lesson.py exercise 4 (no request after a cancel)
+  source_url: https://agentclientprotocol.com/protocol/v1/prompt-turn
+  source_title: 'Agent Client Protocol: Prompt Turn'
+  quote: When the Agent receives this notification, it SHOULD stop all language model requests and all
+    tool call invocations as soon as possible.
+  accessed: 2026-10-24
+- id: acp-method-names
+  claim: ACP's baseline agent methods are initialize, authenticate, session/new and session/prompt; its
+    client methods include session/request_permission, fs/read_text_file, fs/write_text_file and terminal/create;
+    session/update and session/cancel are notifications. The two-column test uses these families.
+  where: lesson.py exercise 5 (the table of method families)
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: Create a new terminal (requires terminal capability).
+  quote_context: the entry for terminal/create in the Client's optional methods; the same page lists authenticate,
+    session/new, session/prompt, session/cancel, session/update, session/request_permission, fs/read_text_file
+    and fs/write_text_file
+  accessed: 2026-10-24
+- id: acp-elicitation-create
+  claim: ACP defines a client method elicitation/create, to request structured information from the user.
+    (MCP defines a method of the same name; see mcp-elicitation-create.)
+  where: lesson.py exercise 5 (elicitation/create belongs to both)
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: Request structured information from the user
+  accessed: 2026-10-24
+- id: mcp-elicitation-create
+  claim: MCP defines the request elicitation/create, which a server sends to ask the user for information.
+    The method name is therefore not enough to say which protocol an elicitation/create message belongs
+    to.
+  where: lesson.py exercise 5; MCP_SAMPLES
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/client/elicitation
+  source_title: 'Model Context Protocol 2025-11-25: Elicitation'
+  quote: To request information from a user, servers send an elicitation/create request.
+  accessed: 2026-10-24
+- id: mcp-current-revision
+  claim: On 2026-10-24 MCP's current protocol version was 2026-07-28.
+  where: lesson.py exercise 5 and section 7
+  source_url: https://modelcontextprotocol.io/specification/versioning
+  source_title: 'Model Context Protocol: Versioning'
+  quote: The current protocol version is 2026-07-28.
+  accessed: 2026-10-24
+- id: mcp-legacy-initialize-handshake
+  claim: The protocol versions that establish a session with an initialize handshake are called legacy
+    by MCP, up to and including 2025-11-25. The lesson's classifier uses a date-string protocolVersion
+    in initialize as the mark of an MCP handshake, and says it is the legacy handshake. The current revision's
+    own page says that a modern server treats initialize as an unknown method.
+  where: lesson.py exercise 5 and MCP_SAMPLES
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/versioning
+  source_title: 'Model Context Protocol 2026-07-28: Versioning'
+  quote_context: 'the Terminology list; the compatibility table of the same page says of a legacy client
+    and a modern server: ''initialize is an unknown method'''
+  quote: 'Legacy: protocol versions that establish a session with an initialize handshake (2025-11-25
+    and earlier).'
+  accessed: 2026-10-24
+- id: mcp-initialize-version-is-a-date-string
+  claim: In an MCP initialize request and its response the protocolVersion is a date string, the example
+    in the 2025-11-25 lifecycle page being "2025-11-25".
+  where: lesson.py exercise 5 and MCP_SAMPLES
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25: Lifecycle'
+  quote: '"protocolVersion": "2025-11-25",'
+  accessed: 2026-10-24
+- id: mcp-initialized-notification
+  claim: After initialize an MCP client sends the notification notifications/initialized; MCP notification
+    names live under the notifications/ prefix.
+  where: lesson.py exercise 5 and MCP_SAMPLES
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/lifecycle
+  source_title: 'Model Context Protocol 2025-11-25: Lifecycle'
+  quote: '"method": "notifications/initialized"'
+  accessed: 2026-10-24
+- id: mcp-tools-methods
+  claim: MCP clients discover tools with tools/list and invoke them with tools/call; tools/list is also
+    present in the current 2026-07-28 revision.
+  where: lesson.py exercise 5 and MCP_SAMPLES
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25: Tools'
+  quote: 'To invoke a tool, clients send a tools/call request:'
+  quote_context: 'the same page: ''To discover available tools, clients send a tools/list request.'';
+    the 2026-07-28 tools page repeats that sentence'
+  accessed: 2026-10-24
+- id: mcp-resources-and-prompts-methods
+  claim: MCP clients read a resource with resources/read and fetch a prompt with prompts/get; the lesson's
+    classifier treats the families tools/, resources/ and prompts/ as MCP.
+  where: lesson.py exercise 5
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/resources
+  source_title: 'Model Context Protocol 2025-11-25: Resources (and Prompts)'
+  quote: 'To retrieve resource contents, clients send a resources/read request:'
+  quote_context: the Prompts page of the same revision says 'To retrieve a specific prompt, clients send
+    a prompts/get request.'
+  accessed: 2026-10-24
+- id: jsonrpc-notification-no-reply
+  claim: 'JSON-RPC 2.0: a notification is a request without an id, and the server must not reply to it.'
+  where: lesson.py kind_of(), Conn.handle, self-check question 5
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: The Server MUST NOT reply to a Notification, including those that are within a batch request.
+  accessed: 2026-10-24
+- id: jsonrpc-response-same-id
+  claim: 'JSON-RPC 2.0: the id of a request is established by the sender of the request and the response
+    carries the same value, which correlates the two. That each side''s ids then form a separate space
+    on a connection where both sides send requests is this lesson''s inference from the rule, not the
+    specification''s wording.'
+  where: lesson.py section 2 (ids), exercise 3
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: The Server MUST reply with the same value in the Response object if included. This member is
+    used to correlate the context between the two objects.
+  accessed: 2026-10-24
+- id: jsonrpc-error-codes
+  claim: JSON-RPC 2.0 reserves -32700 for a parse error, -32600 for an invalid request, -32601 for a method
+    that does not exist and -32602 for invalid method parameters.
+  where: lesson.py decode(), Conn.read_message, Conn.handle, handle_initialize, handle_session_new
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: The method does not exist / is not available.
+  quote_context: the 'Error object' table row for -32601 Method not found; the same table has -32700 Parse
+    error, -32600 Invalid Request and -32602 Invalid params
+  accessed: 2026-10-24
+- id: jsonrpc-reserved-block
+  claim: JSON-RPC 2.0 reserves the codes from -32768 to -32000 inclusive for pre-defined errors (with
+    -32000 to -32099 for implementation-defined server errors inside that block) and leaves every other
+    code to applications. The lesson's agent therefore takes its two own codes, -31001 for 'initialise
+    first' and -31003 for 'one turn at a time', from the application space outside the block.
+  where: lesson.py section 2 (Conn), handle_session_new, Conn.on_other
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: The error codes from and including -32768 to -32000 are reserved for pre-defined errors.
+  quote_context: section 5.1 'Error object'; the table ends '-32000 to -32099 | Server error | Reserved
+    for implementation-defined server-errors.' and the next sentence is 'The remainder of the space is
+    available for application defined errors.'
+  accessed: 2026-10-24
+- id: jsonrpc-application-defined-errors
+  claim: JSON-RPC 2.0 makes every code outside its reserved block available for application-defined errors,
+    which is where -31001 and -31003 sit.
+  where: lesson.py section 2 (Conn), handle_session_new, Conn.on_other
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: The remainder of the space is available for application defined errors.
+  accessed: 2026-10-24
+- id: acp-claims-the-server-error-range
+  claim: ACP's schema says its predefined error codes use JSON-RPC's range -32000 to -32099 for protocol-specific
+    errors, so a lesson-own code in that range (as -32001 or -32003 were in an earlier draft of this lesson)
+    could clash with a code a later ACP release assigns, although neither was assigned in schema-v1.24.1
+    (v1, v1 unstable, v2 or v2 unstable).
+  where: lesson.py section 2 (Conn)
+  source_url: https://agentclientprotocol.com/protocol/v1/schema
+  source_title: 'Agent Client Protocol: Schema (ErrorCode)'
+  quote: These codes follow the JSON-RPC 2.0 specification for standard errors and use the reserved range
+    (-32000 to -32099) for protocol-specific errors.
+  quote_context: the ErrorCode entry, which opens 'Predefined error codes for common JSON-RPC and ACP-specific
+    errors.'; the same text is the ErrorCode description in schema/v1/schema.json at the tag schema-v1.24.1
+  accessed: 2026-10-24
+- id: acp-follows-jsonrpc-2
+  claim: 'ACP follows the JSON-RPC 2.0 specification, with two kinds of message: methods (request and
+    response pairs) and notifications (one-way messages).'
+  where: lesson.py section 1
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: 'The protocol follows the JSON-RPC 2.0 specification with two types of messages:'
+  accessed: 2026-10-24
+- id: jsonrpc-2-is-stable
+  claim: 'JSON-RPC 2.0 is a stable specification: the page at jsonrpc.org gives its origin date as 2010-03-26
+    and its last update as 2013-01-04, so it is not a revision that moves from week to week, unlike ACP.'
+  where: lesson.py section 1
+  source_url: https://www.jsonrpc.org/specification
+  source_title: JSON-RPC 2.0 Specification
+  quote: 'Updated: 2013-01-04'
+  quote_context: 'the header block of the page, under ''Origin Date: 2010-03-26 (based on the 2009-05-24
+    version)'''
+  accessed: 2026-10-24
+- id: acp-custom-methods-underscore
+  claim: ACP lets implementations add custom methods by prefixing their names with an underscore. The
+    lesson's editor A uses one (_acme/focus_file) to send the agent a request it does not know, and the
+    agent answers it with the JSON-RPC method-not-found error.
+  where: lesson.py section 1, class BufferEditor, Conn.on_other
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: Create custom methods by prefixing their name with underscore (_)
+  accessed: 2026-10-24
+- id: acp-error-codes
+  claim: 'ACP''s schema defines error codes of its own beyond JSON-RPC''s five standard ones: -32000 is
+    "authentication required" and -32002 is "resource not found" (for example a file), both inside JSON-RPC''s
+    server-error range, and -32800 is "request cancelled", which lies outside JSON-RPC''s reserved block
+    altogether. The lesson''s agent keeps clear of all of them with -31001 and -31003 for its two own
+    conditions, which the specification does not fix, and its toy editor answers a missing file with -32002.'
+  where: lesson.py section 2 (Conn), handle_session_new, Conn.on_other, ToyEditor._on_request
+  source_url: https://agentclientprotocol.com/protocol/v1/schema
+  source_title: 'Agent Client Protocol: Schema (ErrorCode)'
+  quote: Authentication is required before this operation can be performed.
+  quote_context: 'the ErrorCode list: ''-32000 Authentication required'', ''-32002 Resource not found
+    : A given resource, such as a file, was not found.'' and ''-32800 Request cancelled'''
+  accessed: 2026-10-24
+- id: acp-custom-method-not-found
+  claim: A receiver that does not recognise a custom (underscore-prefixed) request method should answer
+    with the standard JSON-RPC method-not-found error. Editor A's _acme/focus_file request is answered
+    that way.
+  where: lesson.py section 1, class BufferEditor, Conn.on_other
+  source_url: https://agentclientprotocol.com/protocol/v1/extensibility
+  source_title: 'Agent Client Protocol: Extensibility'
+  quote: If the receiving end doesn’t recognize the custom method name, it should respond with the standard
+    “Method not found” error
+  accessed: 2026-10-24
+- id: acp-method-names-outside-the-table
+  claim: ACP also has the client notification elicitation/complete and the optional agent method logout,
+    which the lesson's two-column table does not list; the lesson says its table is a reduced list and
+    classes such names "neither".
+  where: lesson.py exercise 5 (the note under the table)
+  source_url: https://agentclientprotocol.com/protocol/v1/overview
+  source_title: 'Agent Client Protocol: Overview'
+  quote: Report completion of an out-of-band URL interaction (no response expected).
+  quote_context: the entry for elicitation/complete in the Client's notifications; the entry for logout
+    in the Agent's optional methods reads 'End the current authenticated state'
+  accessed: 2026-10-24
+- id: acp-capabilities-not-all-booleans
+  claim: Some ACP capabilities are objects, not booleans, with rules of their own (for example elicitation,
+    where an empty object is not support for the form mode). The lesson's only-true rule in client_can
+    is therefore its own convention for the boolean fs capabilities it uses.
+  where: lesson.py exercise 4 text and client_can
+  source_url: https://agentclientprotocol.com/protocol/v1/initialization
+  source_title: 'Agent Client Protocol: Initialization'
+  quote: Unlike MCP, ACP does not treat {} as form support.
+  accessed: 2026-10-24
+- id: acp-fs-capabilities-default-false
+  claim: The published v1 schema types fs.readTextFile and fs.writeTextFile as booleans that default to
+    false, and marks them to fall back to that default when a value cannot be deserialised. A non-boolean
+    such as "yes" or 1 therefore reads as unsupported, which is what the lesson's only-true client_can
+    helper does.
+  where: lesson.py exercise 4 text and client_can
+  source_url: https://github.com/agentclientprotocol/agent-client-protocol/blob/schema-v1.24.1/schema/v1/schema.json
+  source_title: agentclientprotocol/agent-client-protocol, schema/v1/schema.json at tag schema-v1.24.1
+    (FileSystemCapabilities)
+  quote: Whether the Client supports `fs/read_text_file` requests.
+  quote_context: 'the readTextFile property of FileSystemCapabilities, whose JSON is {"type": "boolean",
+    "default": false, "x-deserialize-default-on-error": true}; writeTextFile reads ''Whether the Client
+    supports `fs/write_text_file` requests.'' with the same three keys'
+  accessed: 2026-10-24
+- id: mcp-ping-method
+  claim: MCP has a ping request of its own (revision 2025-11-25), a name the lesson's two-column table
+    does not list.
+  where: lesson.py exercise 5 (the note under the table)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/basic/utilities/ping
+  source_title: 'Model Context Protocol 2025-11-25: Ping'
+  quote: The Model Context Protocol includes an optional ping mechanism that allows either party to verify
+    that their counterpart is still responsive and the connection is alive.
+  accessed: 2026-10-24

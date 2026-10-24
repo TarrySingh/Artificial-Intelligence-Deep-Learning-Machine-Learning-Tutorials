@@ -1,0 +1,137 @@
+claims:
+- id: omnidocbench-v17-latest-version-bump
+  claim: As of the access date the OmniDocBench README's news log records its newest version bump as the
+    move from v1.6 to v1.7 on 2026-04-30, which also added skills-based evaluation. The lesson names this
+    as the current state of the worked example.
+  where: lesson.py section 1
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'Updates' (opendatalab/OmniDocBench, main branch)
+  quote: '[2026/04/30] Updated from **v1.6** to **v1.7**, added the Qianfan-OCR leaderboard, and supported
+    skills-based evaluation.'
+  quote_context: First version entry in the 'Updates' log, below the two later non-version entries
+  accessed: 2026-10-24
+- id: omnidocbench-later-entries-not-versions
+  claim: The two news entries after the v1.7 bump add a community integration (EvalScope, on 2026-07-27)
+    and leaderboard results (on 2026-09-11); neither is a version change. The README's newest commit is
+    dated 2026-09-11 with the message "add leadboard" (sic).
+  where: lesson.py section 1 ('The two later entries add a community integration and leaderboard rows,
+    not a version')
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'Updates'; commit list of README.md on the main branch
+  quote: '[2026/09/11] Added TeleOCR, OvisOCR2, and Unlimited-OCR leaderboard results.'
+  quote_context: 'The 2026/07/27 entry begins "[2026/07/27] Added a community-maintained" and goes on
+    to name the EvalScope integration. The README''s newest commit was read from https://github.com/opendatalab/OmniDocBench/commits/main/README.md
+    (the GitHub API listing for that path): 9b46e6da, 2026-09-11, message "add leadboard".'
+  accessed: 2026-10-24
+- id: omnidocbench-v16-data-and-code
+  claim: On 2026-04-10 OmniDocBench went from v1.5 to v1.6, a change to both the benchmark dataset (296
+    new pages and fixed annotation typos) and the evaluation code (a new matching procedure that keeps
+    the ground truth unchanged and adapts the segmentation of the prediction only).
+  where: lesson.py section 1, first bullet
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'Updates'
+  quote: '[2026/04/10] **Major update**: Updated from **v1.5** to **v1.6**'
+  quote_context: The same entry says "Added **296 new pages**", "Fixed typos in some text and table annotations"
+    and, for the evaluation code, "The core principle is to keep the ground truth unchanged and **search
+    for the optimal segmentation granularity only on the prediction side.**"
+  accessed: 2026-10-24
+- id: omnidocbench-table-edit-distance-normalised
+  claim: On 2025-01-16 OmniDocBench changed the edit distance it computes for tables to use normalised
+    ground truths and predictions. The lesson presents this as the same idea as the repair it builds (normalise
+    both sides before comparing) and says the README does not say what the normalisation consists of.
+  where: lesson.py section 1, third bullet; section 9
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'Updates', entry 2025/01/16
+  quote: Changed the Edit Distance calculation for the Table section to use normalized GTs and Preds
+  quote_context: The entry is dated [2025/01/16]; the lesson does not say what the normalisation consists
+    of
+  accessed: 2026-10-24
+- id: omnidocbench-metrics-and-overall-score
+  claim: The README lists normalised edit distance and BLEU (and METEOR, TEDS and COCODet) among its supported
+    metrics, and defines its overall leaderboard score using one minus the text edit distance (together
+    with table TEDS and formula CDM), a definition introduced with v1.5 on 2025-09-25.
+  where: lesson.py section 1, last bullet; section 3
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, introduction and section 'Updates', entry 2025/09/25
+  quote: The **Overall** metric is now calculated as ((1 - text Edit distance) * 100 + table TEDS + formula
+    CDM) / 3
+  quote_context: The supported-metrics list reads "Currently supported metrics include:" followed by the
+    list items "Normalized Edit Distance", "BLEU", "METEOR", "TEDS" and "COCODet (mAP, mAR, etc.)".
+  accessed: 2026-10-24
+- id: omnidocbench-known-issue-output-formats
+  claim: The README's Known Issues section says that unusual output formats from models cause matching
+    failures, and that post-processing of model output formats can reduce them.
+  where: lesson.py section 1, last bullet
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'Known Issues'
+  quote: leading to matching failures. This can be optimized through post-processing of model output formats
+  quote_context: 'The full sentence: "Some models occasionally produce non-standard output formats (e.g.,
+    recognizing multi-column text as tables, or formulas as Unicode text), leading to matching failures."'
+  accessed: 2026-10-24
+- id: bleu-geometric-mean-harsh-when-precision-vanishes
+  claim: The BLEU paper says the geometric mean of the modified n-gram precisions is harsh if any precision
+    vanishes, and that it expected this to be extremely rare in test corpora of reasonable size. The lesson
+    scores single answers, where it is not rare, and says that is a choice of this lesson's, not the paper's.
+  where: lesson.py section 4 (exercise 2) and section 13
+  source_url: https://aclanthology.org/P02-1040/
+  source_title: 'Papineni, Roukos, Ward, Zhu (2002), BLEU: a Method for Automatic Evaluation of Machine
+    Translation, ACL 2002, footnote 5 of section 2.2'
+  quote: The geometric average is harsh if any of the modified precisions vanish, but this should be an
+    extremely rare event in test corpora of reasonable size
+  quote_context: Footnote 5, attached to the sentence saying BLEU uses the geometric mean of the modified
+    n-gram precisions; the PDF is https://aclanthology.org/P02-1040.pdf
+  accessed: 2026-10-24
+- id: bleu-multiple-references-word-order
+  claim: The BLEU paper designed the metric to handle multiple reference translations and to allow legitimate
+    differences in word choice and word order. The lesson scores against ONE reference, so it does not
+    use that allowance.
+  where: lesson.py section 4 (exercise 2)
+  source_url: https://aclanthology.org/P02-1040/
+  source_title: Papineni, Roukos, Ward, Zhu (2002), BLEU, section 1.1 Rationale
+  quote: appropriately modified for multiple reference translations and allowing for legitimate differences
+    in word choice and word order
+  quote_context: 'Section 1.1: ''We fashion our closeness metric after the highly successful word error
+    rate metric used by the speech recognition community, appropriately modified for ...'''
+  accessed: 2026-10-24
+- id: chrf-character-ngram-f-score
+  claim: chrF was proposed as a character n-gram F-score for evaluating machine translation output, with
+    precision and recall arithmetically averaged over the n-gram orders; the best correlation with human
+    judgements was obtained with 6-grams, and counting spaces as characters gave no improvement and was
+    abandoned. The lesson's chrF follows this (whitespace deleted, orders 1 to 6, averaged precision and
+    recall combined into an F-score).
+  where: lesson.py section 5 (exercise 3)
+  source_url: https://aclanthology.org/W15-3049/
+  source_title: 'Popovic (2015), chrF: character n-gram F-score for automatic MT evaluation, WMT 2015'
+  quote: We propose the use of character n-gram F-score for automatic evaluation of machine translation
+    output.
+  quote_context: 'Abstract. Section 2 defines precision and recall as "arithmetically averaged over all
+    n-grams"; the n-gram length experiments say "The best correlations are obtained for 6-gram" and "taking
+    space into account did not yield any improvement regarding the correlations and therefore has been
+    abandoned". PDF: https://aclanthology.org/W15-3049.pdf'
+  accessed: 2026-10-24
+- id: bleu-corpus-level-brevity-penalty
+  claim: The BLEU paper computes the brevity penalty over the whole test corpus, not sentence by sentence,
+    and gives as its reason that a sentence-by-sentence penalty would punish length deviations on short
+    sentences harshly. The lesson applies the penalty to each answer on its own and says that this is
+    the lesson's own definition, not the paper's.
+  where: lesson.py section 4 (exercise 2), the paragraph beginning 'One more difference from the paper'
+  source_url: https://aclanthology.org/P02-1040/
+  source_title: 'Papineni, Roukos, Ward, Zhu (2002), BLEU: a Method for Automatic Evaluation of Machine
+    Translation, ACL 2002, section 2.2.2 (sentence brevity penalty)'
+  quote: if we computed the brevity penalty sentence by sentence and averaged the penalties, then length
+    deviations on short sentences would be punished harshly
+  quote_context: 'Followed by ''Instead, we compute the brevity penalty over the entire corpus to allow
+    some freedom at the sentence level.'' PDF: https://aclanthology.org/P02-1040.pdf'
+  accessed: 2026-10-24
+- id: omnidocbench-end-to-end-markdown-prediction
+  claim: The README's end-to-end evaluation uses the model's Markdown output for a whole PDF page as the
+    prediction, and its Overall metric includes one minus the text edit distance. The lesson uses this
+    to describe the worked example as scoring a model's Markdown for a page.
+  where: lesson.py section 1, first sentences
+  source_url: https://github.com/opendatalab/OmniDocBench
+  source_title: OmniDocBench README, section 'End-to-End Evaluation' (main branch)
+  quote: The evaluation uses the model's Markdown output of the entire PDF page parsing results as the
+    prediction.
+  quote_context: The next sentence gives the Overall formula, ((1 - Text Edit Distance) x 100 + Table
+    TEDS + Formula CDM) / 3
+  accessed: 2026-10-24

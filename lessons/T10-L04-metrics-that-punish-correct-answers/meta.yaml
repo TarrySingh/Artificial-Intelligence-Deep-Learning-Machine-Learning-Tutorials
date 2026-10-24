@@ -1,0 +1,68 @@
+id: T10-L04-metrics-that-punish-correct-answers
+title: Build edit distance, BLEU and chrF from scratch, measure how often each ranks a rejected answer
+  above an accepted one, and repair the metric with a normaliser and a rubric check
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement Levenshtein edit distance, and a similarity built from it, that work on strings and on lists
+  of words
+- Implement sentence-level BLEU (clipped n-gram precision, brevity penalty, geometric mean) and chrF (character
+  n-gram F-score)
+- Implement a pairwise misordering rate, and measure with it how often each metric ranks a rejected answer
+  above an accepted one, for each kind of harmless rewrite and each kind of real error
+- Implement a formatting normaliser, and measure how much of that misordering it removes and which kinds
+  of answer it leaves untouched
+- Measure a quantity-and-unit rubric check on the error types it was written for and on held-out error
+  types, and name the cases it cannot see
+before_you_start:
+  assumed:
+  - write nested loops that fill in a table cell by cell from the cells already filled (the idea behind
+    dynamic programming)
+  - get the n-grams of a list or a string with slicing, and count them with collections.Counter
+  - write a regular expression for re.sub, including a lookahead or a lookbehind
+  - explain precision and recall, and how an F-score combines them
+  resources:
+  - title: 'Speech and Language Processing (3rd ed. draft), chapter 2: Words and Tokens'
+    by: Dan Jurafsky and James H. Martin (Stanford; free draft)
+    url: https://web.stanford.edu/~jurafsky/slp3/2.pdf
+    kind: free
+    why: 'section 2.9, minimum edit distance: the dynamic-programming table behind exercise 1; section
+      2.6, regular expressions including lookahead assertions, the tool exercise 5 leans on'
+  - title: 'Bleu: a Method for Automatic Evaluation of Machine Translation'
+    by: Papineni, Roukos, Ward and Zhu (ACL 2002; free on the ACL Anthology)
+    url: https://aclanthology.org/P02-1040/
+    kind: free
+    why: section 2, the modified n-gram precision, brevity penalty and geometric mean that exercise 2
+      implements, in the authors' own words
+  - title: 'chrF: character n-gram F-score for automatic MT evaluation'
+    by: Maja Popovic (WMT 2015; free on the ACL Anthology)
+    url: https://aclanthology.org/W15-3049/
+    kind: free
+    why: 'the metric exercise 3 implements: character n-gram precision and recall, averaged, combined
+      into an F-score'
+  - title: A Call for Clarity in Reporting BLEU Scores
+    by: Matt Post (WMT 2018; free on the ACL Anthology)
+    url: https://aclanthology.org/W18-6319/
+    kind: free
+    why: why the same BLEU can print different scores when the reference is tokenised or normalised differently,
+      which is the problem exercise 5 works on
+  - title: 'OmniDocBench: the README of the benchmark used as this lesson''s worked example'
+    by: opendatalab (GitHub)
+    url: https://github.com/opendatalab/OmniDocBench
+    kind: free
+    why: the news log and the metric list that section 1 reads, and the evaluation configuration if you
+      want to see an item-level scorer in use
+datasets:
+- name: T10-L04 synthetic answers (sixty templated sentences with planted harmless rewrites and planted
+    errors, all from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 65
+status: reviewed
+measured_seconds: 4.3
+measured_peak_mib: 36

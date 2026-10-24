@@ -1,0 +1,67 @@
+id: T10-L05-retrieval-metrics-and-pooling-bias
+title: Build the retrieval-evaluation toolkit — recall, MRR and nDCG from scratch, a judgement pool and
+  its bias, and a scripted labeller whose error you measure against the planted truth
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T06-L01-retrieval-from-scratch
+- T06-L03-reranking-measured
+objectives:
+- Implement recall@k, reciprocal rank and nDCG@k over graded relevance judgements from their definitions,
+  with a stated behaviour for a query that has no relevant document
+- Implement judgement pooling (the judged set is the union of the top documents of the pooled systems,
+  and an unjudged document counts as not relevant) and measure how far pooled scores sit from the planted
+  truth for systems inside and outside the pool
+- Implement Kendall's tau between two orderings of the same systems and use it to measure how far a pool
+  moves a leaderboard, by pool depth and by which systems fed the pool
+- Implement a scripted labeller with planted miss and false-alarm rates and measure its realised rates
+  against the planted ones
+- Measure how far three kinds of planted label error move the order of the systems over repeated labelling
+  seeds, and compare that movement with the movement caused by pooling
+before_you_start:
+  assumed:
+  - write Python functions, loops and dictionaries, and index and slice numpy arrays
+  - read a ranked list of search results and say what 'the top 10' of it is
+  - recognise recall, precision and nDCG by name (T06-L01 builds them against a fixed answer key)
+  resources:
+  - title: Introduction to Information Retrieval, chapter 8, Evaluation in information retrieval
+    by: Manning, Raghavan and Schütze (Cambridge University Press)
+    url: https://nlp.stanford.edu/IR-book/html/htmledition/evaluation-in-information-retrieval-1.html
+    kind: free
+    why: the whole book is free online; chapter 8 covers test collections, relevance judgements, pooling,
+      nDCG and assessor agreement
+  - title: Bias and the Limits of Pooling for Large Collections
+    by: Buckley, Dimmick, Soboroff and Voorhees (Information Retrieval, 2007; NIST hosts the full paper)
+    url: https://www.nist.gov/publications/bias-and-limits-pooling-large-collections
+    kind: free
+    why: the research behind this lesson's pooling sections, on how a pool of too few documents biases
+      a test collection
+  - title: Large language models can accurately predict searcher preferences
+    by: Thomas, Spielman, Craswell and Mitra (arXiv 2309.10621)
+    url: https://arxiv.org/abs/2309.10621
+    kind: free
+    why: a worked account of using a model as the labeller and measuring it against trusted labels, the
+      setting of sections 7 and 8
+  - title: NumPy, the absolute basics for beginners
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: arrays, indexing and averaging, the few numpy operations the scoring code leans on
+  - title: The Python Tutorial, sections 4 and 5 (more control flow tools; data structures)
+    by: The Python Software Foundation
+    url: https://docs.python.org/3/tutorial/
+    kind: free
+    why: the official tutorial; defining functions, for loops, lists, sets and dictionaries are the plain
+      Python every exercise here is written in
+datasets:
+- name: T10-L05 synthetic retrieval collection (twelve planted topics with direct, vocabulary-mismatch
+    and decoy documents, graded planted judgements, one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 71
+status: reviewed
+measured_seconds: 0.7
+measured_peak_mib: 40
