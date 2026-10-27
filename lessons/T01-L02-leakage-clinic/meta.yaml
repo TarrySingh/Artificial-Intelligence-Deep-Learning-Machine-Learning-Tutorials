@@ -1,0 +1,78 @@
+id: T01-L02-leakage-clinic
+title: Build a leakage clinic — plant five leaks (target, preprocessing, duplicate, group and temporal)
+  in a seeded customer book, measure how much each inflates cross-validated AUC against an oracle ceiling,
+  and write the split, feature and pipeline checks that catch all five
+track: T01
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- T01-L01-statistics-by-simulation
+objectives:
+- Measure how much each of five planted leaks (target, preprocessing, duplicate, group and temporal) inflates
+  cross-validated AUC, against an honest protocol and an oracle ceiling, over twelve independently generated
+  books
+- Implement a split audit that counts, for one fold, the groups on both sides, the test rows less than
+  a label horizon after the latest training row, and the test rows whose key also occurs among the training
+  rows
+- Implement a feature audit (a point-in-time lateness check and a too-good-to-be-true AUC scan) and a
+  fold-isolation test that detects a pipeline whose scores depend on test labels or on other test rows
+- Implement a protocol diagnosis that combines the three checks over every fold, show that the checks
+  fall silent as the leaks are fixed in one fixed order, and find the folds under which the duplicate
+  check is silent while the leak is still present
+- Implement the average step of each leak over every order of fixing and use it to show that a leak's
+  measured inflation depends on which other leaks are still present
+before_you_start:
+  assumed:
+  - write Python functions and loops, and index a numpy array with an array of row numbers or with a boolean
+    mask
+  - say what AUC measures, as the chance that a randomly chosen positive row is scored above a randomly
+    chosen negative one
+  - 'describe k-fold cross-validation: train on all folds but one, score on the held-out fold, and repeat
+    for each fold'
+  - read a mean with its standard error and say whether a gap between two means is larger than its noise
+    (T01-L01 builds this)
+  resources:
+  - title: Common pitfalls and recommended practices, section 12.2 Data leakage
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/common_pitfalls.html
+    kind: free
+    why: defines data leakage and shows preprocessing and feature selection done before the split, the
+      failure the fold-isolation test in exercise 3 is built to catch
+  - title: 'Cross-validation: evaluating estimator performance (iterators for grouped data and for time
+      series)'
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/modules/cross_validation.html
+    kind: free
+    why: the group k-fold and time-series split sections describe the two split families whose boundary
+      exercise 1 audits
+  - title: Leakage and the reproducibility crisis in machine-learning-based science
+    by: Sayash Kapoor and Arvind Narayanan (Patterns, 2023, open access)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+    kind: free
+    why: a survey of leakage in published research with a taxonomy that contains this lesson's five leaks
+      (pre-processing, duplicates, illegitimate features, temporal leakage, non-independence)
+  - title: 'Classification: ROC and AUC'
+    by: Google for Developers, Machine Learning Crash Course
+    url: https://developers.google.com/machine-learning/crash-course/classification/roc-and-auc
+    kind: free
+    why: reads AUC as the chance that a randomly chosen positive example is ranked above a randomly chosen
+      negative one, the reading behind exercise 2's too-good scan and every AUC this lesson prints
+  - title: Indexing on ndarrays
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/basics.indexing.html
+    kind: free
+    why: the sections on integer array indexing and boolean array indexing, the two ways every exercise
+      picks out the rows of a fold
+datasets:
+- name: T01-L02 synthetic subscription book (monthly customer rows whose label is a request to cancel,
+    with a planted post-request column, category columns, repeated accounts, customer effects and month
+    effects; twelve books from one seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 80
+status: executed
+measured_seconds: 7.3
+measured_peak_mib: 45

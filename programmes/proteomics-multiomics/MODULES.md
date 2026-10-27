@@ -21,7 +21,9 @@ primary source, the section says what changed and why.
 3. **[Metabolomics feature detection and annotation](lessons/P07-L03-metabolomics-from-peaks/lesson.ipynb)** · built · ~150 minutes · Python<br>
    <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L03-metabolomics-from-peaks/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open Metabolomics feature detection and annotation in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L03-metabolomics-from-peaks/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open Metabolomics feature detection and annotation in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/proteomics-multiomics/lessons/P07-L03-metabolomics-from-peaks/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open Metabolomics feature detection and annotation in Binder"></picture></a><br>
    <sub>measured 1.9 s · 93 MiB · rubric 127 points in 42 cases</sub>
-4. Integration: factor models versus deep generative models · *specified*
+4. **[Integration: factor models versus deep generative models](lessons/P07-L04-factor-models-two-omics/lesson.ipynb)** · in review (executed) · ~150 minutes · Python<br>
+   <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open Integration: factor models versus deep generative models in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open Integration: factor models versus deep generative models in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open Integration: factor models versus deep generative models in Binder"></picture></a><br>
+   <sub>measured 17.0 s · 97 MiB · rubric 94 points in 37 cases</sub>
 5. Cross-modality QC and leakage traps · *specified*
 6. Proteogenomics: variants to protein evidence · *specified*
 7. Capstone: a reproducible multiomics integration, audited for leakage · *specified*
@@ -160,8 +162,9 @@ each confidence level and as evidence is taken away, then the same counts over s
 
 ---
 
-## Module 4 — Integration: factor models versus deep generative models *(specified)*
+## Module 4 — Integration: factor models versus deep generative models
 
+**Lesson:** `lessons/P07-L04-factor-models-two-omics/` · tier `cpu8` · budget 120 s · builds on `P07-L02-imputation-and-batch-effects` and `T01-L01-statistics-by-simulation`.
 
 **The lab, as the catalogue words it.** Run MOFA+ and totalVI on matched CITE-seq data and check
 recovered factors against known biology.
@@ -172,13 +175,23 @@ for joint analysis of CITE-seq data that models biological and technical factors
 background and batch effects (`totalvi-citeseq`). totalVI ships in scvi-tools, which is built on
 PyTorch (`scvi-tools-needs-pytorch`); MOFA+'s Python package needs pandas, scipy, scikit-learn and
 h5py (`mofapy2-dependencies`). None of those is in this environment, so this module does not run
-either tool. It generates matched RNA-like and protein-like measurements from known latent
-factors with donor and batch effects, and the student builds a shared-factor model and a small
-nonlinear latent-variable network in numpy, the same comparison at a scale a laptop can run.
+either tool. It generates matched protein-like and RNA-like layers from known latent factors with
+donor and batch effects. The built lesson covers the factor-model half only: the student builds a
+MOFA-style multi-view factor model in numpy and sets it beside a concatenated-PCA baseline. The
+nonlinear latent-variable network is not built, so the lesson does not compare factor models with
+deep generative models, and says so in its text.
 
-**What the student measures.** How well each recovered factor matches a true one (against the
-answer key that generated the data), how the two approaches degrade as batch effect grows, and what
-each one does to the donor structure. "Known biology" becomes "known generating factors".
+As built, the lesson has nine exercises: view preparation, concatenated PCA, an optimal one-to-one
+matching of recovered to planted factors, a per-layer variance-explained table, the three alternating
+ridge updates (layer weights, donor factors, and a scale for every factor in every layer), the
+fitting loop, and a consensus run over random restarts that chooses a restart without the answer key.
+
+**What the student measures.** How well each recovered factor matches a planted shared,
+layer-specific or technical one (against the answer key that generated the data), what removing the
+per-layer scales does, how stable the factors are across sweeps, restarts and simulated worlds, and
+how that changes as the planted factors are made weaker. "Known biology" becomes "known generating
+factors". The lesson lists what its model leaves out against MOFA+: variational inference,
+per-feature noise, feature-wise sparsity and missing-value handling.
 
 ---
 

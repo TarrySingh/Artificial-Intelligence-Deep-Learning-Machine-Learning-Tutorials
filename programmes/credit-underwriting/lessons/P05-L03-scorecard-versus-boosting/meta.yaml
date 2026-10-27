@@ -1,0 +1,85 @@
+id: P05-L03-scorecard-versus-boosting
+title: Build a monotone-constrained gradient-boosted challenger from scratch (histogram split search,
+  bounds handed down the tree, trees chosen on out-of-time months) and a Gini-and-PSI stability report
+  that sets it beside the weight-of-evidence scorecard, with a test that fails a model whose predicted
+  default risk falls, for any reference application, as an input that should raise it rises
+track: P05
+flagship: ''
+tier: cpu8
+budget_seconds: 300
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- P04-L07-challenger-from-scratch
+- P05-L01-pd-vintages-and-macro
+objectives:
+- Implement the second-order boosting step for the logistic loss (gradient and hessian in the raw score,
+  the regularised leaf weight clipped into inherited bounds, the loss-reduction gain) and a histogram
+  split search that refuses candidate splits whose clipped child weights break a stated monotone direction
+- Grow depth-limited trees that hand bounds down after every constrained split, and measure what a constraint
+  checked at each split alone lets through
+- Implement the boosting loop and choose the number of trees on out-of-time validation months rather than
+  on the development data
+- Implement a monotonicity test that checks every reference row on a grid built from the model's own thresholds,
+  and use it to fail an unconstrained booster and a split-only constraint and to see whether a model whose
+  bounds are handed down passes
+- Implement a Gini-and-PSI stability table by vintage with its edges cut once on development, and measure
+  over replicate books what the monotone constraint costs in development fit and what it buys on shifted
+  out-of-time months
+before_you_start:
+  assumed:
+  - write numpy code that indexes arrays with integer and boolean masks, and uses np.bincount (with weights)
+    and np.cumsum on the result
+  - explain what a logistic regression predicts, and what the gradient and the hessian of a loss are (its
+    first and second derivatives with respect to the model's output)
+  - read a decision tree as a set of if-then splits that put each row into one leaf, and say what the
+    value stored in a leaf is
+  - read a Gini coefficient as a measure of how well scores rank outcomes, and a population stability
+    index as a measure of how far a distribution has moved from a baseline
+  resources:
+  - title: Introduction to Boosted Trees (XGBoost documentation)
+    by: The XGBoost developers
+    url: https://xgboost.readthedocs.io/en/stable/tutorials/model.html
+    kind: free
+    why: the second-order objective with gradient and hessian statistics, the regularised leaf weight
+      and the structure score that this lesson's leaf_value and split gain are built from
+  - title: Monotonic Constraints (XGBoost documentation)
+    by: The XGBoost developers
+    url: https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html
+    kind: free
+    why: increasing and decreasing constraints written as inequalities on the model, and the note that
+      constraints can leave histogram trees shallower
+  - title: Parameters (LightGBM documentation)
+    by: Microsoft and the LightGBM contributors
+    url: https://lightgbm.readthedocs.io/en/stable/Parameters.html
+    kind: free
+    why: 'the monotone_constraints, monotone_constraints_method and monotone_penalty entries: the library
+      behaviour you could check your own booster against'
+  - title: The Elements of Statistical Learning, 2nd edition
+    by: Hastie, Tibshirani and Friedman (Springer; the authors host the free PDF)
+    url: https://hastie.su.domains/ElemStatLearn/download.html
+    kind: free
+    why: 'chapter 10, Boosting and Additive Trees: boosting as stagewise fitting of trees to a gradient,
+      the idea your fit_booster loop implements'
+  - title: Intelligent Credit Scoring, 2nd edition
+    by: Naeem Siddiqi (Wiley, 2017)
+    url: https://www.wiley.com/en-us/intelligent-credit-scoring-building-and-implementing-better-credit-risk-scorecards-2nd-edition-p-9781119279150
+    kind: paid
+    why: 'the publisher''s index lists the Population Stability report (pp. 366-372), scorecard monitoring
+      reports (pp. 360-377) and out-of-time stability validation (p. 276): the practitioner''s version
+      of this report'
+datasets:
+- name: synthetic-application-book
+  kind: synthetic
+  description: 28,800 applications over 24 origination months with four inputs (utilisation, age of account,
+    delinquencies, enquiries), a planted default probability that is monotone in every input with one
+    interaction, and an applicant mix that shifts from month 12, generated in lesson.py by application_book(seed)
+    (seed 20261014; replicate books from fixed seeds derived from it)
+  generator: 'lesson.py :: application_book'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 115
+status: executed
+measured_seconds: 18.8
+measured_peak_mib: 115

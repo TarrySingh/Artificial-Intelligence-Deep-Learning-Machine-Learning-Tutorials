@@ -1,0 +1,345 @@
+claims:
+- id: mofa-shared-and-specific-factors
+  claim: MOFA (Multi-Omics Factor Analysis) is a factor-analysis method for multi-omics data that separates
+    axes of heterogeneity shared across data modalities from those specific to one modality. This is the
+    model family the lesson builds a small version of, and the three kinds of planted factor (shared,
+    layer-specific, technical) follow it.
+  where: lesson.py section 1 (the problem in one page); the title cell
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:29925568%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Argelaguet R, Velten B, Arnol D, et al. Multi-Omics Factor Analysis - a framework for
+    unsupervised integration of multi-omics data sets. Mol Syst Biol 2018;14(6):e8124. DOI 10.15252/msb.20178124.
+    PubMed 29925568, read through Europe PMC's copy of the record
+  quote: It disentangles axes of heterogeneity that are shared across multiple modalities and those specific
+    to individual data modalities.
+  quote_context: the abstract; the sentence before it says that MOFA "infers a set of (hidden) factors
+    that capture biological and technical sources of variability"
+  accessed: 2026-10-14
+- id: mofa-view-factor-sparsity
+  claim: MOFA regularises the weights with a prior that encourages view-wise and factor-wise sparsity,
+    which lets it identify which factor is active in which view (automatic relevance determination); a
+    second level encourages sparsity over features. The lesson's per-layer, per-factor scale is the first
+    of these two ideas, in a point-estimate form; the second is not built.
+  where: lesson.py sections 8 and 20
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis - a framework for unsupervised integration
+    of multi-omics data sets. Mol Syst Biol 2018;14(6):e8124 (open access, PMC6010767), Methods, 'Model
+    regularization', read through Europe PMC's full-text XML
+  quote: thereby allowing to directly identify which factor is active in which view
+  quote_context: 'the full sentence reads "MOFA uses a two-level regularization: the first level encourages
+    view- and factor-wise sparsity, thereby allowing to directly identify which factor is active in which
+    view"; the next sentence says the second level "encourages feature-wise sparsity, thereby typically
+    resulting in a small number of features with active weights". The source writes the hyphens in view-wise
+    and factor-wise as a Unicode hyphen (U+2010), so the quote above stops before them.'
+  accessed: 2026-10-14
+- id: mofa-noise-per-feature
+  claim: MOFA's standard noise model for continuous data gives each feature in each view its own noise
+    precision (heteroscedastic residuals). The lesson uses one noise variance per layer, and says so.
+  where: lesson.py section 20
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    Methods, 'Noise model'
+  quote: the Gaussian noise model assuming iid heteroscedastic residuals
+  quote_context: the sentence is "A standard noise model for continuous data is the Gaussian noise model
+    assuming iid heteroscedastic residuals", followed by the definition of one precision per feature and
+    view with a Gamma prior
+  accessed: 2026-10-14
+- id: mofa-restarts-nonconvex
+  claim: MOFA's optimisation is not convex, so it is not guaranteed to reach a global optimum, and its
+    authors ran many random restarts and kept the one with the highest evidence lower bound (ELBO).
+  where: lesson.py sections 1 and 16
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    Methods, 'Model training and selection'
+  quote: Results presented here are based on 10–25 random restarts, selecting the model with the highest
+    ELBO
+  quote_context: the sentence before it reads "While the inferred factors are robust under different initializations
+    ..., the optimization landscape is non-convex, and hence, the algorithm is not guaranteed to converge
+    to a global optimum" (the source writes non-convex with a Unicode hyphen, U+2010)
+  accessed: 2026-10-14
+- id: mofa-plus-variational-inference
+  claim: MOFA+ reconstructs a low-dimensional representation of the data using variational inference.
+    The lesson's model is point estimation by alternating exact minimisations, a simpler method for the
+    same family of models.
+  where: lesson.py sections 19 and 20
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:32393329%20AND%20SRC:MED&resultType=core&format=json
+  source_title: 'Argelaguet R, Arnol D, Bredikhin D, et al. MOFA+: a statistical framework for comprehensive
+    integration of multi-modal single-cell data. Genome Biol 2020;21(1):111. DOI 10.1186/s13059-020-02015-1.
+    PubMed 32393329, read through Europe PMC''s copy of the record'
+  quote: MOFA+ reconstructs a low-dimensional representation of the data using computationally efficient
+    variational inference
+  quote_context: the abstract, which goes on to say that MOFA+ "supports flexible sparsity constraints,
+    allowing to jointly model variation across multiple sample groups and data modalities"
+  accessed: 2026-10-14
+- id: mofa-plus-pca-initialisation
+  claim: With random initialisation MOFA+'s factors can vary between model instances, and selection by
+    the ELBO is advised; its software removes the random component by initialising the factors from the
+    principal components of the concatenated data. The lesson starts its main fit from principal components
+    for the same reason, and measures random starts against it.
+  where: lesson.py sections 1, 13 and 20
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7212577/fullTextXML
+  source_title: 'Argelaguet R, et al. MOFA+: a statistical framework for comprehensive integration of
+    multi-modal single-cell data. Genome Biol 2020;21(1):111 (open access, PMC7212577), Methods, ''Model
+    selection'', read through Europe PMC''s full-text XML'
+  quote: we eliminated the random component by initialising the factors using the principal components
+    from the concatenated data set
+  quote_context: the paragraph begins "The optimization procedure of MOFA+ depends on the parameter initialization
+    and is hence not guaranteed to find the same exact solution at every trial. Hence, when using random
+    initialization, factors can vary between different model instances and a model selection step using
+    the ELBO is advised."
+  accessed: 2026-10-14
+- id: mofa-variance-explained-per-factor-view
+  claim: MOFA's software takes a trained model and reports, for each factor and each view, the proportion
+    of variance explained (the coefficient of determination, R^2). The lesson's per-layer variance-explained
+    table is the same kind of quantity, computed one factor at a time, but with least-squares weights
+    refitted for each factor instead of the trained model's own weights (see mofa-plus-variance-decomposition-trained-model).
+  where: lesson.py section 6 (exercise 4)
+  source_url: https://raw.githubusercontent.com/bioFAM/MOFA2/HEAD/man/calculate_variance_explained.Rd
+  source_title: MOFA2 manual page calculate_variance_explained (Rd source, bioFAM/MOFA2 repository)
+  quote: calculates the proportion of variance explained (i.e. the coefficient of determinations (R^2))
+    by the MOFA factors across the different views
+  quote_context: the description section of the manual page, which begins "This function takes a trained
+    MOFA model as input and"; the value section says it returns "the amount of variation explained per
+    factor and view"
+  accessed: 2026-10-14
+- id: mofa-plus-variance-decomposition-trained-model
+  claim: 'MOFA+ calculates the variance explained by each factor in each data modality once the model
+    is trained, with a coefficient of determination whose residual uses the trained model''s own weights
+    and factors. The lesson''s exercise 4 does not do that: it refits least-squares weights factor by
+    factor, so that principal components (which have no weights of their own) and model factors are judged
+    by one rule. For a given factor its value is at least as large as the one the model''s own weights
+    would give, so it is an upper bound on MOFA''s number for that factor, not MOFA''s number.'
+  where: lesson.py section 6 (exercise 4)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC7212577/fullTextXML
+  source_title: 'Argelaguet R, et al. MOFA+: a statistical framework for comprehensive integration of
+    multi-modal single-cell data. Genome Biol 2020;21(1):111 (open access, PMC7212577), Methods, ''Variance
+    decomposition'', read through Europe PMC''s full-text XML'
+  quote: the variance explained by each factor k in each sample group g and in each data modality m is
+    calculated using a coefficient of determination
+  quote_context: 'the sentence begins "Once the model is trained," and ends with a colon. The displayed
+    formula after it is R^2_gmk = 1 - (sum over n,d of (Y_gm - W_m Z_g))^2 / (sum over n,d of Y_gm)^2
+    as typeset (the exponents sit outside the sums, and the factor index k is not typeset on W_m and Z_g):
+    the residual is computed from the trained model''s own weights W_m and factors Z_g'
+  accessed: 2026-10-15
+- id: mofa-elbo-bound-full-model
+  claim: 'MOFA fits its model, which has priors on the factors and weights (mofa-view-factor-sparsity),
+    by variational inference: it approximates the posterior distribution, which is the same as maximising
+    the evidence lower bound (ELBO), and it compares random restarts by the highest ELBO (mofa-restarts-nonconvex).
+    That bound belongs to the whole probabilistic model with its priors. The lesson''s data_nll is a different
+    quantity (the likelihood of the data with the factors integrated out and no prior on the weights),
+    so what data_nll cannot see is not a statement about MOFA''s bound.'
+  where: lesson.py sections 1, 15, 16, 20 and 21
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    Methods, 'Parameter inference', read through Europe PMC's full-text XML
+  quote: or equivalently maximizing the evidence lower bound (ELBO)
+  quote_context: the sentence reads "The key idea is to approximate the intractable posterior distribution
+    using a simpler class of distributions by minimizing the Kullback-Leibler divergence to the exact
+    posterior, or equivalently maximizing the evidence lower bound (ELBO)" (the source writes Kullback-Leibler
+    with an en dash); the next sentence says "Convergence of the algorithm can be monitored based on the
+    ELBO."
+  accessed: 2026-10-15
+- id: mofa-2018-factor-pruning
+  claim: In the original MOFA, factors are pruned during training using a minimum fraction of variance
+    explained that the user specifies. The lesson's "active factor" rule (explains at least ACTIVE_R2
+    of some layer) is the same kind of rule, applied after the fit instead of during it.
+  where: lesson.py section 13
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    Methods, 'Model training and selection', read through Europe PMC's full-text XML
+  quote: factors are pruned during training using a minimum fraction of variance explained threshold that
+    needs to be specified by the user
+  quote_context: the sentence begins "In practice,"; the paragraph opens "An important part of the training
+    is the determination of the number of factors. Factors are automatically inactivated by the ARD prior
+    of the model as described in Model regularization."
+  accessed: 2026-10-14
+- id: mofa-2018-initial-factors
+  claim: The original MOFA paper initialised its models with 25 factors and pruned them during training
+    with a threshold of 2% of variance explained. The lesson starts its model with K_FIT factors, more
+    than the cohort has, for the same reason, and does not prune during the fit.
+  where: lesson.py section 13
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    Methods, 'Model training and selection', read through Europe PMC's full-text XML
+  quote: we initialized the models with K = 25 factors and they were pruned during training using a threshold
+    of variance explained of 2%
+  quote_context: the sentence begins "In the analyses presented,"; the next sentence refers the reader
+    to the Appendix Supplementary Methods, Section 5, for the choice of the threshold
+  accessed: 2026-10-14
+- id: mofa-burn-in
+  claim: The original MOFA uses a burn-in period during training in which its sparsity constraints are
+    deactivated, to avoid early splitting of factors. The lesson's warm-up (every scale held at 1 for
+    ARD_FROM sweeps) is the same idea in a simpler form, and section 14 measures whether it matters for
+    this model.
+  where: lesson.py section 8
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC6010767/fullTextXML
+  source_title: Argelaguet R, et al. Multi-Omics Factor Analysis. Mol Syst Biol 2018;14(6):e8124 (PMC6010767),
+    'Relationship to existing methods', subsection 'Group Factor Analysis', read through Europe PMC's
+    full-text XML
+  quote: the sparsity constraints are deactivated to avoid early splitting of factors
+  quote_context: the full sentence reads "In terms of the algorithmic implementation, MOFA uses an additional
+    "burn-in period" during training during which the sparsity constraints are deactivated to avoid early
+    splitting of factors and actively drops factors below a predefined variance threshold (see Model training
+    and selection)" (the source writes burn-in with a Unicode hyphen, U+2010, and straight quotation marks
+    as curly ones)
+  accessed: 2026-10-14
+- id: mofa-drop-factor-threshold
+  claim: The MOFA2 training options include drop_factor_threshold, a threshold on the fraction of variance
+    explained below which a factor is considered inactive and dropped from the model. As of the access
+    date its default is -1, which means no factors are dropped. So the current MOFA2 manual pages do not
+    describe pruning on by default, unlike the original MOFA paper (mofa-2018-factor-pruning).
+  where: lesson.py section 13
+  source_url: https://raw.githubusercontent.com/bioFAM/MOFA2/HEAD/man/get_default_training_options.Rd
+  source_title: MOFA2 manual page get_default_training_options (Rd source, bioFAM/MOFA2 repository)
+  quote: Default is -1 (no dropping of factors)
+  quote_context: 'the item drop_factor_threshold: "numeric indicating the threshold on fraction of variance
+    explained to consider a factor inactive and drop it from the model. For example, a value of 0.01 implies
+    that factors explaining less than 1% of variance (in each view) will be dropped." (the Rd source writes
+    1\% and closes the item with a brace)'
+  accessed: 2026-10-14
+- id: mofa-iteration-cap
+  claim: MOFA's software stops after a maximum number of iterations, 1000 by default, and judges convergence
+    by the ELBO. The lesson also caps its sweeps and shows that the number of sweeps is a result.
+  where: lesson.py section 15
+  source_url: https://raw.githubusercontent.com/bioFAM/MOFA2/HEAD/man/get_default_training_options.Rd
+  source_title: MOFA2 manual page get_default_training_options (Rd source, bioFAM/MOFA2 repository)
+  quote: numeric value indicating the maximum number of iterations. Default is 1000.
+  quote_context: the item maxiter, which continues "Convergence is assessed using the ELBO statistic."
+  accessed: 2026-10-14
+- id: mofa-default-factor-count
+  claim: 'The MOFA2 manual page for the default model options gives 15 as the default initial number of
+    factors. It says nothing about dropping any (the default of drop_factor_threshold is -1: see mofa-drop-factor-threshold);
+    the lesson starts its own model from K_FIT factors, more than the cohort has, and lets the scales
+    switch the surplus off.'
+  where: lesson.py section 13
+  source_url: https://raw.githubusercontent.com/bioFAM/MOFA2/HEAD/man/get_default_model_options.Rd
+  source_title: MOFA2 manual page get_default_model_options (Rd source, bioFAM/MOFA2 repository)
+  quote: numeric value indicating the (initial) number of factors. Default is 15.
+  quote_context: the item num_factors of the default model options
+  accessed: 2026-10-14
+- id: mofa-compare-factors-across-runs
+  claim: MOFA's software compares the factors of different runs by their correlations, and expects a block-diagonal
+    pattern when the factors are robustly found. The lesson's consensus run is a one-number version of
+    that comparison.
+  where: lesson.py section 17 (exercise 9)
+  source_url: https://raw.githubusercontent.com/bioFAM/MOFA2/HEAD/man/compare_factors.Rd
+  source_title: MOFA2 manual page compare_factors (Rd source, bioFAM/MOFA2 repository)
+  quote: the output should look like a block diagonal matrix, suggesting that all factors are robustly
+    detected in all model instances.
+  quote_context: 'the details section: "If assessing model robustness across trials, the output should
+    look like a block diagonal matrix"; the description says the function compares MOFA objects "in terms
+    of correlation between their factors"'
+  accessed: 2026-10-14
+- id: mofa-faq-modality-size
+  claim: The MOFA documentation warns that bigger data modalities tend to be over-represented in the factors,
+    which is why the lesson puts every layer on one scale before pooling.
+  where: lesson.py section 3 (exercise 1)
+  source_url: https://biofam.github.io/MOFA2/faq.html
+  source_title: 'MOFA2 documentation, FAQ on the data processing: ''My data sets have different dimensionalities,
+    does this matter?'''
+  quote: Bigger data modalities will tend to be overrepresented in the factors.
+  quote_context: the answer to the question about different dimensionalities, which goes on to advise
+    filtering uninformative features so that the views are of the same order of magnitude
+  accessed: 2026-10-14
+- id: mofa-faq-technical-factors
+  claim: The MOFA documentation recommends regressing clear technical factors out before fitting, because
+    otherwise the model spends its factors on them. The lesson plants a batch and lets the model find
+    it, so that the share of each layer it carries can be measured, and says that this differs from the
+    recommended practice.
+  where: lesson.py section 20
+  source_url: https://biofam.github.io/MOFA2/faq.html
+  source_title: 'MOFA2 documentation, FAQ on the data processing: ''Should I remove undesired sources
+    of variability (i.e. batch effects) before fitting the model?'''
+  quote: If you have clear technical factors, we strongly encourage to regress it out a priori
+  quote_context: the answer begins "Yes."; it continues that if technical variability is not removed,
+    MOFA will focus on capturing it and smaller sources of (biological) variability could be missed
+  accessed: 2026-10-14
+- id: mofa-faq-missing-values
+  claim: MOFA handles missing values by leaving them out of the likelihood, not by imputing them. The
+    lesson's model needs complete matched layers.
+  where: lesson.py section 20
+  source_url: https://biofam.github.io/MOFA2/faq.html
+  source_title: 'MOFA2 documentation, FAQ on the data processing: ''Does MOFA handle missing values?'''
+  quote: It simply ignores them from the likelihood, there is no hidden imputation step.
+  quote_context: the answer begins "Yes."
+  accessed: 2026-10-14
+- id: mofa-faq-likelihoods
+  claim: MOFA's software models continuous data with a Gaussian likelihood, binary data with a Bernoulli
+    likelihood and count data with a Poisson likelihood. The lesson's model has the Gaussian case only,
+    on data that is already normalised.
+  where: lesson.py section 20
+  source_url: https://biofam.github.io/MOFA2/faq.html
+  source_title: 'MOFA2 documentation, FAQ on the model options: ''What data modalities can MOFA cope with?'''
+  quote: 'Binary data: modelled using a bernoulli likelihood'
+  quote_context: 'the list under the question; the entries before and after it read "Continuous data:
+    modelled using a gaussian likelihood" and "Count data: using a poisson likelihood"'
+  accessed: 2026-10-14
+- id: factor-model-rotation-indeterminacy
+  claim: 'A factor model is not uniquely determined by its fit: replacing the loadings by an orthogonally
+    rotated version leaves the model unchanged, so the factors are only defined up to such a rotation.
+    This is the rotation problem of section 1, and why a recovered factor has no meaning until something
+    chooses the mixture.'
+  where: lesson.py section 1 (sections 14 and 16 refer back to it)
+  source_url: https://stat.ethz.ch/R-manual/R-devel/library/stats/html/factanal.html
+  source_title: 'R documentation: factanal, Factor Analysis (R Core Team, stats package), Details section'
+  quote: There is still some indeterminacy in the model for it is unchanged
+  quote_context: the sentence continues "if Lambda is replaced by G Lambda for any orthogonal matrix G.
+    Such matrices G are known as rotations (although the term is applied also to non-orthogonal invertible
+    matrices)"; the page writes Lambda and G as mathematical symbols; Lambda is the matrix of loadings
+    of the factor model
+  accessed: 2026-10-14
+- id: totalvi-joint-cite-seq-model
+  claim: totalVI is a framework for the joint analysis of CITE-seq data that represents the data probabilistically
+    as a composite of biological and technical factors, including protein background and batch effects.
+    It is the second half of the catalogue's lab and is not built here.
+  where: lesson.py title cell and section 20
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:33589839%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Gayoso A, Steier Z, Lopez R, et al. Joint probabilistic modeling of single-cell multi-omic
+    data with totalVI. Nat Methods 2021;18(3):272-282. DOI 10.1038/s41592-020-01050-x. PubMed 33589839,
+    read through Europe PMC's copy of the record
+  quote: a framework for end-to-end joint analysis of CITE-seq data that probabilistically represents
+    the data as a composite of biological and technical factors, including protein background and batch
+    effects
+  quote_context: the abstract, which introduces the method as "Total Variational Inference (totalVI ...),
+    a framework for end-to-end joint analysis of CITE-seq data"
+  accessed: 2026-10-14
+- id: totalvi-needs-a-gpu
+  claim: The scvi-tools documentation lists, among the limitations of totalVI, that it effectively requires
+    a GPU for fast inference, and describes its generative process as using neural networks. This is why
+    the lesson does not run it.
+  where: lesson.py title cell and section 20
+  source_url: https://docs.scvi-tools.org/en/stable/user_guide/models/totalvi.html
+  source_title: 'scvi-tools user guide: totalVI (docs.scvi-tools.org, stable)'
+  quote: Effectively requires a GPU for fast inference.
+  quote_context: the list that begins "The limitations of totalVI include:"; the same page states "The
+    generative process of totalVI uses neural networks"
+  accessed: 2026-10-14
+- id: totalvi-neural-generative-process
+  claim: The scvi-tools documentation states that totalVI's generative process uses neural networks, which
+    is why the lesson groups it with deep generative models and does not build it.
+  where: lesson.py section 20
+  source_url: https://docs.scvi-tools.org/en/stable/user_guide/models/totalvi.html
+  source_title: 'scvi-tools user guide: totalVI (docs.scvi-tools.org, stable), section ''Generative process'''
+  quote: The generative process of totalVI uses neural networks
+  quote_context: the sentence is followed by the definition of the networks that map the latent variables
+    to the RNA and protein parameters; the same page says totalVI "uses variational inference, and specifically
+    auto-encoding variational bayes"
+  accessed: 2026-10-14
+- id: scvi-tools-depends-on-pytorch
+  claim: scvi-tools, the package totalVI ships in, depends on PyTorch. PyTorch is not in this course's
+    environment.
+  where: lesson.py title cell and section 20
+  source_url: https://docs.scvi-tools.org/en/stable/installation.html
+  source_title: 'scvi-tools documentation: Installation (docs.scvi-tools.org, stable), section ''GPU support
+    with PyTorch'''
+  quote: scvi-tools depends on PyTorch for accelerated computing.
+  quote_context: the first sentence of the section 'GPU support with PyTorch'
+  accessed: 2026-10-14
+- id: mofapy2-dependencies
+  claim: MOFA's Python package, mofapy2 (version 0.7.5 on the access date), declares dependencies on h5py,
+    numpy, pandas, scikit-learn and scipy. Of these, only numpy is in this course's environment.
+  where: lesson.py title cell and section 20
+  source_url: https://pypi.org/pypi/mofapy2/json
+  source_title: PyPI JSON metadata for mofapy2 (info.requires_dist; info.version 0.7.5)
+  quote: '"requires_dist":["h5py<4,>=3","numpy","pandas","scikit-learn<2,>=1","scipy<2,>=1"]'
+  quote_context: the field requires_dist of the project's current release, as served on the access date
+  accessed: 2026-10-14

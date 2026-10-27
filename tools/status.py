@@ -123,7 +123,7 @@ def card(d: Path) -> dict:
     m = yaml.safe_load((d / "meta.yaml").read_text()) or {}
     src = (d / "lesson.py").read_text()
     h1 = re.search(r"^# # (?:[A-Z]\d\d-L\d\d[\w-]*\s*·\s*)?(.+?)\s*$", src, re.M)
-    t = re.search(r"\*\*Time:\*\*\s*~(\d+)\s*(minutes|hours?)\b", src)
+    t = re.search(r"\*\*Time:\*\*\s*~(\d+(?:\.\d+)?)\s*(minutes|hours?)\b", src)
     if not h1 or not t:
         raise SystemExit(f"REFUSING: {d.relative_to(ROOT)}/lesson.py has no "
                          f"{'title line (# # ...)' if not h1 else '**Time:** ~N minutes'} to index")

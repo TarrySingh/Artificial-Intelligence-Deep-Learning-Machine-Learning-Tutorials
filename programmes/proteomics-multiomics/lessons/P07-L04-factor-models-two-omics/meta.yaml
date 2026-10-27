@@ -1,0 +1,84 @@
+id: P07-L04-factor-models-two-omics
+title: Build a MOFA-style multi-view factor model for a matched proteomics-style and transcriptomics-style
+  cohort (data preparation, a concatenated-PCA baseline, optimal factor matching, per-layer variance explained,
+  and alternating ridge updates with a scale for every factor in every layer) and check what it recovers
+  against planted shared, layer-specific and technical factors
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- P07-L02-imputation-and-batch-effects
+- T01-L01-statistics-by-simulation
+objectives:
+- Implement view preparation, a concatenated-PCA baseline, an optimal one-to-one matching of recovered
+  to planted factors and a per-layer variance-explained table, so that any set of factors can be scored
+  against an answer key
+- Implement a multi-view factor model as alternating regularised least squares (a ridge update for each
+  layer's weights, a noise-weighted ridge update for the shared donor factors, and a scale for every factor
+  in every layer) and check that its objective never rises
+- 'Measure, against planted factors, how well concatenated PCA and the factor model recover shared, layer-specific
+  and technical factors: by correlation, by variance explained in each layer, and by how many factors
+  each one reports'
+- Measure how stable the recovered factors are across random restarts, across the number of sweeps and
+  across simulated worlds, and choose a restart without using the answer key
+- Explain, from the printed numbers, when concatenated PCA and the factor model agree, when a tie between
+  two factors leaves PCA's components arbitrary, and what this lesson's model leaves out (the inference
+  MOFA+ uses, per-feature noise, and deep generative models such as totalVI)
+before_you_start:
+  assumed:
+  - multiply and transpose matrices in numpy, and solve a small linear system with np.linalg.solve
+  - say what the singular value decomposition of a data matrix returns, and what a principal component
+    is
+  - fit a ridge regression, which is least squares with a penalty on the size of the weights
+  - compute a Pearson correlation between two columns of numbers, and say why its sign alone means little
+    when a column can be flipped
+  resources:
+  - title: 'MOFA2 documentation: tutorials and FAQ'
+    by: bioFAM (the MOFA authors)
+    url: https://biofam.github.io/MOFA2/
+    kind: free
+    why: its FAQ and tutorials show how the factors, weights and variance-explained plots of a real MOFA
+      model are read, which this lesson reproduces on a planted cohort
+  - title: 'MOFA+: a statistical framework for comprehensive integration of multi-modal single-cell data'
+    by: Argelaguet et al. (Genome Biology 2020, open access, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC7212577/
+    kind: free
+    why: its Methods define the model the lesson simplifies, the variance decomposition that exercise
+      4 imitates (with refitted weights), and the model selection and PCA start of sections 13 and 16
+  - title: Multi-Omics Factor Analysis - a framework for unsupervised integration of multi-omics data
+      sets
+    by: Argelaguet et al. (Molecular Systems Biology 2018, open access, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC6010767/
+    kind: free
+    why: the original model, with the view-wise and factor-wise sparsity prior that the lesson's scales
+      imitate, and the random restarts that section 16 measures
+  - title: The Elements of Statistical Learning, 2nd edition
+    by: Trevor Hastie, Robert Tibshirani and Jerome Friedman (Springer; PDF free from the authors)
+    url: https://hastie.su.domains/ElemStatLearn/
+    kind: free
+    why: section 3.4 on ridge regression, which is what every update in the model is, and section 14.5
+      on principal components, the baseline
+  - title: numpy.linalg.solve
+    by: NumPy documentation
+    url: https://numpy.org/doc/stable/reference/generated/numpy.linalg.solve.html
+    kind: free
+    why: the call that exercises 5 and 6 are built on, with the shapes it takes and returns when the right-hand
+      side is a matrix
+datasets:
+- name: synthetic-two-layer-cohort
+  kind: synthetic
+  description: 150 donors, a 200-feature proteomics-style layer and a 600-feature transcriptomics-style
+    layer generated from five planted factors (two shared, one RNA-only, one protein-only, one technical
+    batch) with a known answer key, in lesson.py by generate_cohort(seed=20261014); further seeds for
+    the stability sections
+  generator: 'lesson.py :: generate_cohort'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 94
+status: executed
+measured_seconds: 17.0
+measured_peak_mib: 97

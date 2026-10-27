@@ -1,0 +1,200 @@
+claims:
+- id: leakage-defined-as-information-unavailable-at-prediction-time
+  claim: Data leakage is information that would not be available at prediction time being used when building
+    the model, and it gives overly optimistic performance estimates. This is the definition the lesson's
+    feature audit (lateness against the row's prediction day) enforces.
+  where: lesson.py section 5 (exercise 2, feature_audit)
+  source_url: https://scikit-learn.org/stable/common_pitfalls.html
+  source_title: scikit-learn 1.9.1 documentation, Common pitfalls and recommended practices, section 12.2
+    Data leakage.
+  quote: Data leakage occurs when information that would not be available at prediction time is used when
+    building the model.
+  quote_context: the first sentence of section 12.2; the next sentence says this 'results in overly optimistic
+    performance estimates, for example from cross-validation'.
+  accessed: 2026-10-14
+- id: preprocessing-must-not-see-test-data
+  claim: The scikit-learn documentation advises never including test data when fitting a preprocessing
+    step, because using all the data can give overly optimistic scores. This is the rule the lesson's
+    fold-isolation test checks a pipeline against.
+  where: lesson.py sections 3 and 6 (standard tooling; exercise 3, fold_isolation)
+  source_url: https://scikit-learn.org/stable/common_pitfalls.html
+  source_title: scikit-learn 1.9.1 documentation, Common pitfalls and recommended practices, section 12.2.1
+    How to avoid data leakage.
+  quote: Never include test data when using the fit and fit_transform methods.
+  quote_context: one tip in the list under 12.2.1; the same list continues 'Using all the data, e.g.,
+    fit(X), can result in overly optimistic scores.'
+  accessed: 2026-10-14
+- id: target-encoder-cross-fits-to-prevent-leakage
+  claim: scikit-learn's TargetEncoder encodes training data with a cross fitting scheme, to prevent target
+    leakage and overfitting in downstream predictors, so that fit(X, y).transform(X) is not the same as
+    fit_transform(X, y). The lesson's honest encoder encodes the training rows out of fold for the same
+    reason; the lesson's own encoder is a smaller version written for it, not scikit-learn's.
+  where: lesson.py section 2 (the model; _crossfit)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.TargetEncoder.html
+  source_title: scikit-learn 1.9.1 documentation, sklearn.preprocessing.TargetEncoder, fit_transform.
+  quote: This method uses a cross fitting scheme to prevent target leakage and overfitting in downstream
+    predictors.
+  quote_context: the description of TargetEncoder.fit_transform; the next sentence says it 'is the recommended
+    method for encoding training data'.
+  accessed: 2026-10-14
+- id: group-kfold-keeps-groups-out-of-both-sides
+  claim: GroupKFold is the standard cross-validation variant that keeps every group wholly in the training
+    or the test side; scikit-learn's own motivating example is several samples per subject and a model
+    flexible enough to learn person-specific features. The lesson's group folds do the same by hand.
+  where: lesson.py section 3 (standard tooling) and section 4 (the group count)
+  source_url: https://scikit-learn.org/stable/modules/cross_validation.html
+  source_title: 'scikit-learn 1.9.1 documentation, Cross-validation: evaluating estimator performance,
+    section 3.1.2.4.1 Group K-fold.'
+  quote: GroupKFold is a variation of K-fold which ensures that the same group is not represented in both
+    testing and training sets.
+  quote_context: the first sentence of the Group K-fold section.
+  accessed: 2026-10-14
+- id: time-series-split-uses-expanding-training-sets
+  claim: scikit-learn's TimeSeriesSplit uses successive training sets that are supersets of the earlier
+    ones, which is the expanding-window shape of the lesson's forward folds.
+  where: lesson.py section 3 (standard tooling) and section 2 (forward_folds)
+  source_url: https://scikit-learn.org/stable/modules/cross_validation.html
+  source_title: 'scikit-learn 1.9.1 documentation, Cross-validation: evaluating estimator performance,
+    section 3.1.2.6.1 Time Series Split.'
+  quote: Note that unlike standard cross-validation methods, successive training sets are supersets of
+    those that come before them.
+  quote_context: the second sentence of the Time Series Split section, which begins 'TimeSeriesSplit is
+    a variation of k-fold which returns first k folds as train set and the (k+1) th fold as test set.'
+  accessed: 2026-10-14
+- id: leakage-survey-scale
+  claim: A survey of research communities that adopted machine learning found 17 fields where leakage
+    has been found, collectively affecting 294 papers, in some cases leading to wildly overoptimistic
+    conclusions (the version of record, as read on 15 October 2026, which is why the lesson says "as of"
+    that date). The 2022 arXiv preprint of the same survey counted 329 papers and its authors have revised
+    the count since, which is why the lesson calls any such count a snapshot (see leakage-survey-running-tally).
+  where: lesson.py section 3 (In the wild)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), doi:10.1016/j.patter.2023.100804; open access (CC BY), PMC10499856.
+  quote: we find 17 fields where leakage has been found, collectively affecting 294 papers and, in some
+    cases, leading to wildly overoptimistic conclusions
+  quote_context: the abstract, the sentence beginning 'Through a survey of literature in fields that have
+    adopted ML methods,'. The arXiv v1 abstract (arxiv.org/abs/2207.07048, still the only arXiv version
+    on 2026-10-15) says 'we find 17 fields where errors have been found, collectively affecting 329 papers';
+    the version of record is the one cited.
+  accessed: 2026-10-15
+- id: leakage-survey-running-tally
+  claim: The authors of that survey keep a running list of papers that report leakage-driven reproducibility
+    failures in ML-based science. As of the table's last update, in May 2024, it counted 41 papers from
+    30 fields where errors have been found, collectively affecting 648 papers, so the 294 of the published
+    survey is a lower, earlier count.
+  where: lesson.py section 3 (In the wild)
+  source_url: https://reproducible.cs.princeton.edu/
+  source_title: Princeton Reproducibility Project (Kapoor and Narayanan), 'Data leakage causes reproducibility
+    failures in ML-based science', running list.
+  quote: We find 41 papers from 30 fields where errors have been found, collectively affecting 648 papers
+    and in some cases leading to wildly overoptimistic conclusions.
+  quote_context: 'the sentence above the table of fields on the page; the next line reads ''(Table updated
+    in May 2024)''. A living page: the figure may have grown since 2026-10-15.'
+  accessed: 2026-10-15
+- id: leakage-taxonomy-preprocessing
+  claim: The same paper's taxonomy lists pre-processing on the training and test set together (for example
+    imputation or over/under sampling over the entire dataset) as a type of leakage.
+  where: lesson.py section 3 (In the wild); the preprocessing leak
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L1.2.
+  quote: Using the entire dataset for any pre-processing steps, such as imputation or over/under sampling,
+    results in leakage.
+  quote_context: 'item [L1.2] Pre-processing on training and test set, in the section ''Toward a solution:
+    A taxonomy of data leakage''.'
+  accessed: 2026-10-15
+- id: leakage-taxonomy-illegitimate-features
+  claim: The same taxonomy lists a model having access to features that should not legitimately be available
+    for the modelling exercise (one instance being a feature that is a proxy for the outcome) as a type
+    of leakage. This is the lesson's target leak.
+  where: lesson.py section 3 (In the wild); the target leak
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L2.
+  quote: If the model has access to features that should not be legitimately available for use in the
+    modeling exercise, this could result in leakage.
+  quote_context: 'item [L2] Model uses features that are not legitimate, in the section ''Toward a solution:
+    A taxonomy of data leakage''; the text goes on ''One instance when this can happen is if a feature
+    is a proxy for the outcome variable.'''
+  accessed: 2026-10-15
+- id: leakage-taxonomy-temporal
+  claim: 'The same taxonomy lists temporal leakage: when predicting a future outcome, the test set should
+    not contain any data from a date before the training set. This is the lesson''s temporal leak and
+    the rule behind the split audit''s time count.'
+  where: lesson.py sections 3 and 4 (temporal leak, split_leaks)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L3.1.
+  quote: When an ML model is used to make predictions about a future outcome of interest, the test set
+    should not contain any data from a date before the training set.
+  quote_context: 'item [L3.1] Temporal leakage, in the section ''Toward a solution: A taxonomy of data
+    leakage''; the whole of the item''s first two sentences.'
+  accessed: 2026-10-15
+- id: leakage-taxonomy-nonindependence
+  claim: The same taxonomy lists nonindependence between train and test samples as leakage, and says that
+    in the extreme case, which it calls unfortunately common, the train and test samples come from the
+    same people or units. This is the lesson's group leak.
+  where: lesson.py sections 3 and 4 (group leak, split_leaks)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L3.2.
+  quote: In the extreme (but unfortunately common) case, training and test samples come from the same
+    people or units.
+  quote_context: 'item [L3.2] Nonindependence between training and test samples, in the section ''Toward
+    a solution: A taxonomy of data leakage''; the second sentence of the item.'
+  accessed: 2026-10-15
+- id: leakage-taxonomy-nonindependence-unless-same-structure
+  claim: 'The same item L3.2 qualifies its rule: nonindependence between train and test samples is leakage
+    unless the scientific claim is about a distribution that has the same dependence structure. So a model
+    that will re-score the customers it was trained on is not leaking when a customer''s earlier rows
+    sit in the training fold. The lesson''s model is used on customers who joined after training, which
+    is why the group leak is a leak here, and the lesson says so (section 1, the group bullet, and the
+    common-mistakes bullet on splitting by row).'
+  where: lesson.py sections 1, 3 and 9 (the group leak; the deployment; common mistakes)
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L3.2.
+  quote: Nonindependence between training and test samples constitutes leakage, unless the scientific
+    claim is about a distribution that has the same dependence structure.
+  quote_context: 'item [L3.2] Nonindependence between training and test samples, in the section ''Toward
+    a solution: A taxonomy of data leakage'': the first sentence after the heading; the next sentence
+    is the one quoted in leakage-taxonomy-nonindependence.'
+  accessed: 2026-10-15
+- id: leakage-taxonomy-duplicates
+  claim: 'The same taxonomy lists duplicates in datasets as a type of leakage: if a dataset with duplicates
+    is used for training and evaluating a model, the same data could exist in the training as well as
+    the test set. This is the lesson''s duplicate leak.'
+  where: lesson.py section 3 (In the wild); the duplicate leak
+  source_url: https://pmc.ncbi.nlm.nih.gov/articles/PMC10499856/
+  source_title: Kapoor, S. & Narayanan, A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9), 100804 (2023), taxonomy item L1.4.
+  quote: If a dataset with duplicates is used for the purposes of training and evaluating an ML model,
+    the same data could exist in the training set and the test set.
+  quote_context: 'item [L1.4] Duplicates in datasets, in the section ''Toward a solution: A taxonomy of
+    data leakage''; the item is this one sentence under its heading.'
+  accessed: 2026-10-15
+- id: cifar-test-images-duplicated-in-training
+  claim: On the CIFAR-10 and CIFAR-100 benchmarks, 3.3% and 10% of the test images respectively have duplicates
+    (the paper counts near-duplicates as well as exact copies) in the training set. This is a real instance
+    of the lesson's duplicate leak, which plants exact copies only.
+  where: lesson.py section 3 (In the wild)
+  source_url: https://arxiv.org/abs/1902.00423
+  source_title: Barz, B. & Denzler, J. Do We Train on Test Data? Purging CIFAR of Near-Duplicates. arXiv:1902.00423.
+  quote: we find that 3.3% and 10% of the images from the test sets of these datasets have duplicates
+    in the training set
+  quote_context: the abstract; 'these datasets' are CIFAR-10 and CIFAR-100, named in the sentence before.
+    The paper counts near-duplicates as well as exact ones; the lesson's duplicates are exact copies.
+  accessed: 2026-10-15
+- id: feature-stores-join-point-in-time-correct
+  claim: Feature stores such as Feast join features onto an entity dataframe in a point-in-time correct
+    way, reproducing the state of the features at a specific point in the past. This is the industrial
+    counterpart of the lesson's lateness audit.
+  where: lesson.py section 5 (exercise 2, feature_audit)
+  source_url: https://docs.feast.dev/getting-started/concepts/point-in-time-joins
+  source_title: Feast documentation, Point-in-time joins.
+  quote: Feast is able to join features from one or more feature views onto an entity dataframe in a point-in-time
+    correct way.
+  quote_context: the opening description on the page; the next sentence says 'This means Feast is able
+    to reproduce the state of features at a specific point in the past.'
+  accessed: 2026-10-14

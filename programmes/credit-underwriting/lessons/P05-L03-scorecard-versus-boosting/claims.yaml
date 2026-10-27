@@ -1,0 +1,197 @@
+claims:
+- id: xgboost-paper-second-order-statistics
+  claim: The XGBoost paper approximates the training loss of each boosting step to second order and names
+    the first and second derivatives of the loss in the previous prediction the first and second order
+    gradient statistics. Section 3 of the lesson uses the same pair, g and h, and says the lesson follows
+    the second-order form of the paper.
+  where: lesson.py section 3 (Gradient boosting in a page); exercise 1
+  source_url: https://arxiv.org/pdf/1603.02754
+  source_title: 'XGBoost: A Scalable Tree Boosting System, Tianqi Chen and Carlos Guestrin, arXiv:1603.02754v3,
+    10 June 2016 (section 2.2, ''Gradient Tree Boosting'')'
+  quote: are first and second order gradient statistics on the loss function
+  quote_context: 'Read on 2026-10-14 from the full text: "where g_i = d l(y_i, y^(t-1)) and h_i = d^2
+    l(y_i, y^(t-1)) are first and second order gradient statistics on the loss function. We can remove
+    the constant terms to obtain the following simplified objective at step t."'
+  accessed: 2026-10-14
+- id: xgboost-paper-optimal-leaf-weight
+  claim: For a fixed tree structure the paper computes the optimal weight of a leaf from the sums of the
+    gradients and of the hessians over the leaf and an L2 penalty on the weights (Eq. 5), and scores a
+    split by the gain it brings (Algorithm 1). Section 3 states the weight as -G over H plus lambda and
+    says that the lesson's per-node score, at the optimal weight, is one leaf's term of the paper's structure
+    score (Eq. 6) with its sign turned round, because the paper's objective is a loss to be minimised
+    and the lesson's score is how far the loss falls.
+  where: lesson.py section 3; exercises 2 and 3
+  source_url: https://arxiv.org/pdf/1603.02754
+  source_title: 'XGBoost: A Scalable Tree Boosting System, Chen and Guestrin, arXiv:1603.02754v3 (section
+    2.2, Eq. 5 and Eq. 6, and Algorithm 1)'
+  quote: we can compute the optimal weight
+  quote_context: 'Read on 2026-10-14 from the full text: "For a fixed structure q(x), we can compute the
+    optimal weight w_j* of leaf j by w_j* = - (sum of g_i over I_j) / (sum of h_i over I_j + lambda) (5),
+    and calculate the corresponding optimal value by (6)". Eq. 6 is minus one half of the sum over leaves
+    of (sum of g)^2 over (sum of h + lambda), plus gamma T. The lesson''s score at the optimal weight,
+    G^2 / (2 (H + lambda)), equals minus one leaf''s term of that sum (the sign turned round, the factor
+    one half already included); it is not half of Eq. 6.'
+  accessed: 2026-10-14
+- id: xgboost-split-gain-formula
+  claim: The XGBoost documentation gives the gain of a split as one half of the bracket (the left child's
+    squared gradient sum over its hessian sum plus lambda, plus the same for the right child, minus the
+    same for the parent) minus gamma; the paper gives the same loss reduction as its Eq. 7. With open
+    bounds and gamma set to zero this is the gain the lesson computes as score(left) + score(right) -
+    score(parent) with score(G, H, w) = -G w - (H + lambda) w^2 / 2 taken at the optimal weights; the
+    lesson's min_gain plays the part of gamma. A bound that clips a weight moves the lesson's gain away
+    from this formula. Section 3 says so.
+  where: lesson.py section 3; exercise 3
+  source_url: https://xgboost.readthedocs.io/en/stable/tutorials/model.html
+  source_title: Introduction to Boosted Trees, XGBoost documentation (stable, version 3.4.2 as read),
+    section 'Learn the tree structure'; the paper's Eq. 7 is in arXiv:1603.02754v3, section 2.2
+  quote: we try to split a leaf into two leaves, and the score it gains is
+  quote_context: 'Read on 2026-10-14: "Specifically we try to split a leaf into two leaves, and the score
+    it gains is Gain = 1/2 [ G_L^2 / (H_L + lambda) + G_R^2 / (H_R + lambda) - (G_L + G_R)^2 / (H_L +
+    H_R + lambda) ] - gamma. This formula can be decomposed as 1) the score on the new left leaf 2) the
+    score on the new right leaf 3) The score on the original leaf 4) regularization on the additional
+    leaf." (The page writes the formula in LaTeX.) The paper, section 2.2: "the loss reduction after the
+    split is given by", followed by Eq. 7, the same bracket with a factor one half and minus gamma.'
+  accessed: 2026-10-14
+- id: xgboost-paper-percentile-candidates
+  claim: The paper's approximate split-finding algorithm proposes candidate split points by percentiles
+    of each feature and accumulates gradient statistics in the bins between them. The lesson's `make_edges`
+    and histogram search are this idea; section 6 calls the bins quantile bins without claiming any other
+    library does it exactly this way.
+  where: lesson.py section 6 (Histograms, and the monotone check at a split)
+  source_url: https://arxiv.org/pdf/1603.02754
+  source_title: 'XGBoost: A Scalable Tree Boosting System, Chen and Guestrin, arXiv:1603.02754v3 (section
+    3.2, Algorithm 2, ''Approximate Algorithm for Split Finding'')'
+  quote: by percentiles on feature k
+  quote_context: 'Read on 2026-10-14 from the full text, Algorithm 2: "for k = 1 to m do Propose S_k =
+    {s_k1, s_k2, ... s_kl} by percentiles on feature k. Proposal can be done per tree (global), or per
+    split (local)."'
+  accessed: 2026-10-14
+- id: xgboost-doc-monotone-constraints
+  claim: The XGBoost documentation says the library can enforce monotonicity constraints on any features
+    used in a boosted model, defines an increasing and a decreasing constraint as an inequality between
+    the model's values at x and at x' whenever x is at most x', and says that where there is a very strong
+    prior belief that the true relationship has some quality, constraints can be used to improve predictive
+    performance. It passes the directions as a tuple with one entry per feature, 1 for increasing, -1
+    for decreasing and 0 for none. Section 6 uses the third statement to motivate a measurement and the
+    closing section the fourth; the measurement checks the third rather than assuming it.
+  where: lesson.py section 6 (prose) and the closing section
+  source_url: https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html
+  source_title: Monotonic Constraints, XGBoost documentation (stable, version 3.4.2 as read), the XGBoost
+    developers
+  quote: XGBoost has the ability to enforce monotonicity constraints on any features used in a boosted
+    model.
+  quote_context: 'Read on 2026-10-14. The same page says: "In some cases, where there is a very strong
+    prior belief that the true relationship has some quality, constraints can be used to improve the predictive
+    performance of the model." and defines "an increasing constraint" and "a decreasing constraint" as
+    inequalities in f(x_1, ..., x, ..., x_n) whenever x is at most x'', and gives the example "(1,0):
+    An increasing constraint on the first predictor and no constraint on the second."'
+  accessed: 2026-10-14
+- id: xgboost-doc-shallow-trees
+  claim: The XGBoost documentation warns that, with the hist or approx tree methods, enabling monotonic
+    constraints may produce unnecessarily shallow trees, because the constraint can wipe out all the candidate
+    splits at a node, in which case no split is made. Section 6 says so and the lesson measures the leaves
+    per tree of its constrained and unconstrained boosters.
+  where: lesson.py section 6
+  source_url: https://xgboost.readthedocs.io/en/stable/tutorials/monotonic.html
+  source_title: Monotonic Constraints, XGBoost documentation (stable, version 3.4.2 as read), the note
+    for the 'hist' tree construction algorithm
+  quote: enabling monotonic constraints may produce unnecessarily shallow trees
+  quote_context: 'Read on 2026-10-14, in the Note for the ''hist'' tree construction algorithm: "If tree_method
+    is set to either hist or approx, enabling monotonic constraints may produce unnecessarily shallow
+    trees. This is because the hist method reduces the number of candidate splits to be considered at
+    each split. Monotonic constraints may wipe out all available split candidates, in which case no split
+    is made."'
+  accessed: 2026-10-14
+- id: lightgbm-doc-monotone-constraints
+  claim: LightGBM takes a monotone_constraints parameter in which 1 means increasing, -1 means decreasing
+    and 0 means no constraint, one entry per feature in order, as of 14 October 2026. The lesson's constraint
+    vector uses the same three values and says LightGBM does.
+  where: lesson.py closing section
+  source_url: https://lightgbm.readthedocs.io/en/stable/Parameters.html
+  source_title: Parameters, LightGBM documentation (stable), Microsoft, entry 'monotone_constraints'
+  quote: 1 means increasing, -1 means decreasing, 0 means non-constraint
+  quote_context: 'Read on 2026-10-14: "monotone_constraints, default = None, type = multi-int, aliases:
+    mc, monotone_constraint, monotonic_cst: used for constraints of monotonic features. 1 means increasing,
+    -1 means decreasing, 0 means non-constraint. you need to specify all features in order."'
+  accessed: 2026-10-14
+- id: lightgbm-doc-basic-method-over-constrains
+  claim: LightGBM's monotone_constraints_method defaults to basic, which its documentation calls the most
+    basic method and says over-constrains the predictions, with intermediate and advanced as less constraining
+    options, as of 14 October 2026. Section 8 says so when it describes the cost of the midpoint rule.
+  where: lesson.py section 8; closing section
+  source_url: https://lightgbm.readthedocs.io/en/stable/Parameters.html
+  source_title: Parameters, LightGBM documentation (stable), entry 'monotone_constraints_method'
+  quote: the most basic monotone constraints method. It does not slow down the training speed at all,
+    but over-constrains the predictions
+  quote_context: 'Read on 2026-10-14: "monotone_constraints_method, default = basic, type = enum, options:
+    basic, intermediate, advanced ... basic, the most basic monotone constraints method. It does not slow
+    down the training speed at all, but over-constrains the predictions. intermediate, a more advanced
+    method, which may slow down the training speed very slightly. However, this method is much less constraining
+    than the basic method and should significantly improve the results."'
+  accessed: 2026-10-14
+- id: lightgbm-source-midpoint-bounds
+  claim: 'In LightGBM''s source, as of 14 October 2026, the class that implements the basic constraint
+    method sets, after a numerical split on a feature with a monotone constraint, a bound at the midpoint
+    of the two children''s outputs: one child''s minimum and the other''s maximum, chosen by the sign
+    of the constraint. Section 8 says LightGBM''s default method hands bounds down at the midpoint, as
+    the lesson''s grow_tree does.'
+  where: lesson.py section 8; exercise 4
+  source_url: https://raw.githubusercontent.com/microsoft/LightGBM/master/src/treelearner/monotone_constraints.hpp
+  source_title: src/treelearner/monotone_constraints.hpp, BasicLeafConstraints::Update, microsoft/LightGBM
+    master branch as read
+  quote: double mid = (left_output + right_output) / 2.0f;
+  quote_context: 'Read on 2026-10-14, class BasicLeafConstraints (the default constraint method), method
+    Update: "if (is_numerical_split) { double mid = (left_output + right_output) / 2.0f; if (monotone_type
+    < 0) { entries_[leaf]->UpdateMin(mid); entries_[new_leaf]->UpdateMax(mid); } else if (monotone_type
+    > 0) { entries_[leaf]->UpdateMax(mid); entries_[new_leaf]->UpdateMin(mid); } }". The repository path
+    is src/treelearner/monotone_constraints.hpp on the master branch.'
+  accessed: 2026-10-14
+- id: lightgbm-source-split-rejection
+  claim: In LightGBM's source, as of 14 October 2026, a candidate split's gain is computed from child
+    outputs that are first constrained by the node's bounds, and is returned as 0 when the pair is out
+    of order for the feature's constraint (left above right for an increasing constraint, left below right
+    for a decreasing one). Section 6 says LightGBM rejects out-of-order children after clipping, as the
+    lesson's best_split does.
+  where: lesson.py sections 6 and 8; exercise 3
+  source_url: https://raw.githubusercontent.com/microsoft/LightGBM/master/src/treelearner/feature_histogram.hpp
+  source_title: src/treelearner/feature_histogram.hpp, GetSplitGains, microsoft/LightGBM master branch
+    as read
+  quote: ((monotone_constraint > 0) && (left_output > right_output))
+  quote_context: 'Read on 2026-10-14, function GetSplitGains, in the branch where monotone constraints
+    are in use: left_output and right_output come from CalculateSplittedLeafOutput with the node''s constraint,
+    then "if (((monotone_constraint > 0) && (left_output > right_output)) || ((monotone_constraint < 0)
+    && (left_output < right_output))) { return 0; }".'
+  accessed: 2026-10-14
+- id: sr-26-2-comparison-of-alternative-methodologies
+  claim: The attachment to SR 26-2 (17 April 2026) lists, among the activities model testing may include,
+    out-of-sample and out-of-time testing and a comparison of alternative assumptions and methodologies.
+    The closing section of the lesson says a challenger fitted and judged on the same months is one way
+    of making that comparison re-runnable.
+  where: lesson.py closing section ('What you built, and where it goes next')
+  source_url: https://www.federalreserve.gov/supervisionreg/srletters/SR2602a1.pdf
+  source_title: Supervisory Guidance on Model Risk Management, attachment to SR 26-2, Federal Reserve,
+    FDIC and OCC, 17 April 2026
+  quote: a comparison of alternative assumptions and methodologies
+  quote_context: 'Read on 2026-10-14 from the attachment PDF, in the passage on model testing: "Testing
+    may include a range of activities, from out-of-sample and out-of-time testing, to a comparison of
+    alternative assumptions and methodologies, to a critical assessment of data quality, relevance, and
+    inputs." (The PDF text breaks ''out-of-time'' across a line; the quoted phrase is on one line.)'
+  accessed: 2026-10-14
+- id: not-a-claim-synthetic-book
+  claim: 'NOT A CLAIM: the application book, its four inputs, the planted risk function and its one interaction,
+    the population shift from month 12, and every Gini, PSI, default rate, tree count and test result
+    printed by the notebook are generated by the lesson from a fixed seed. They describe no real lender,
+    and the lesson says so where it introduces the data. The conclusions it draws about the constraint''s
+    cost and benefit are about this generator, with replicate books to show the draw-to-draw movement,
+    and none is asserted to hold for any real portfolio.'
+  where: lesson.py throughout
+  source_url: ''
+  accessed: ''
+- id: not-a-claim-psi-thresholds
+  claim: 'NOT A CLAIM: the lesson states no threshold for a population stability index (no figure above
+    which a model is "unstable") and attributes none to any practice or regulator. Thresholds are folklore
+    unless a source says otherwise, and the programme''s monitoring module measures the false-alarm rate
+    of a threshold instead of adopting one.'
+  where: lesson.py section 16
+  source_url: ''
+  accessed: ''
