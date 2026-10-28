@@ -1,0 +1,362 @@
+claims:
+- id: peft-loraconfig-default-rank-alpha-dropout
+  claim: As of 14 October 2026, the PEFT library's `LoraConfig` defaults are rank `r = 8`, `lora_alpha
+    = 8` and `lora_dropout = 0.0`. The lesson's section 7 states the rank and alpha defaults (a scale
+    of exactly 1 at the default rank), the sweep of section 10 prints all three beside its own choices
+    (alpha 16, its own rank grid, no dropout), and "what this lesson does not cover" names dropout as
+    a regulariser it leaves out.
+  where: lesson.py sections 7, 10 and 16
+  source_url: https://huggingface.co/docs/peft/package_reference/lora
+  source_title: LoRA (PEFT package reference, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: 'r : int = 8 target_modules : Optional[Union[list[str], str]] = None exclude_modules : Optional[Union[list[str],
+    str]] = None lora_alpha : int = 8 lora_dropout : float = 0.0'
+  quote_context: The signature of `class peft.LoraConfig`, on the page's main code block; the signature
+    is one run of text on the page (the line breaks of the code block are not reproduced).
+  accessed: 2026-10-14
+- id: peft-loraconfig-b-zero-init-is-a-noop
+  claim: As of 14 October 2026, PEFT's default initialisation of a LoRA adapter sets the B weight to zero,
+    so that the untrained adapter is a no-op. This is the rule exercise 1 writes and the first measurement
+    of section 4 (an adapted model that equals the base model before any step).
+  where: lesson.py sections 4 and 15 (exercise 1, the zero-initialisation demo, common mistakes)
+  source_url: https://huggingface.co/docs/peft/package_reference/lora
+  source_title: LoRA (PEFT package reference, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: with the LoRA B weight being set to 0. This means that without further training, the LoRA adapter
+    will be a no-op.
+  quote_context: 'The `init_lora_weights` entry of the LoraConfig parameter list: ''Passing True (default)
+    results in the default initialization from the reference implementation from Microsoft, with the LoRA
+    B weight being set to 0.'''
+  accessed: 2026-10-14
+- id: peft-loraconfig-use-rslora-scaling
+  claim: As of 14 October 2026, PEFT's `use_rslora` option switches the adapter scaling factor from `lora_alpha
+    / r` (the original default) to `lora_alpha / math.sqrt(r)`, "Rank-Stabilized LoRA". These are the
+    two rules `lora_scale` implements in exercise 5.
+  where: lesson.py section 7 (exercise 5 and the first-steps measurement)
+  source_url: https://huggingface.co/docs/peft/package_reference/lora
+  source_title: LoRA (PEFT package reference, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: When set to True, uses Rank-Stabilized LoRA which sets the adapter scaling factor to lora_alpha/math.sqrt(r)
+    , since it was proven to work better. Otherwise, it will use the original default value of lora_alpha/r
+    .
+  quote_context: The `use_rslora` entry of the LoraConfig parameter list.
+  accessed: 2026-10-14
+- id: peft-loraconfig-init-options
+  claim: As of 14 October 2026, PEFT's `init_lora_weights` argument accepts, besides the default of `True`,
+    several named alternatives ('gaussian', 'eva', 'olora', 'pissa', 'corda', 'loftq', 'orthogonal' and
+    others). The lesson names this only to say that other initialisations and adapter methods exist and
+    are not covered.
+  where: lesson.py section 16 (what this lesson does not cover)
+  source_url: https://huggingface.co/docs/peft/package_reference/lora
+  source_title: LoRA (PEFT package reference, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: 'init_lora_weights : bool | Literal[''gaussian'', ''eva'', ''olora'', ''pissa'', ''pissa_niter_[number
+    of iters]'', ''corda'', ''loftq'', ''orthogonal'', ''mica''] = True'
+  quote_context: The `init_lora_weights` field of the `class peft.LoraConfig` signature.
+  accessed: 2026-10-14
+- id: peft-merge-and-unmerge
+  claim: As of 14 October 2026, PEFT documents merging a LoRA adapter into the base weights to remove
+    inference latency (`merge_and_unload()`), and a separate `merge_adapter()` for when the weights are
+    to be kept so the adapter can be unmerged later (`unmerge_adapter()`). Exercise 4 writes the merge
+    and the unmerge, and section 13 checks them.
+  where: lesson.py sections 6 and 13 (exercise 4, the frozen-base demo)
+  source_url: https://huggingface.co/docs/peft/developer_guides/lora
+  source_title: LoRA (PEFT developer guide, Hugging Face)
+  source_kind: primary (the library's own documentation)
+  quote: If you need to keep a copy of the weights so you can unmerge the adapter later or delete and
+    load different ones, you should use the merge_adapter() function instead.
+  quote_context: Section 'Merge LoRA weights into the base model'. The same section opens 'To eliminate
+    latency, use the merge_and_unload() function to merge the adapter weights with the base model.'
+  accessed: 2026-10-14
+- id: lora-paper-init-gaussian-a-zero-b
+  claim: The original LoRA paper (Hu et al., 2021, arXiv v2) initialises A with a random Gaussian and
+    B with zeros, so the product BA is zero at the start of training. It gives no standard deviation for
+    the Gaussian (see `loralib-reference-init-kaiming-uniform` for what the authors' code does). Exercise
+    1 writes this rule (in the paper's notation; the lesson's A and B are the transposes of the paper's)
+    and says that the paper states no scale.
+  where: lesson.py section 4 (exercise 1)
+  source_url: https://arxiv.org/pdf/2106.09685
+  source_title: 'LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., arXiv:2106.09685v2)'
+  source_kind: primary (the paper itself)
+  quote: We use a random Gaussian initialization for A and zero for B
+  quote_context: Section 4.1, directly after equation 3. The sentence continues 'so ∆W = BA is zero at
+    the beginning of training', in the PDF's own mathematical notation.
+  accessed: 2026-10-14
+- id: lora-paper-scale-alpha-over-r
+  claim: The LoRA paper scales the adapter output by alpha / r, where alpha is a constant set to the first
+    rank tried, and says the scaling helps to reduce the need to retune hyperparameters when the rank
+    changes. This is the `"lora"` rule of exercise 5.
+  where: lesson.py section 7 (exercise 5)
+  source_url: https://arxiv.org/pdf/2106.09685
+  source_title: 'LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., arXiv:2106.09685v2)'
+  source_kind: primary (the paper itself)
+  quote: This scaling helps to reduce the need to retune hyperparameters when we vary r
+  quote_context: 'Section 4.1, the paragraph after equation 3: ''We then scale ∆W x by α/r, where α is
+    a constant in r.'' (the PDF typesets the fraction). The sentence goes on ''(Yang & Hu, 2021).'''
+  accessed: 2026-10-14
+- id: lora-paper-small-r-caveat
+  claim: The LoRA paper cautions that a small rank does not work for every task, and gives as an example
+    a downstream task in a different language from the one used for pre-training, where retraining the
+    whole model could outperform LoRA with a small rank. The lesson states this in section 2, beside the
+    description of its new domain (a vocabulary the base has never seen, which is that situation in miniature),
+    and the sweep of section 10 includes a rank that costs more than the matrices it adapts.
+  where: lesson.py section 2
+  source_url: https://arxiv.org/pdf/2106.09685
+  source_title: 'LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., arXiv:2106.09685v2)'
+  source_kind: primary (the paper itself)
+  quote: However, we do not expect a small r to work for every task or dataset.
+  quote_context: 'Footnote 6, section 7.2 (''What is the optimal rank r for LoRA?''); it continues ''Consider
+    the following thought experiment: if the downstream task were in a different language than the one
+    used for pre-training, retraining the entire model (similar to LoRA with r = dmodel) could certainly
+    outperform LoRA with a small r.'''
+  accessed: 2026-10-14
+- id: rslora-divide-by-sqrt-rank
+  claim: The rank-stabilised LoRA paper (Kalajdzievski, 2023) argues that dividing the adapters by the
+    rank slows learning and stunts the performance of higher-rank adapters, and proves that they should
+    be divided by the square root of the rank. This is the `"rslora"` rule of exercise 5.
+  where: lesson.py section 7 (exercise 5 and the first-steps measurement) and section 10 (the scale-rule
+    cell)
+  source_url: https://arxiv.org/abs/2312.03732
+  source_title: A Rank Stabilization Scaling Factor for Fine-Tuning with LoRA (Kalajdzievski, arXiv:2312.03732)
+  source_kind: primary (the paper's own abstract)
+  quote: This scaling factor, which divides adapters by a factor of the rank, results in slowed learning
+    and stunted performance for LoRA with higher-rank adapters.
+  quote_context: The abstract. It continues 'In this work, we study the impact of the scaling factor on
+    the learning process and prove that LoRA adapters should be divided by a factor of the square root
+    of the rank.'
+  accessed: 2026-10-14
+- id: thinkingmachines-alpha-over-r-same-start
+  claim: '"LoRA Without Regret" (Thinking Machines Lab, 29 September 2025) reports that with the alpha
+    / r scaling the optimal learning rate is approximately independent of rank, and that the learning
+    curve is exactly the same at the beginning of training whatever the rank; it qualifies the first statement
+    in the same section (see `thinkingmachines-lr-rank-dependence-longer-runs`). Section 7 states both
+    and measures the first steps under both rules, and prints what this model does; it does not assume
+    either source is right for it.'
+  where: lesson.py section 7 (the first-steps measurement)
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: In fact, a stronger condition holds – the learning curve is exactly the same at the beginning
+    of training, regardless of rank.
+  quote_context: Section 'Optimal learning rate and rank', directly after 'The 1/r scaling factor makes
+    the optimal learning rate approximately independent of rank.'
+  accessed: 2026-10-15
+- id: thinkingmachines-lr-rank-dependence-longer-runs
+  claim: 'The same post qualifies its statement that alpha / r makes the optimal learning rate approximately
+    independent of rank: it says that in a short training regime the optimal rate is independent of rank,
+    but that the optimal rate has some rank-dependence in the longer-training regime. Section 7 states
+    the qualification beside the first-steps measurement, and the sweep of section 10 trains the full
+    schedule and tunes the learning rate for each rank instead of assuming one rate fits all ranks.'
+  where: lesson.py section 7 (the introduction of the first-steps measurement)
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: optimal LR has some rank-dependence in the longer-training regime
+  quote_context: 'Section ''Optimal learning rate and rank'', after the learning-curve passage: ''It follows
+    that in a short training regime, the optimal LR is also independent of rank. However, as we showed
+    above in our plots of learning rate vs loss (Figure 2), optimal LR has some rank-dependence in the
+    longer-training regime.'''
+  accessed: 2026-10-15
+- id: thinkingmachines-lora-lr-10x
+  claim: The same post reports that the optimal learning rate for LoRA was consistently about ten times
+    the one used for full fine-tuning in its experiments, for supervised and reinforcement learning. Section
+    10 states this in its introduction, attributed and dated, and the last lines of the sweep cell print
+    the ratio this lesson's own grid found (and say when the grid is too coarse to show one), for a different
+    model, scale and horizon.
+  where: lesson.py section 10 (the introduction, and the last lines the sweep cell prints)
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: Our experiments showed that the optimal LR for LoRA is consistently 10x the one used for FullFT
+    in the same application, for both supervised learning and reinforcement learning.
+  quote_context: Section 'Optimal learning rates for LoRA vs. FullFT'.
+  accessed: 2026-10-15
+- id: thinkingmachines-capacity-and-dataset-size
+  claim: The same post says there is agreement that LoRA underperforms in settings that resemble pre-training,
+    with very large datasets that exceed the storage limits of LoRA parameters, but that for dataset sizes
+    typical of post-training LoRA has sufficient capacity. Section 10 states the claim in its introduction
+    and says that the sweep cannot test it (a larger adapter can represent every update a smaller one
+    can, so the sweep measures the knee of its own protocol, not a capacity limit), and section 16 says
+    the findings about dataset size are about models this lesson does not use.
+  where: lesson.py section 10 (the introduction) and section 16
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: But for dataset sizes that are typical in post-training, LoRA has sufficient capacity to store
+    the essential information.
+  quote_context: The introduction, after 'There is agreement that LoRA underperforms in settings that
+    resemble pre-training, ... namely those with very large datasets that exceed the storage limits of
+    LoRA parameters.'
+  accessed: 2026-10-15
+- id: thinkingmachines-where-adapters-sit
+  claim: The same post reports that attention-only LoRA underperformed applying LoRA to all layers, even
+    when the number of trainable parameters was matched by a higher rank (the original paper's own statement
+    is in `lora-paper-attention-weights-only`). The lesson's model has no feed-forward block, so section
+    12 asks the placement question of the matrices it has and does not reproduce that finding.
+  where: lesson.py sections 12 and 16
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: Attention-only LoRA underperforms even when we match the number of trainable parameters by using
+    higher rank for attention-only LoRA.
+  quote_context: The summary list near the top of the post. Section 'Layers Where LoRA Is Applied' says
+    'The original paper by Hu et al. recommended applying LoRA only to the attention matrices, and many
+    subsequent papers followed suit, though a recent trend has been to apply it to all layers.'
+  accessed: 2026-10-15
+- id: thinkingmachines-peft-standard-parametrisation
+  claim: 'The same post states that its LoRA experiments use the standard parametrisation of the Hugging
+    Face PEFT library: a uniform distribution for A with scale 1/sqrt(d_in), and zero initialisation for
+    B. The post''s "scale" of a uniform draw is its bound (see `peft-lora-a-init-kaiming-uniform` for
+    the code), whose standard deviation is 1/sqrt(3 d_in). Exercise 1''s reference draws a Gaussian with
+    standard deviation 1/sqrt(d_in), which is this lesson''s own choice (the paper states no scale), and
+    its check accepts any standard deviation from 0.55 to 1.05 times that, so PEFT''s draw (0.577 times)
+    passes; the post is cited only for the claim that the parametrisation has A uniform and B zero.'
+  where: lesson.py section 4 (the paragraph before exercise 1, and exercise 1's docstring)
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: a uniform distribution for A
+  quote_context: 'Section ''Setting LoRA hyperparameters'': ''we used the standard parametrization used
+    in the Huggingface peft library ... proposed by Hu et al: a uniform distribution for A with scale
+    1/sqrt(d_in), zero initialization for B, the same LR for both, and α = 32'' (the page typesets the
+    scale as mathematics).'
+  accessed: 2026-10-15
+- id: thinkingmachines-init-scale-redundancy
+  claim: The same post lists four hyperparameters of LoRA (the scale factor alpha, the learning rates
+    of A and of B, and the initialisation scale of A) and shows that, for Adam, an invariance makes two
+    of them redundant, so the learning behaviour is determined by two. Section 4 states this beside exercise
+    1 to say that a different initialisation scale of A acts like a different learning rate or alpha,
+    and that the numbers a student's later runs print depend on the scale chosen.
+  where: lesson.py section 4 (the paragraph before exercise 1)
+  source_url: https://thinkingmachines.ai/blog/lora/
+  source_title: LoRA Without Regret (John Schulman and others, Thinking Machines Lab, 29 Sep 2025)
+  source_kind: primary (the authors' own post)
+  quote: invariances in the training dynamics mean that two of these are redundant, and learning behavior
+    is determined by two.
+  quote_context: Section 'Parametrization invariances', after the list of the four hyperparameters (alpha,
+    LR_A, LR_B and the initialisation scale of A) and the sentence 'Having to tune four different parameters
+    may seem overwhelming.'
+  accessed: 2026-10-15
+- id: peft-lora-a-init-kaiming-uniform
+  claim: 'As of 15 October 2026, the PEFT library''s default initialisation of the A weight of a LoRA
+    adapter (the `init_lora_weights=True` branch of `reset_lora_parameters`) is `nn.init.kaiming_uniform_`
+    with `a` equal to the square root of 5, followed by zeroing B. PyTorch''s `kaiming_uniform_` samples
+    uniformly on +-bound with bound = gain * sqrt(3 / fan_in), and the gain for a leaky ReLU with slope
+    `a` is sqrt(2 / (1 + a^2)), which is sqrt(1/3) for `a` = sqrt(5): the bound is 1/sqrt(fan_in) and
+    the standard deviation is 1/sqrt(3 * fan_in), smaller by a factor of sqrt(3) than the standard deviation
+    1/sqrt(d_in) that exercise 1''s reference draws. The lesson says so in section 4 (before exercise
+    1 and in its docstring), and the exercise''s check accepts it (a standard deviation from 0.55 to 1.05
+    times 1/sqrt(d_in)). The same line is the authors'' reference code: see `loralib-reference-init-kaiming-uniform`.'
+  where: lesson.py section 4 (the paragraph before exercise 1, exercise 1's docstring and its check)
+  source_url: https://github.com/huggingface/peft/blob/main/src/peft/tuners/lora/layer.py
+  source_title: peft/src/peft/tuners/lora/layer.py, branch main (Hugging Face PEFT), read as raw text
+  source_kind: primary (the library's own source code)
+  quote: nn.init.kaiming_uniform_(self.lora_A[adapter_name].weight, a=math.sqrt(5))
+  quote_context: Method `reset_lora_parameters`, in the branch `if init_lora_weights is True:` under the
+    comment 'initialize A the same way as the default for nn.Linear and B to zero'; line 341 of the file
+    on the date read. The next statements zero `self.lora_B[adapter_name].weight`. The code comment above
+    it links to the reference implementation's line (microsoft/LoRA, loralib/layers.py, L124).
+  accessed: 2026-10-15
+- id: pytorch-kaiming-uniform-bound
+  claim: PyTorch's `torch.nn.init.kaiming_uniform_` fills a tensor with values drawn uniformly on (-bound,
+    bound), where bound = gain * sqrt(3 / fan_mode), the default mode being 'fan_in'; `calculate_gain`
+    returns sqrt(2 / (1 + negative_slope^2)) for a leaky ReLU. These two formulas, with the PEFT call
+    recorded in `peft-lora-a-init-kaiming-uniform`, give the bound 1/sqrt(fan_in) for PEFT's default initialisation
+    of A.
+  where: lesson.py section 4 (the paragraph before exercise 1)
+  source_url: https://docs.pytorch.org/docs/2.14/nn.init.html
+  source_title: torch.nn.init (PyTorch 2.14 documentation)
+  source_kind: primary (the library's own documentation)
+  quote: Fill the input Tensor with values using a Kaiming uniform distribution.
+  quote_context: The entry for `torch.nn.init.kaiming_uniform_`. Directly below, the page states that
+    the values are sampled from U(-bound, bound) with bound = gain x sqrt(3 / fan_mode), and the entry
+    for `calculate_gain` gives sqrt(2 / (1 + negative_slope^2)) for a leaky ReLU (all typeset as mathematics,
+    so they are not reproduced as a quote). The page at docs.pytorch.org/docs/stable/ redirects to the
+    2.14 page.
+  accessed: 2026-10-14
+- id: loralib-reference-init-kaiming-uniform
+  claim: The authors' reference implementation of LoRA (Microsoft's loralib, `Linear.reset_parameters`)
+    initialises the A weight with `nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))` and B with zeros,
+    and its comment says that this is different from what the paper describes but should not affect performance.
+    PEFT copies the line. Section 4 says the paper gives no standard deviation, that the reference code
+    and PEFT use this draw, and that exercise 1 accepts it.
+  where: lesson.py section 4 (the paragraph before exercise 1) and exercise 1's docstring
+  source_url: https://github.com/microsoft/LoRA/blob/main/loralib/layers.py
+  source_title: microsoft/LoRA, loralib/layers.py, branch main, read as raw text
+  source_kind: primary (the authors' own source code)
+  quote: nn.init.kaiming_uniform_(self.lora_A, a=math.sqrt(5))
+  quote_context: 'Class `Linear`, method `reset_parameters`, line 124 of the file on the date read. The
+    two comment lines above it read ''initialize B the same way as the default for nn.Linear and A to
+    zero'' (the names are swapped relative to the code, which follows: A gets the kaiming-uniform draw
+    and B the zeros) and ''this is different than what is described in the paper but should not affect
+    performance''.'
+  accessed: 2026-10-15
+- id: peft-lora-layout-is-transposed
+  claim: 'As of 15 October 2026, PEFT builds the two adapter factors as `nn.Linear(in_features, r)` and
+    `nn.Linear(r, out_features)`. An `nn.Linear` stores its weight as (out, in), so PEFT''s `lora_A.weight`
+    is (r, in_features) and `lora_B.weight` is (out_features, r): each is the transpose of this lesson''s
+    A (d_in, r) and B (r, d_out), which follow the `x @ W` convention. Section 16''s optional cross-check
+    tells the reader to mind this layout.'
+  where: lesson.py section 16 (the optional extension)
+  source_url: https://github.com/huggingface/peft/blob/main/src/peft/tuners/lora/layer.py
+  source_title: peft/src/peft/tuners/lora/layer.py, branch main (Hugging Face PEFT), read as raw text
+  source_kind: primary (the library's own source code)
+  quote: self.lora_A[adapter_name] = nn.Linear(self.in_features, r, bias=False)
+  quote_context: Method `update_layer`, 'Actual trainable parameters'; the next line is 'self.lora_B[adapter_name]
+    = nn.Linear(r, self.out_features, bias=lora_bias)'. Lines 263 and 264 of the file on the date read.
+  accessed: 2026-10-15
+- id: biderman-lora-forgets-less-and-full-ft-rank
+  claim: '"LoRA Learns Less and Forgets Less" (Biderman et al., TMLR 2024) reports that LoRA better maintains
+    the base model''s performance on tasks outside the target domain, and that full fine-tuning learns
+    perturbations with a rank 10-100X greater than typical LoRA configurations. Section 11 states the
+    rank claim before it measures the effective rank of this model''s full fine-tuning update, and section
+    13 states the forgetting claim before it measures held-out loss on the base''s own domain; both print
+    what this model does, whatever the paper found for large models.'
+  where: lesson.py sections 11 and 13
+  source_url: https://arxiv.org/abs/2405.09673
+  source_title: LoRA Learns Less and Forgets Less (Biderman et al., arXiv:2405.09673)
+  source_kind: primary (the paper's own abstract)
+  quote: LoRA better maintains the base model's performance on tasks outside the target domain.
+  quote_context: The abstract. It also says 'Finally, we show that full finetuning learns perturbations
+    with a rank that is 10-100X greater than typical LoRA configurations, possibly explaining some of
+    the reported gaps.'
+  accessed: 2026-10-14
+- id: qlora-frozen-4bit-base-lora-adapters
+  claim: QLoRA backpropagates gradients through a frozen, 4-bit quantised pretrained language model into
+    LoRA adapters. The lesson names QLoRA only to say that quantisation of the frozen base is not covered.
+  where: lesson.py section 16 (what this lesson does not cover)
+  source_url: https://arxiv.org/abs/2305.14314
+  source_title: 'QLoRA: Efficient Finetuning of Quantized LLMs (Dettmers et al., arXiv:2305.14314)'
+  source_kind: primary (the paper's own abstract)
+  quote: QLoRA backpropagates gradients through a frozen, 4-bit quantized pretrained language model into
+    Low Rank Adapters
+  quote_context: The abstract (the arXiv listing writes the acronym '(LoRA)' directly after 'Adapters').
+  accessed: 2026-10-14
+- id: lora-paper-low-intrinsic-rank-hypothesis
+  claim: The LoRA paper hypothesises that the change in weights during model adaptation has a low "intrinsic
+    rank". This is the bet that section 11's effective-rank measurement of a full fine-tuning update tests
+    on this model, and that the rank sweep tests from the other side.
+  where: lesson.py section 11 (exercise 9)
+  source_url: https://arxiv.org/pdf/2106.09685
+  source_title: 'LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., arXiv:2106.09685v2)'
+  source_kind: primary (the paper itself)
+  quote: We hypothesize that the change in weights during model adaptation also has a low
+  quote_context: Section 1 (introduction); the sentence continues 'intrinsic rank', leading to our proposed
+    Low-Rank Adaptation (LoRA) approach' (the paper puts intrinsic rank in typographic quotes).
+  accessed: 2026-10-14
+- id: lora-paper-attention-weights-only
+  claim: The original LoRA paper (Hu et al., 2021) limited its study of Transformers to adapting the attention
+    weights and froze the MLP modules, for simplicity and parameter-efficiency (section 4.2, "Applying
+    LoRA to Transformer"). Section 12 cites the paper itself for this, and "LoRA Without Regret" for the
+    later finding that where adapters sit matters (`thinkingmachines-where-adapters-sit`).
+  where: lesson.py section 12
+  source_url: https://ar5iv.labs.arxiv.org/html/2106.09685
+  source_title: 'LoRA: Low-Rank Adaptation of Large Language Models (Hu et al., arXiv:2106.09685), arXiv
+    Labs HTML rendering'
+  source_kind: primary (the paper itself, in arXiv's own HTML rendering; the PDF's text extractor was
+    not available on the machine that read it, and the sentence contains no mathematics)
+  quote: We limit our study to only adapting the attention weights for downstream tasks and freeze the
+    MLP modules
+  quote_context: Section 4.2. The sentence continues '(so they are not trained in downstream tasks) both
+    for simplicity and parameter-efficiency.'
+  accessed: 2026-10-15

@@ -1,0 +1,177 @@
+claims:
+- id: tinybenchmarks-irt-model-form
+  claim: The tinyBenchmarks paper models the probability that an LLM answers an example correctly with
+    the two-parameter multidimensional item-response model p = 1 / (1 + exp(-alpha_i^T theta_l + beta_i)),
+    where theta_l is the model's latent ability and alpha_i and beta_i are the example's parameters. This
+    lesson uses the one-dimensional case and writes beta_i = a_i * b_i, which turns the same expression
+    into sigmoid(a (theta - b)).
+  where: lesson.py section 1 (the world), exercise 1 (p_correct)
+  source_url: https://arxiv.org/abs/2402.14992
+  source_title: 'Polo, Weber, Choshen, Sun, Xu, Yurochkin et al. (2024). tinyBenchmarks: evaluating LLMs
+    with fewer examples. arXiv:2402.14992v2, Section 4.1, ''The IRT model''.'
+  quote: The two-parameter multidimensional IRT model assumes that the probability of the LLM j getting
+    example i correctly is given by
+  quote_context: Section 4.1, the sentence that introduces equation (4.1). The equation itself is typeset
+    maths and is transcribed in the claim rather than quoted. Read on the HTML rendering of v2 (26 May
+    2024).
+  accessed: 2026-10-14
+- id: tinybenchmarks-100-examples-mmlu
+  claim: The tinyBenchmarks paper reports that the performance of an LLM on MMLU (about 14 thousand examples)
+    can be accurately estimated by evaluating it on 100 curated examples. This is the claim the lesson's
+    title and last section take as their starting point; the lesson does not reproduce it on real models.
+  where: lesson.py title; section 9 (a hundred items standing in for a thousand)
+  source_url: https://arxiv.org/abs/2402.14992
+  source_title: 'Polo et al. (2024). tinyBenchmarks: evaluating LLMs with fewer examples. arXiv:2402.14992,
+    abstract.'
+  quote: For example, we show that to accurately estimate the performance of an LLM on MMLU, a popular
+    multiple-choice QA benchmark consisting of 14K examples, it is sufficient to evaluate this LLM on
+    100 curated examples.
+  quote_context: The abstract, fourth sentence.
+  accessed: 2026-10-14
+- id: tinybenchmarks-strategies-compared
+  claim: 'The tinyBenchmarks paper compares several ways of choosing the evaluation examples: stratified
+    random sampling (proposed by Perlitz et al. for HELM), clustering of examples by how already-evaluated
+    LLMs answered them, and strategies built on item response theory. The lesson''s difficulty-stratified
+    rule (exercise 8) is its own one-dimensional cousin of the first and the last, not a reimplementation
+    of any of them.'
+  where: lesson.py section 9, introduction to exercises 7 to 9
+  source_url: https://arxiv.org/abs/2402.14992
+  source_title: 'Polo et al. (2024). tinyBenchmarks: evaluating LLMs with fewer examples. arXiv:2402.14992v2,
+    Section 1, Introduction.'
+  quote: Stratified random sampling as proposed by Perlitz et al. (2023) for HELM. [...] Clustering examples
+    based on LLMs that have already been evaluated. [...] New strategies built using Item Response Theory
+    (IRT)
+  quote_context: The numbered list of strategies in the Introduction (items 1 to 3), joined here with
+    [...]. Read on the HTML rendering of v2.
+  accessed: 2026-10-14
+- id: tinybenchmarks-p-irt-estimator
+  claim: 'The tinyBenchmarks paper''s performance-IRT (p-IRT) estimator fits an unseen model''s ability
+    by maximising the log-likelihood of its answers on the examples it was run on, with the examples''
+    parameters fixed (a logistic regression), and then estimates the model''s score on the whole scenario
+    by its conditional expectation: the observed answers on the evaluated examples plus the fitted probabilities
+    on the others, divided by the number of examples. This lesson''s estimate_theta (exercise 7, with
+    a Gaussian prior added) and p_irt_estimate (exercise 9) implement that estimator in one dimension.'
+  where: lesson.py section 9, exercises 7 and 9
+  source_url: https://arxiv.org/abs/2402.14992
+  source_title: 'Polo et al. (2024). tinyBenchmarks: evaluating LLMs with fewer examples. arXiv:2402.14992v2,
+    Section 4.2, ''The performance-IRT (p-IRT) estimator''.'
+  quote: This procedure is equivalent to fitting a logistic regression model, which is an instance of
+    the well-studied M -estimation procedure. Because Z j l is a random variable, we approximate it by
+    estimating the conditional expectation
+  quote_context: 'Section 4.2, paragraph ''The performance-IRT (p-IRT) estimator.'' The expression after
+    the last quoted word is typeset maths: (1/|I_j|) (sum over observed examples of Y_il + sum over the
+    remaining examples of p_il), which the claim transcribes. Z_jl is the model''s accuracy on the scenario
+    (the HTML rendering flattens the subscripts, as in the quote). Read on the HTML rendering of v2.'
+  accessed: 2026-10-14
+- id: tinybenchmarks-releases-tools
+  claim: The tinyBenchmarks authors released evaluation tools and tiny versions of popular benchmarks
+    (Open LLM Leaderboard, MMLU, HELM and AlpacaEval 2.0). The lesson sends the learner there for the
+    production versions of the estimators it builds in miniature.
+  where: lesson.py closing section
+  source_url: https://arxiv.org/abs/2402.14992
+  source_title: 'Polo et al. (2024). tinyBenchmarks: evaluating LLMs with fewer examples. arXiv:2402.14992,
+    abstract.'
+  quote: 'We release evaluation tools and tiny versions of popular benchmarks: Open LLM Leaderboard, MMLU,
+    HELM, and AlpacaEval 2.0.'
+  quote_context: The abstract, fifth sentence.
+  accessed: 2026-10-14
+- id: miller-evaluation-questions-as-a-sample
+  claim: Miller treats evaluation questions as drawn from an unseen super-population and gives formulas
+    for analysing evaluation data, for measuring differences between two models and for planning an evaluation
+    experiment. The lesson's universe of items, from which every benchmark is a sample, is that framing.
+  where: lesson.py section 3 (a score is a sample)
+  source_url: https://arxiv.org/abs/2411.00640
+  source_title: 'Miller, E. (2024). Adding Error Bars to Evals: A Statistical Approach to Language Model
+    Evaluations. arXiv:2411.00640, abstract.'
+  quote: Conceptualizing evaluation questions as having been drawn from an unseen super-population, we
+    present formulas for analyzing evaluation data, measuring differences between two models, and planning
+    an evaluation experiment.
+  quote_context: The abstract, fourth sentence.
+  accessed: 2026-10-14
+- id: miller-paired-variance-reduction
+  claim: 'Comparing two models on the same questions, the variance of the estimated difference equals
+    the unpaired variance minus twice the covariance of the two models'' question-level conditional means,
+    divided by the number of questions: Var(paired) = Var(unpaired) - 2 Cov(x_A, x_B) / n. Paired differences
+    therefore reduce the variance when the two models agree on which questions are easy and which are
+    hard. This lesson''s diff_variances (exercise 2) computes both variances per item.'
+  where: lesson.py section 4, exercise 2 (diff_variances)
+  source_url: https://arxiv.org/abs/2411.00640
+  source_title: Miller, E. (2024). Adding Error Bars to Evals. arXiv:2411.00640v1, Section 4.2, 'Paired
+    analysis'.
+  quote: We can thus reduce the variance with paired differences as long as the conditional means of the
+    model scores are correlated; that is to say, if the two models have some amount of agreement on which
+    questions are “easy” and which questions are “hard”.
+  quote_context: Section 4.2, the sentence after the displayed relation Var(mu_paired) = Var(mu_unpaired)
+    - 2 Cov(x_A, x_B)/n, which is typeset maths and is transcribed in the claim. Read on the HTML rendering
+    of v1 (1 Nov 2024).
+  accessed: 2026-10-14
+- id: miller-sample-size-formula
+  claim: For a paired analysis, the number of independent questions n needed to reach Type I error rate
+    alpha and Type II error rate beta for a minimum detectable effect delta is n = (z_{alpha/2} + z_beta)^2
+    (omega^2 + sigma_A^2/K_A + sigma_B^2/K_B) / delta^2, where z_p is the (1 - p)th percentile of a standard
+    normal distribution, omega^2 is Var(x_A) + Var(x_B) - 2 Cov(x_A, x_B) and sigma_A^2, sigma_B^2 are
+    the models' mean within-question variances; with one sample per question (K_A = K_B = 1) the bracket
+    is the per-item variance of the paired difference that this lesson's diff_variances returns. items_needed
+    (exercise 3) implements the formula.
+  where: lesson.py section 5, exercise 3 (items_needed)
+  source_url: https://arxiv.org/abs/2411.00640
+  source_title: Miller, E. (2024). Adding Error Bars to Evals. arXiv:2411.00640v1, Section 5, 'Power analysis'
+    (equation 9).
+  quote: Then the number of independent questions n required to achieve a Type I error rate α and Type
+    II error rate β with a given Minimum Detectable Effect δ is
+  quote_context: Section 5 and Appendix B, the sentence introducing equation (9), which is typeset maths
+    and is transcribed in the claim. The definition of z_p ('Let z p represent the ( 1 − p ) th percentile
+    of a standard normal distribution.') is in the same section. Read on the HTML rendering of v1.
+  accessed: 2026-10-14
+- id: sclar-format-sensitivity
+  claim: Sclar et al. report that several widely used open-source LLMs are extremely sensitive to subtle
+    changes in prompt formatting in few-shot settings, with performance differences of up to 76 accuracy
+    points when evaluated using LLaMA-2-13B. The lesson's per-model prompt-format sensitivity (section
+    1) is a planted analogue of this, at a much smaller scale.
+  where: lesson.py section 1, after the first table
+  source_url: https://arxiv.org/abs/2310.11324
+  source_title: 'Sclar, Choi, Tsvetkov, Suhr (2023). Quantifying Language Models'' Sensitivity to Spurious
+    Features in Prompt Design or: How I learned to start worrying about prompt formatting. arXiv:2310.11324,
+    abstract.'
+  quote: We find that several widely used open-source LLMs are extremely sensitive to subtle changes in
+    prompt formatting in few-shot settings, with performance differences of up to 76 accuracy points when
+    evaluated using LLaMA-2-13B.
+  quote_context: The abstract.
+  accessed: 2026-10-14
+- id: sclar-format-performance-weakly-correlated
+  claim: Sclar et al. report that how well a prompt format performs correlates only weakly between models,
+    which they say puts into question the validity of comparing models with an arbitrarily chosen, fixed
+    prompt format. The lesson's reason for giving each model its own format sensitivity, so that changing
+    the format can reorder a leaderboard, is this finding.
+  where: lesson.py section 1, after the first table; section 7
+  source_url: https://arxiv.org/abs/2310.11324
+  source_title: Sclar et al. (2023). Quantifying Language Models' Sensitivity to Spurious Features in
+    Prompt Design. arXiv:2310.11324, abstract.
+  quote: We also show that format performance only weakly correlates between models, which puts into question
+    the methodological validity of comparing models with an arbitrarily chosen, fixed prompt format.
+  quote_context: The abstract.
+  accessed: 2026-10-14
+- id: mizrahi-ranking-varies-across-templates
+  claim: 'Mizrahi et al. report, from a study of several tasks with paraphrased, semantically equivalent
+    instruction templates for each, that a single instruction template leads to unreliable model rankings
+    for many of the tasks: by their Kendall''s W between the rankings that different templates induce,
+    10 of the tasks show only slight to moderate ranking agreement and only two show strong agreement.
+    They add that benchmarks typically rely on a single instruction template for evaluating all models.
+    The lesson''s format-resampling bootstrap (section 7) measures the rank movement this implies in a
+    world where the truth is known; the lesson''s sentence says "for many of the tasks they study" and
+    does not claim the effect for every task.'
+  where: lesson.py section 7
+  source_url: https://arxiv.org/abs/2401.00595
+  source_title: Mizrahi, Kaplan, Malkin, Dror, Shahaf, Stanovsky (2024). State of What Art? A Call for
+    Multi-Prompt LLM Evaluation. arXiv:2401.00595v3, section 4.2 and abstract.
+  quote: a single instruction template leads to unreliable rankings for many of the tasks
+  quote_context: 'Section 4.2 (Quantifying Performance Variance due to Instruction Paraphrasing), paragraph
+    ''Using a single-instruction template leads to brittle ranking'', sentence beginning ''The results
+    (Table 4) demonstrate that'', followed by ''with 10 of the tasks exhibiting only slight to moderate
+    ranking agreement, and only two exhibiting strong agreement''. Read on the HTML rendering of v3 (6
+    May 2024), the latest version, with the typeset-maths annotation text dropped. The last sentence of
+    the Figure 1 caption, ''Despite all instructions being semantically equivalent, both absolute performance
+    and relative ranking vary widely.'', is about one task and four paraphrases and is context, not the
+    basis of the lesson''s sentence. The abstract adds: ''These benchmarks typically rely on a single
+    instruction template for evaluating all LLMs on a specific task.'''
+  accessed: 2026-10-15

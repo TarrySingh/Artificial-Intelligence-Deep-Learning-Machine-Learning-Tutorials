@@ -1,0 +1,76 @@
+id: T10-L06-eval-power-and-ranks
+title: Build the statistics of an honest benchmark — the items needed to detect a gap, rank ranges over
+  items and prompt formats, and a 100-item IRT estimate of a 1,000-item score
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T07-L03-evaluating-agents
+- T01-L01-statistics-by-simulation
+objectives:
+- Implement a two-parameter item-response model and the per-item variance of the measured gap between
+  two models, with and without sharing the items
+- Implement the number of items needed to detect a stated gap and a paired-bootstrap verdict, and measure
+  by simulation the power they deliver
+- Implement a bootstrap over items and prompt formats and a rank-frequency table, and measure how far
+  each model's rank can move under each source of doubt
+- Implement a posterior-mode ability estimate, a difficulty-stratified choice of 100 items and the performance-IRT
+  estimator of a full-benchmark score, and measure their error against a random subset and against the
+  noise no 100-item method can remove
+- Explain, from your own printed table, why the plain accuracy on a curated subset is a biased estimate
+  of the full score
+before_you_start:
+  assumed:
+  - write numpy array expressions with broadcasting, boolean masks and sums along an axis
+  - write the logistic (sigmoid) function and say what it does to the difference of two numbers
+  - say what a bootstrap resample is and read a percentile interval from the replicates (T07-L03 builds
+    a paired bootstrap)
+  - read a statement such as a test with a 5% level and 80% power without deriving it (T01-L01 estimates
+    power by simulation)
+  - take the derivative of a log-likelihood and apply one Newton step, new value = old value + slope /
+    curvature (exercise 7 repeats it)
+  resources:
+  - title: 'Adding Error Bars to Evals: A Statistical Approach to Language Model Evaluations'
+    by: Evan Miller (arXiv)
+    url: https://arxiv.org/abs/2411.00640
+    kind: free
+    why: section 4.2 is the paired-differences result behind exercise 2, and section 5 and appendix B
+      are the sample-size formula that exercise 3 implements
+  - title: 'tinyBenchmarks: evaluating LLMs with fewer examples'
+    by: Polo et al. (arXiv)
+    url: https://arxiv.org/abs/2402.14992
+    kind: free
+    why: section 3 on choosing evaluation examples and section 4 on the IRT model and the p-IRT estimator,
+      which exercises 7 to 9 implement in one dimension
+  - title: State of What Art? A Call for Multi-Prompt LLM Evaluation
+    by: Mizrahi et al. (arXiv)
+    url: https://arxiv.org/abs/2401.00595
+    kind: free
+    why: section 4 shows how model rankings change across semantically equivalent prompt templates, the
+      second source of doubt that section 7 of this lesson resamples
+  - title: The Basics of Item Response Theory, second edition
+    by: Frank B. Baker (ERIC; full text free)
+    url: https://eric.ed.gov/?id=ED458219
+    kind: free
+    why: chapter 2 on item characteristic curve models, chapter 5 on estimating an examinee's ability
+      and chapter 6 on the information function
+  - title: 'Item Response Theory: Foundations for Psychologists and Social Scientists, second edition'
+    by: Susan E. Embretson and Steven P. Reise (Routledge)
+    url: https://www.routledge.com/Item-Response-Theory-Foundations-for-Psychologists-and-Social-Scientists/Embretson-Reise/p/book/9780805853032
+    kind: paid
+    why: chapter 4 on binary IRT models, chapter 6 on measuring persons and chapter 7 on estimating item
+      parameters are the theory under p_correct, estimate_theta and the given fit_2pl
+datasets:
+- name: T10-L06 synthetic benchmark (a universe of 100,000 two-parameter items, twelve leaderboard models
+    answering the first 1,000 under five prompt formats, 300 reference models and 200 held-out models,
+    all from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 196
+status: executed
+measured_seconds: 3.1
+measured_peak_mib: 122
+guard_allow:
+- _finish

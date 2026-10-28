@@ -1,0 +1,67 @@
+id: T02-L02-pytorch-core-idioms
+title: Write a PyTorch training loop with a checkpoint that survives a restart, and measure what each
+  missing piece of state costs
+track: T02
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T02-L01-autograd-from-scratch
+objectives:
+- Implement a test for whether two tensors share memory, and measure which tensor operations return views
+  and which return copies
+- Implement a device probe that checks at run time what is available, and explain why the build-time answer
+  of torch.accelerator is not enough
+- Implement an nn.Module with parameters, a persistent buffer, a non-persistent buffer and dropout, and
+  measure what state_dict() holds and what it leaves out
+- Implement a seeded DataLoader and a training loop (gradient clearing, forward pass, loss, backward pass,
+  gradient clipping, optimiser step, scheduler step) whose order is checked by probes
+- Implement checkpoint capture and restore, kill a run at chosen steps, and measure with exact tensor
+  equality which missing piece of state makes the resumed run differ from the run that was never interrupted
+before_you_start:
+  assumed:
+  - write Python classes with `__init__` and methods, and pass a function as an argument
+  - 'use numpy arrays: read a shape, take a slice, and know when an operation returns a view instead of
+    a copy'
+  - 'describe a training loop in order: forward pass, loss, backward pass, parameter update (T02-L01 builds
+    the backward pass)'
+  - 'run a notebook on Linux, Windows or an Apple-silicon Mac with macOS 14 or later: the pinned PyTorch
+    wheel has no build for Intel Macs or older macOS'
+  resources:
+  - title: Learn the Basics
+    by: PyTorch tutorials
+    url: https://docs.pytorch.org/tutorials/beginner/basics/intro.html
+    kind: free
+    why: 'tensors, data and a training loop on a small model: the picture for exercises 1, 3 and 5'
+  - title: Saving and loading models
+    by: PyTorch tutorials
+    url: https://docs.pytorch.org/tutorials/beginner/saving_loading_models.html
+    kind: free
+    why: state_dict basics, and what it leaves out that exercise 6 measures
+  - title: Reproducibility
+    by: PyTorch documentation, notes
+    url: https://docs.pytorch.org/docs/2.14/notes/randomness.html
+    kind: free
+    why: what the docs promise and do not, for exercises 4 and 6
+  - title: Serialization semantics
+    by: PyTorch documentation, notes
+    url: https://docs.pytorch.org/docs/2.14/notes/serialization.html
+    kind: free
+    why: what weights_only=True accepts, for exercise 6
+  - title: Broadcasting
+    by: NumPy user guide
+    url: https://numpy.org/doc/stable/user/basics.broadcasting.html
+    kind: free
+    why: the shape rule behind the (B, 1) against (B,) trap in exercise 5
+datasets:
+- name: T02-L02 synthetic table (224 rows of 8 features and one target, drawn from numpy's seeded random
+    generator)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 232
+guard_allow:
+- Gain
+status: executed
+measured_seconds: 19.7
+measured_peak_mib: 310

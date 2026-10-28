@@ -482,8 +482,10 @@ def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = (), lim
          heavy: bool = False) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
-    The exercise checks run in milliseconds, so `limit` is 1 second unless a heavy demo asks for
-    more: a loop that never ends is stopped before it can fill the machine's memory.
+    The exercise checks run in milliseconds, so an exercise's check gets `_CHECK_SECONDS` (2 s) and
+    any other cell `_DEMO_SECONDS`, unless a heavy demo asks for more with `limit`; memory that grows
+    by more than 2 GiB stops it too. A loop that never ends is stopped before it can fill the
+    machine's memory.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own
     message, which names the likely mistake, and the notebook carries on, so one broken
@@ -1227,6 +1229,9 @@ def _check_best_split() -> None:
     assert best_split(Xb, g, h, rows, np.array([0]), 4, 0.0, 4.5, 0.0) is None, (
         "min_child_hess = 4.5 leaves no candidate whose children both carry that much hessian (the "
         "best has 4.0 each): expected None")
+    assert best_split(Xb, g, h, rows, np.array([0]), 4, 1.0, 4.5, 0.0) is None, (
+        "the same node with lam = 1.0: min_child_hess = 4.5 is compared with each child's hessian sum (4.0 at best), "
+        "not with H + lam (5.0), so expected None. lam belongs in the weight and the score, not in this rule")
     assert best_split(Xb, g, 0.25 * h, rows, np.array([0]), 4, 0.0, 2.0, 0.0) is None, (
         "every row has a hessian of 0.25, so the best split's children carry 1.0 each: min_child_hess = 2.0 asks "
         "for more hessian than they have, although each child holds four rows. The rule is about the SUM of the "
@@ -2262,6 +2267,10 @@ def _check_stability_table() -> None:
         "that is a different quantity, not a smaller one")
     assert math.isnan(rows[2].gini) and abs(rows[2].default_rate) == 0.0 and not math.isnan(rows[2].psi), (
         "a vintage with no defaults has a default rate of 0.0, a Gini of nan, and still a PSI")
+    assert rows[2].psi == 0.0, (
+        f"the third vintage holds the development scores themselves, so its PSI against development is exactly 0, got "
+        f"{rows[2].psi:.4f}: is each vintage compared with the vintage before it? Every vintage is compared with the "
+        "development scores")
     assert math.isnan(rows[3].gini) and rows[3].default_rate == 1.0 and not math.isnan(rows[3].psi), (
         "a vintage with nothing but defaults has a default rate of 1.0, a Gini of nan, and still a PSI: either single class "
         "has no Gini")

@@ -1019,6 +1019,11 @@ def _check_split_leaks() -> None:
         "two test rows that share a key with each other but with no training row leak nothing: "
         "only a key that also occurs among the training rows counts"
     )
+    two_rows_one_key = split_leaks([0], [1, 2], [0, 1, 2], [0, 40, 50], ["y", "y", "y"], 5)
+    assert two_rows_one_key["duplicate"] == 2, (
+        f"got {two_rows_one_key['duplicate']}, expected 2: both test rows have the key of training row 0, and the "
+        "count is of test ROWS with a training twin, not of distinct repeated keys"
+    )
     empty = split_leaks([], [0, 1], [3, 4], [1, 2], ["a", "b"], 7)
     assert empty == {"group": 0, "time": 0, "duplicate": 0}, (
         f"got {empty}: with no training rows there is nothing to leak from, so every count is 0"
@@ -1460,6 +1465,12 @@ def _check_diagnose() -> None:
     assert "group" in got, (
         f"got {got}: the SECOND fold has customer 1 on both sides (rows 2 and 3); every fold must "
         "be audited, not just the first"
+    )
+    peeks_late = lambda X, y, tr, te: X[te, 0] + y[tr].mean() + (y[te] if 7 in te else 0.0)
+    got = diagnose(book, clean_folds, peeks_late, ("f1", "f2"))
+    assert got == ["preprocessing"], (
+        f"got {got} for a pipeline that reads the test labels in the SECOND fold only: run fold_isolation on "
+        "every fold, not just the first, so the answer is ['preprocessing']"
     )
     wide = Book(("f1", "f2", "f3"), np.column_stack([book.X, np.arange(8) % 4]).astype(float), book.y,
                 book.customer, book.predicted_at, np.column_stack([book.written_at, book.predicted_at - 1]),

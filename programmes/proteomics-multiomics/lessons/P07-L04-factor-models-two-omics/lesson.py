@@ -2193,10 +2193,12 @@ def _spread() -> None:
           f"model mean {mc.mean():.1f} [{mc.min()}-{mc.max()}]")
     print("active factors reported by the model, world by world: " + ", ".join(str(w["active"]) for w in worlds)
           + f" (planted: {len(FACTOR_NAMES)})")
-    short = [r for r, w in enumerate(worlds) if w["padded"]]
-    print(f"worlds with fewer active factors than were planted (their matching borrowed an inactive column): {short if short else 'none'}")
-    worse = [r for r, w in enumerate(worlds) if w["model"].mean() < w["pca"].mean()]
-    print(f"worlds in which the model's mean |corr| is below PCA's: {worse if worse else 'none'}")
+    short = [r + 1 for r, w in enumerate(worlds) if w["padded"]]   # numbered from 1, in the order of the line above
+    print(f"worlds with fewer active factors than were planted (their matching borrowed an inactive column; numbered "
+          f"from 1 as above): {', '.join(map(str, short)) if short else 'none'}")
+    worse = [r + 1 for r, w in enumerate(worlds) if w["model"].mean() < w["pca"].mean()]
+    print(f"worlds in which the model's mean |corr| is below PCA's (numbered from 1 as above): "
+          f"{', '.join(map(str, worse)) if worse else 'none'}")
     print(f"the first of these worlds is the cohort studied in sections 2 to 17 (seed {SEED}), so the fit you already saw is one of the {N_WORLDS}")
 
 
@@ -2251,8 +2253,9 @@ def _weak_worlds() -> None:
         print(f"  planted factors that are active as planted, per world:   " + ", ".join(str(a) for a in key_active)
               + f" (threshold {100 * ACTIVE_R2:g}% of some layer; the weakest planted factor's best layer, % explained: "
               + ", ".join(f"{v:.1f}" for v in key_weakest) + ")")
-        below = [r for r in range(WEAK_WORLDS) if model_worst[r] < pca_worst[r]]
-        print(f"  worlds in which the model's worst factor is recovered less well than PCA's worst: {below if below else 'none'}")
+        below = [r + 1 for r in range(WEAK_WORLDS) if model_worst[r] < pca_worst[r]]   # numbered from 1, left to right
+        print(f"  worlds in which the model's worst factor is recovered less well than PCA's worst (numbered from 1, left to "
+              f"right): {', '.join(map(str, below)) if below else 'none'}")
 
 
 _demo("weaker factors", _weak_worlds, needs=_UPTO[8], limit=300)

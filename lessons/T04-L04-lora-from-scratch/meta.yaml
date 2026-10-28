@@ -1,0 +1,72 @@
+id: T04-L04-lora-from-scratch
+title: Implement a LoRA linear layer with hand-derived gradients, adapt a numpy transformer to a new vocabulary
+  at six ranks, and measure the rank at which the adapter stops helping against full fine-tuning
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 300
+language: python
+prerequisites:
+- T03-L03-nanolm-cpu-slice
+- T04-L02-chat-templates-and-masking
+objectives:
+- Implement a LoRA linear layer (initialisation, forward, hand-derived backward and merge) and verify
+  its gradients against central finite differences
+- Measure the trainable parameters and optimiser-state bytes of rank-r adapters against full fine-tuning
+  in exact counts, and compute the rank beyond which an adapter has more parameters than the matrix it
+  adapts
+- Fine-tune one pretrained numpy transformer to a new vocabulary at six ranks and three learning rates,
+  and measure held-out loss for every pair against full fine-tuning
+- Find the rank beyond which a larger adapter stops lowering the validation loss under a fixed protocol,
+  and measure how far that rank moves when the learning rate or the scale rule changes
+- Measure how the scaling rule (alpha / r or alpha / sqrt(r)) changes the first steps of training at different
+  ranks, and how many directions the full fine-tuning update uses
+before_you_start:
+  assumed:
+  - multiply matrices with @ in numpy and predict the shape of the result, including for a batch of matrices
+  - differentiate a composition of functions with the chain rule, and say what the gradient of a matrix
+    product is with respect to each factor
+  - say what one step of Adam does to a parameter, and why a parameter with a zero gradient never moves
+  - read a held-out loss curve and say why a validation set and a test set are kept apart (T03-L03 trains
+    a language model this way)
+  resources:
+  - title: 'LoRA: Low-Rank Adaptation of Large Language Models'
+    by: Hu et al. (Microsoft), arXiv
+    url: https://arxiv.org/abs/2106.09685
+    kind: free
+    why: section 4 is the whole method (the low-rank update, the zero initialisation of B, the alpha /
+      r scale) and section 7.2 is the rank experiment this lesson repeats in miniature
+  - title: LoRA Without Regret
+    by: John Schulman and others, Thinking Machines Lab
+    url: https://thinkingmachines.ai/blog/lora/
+    kind: free
+    why: rank, learning-rate and adapter-placement sweeps at the scale of real models, and the claims
+      about learning rates and scaling that the first-steps and sweep sections test on a small model
+  - title: LoRA (PEFT developer guide)
+    by: Hugging Face
+    url: https://huggingface.co/docs/peft/developer_guides/lora
+    kind: free
+    why: how LoRA is configured in the library most people will use, including merging and unmerging an
+      adapter, which is what the optional cross-check at the end of the lesson would compare against
+  - title: 'CS231n: Backpropagation, Intuitions'
+    by: Stanford CS231n (Karpathy and Li)
+    url: https://cs231n.github.io/optimization-2/
+    kind: free
+    why: the gradient of a matrix product with respect to each factor, which exercise 3 applies twice
+      to get the gradients of A, B and the input
+datasets:
+- name: T04-L04 synthetic domains (random words from a 40-word list for the base model's pretraining,
+    and from a different 20-word list for the new domain; training, validation and test corpora drawn
+    from fixed seeds)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 204
+status: executed
+measured_seconds: 58.5
+measured_peak_mib: 83
+guard_allow:
+- base_gradient_check
+- pretrain_base
+- evaluate
+- finetune
+- score
