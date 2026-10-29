@@ -2102,6 +2102,11 @@ def _check_compare_state_dicts() -> None:
     one = compare_state_dicts({"w": torch.ones(8) + 0.5 * torch.eye(8)[3]}, {"w": torch.ones(8)})
     assert one["max_abs_diff"] == 0.5, (f"one element of eight differs by 0.5, so the largest difference is 0.5; got "
                                         f"{one['max_abs_diff']}: take the maximum over all elements, not their mean")
+    wide = compare_state_dicts({"w": torch.tensor([1.0e8])}, {"w": torch.tensor([0.1])})
+    want = float(torch.tensor([1.0e8]).double() - torch.tensor([0.1]).double())
+    assert wide["max_abs_diff"] == want, (
+        f"1e8 against 0.1 (both float32): the difference in float64 is {want!r}, got {wide['max_abs_diff']!r}. "
+        "Convert both entries to float64 BEFORE subtracting: in float32 the 0.1 is lost")
 
 
 def _check_kill_and_resume() -> None:

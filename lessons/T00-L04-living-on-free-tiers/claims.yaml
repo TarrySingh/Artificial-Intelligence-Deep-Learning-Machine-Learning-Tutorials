@@ -1,0 +1,451 @@
+claims:
+- id: groq-free-plan-gpt-oss-120b
+  claim: Groq's rate-limits page lists a Free Plan table with one row per model. For openai/gpt-oss-120b
+    the row reads 30 requests per minute, 1K requests per day, 8K tokens per minute and 200K tokens per
+    day. The snapshot transcribes K as one thousand. This is the figure set behind the groq-free-gpt-oss-120b
+    tier.
+  where: assets/free_tiers.json; lesson.py section 1 table; every capacity and class result for that tier
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: openai/gpt-oss-120b | 30 | 1K | 8K | 200K | - | -
+  quote_context: a row of the table whose header row reads 'MODEL ID | RPM | RPD | TPM | TPD | ASH | ASD';
+    the page shows it under the 'Free Plan Limits' tab, which is selected by default, next to a 'Developer
+    Plan Limits' tab
+  accessed: 2026-10-14
+- id: groq-k-is-thousand
+  claim: Groq's own header example shows x-ratelimit-limit-requests as 14400 and says it always refers
+    to requests per day, while its table prints the free-plan figure 14.4K for some models. That fixes
+    the reading of K in the table as one thousand, which the snapshot applies to the 1K and 8K and 200K
+    figures.
+  where: assets/SOURCE.md; assets/free_tiers.json (groq row)
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: x-ratelimit-limit-requests | 14400 | Always refers to Requests Per Day (RPD)
+  quote_context: a row of the Rate Limit Headers table; the free-plan table in the same page lists 14.4K
+    requests per day for the llama-prompt-guard rows
+  accessed: 2026-10-14
+- id: groq-limits-are-per-organization
+  claim: Groq's limits apply at the organisation level and not per user, and any limit that is reached
+    first stops the requests. A class that shares one organisation therefore shares one pool.
+  where: lesson.py section 1 prose, self-check 1, common mistakes
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: Rate limits apply at the organization level, not individual users.
+  quote_context: followed by 'You can hit any limit type depending on which threshold you reach first.'
+  accessed: 2026-10-14
+- id: groq-table-is-a-summary
+  claim: Groq calls its table a high level summary with possible exceptions and says an organisation's
+    exact limits are on its limits page in account settings. The published figures are therefore only
+    as good as their date, which is why the snapshot carries one.
+  where: assets/free_tiers.json note; lesson.py section 1
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: The following is a high level summary and there may be exceptions to these limits.
+  quote_context: the next sentence reads 'You can view the current, exact rate limits for your organization
+    on the limits page in your account settings.'
+  accessed: 2026-10-14
+- id: groq-free-tier-needs-no-payment-method
+  claim: Groq's billing FAQ says that upgrading from the Free tier to the Developer tier is what requires
+    a valid payment method, which implies the Free tier (the Free Plan Limits table) does not. The snapshot's
+    zero_dollar flag for the Groq row rests on this reading, and on the table being the one shown for
+    the Free plan. No page read states an expiry or a credit amount for the Free tier.
+  where: assets/free_tiers.json (groq row, zero_dollar)
+  source_url: https://console.groq.com/docs/billing-faqs
+  source_title: 'GroqDocs: Billing FAQs'
+  quote: To upgrade from the Free tier to the Developer tier, you'll need to provide a valid payment method
+  quote_context: from 'What happens when I upgrade to the Developer tier?'; the page also says a downgrade
+    'returns to Free tier rate limits and restrictions'
+  accessed: 2026-10-14
+- id: groq-retry-after-on-429
+  claim: Groq answers an exceeded limit with HTTP 429 and sets a retry-after header, in seconds, only
+    on that response. The simulated provider's retry_after_ms plays that role.
+  where: lesson.py section 4 (Provider), section 5 prose
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: 'Note: retry-after is only set if you hit the rate limit and status code 429 is returned.'
+  quote_context: the header table above it reads 'retry-after | 2 | In seconds'
+  accessed: 2026-10-14
+- id: groq-429
+  claim: Groq answers a request that exceeds a rate limit with HTTP 429.
+  where: lesson.py section 1 prose; the simulated provider's refusals
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: When you exceed rate limits, our API returns a 429 Too Many Requests HTTP status code.
+  accessed: 2026-10-14
+- id: cerebras-429
+  claim: Cerebras answers a request that exceeds a rate limit with HTTP 429, and the message says whether
+    the uncached or the total token limit was exceeded.
+  where: lesson.py section 1 prose
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: If you exceed your rate limits, you will receive a 429 Too Many Requests error.
+  accessed: 2026-10-14
+- id: openrouter-429-body
+  claim: OpenRouter rejects a request over a platform limit (free-model requests per minute or per day,
+    or DDoS protection) with an error whose code is 429 and whose message is "Rate limit exceeded".
+  where: lesson.py section 1 prose
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: '"code": 429, "message": "Rate limit exceeded",'
+  quote_context: the example error body under 'Handling 429 errors'
+  accessed: 2026-10-14
+- id: openrouter-free-variant-limits
+  claim: OpenRouter limits free model variants (ids ending in :free) by account credit history. In the
+    page's table, with fewer than 10 credits purchased all time the limit is 20 requests per minute and
+    50 requests per day, and with at least 10 it is 20 per minute and 1000 per day (the page adds that
+    the higher ceiling is granted from one credit below that threshold, next claims). Fewer than 10 includes
+    none purchased, which is why the first row is treated as a tier that needs no purchase. The page lists
+    no token limit. On 2026-10-14 the rendered page's table had empty number cells (filled in by the page's
+    scripts) and the markdown source held the figures as four constants; on 2026-10-29 the markdown source
+    prints the same figures directly in the table, unchanged. The daily figures and the credit threshold
+    are corroborated by the FAQ's markdown source (next claim).
+  where: assets/free_tiers.json (two openrouter rows); lesson.py section 1 table and every result for
+    those tiers
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source of /docs/api-reference/limits)'
+  quote: '| Less than 10 | 20 | 50 | | At least 10 | 20 | 1000 |'
+  quote_context: the table under '1. Free usage limits' (header '| Credits purchased (all time) | Requests
+    per minute | Requests per day |'); on 2026-10-14 the same rows were written with constants (FREE_MODEL_RATE_LIMIT_RPM
+    = 20, FREE_MODEL_NO_CREDITS_RPD = 50, FREE_MODEL_HAS_CREDITS_RPD = 1000, FREE_MODEL_CREDITS_THRESHOLD
+    = 10), the same figures
+  accessed: 2026-10-29
+- id: openrouter-faq-daily-limits
+  claim: 'OpenRouter''s FAQ states the same two daily figures and the credit threshold as the limits page:
+    its markdown source says free models are limited to 50 requests a day, or 1000 a day once at least
+    10 credits have been purchased (on 2026-10-14 it wrote these figures as constants; on 2026-10-29 it
+    prints them directly, unchanged). It gives no per-minute figure, which only the limits page does.'
+  where: assets/free_tiers.json (two openrouter rows)
+  source_url: https://openrouter.ai/docs/faq.md
+  source_title: 'OpenRouter docs: FAQ (markdown source)'
+  quote: If you have purchased at least 10 credits, your free model rate limit will be 1000 requests per
+    day.
+  quote_context: a note in the FAQ's markdown source on rate limits for free models
+  accessed: 2026-10-29
+- id: openrouter-tier-by-credits
+  claim: OpenRouter selects the free-model limit tier by all-time credits purchased, which is why the
+    higher daily ceiling is not a zero-dollar tier. The page says the higher ceiling starts one credit
+    below the table's threshold, to absorb rounding and top-up fees.
+  where: assets/free_tiers.json (why_not_zero_dollar); lesson.py section 1
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: The `limit` tier is selected by all-time credits purchased, independently of `is_free_tier`.
+  accessed: 2026-10-14
+- id: openrouter-higher-ceiling-from-nine
+  claim: OpenRouter's page says the higher daily ceiling is granted starting one credit below the table's
+    threshold, which it states is currently 9 credits (the threshold of 10 minus one), to absorb rounding
+    and top-up fees. So the lower daily ceiling applies below 9 credits purchased, not below 10, which
+    is why the snapshot's tier labels give both figures.
+  where: assets/free_tiers.json (tier labels of the two openrouter rows)
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: the higher daily ceiling is granted starting one credit below the table's threshold (currently
+    {FREE_MODEL_CREDITS_THRESHOLD - 1} credits)
+  accessed: 2026-10-14
+- id: openrouter-more-keys-do-not-raise-limits
+  claim: OpenRouter says that making additional accounts or API keys does not affect its rate limits,
+    because it governs capacity globally, and that it has different rate limits for different models,
+    so a user can share the load that way if they run into issues. So extra keys, or extra accounts made
+    by one person, are not a way to raise a limit, and a class sharing one OpenRouter account shares one
+    pool. The Tip does not address thirty learners who each hold an account of their own, and does not
+    say whether the 20 requests a minute is one pool for every :free model or one per model, which is
+    what would decide whether sharing the load across models helps (see the unknowns at the foot). Whether
+    one person may make several accounts is a matter of OpenRouter's terms, next claim.
+  where: assets/free_tiers.json (scope and note of the two openrouter rows); lesson.py section 1, section
+    8, the closing cell, common mistakes
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: Making additional accounts or API keys will not affect your rate limits, as we govern capacity
+    globally. We do however have different rate limits for different models, so you can share the load
+    that way if you do run into issues.
+  quote_context: the whole Tip, above the page's table of limit types
+  accessed: 2026-10-15
+- id: openrouter-terms-multiple-accounts
+  claim: OpenRouter's Terms of Service (last updated 31 August 2026, as the page shows it) list, under
+    Prohibited Conduct, creating multiple accounts as a single user to bypass or circumvent use limits
+    "or for any other reason". One person making extra accounts to get more quota is therefore against
+    OpenRouter's terms, not merely ineffective. The clause is about one user holding several accounts;
+    it says nothing about thirty users with one account each, or about a teacher arranging that. The lesson
+    read no terms from Groq or any other vendor and makes no claim about them.
+  where: lesson.py section 8 (before the order demo), common mistakes
+  source_url: https://openrouter.ai/terms
+  source_title: OpenRouter Terms of Service, section 7 (Prohibited Conduct)
+  quote: create multiple accounts as a single user, for purposes of bypassing or circumventing use limits
+    on the Site or Service or for any other reason
+  quote_context: 'one item in the list that follows ''BY USING THE SERVICE, YOU AGREE NOT TO:'' in section
+    7, Prohibited Conduct; the page header reads ''Last Updated: August 31, 2026'''
+  accessed: 2026-10-15
+- id: openrouter-free-daily-counter-utc-day
+  claim: 'OpenRouter reports the free-model daily counter and ceiling that gate an account''s free-model
+    requests, and counts them per UTC day: the key endpoint''s response documents the requests used, allowed
+    and remaining as those in the current UTC day. So a daily refusal on OpenRouter ends at a UTC day
+    boundary, which may be minutes away, not at the end of a simulated session.'
+  where: lesson.py section 4 prose (how real services reset); common mistakes
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: Free-model requests allowed per UTC day
+  quote_context: a comment in the documented response of GET /api/v1/key, next to 'Free-model requests
+    recorded so far in the current UTC day'
+  accessed: 2026-10-14
+- id: openrouter-free-daily-total
+  claim: 'OpenRouter''s FAQ describes the daily figure for free models as a total: the free models have
+    low rate limits of the lower daily figure "per day total". The lesson therefore counts the daily figure
+    as one pool for every :free model. The page says nothing equivalent for the per-minute figure, so
+    whether 20 a minute is one pool or one per model is unknown (see the foot).'
+  where: assets/free_tiers.json (note of the openrouter rows); lesson.py section 4 (one counter for a
+    class)
+  source_url: https://openrouter.ai/docs/faq.md
+  source_title: 'OpenRouter docs: FAQ (markdown source)'
+  quote: These models have low rate limits (50 requests per day total)
+  quote_context: the answer to 'What free tier options exist?'
+  accessed: 2026-10-29
+- id: openrouter-backoff-advice
+  claim: OpenRouter tells clients that rate limits are transient and to retry with exponential backoff
+    instead of re-sending at once, and to honour the Retry-After header when it is present. This is the
+    advice exercise 2 implements and the table in section 5 measures.
+  where: lesson.py section 5 prose, common mistakes
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: Rate limits are transient; wait and retry rather than immediately re-sending. Honor the `Retry-After`
+    header when present.
+  quote_context: the second sentence of the bullet 'Retry with exponential backoff.' under 'To resolve
+    429 errors'
+  accessed: 2026-10-14
+- id: openrouter-retry-after-not-always-sent
+  claim: OpenRouter's page says that when every attempted upstream provider returned a retry hint, the
+    error response also carries a Retry-After header. It does not say whether a 429 for a platform limit
+    (the free-model limits this lesson models) carries one, so a client that reads only Retry-After cannot
+    assume it is there. The simulated provider's send_retry_after=False models that client; it does not
+    model the missing X-RateLimit headers, which the next claim says are present on OpenRouter's own 429s.
+  where: lesson.py section 4 prose and the second table in section 5
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: When every attempted provider returned a retry hint, the error response also carries a `Retry-After`
+    header.
+  accessed: 2026-10-14
+- id: openrouter-platform-429-carries-reset-header
+  claim: When OpenRouter itself returns a 429 for a platform limit, the error response carries X-RateLimit-Limit,
+    X-RateLimit-Remaining and X-RateLimit-Reset headers describing the limit that was hit, whether or
+    not it carries Retry-After.
+  where: lesson.py section 4 prose
+  source_url: https://openrouter.ai/docs/api-reference/limits.md
+  source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
+  quote: the error response carries `X-RateLimit-Limit`, `X-RateLimit-Remaining`, and `X-RateLimit-Reset`
+    headers describing the limit that was hit.
+  quote_context: a Note under 'Handling 429 errors'; the sentence begins 'When OpenRouter itself returns
+    a 429 error for a platform limit,'
+  accessed: 2026-10-14
+- id: cerebras-free-trial-limits
+  claim: Cerebras's Free Trial table lists, for gpt-oss-120b, 5 requests per minute, 30K uncached tokens
+    per minute, 90K total tokens per minute, 1M tokens per hour and 1M tokens per day. The snapshot records
+    the uncached figure as tpm and the daily figure as tpd, and does not model the hourly figure, which
+    cannot bind before the equal daily one.
+  where: assets/free_tiers.json (cerebras row); lesson.py section 1 table, section 7 table
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: gpt-oss-120b | 5 | 30K | 90K | 1M | 1M
+  quote_context: first row of the Free Trial tab's table, whose header reads 'Model | RPM | Uncached TPM
+    | Total TPM | TPH | TPD'; the same page calls uncached TPM the primary limit
+  accessed: 2026-10-14
+- id: cerebras-no-renewing-free-tier
+  claim: Cerebras says it does not currently offer a no-cost tier that renews automatically, and that
+    its Free Trial is bounded in time and credit. The snapshot therefore marks the trial as not a zero-dollar
+    tier and leaves it out of the class runs.
+  where: assets/free_tiers.json (why_not_zero_dollar); lesson.py section 1
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: Cerebras doesn't currently offer a no-cost tier that renews automatically or a per-model always-free
+    allowance.
+  quote_context: the answer to 'Is there a permanently free tier?'
+  accessed: 2026-10-14
+- id: cerebras-trial-credit-and-payment-method
+  claim: The Cerebras Free Trial is 5 dollars of credits that expire 30 days after they are granted, and
+    new accounts receive them only after adding a verified payment method.
+  where: assets/free_tiers.json (why_not_zero_dollar)
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: New accounts receive $5 in free credits after adding a verified payment method.
+  quote_context: the answer to 'What is the Free Trial tier?'; the FAQ also says the credits 'expire 30
+    days after they're granted'
+  accessed: 2026-10-14
+- id: cerebras-token-bucket
+  claim: Cerebras says it rate-limits with a token bucket whose capacity replenishes continuously rather
+    than resetting at fixed intervals. This is the model exercise 1 implements for every per-minute limit.
+    The lesson applies the same model to the other vendors as a simplification; their pages do not say
+    how their limits are enforced.
+  where: lesson.py section 3 prose, exercise 1, common mistakes
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: We use the token bucketing algorithm for rate limiting, which means your capacity replenishes
+    continuously rather than resetting at fixed intervals.
+  accessed: 2026-10-14
+- id: cerebras-limits-per-organization
+  claim: Cerebras limits apply at the organisation level, not the user level, and vary by model.
+  where: lesson.py section 1 prose, self-check 1
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: Rate limits apply at the organization level, not the user level, and vary based on the model.
+  accessed: 2026-10-14
+- id: cerebras-request-token-estimate
+  claim: Cerebras estimates a request's tokens before it runs, adding either max_completion_tokens or
+    an analysed estimate of the output to the input tokens, and rate-limits the request before processing
+    if the estimate would exceed the available quota. The lesson charges every call its prompt plus its
+    maximum completion in the same way. The other vendors' pages do not say how they estimate.
+  where: lesson.py section 2 prose; CALL_TOKENS
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits
+  source_title: 'Cerebras Inference docs: Rate Limits'
+  quote: If this estimated token consumption would exceed your available token quota, the request is rate
+    limited before processing begins.
+  quote_context: preceded by 'Adding either the max_completion_tokens parameter or an analyzed estimate
+    for an upper bound of the output tokens'; the next sentence is the next claim
+  accessed: 2026-10-14
+- id: cerebras-estimate-revised-to-actual
+  claim: Cerebras then revises the estimate to the actual usage once the request has been processed. So
+    the lesson's charge of prompt plus maximum completion for every call is the cautious reading of the
+    vendor's own rule, not what a finished request ends up costing. Whether a daily limit is charged the
+    estimate or the actual usage is not stated (see the unknowns at the foot).
+  where: lesson.py section 2 prose (how a call is charged)
+  source_url: https://inference-docs.cerebras.ai/support/rate-limits.md
+  source_title: 'Cerebras Inference docs: Rate Limits (markdown source)'
+  quote: This estimate is revised once the request is fully processed and your quota is updated to reflect
+    actual usage.
+  quote_context: the sentence that follows 'the request is rate limited before processing begins'; the
+    page also says cached tokens do not count toward its uncached TPM limit, the figure the snapshot records
+    as tpm
+  accessed: 2026-10-15
+- id: groq-cached-tokens-not-counted
+  claim: 'Groq''s rate-limits page says cached tokens do not count towards its rate limits. The lesson
+    charges every call as fully uncached, which is the cautious reading: a class that runs one notebook
+    sends the same prompt many times, and what a real cache would do to the daily token figure is unknown.'
+  where: lesson.py section 2 prose (how a call is charged)
+  source_url: https://console.groq.com/docs/rate-limits
+  source_title: 'GroqDocs: Rate Limits'
+  quote: Cached tokens do not count towards your rate limits.
+  quote_context: in the 'Understanding Rate Limits' list of the page, before 'Rate limits apply at the
+    organization level, not individual users.'
+  accessed: 2026-10-15
+- id: gemini-per-project-daily-reset
+  claim: Google applies Gemini API rate limits per project and not per API key, and resets requests-per-day
+    quotas at midnight Pacific time. A class sharing one project therefore shares one pool whatever keys
+    it holds. The lesson's simulated day does not cross a reset.
+  where: lesson.py section 1 prose, self-check 1, the Gemini row's scope
+  source_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  source_title: 'Gemini API docs: Rate limits'
+  quote: Rate limits are applied per project, not per API key. Requests per day (RPD) quotas reset at
+    midnight Pacific time.
+  accessed: 2026-10-14
+- id: gemini-numbers-only-in-ai-studio
+  claim: 'Google''s rate-limits page publishes no per-model free-tier numbers: it says limits depend on
+    usage tier and account status and can be viewed in Google AI Studio, and that the specified limits
+    are not guaranteed. The snapshot therefore carries limits null for the Gemini free tier, and the planner
+    refuses it: an unpublished limit is unknown, not unlimited.'
+  where: assets/free_tiers.json (gemini row); lesson.py section 1, section 7 table, common mistakes
+  source_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  source_title: 'Gemini API docs: Rate limits'
+  quote: Rate limits depend on a variety of factors (such as your usage tier) and can be viewed in Google
+    AI Studio.
+  quote_context: the same section ends 'Specified rate limits are not guaranteed and actual capacity may
+    vary.'
+  accessed: 2026-10-14
+- id: gemini-free-usage-tier
+  claim: Google lists a Free usage tier whose qualification is an active project or a free trial (the
+    higher tiers need a billing account). It is the basis of the gemini-free-tier row being marked zero-dollar.
+  where: assets/free_tiers.json (gemini row)
+  source_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  source_title: 'Gemini API docs: Rate limits'
+  quote: Free | Active project or free trial | N/A
+  quote_context: a row of the 'Usage tier | Qualification | Billing tier cap' table
+  accessed: 2026-10-14
+- id: gemini-any-limit-triggers-error
+  claim: Google measures requests per minute, tokens per minute and requests per day, and exceeding any
+    one of them triggers a rate-limit error, so the capacity of a tier is set by whichever limit is reached
+    first.
+  where: lesson.py section 1 prose; the planner's binding limit
+  source_url: https://ai.google.dev/gemini-api/docs/rate-limits
+  source_title: 'Gemini API docs: Rate limits'
+  quote: Your usage is evaluated against each limit, and exceeding any of them will trigger a rate limit
+    error.
+  accessed: 2026-10-14
+- id: rfc6585-429
+  claim: HTTP status 429 means the client has sent too many requests in a given amount of time, and a
+    response may include a Retry-After header saying how long to wait.
+  where: lesson.py section 5 prose
+  source_url: https://www.rfc-editor.org/rfc/rfc6585.html
+  source_title: RFC 6585, Additional HTTP Status Codes, section 4 (429 Too Many Requests)
+  quote: The 429 status code indicates that the user has sent too many requests in a given amount of time
+    ("rate limiting").
+  accessed: 2026-10-14
+- id: rfc9110-retry-after
+  claim: The Retry-After header field says how long a client ought to wait before a follow-up request,
+    and its value is either an HTTP date or a number of seconds to delay.
+  where: lesson.py section 5 prose; the retry_after_ms of the simulated provider
+  source_url: https://www.rfc-editor.org/rfc/rfc9110.html
+  source_title: RFC 9110, HTTP Semantics, section 10.2.3 (Retry-After)
+  quote: Servers send the "Retry-After" header field to indicate how long the user agent ought to wait
+    before making a follow-up request.
+  quote_context: the next paragraph reads 'The Retry-After field value can be either an HTTP-date or a
+    number of seconds to delay after receiving the response.'
+  accessed: 2026-10-14
+- id: aws-correlated-retries
+  claim: When failures come from overload or contention, backing off alone helps less than it should because
+    calls that back off to the same time collide again when retried, so jitter, a random amount added
+    to the backoff, spreads the retries in time.
+  where: lesson.py section 5 prose
+  source_url: https://builder.aws.com/content/3EumjoZascWd1oZiEgL8ORlv3qE/timeouts-retries-and-backoff-with-jitter
+  source_title: 'Amazon Builders'' Library: Timeouts, retries, and backoff with jitter'
+  quote: If all the failed calls back off to the same time, they cause contention or overload again when
+    they are retried.
+  quote_context: from the 'Jitter' section, which continues 'Jitter adds some amount of randomness to
+    the backoff to spread the retries around in time.'; the original address, https://aws.amazon.com/builders-library/timeouts-retries-and-backoff-with-jitter/,
+    redirects here (checked 2026-10-15)
+  accessed: 2026-10-15
+- id: aws-full-jitter
+  claim: The AWS Architecture Blog post that names "Full Jitter" calls it the algorithm whose sleep is
+    a random number between zero and the capped exponential backoff, sleep = random_between(0, min(cap,
+    base * 2 ** attempt)). That formula is the post's Figure, an image with no text alternative, read
+    on the accessed date; the surrounding text names the algorithm and says that having every client compete
+    in every round is wasteful.
+  where: lesson.py section 5 prose; exercise 2 docstring
+  source_url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+  source_title: 'AWS Architecture Blog: Exponential Backoff And Jitter'
+  quote: Having every client compete in every round is wasteful.
+  quote_context: the figure after 'Adding jitter is a small change to the sleep function:' reads 'sleep
+    = random_between(0, min(cap, base * 2 ** attempt))', and the post goes on 'Let's call the algorithm
+    above "Full Jitter"'
+  accessed: 2026-10-14
+- id: NOT A CLAIM provider-model
+  claim: 'NOT A CLAIM: the simulated Provider, the class and its demands, the retry patience, the start
+    spread and every count the lesson prints about finishers, rejected requests and peak request rates
+    belong to a model written for this lesson. No provider was called, no key or account was used, and
+    the lesson says so in its opening cell. The model enforces every per-minute limit as a bucket and
+    every daily limit as a counter; only Cerebras''s page says its limits are buckets.'
+  where: lesson.py opening cell, sections 4 and 9
+  source_url: none
+  accessed: 2026-10-14
+- id: NOT A CLAIM unknowns
+  claim: 'NOT A CLAIM: no page read for this snapshot says whether a real provider charges a refused request
+    against a quota, or whether Groq or OpenRouter count in windows or in buckets. OpenRouter''s page
+    does not say whether its 20 requests a minute is one pool for every :free model or one per model (it
+    says only that limits differ for different models and that its daily figure is a total). Groq''s page
+    does not state when its daily limits reset or whether they refill continuously: its header example,
+    which the page marks as illustrative, shows a requests-per-day reset a little under three minutes
+    away with 30 of 14,400 requests used, which does not look like a fixed daily reset. No page read states
+    that Groq''s Free plan or OpenRouter''s free variants expire, and none states a renewal date; their
+    limits are written as per-minute and per-day figures. Cerebras says its token estimate is revised
+    to the actual usage and Groq says cached tokens do not count, but no page read says whether a daily
+    limit is charged the estimate or the actual usage, or what a cache does to a daily token figure for
+    a class that sends one prompt many times; the lesson charges every call its full estimate with no
+    cache. OpenRouter''s Tip suggests sharing load across models because limits differ by model, and does
+    not say whether the 20 a minute is pooled across :free models. No terms of service of Groq, Cerebras
+    or Google were read. The simulated provider charges nothing for a refusal, shares one counter across
+    a class, and resets a daily limit by making a refusal wait for the rest of the simulated day; its
+    proxy''s pacer, by contrast, charges a request to its own day when it schedules it, refused or not.
+    The lesson lists all of these as modelling choices or unknowns rather than true.'
+  where: lesson.py section 4 prose, snapshot rows for OpenRouter and Groq, common mistakes
+  source_url: none
+  accessed: 2026-10-14
+- id: NOT A CLAIM what-ifs
+  claim: 'NOT A CLAIM: the quota cuts in section 9 are hypotheticals applied to the snapshot in memory.
+    The lesson does not say that any vendor has made them, or will.'
+  where: lesson.py section 9
+  source_url: none
+  accessed: 2026-10-14

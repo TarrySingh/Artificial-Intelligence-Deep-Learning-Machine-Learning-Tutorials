@@ -1,0 +1,78 @@
+id: T00-L04-living-on-free-tiers
+title: Build a token-bucket limiter, jittered retries, a pacer and a capacity planner for a class on free
+  API tiers, and measure how many learners finish, how many requests are wasted and what a quota cut does
+track: T00
+flagship: ''
+tier: cpu8
+budget_seconds: 30
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+objectives:
+- Implement TokenBucket in exact integer arithmetic so that a bucket refills continuously to the millisecond,
+  refuses a take it cannot cover in full, and reports the first millisecond a take will succeed
+- Implement backoff_ms, capped exponential backoff with full jitter added on top of a server's Retry-After,
+  and measure how many requests a simulated class wastes, and how high its request rate peaks, under five
+  retry rules
+- Implement a Pacer that holds a request bucket, a token bucket and two daily counters, and returns the
+  earliest send time that breaks none of them, or None once a daily quota is spent
+- Implement class_capacity, an upper bound on how many learners can finish a notebook on a shared quota
+  that names the limit that binds, and check it against a simulated class
+- Implement pick_next and measure how the order a shared key serves learners in changes how many finish,
+  then re-run the planner and the proxy when one provider cuts its quota
+before_you_start:
+  assumed:
+  - write a Python class with an __init__ and a few methods, and a function that returns a NamedTuple
+  - do integer arithmetic with // and %, and say why 7 // 2 is 3 while 7 / 2 is 3.5
+  - read an HTTP status code such as 429 and say what a request, a response and a header are
+  - use random.Random(seed).random() to get the same numbers on every run
+  resources:
+  - title: 'The Python Tutorial, section 9: Classes'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/classes.html
+    kind: free
+    why: defining a class with __init__ and methods and keeping state in attributes, which is all TokenBucket
+      and Pacer need
+  - title: 'The Python Tutorial, section 3: An Informal Introduction to Python (numbers)'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/tutorial/introduction.html
+    kind: free
+    why: / always gives a float while // floors and % keeps the remainder, the whole-number arithmetic
+      the bucket and the planner use instead of floats
+  - title: An overview of HTTP
+    by: MDN Web Docs (Mozilla)
+    url: https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Overview
+    kind: free
+    why: what a request, a response and a header are, which is all the lesson assumes about a 429 and
+      the Retry-After header it may carry
+  - title: 'random: Generate pseudo-random numbers'
+    by: Python Software Foundation
+    url: https://docs.python.org/3/library/random.html
+    kind: free
+    why: a seeded random.Random gives the same draws on every run, which the class, the start times and
+      the jitter all rely on
+  - title: Exponential Backoff And Jitter
+    by: Marc Brooker, AWS Architecture Blog
+    url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+    kind: free
+    why: the post that names full jitter, the retry rule exercise 2 builds, and shows why backing off
+      without it still leaves clumps
+datasets:
+- name: free_tiers.json - published free-tier limits of four vendors, transcribed as of 2026-10-14
+  licence: CC-BY-NC-SA-4.0 for the transcription; the facts come from the source pages
+  url: https://console.groq.com/docs/rate-limits
+  licence_url: https://creativecommons.org/licenses/by-nc-sa/4.0/
+  copyright: Limits, scopes and eligibility transcribed by the Synapsa Commons project (c) 2026 RealAI
+    from the vendor documentation pages listed in assets/SOURCE.md; none of the pages' prose or tables
+    is reproduced
+  cached_at: assets/free_tiers.json
+  retrieved: 2026-10-14
+  gated: false
+- name: T00-L04 synthetic class (thirty learners with seeded call counts and start times, a simulated
+    provider, one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 70
+status: executed
+measured_seconds: 0.7
+measured_peak_mib: 22

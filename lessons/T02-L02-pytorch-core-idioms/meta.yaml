@@ -62,6 +62,6 @@ datasets:
 points: 232
 guard_allow:
 - Gain
-status: executed
+status: reviewed
 measured_seconds: 19.7
 measured_peak_mib: 310

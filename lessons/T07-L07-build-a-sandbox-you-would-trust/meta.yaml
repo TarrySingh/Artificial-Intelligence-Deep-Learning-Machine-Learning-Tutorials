@@ -1,0 +1,72 @@
+id: T07-L07-build-a-sandbox-you-would-trust
+title: Build a sandbox you would trust — a process-group supervisor, a symlink-resolving jail check and
+  a deny-by-default audit policy, measured by twenty-one seeded escape attempts against every combination
+  of the three layers
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 240
+language: python
+prerequisites:
+- T07-L01-agent-loop-from-scratch
+objectives:
+- 'Implement a supervisor that runs a child process under a wall-clock timeout and kills its whole process
+  group, and measure what that stops and the one thing it cannot reach: a process that has left the group'
+- Implement a jail check that decides whether a path is inside a directory after resolving symlinks and
+  .., and show the paths that a string-prefix check lets out
+- Implement a policy for Python's audit hook that allows only the events a benign workload was observed
+  to raise, judges imports by top-level package and checks the paths of file events
+- Measure what twenty-one seeded escape attempts reach against each of the eight combinations of three
+  layers, with an undefended run as the control
+- Compute each layer's coverage alone and its leave-one-out value, and name the attempts that get through
+  all three layers
+before_you_start:
+  assumed:
+  - write Python functions with docstrings, try/except and with-statements, and read a traceback
+  - start a command with subprocess.run or subprocess.Popen and read its output and exit code
+  - tell an absolute path from a relative one, and say what .. and a symbolic link do
+  resources:
+  - title: sys.addaudithook() and the audit events table
+    by: The Python Software Foundation (Python documentation)
+    url: https://docs.python.org/3/library/sys.html#sys.addaudithook
+    kind: free
+    why: what an audited event is and how a hook can refuse an operation, with the documentation's own
+      warning that hooks are not a sandbox
+  - title: 'PEP 578: Python Runtime Audit Hooks'
+    by: Steve Dower (Python Enhancement Proposals)
+    url: https://peps.python.org/pep-0578/
+    kind: free
+    why: the design behind the audit events this lesson's policy judges, including its section on why
+      hooks are not a sandbox
+  - title: 'subprocess: Subprocess management'
+    by: The Python Software Foundation (Python documentation)
+    url: https://docs.python.org/3/library/subprocess.html
+    kind: free
+    why: Popen, communicate() with a timeout (which does not kill anything) and start_new_session, which
+      exercise 1's supervisor depends on
+  - title: killpg(3), Linux manual page
+    by: The Linux man-pages project
+    url: https://man7.org/linux/man-pages/man3/killpg.3.html
+    kind: free
+    why: how one signal reaches every process in a process group, and what a group id of 0 means (your
+      own group)
+  - title: The Linux Programming Interface
+    by: Michael Kerrisk (No Starch Press, 2010)
+    url: https://man7.org/tlpi/
+    kind: paid
+    why: chapter 34 on process groups, sessions and job control is the background to layer T; the book's
+      page lists the contents
+datasets:
+- name: T07-L07 synthetic arena (a host folder with planted fake secrets, an empty jail folder, twenty-one
+    escape attempts and seven benign programs, all derived from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 84
+status: executed
+measured_seconds: 57.7
+measured_peak_mib: 30
+guard_allow:
+- launch
+- control_run
+guard_limits_reason: exercise 1 waits out real child processes (10.1 s measured), exercise 3 starts them;
+  the others are pure functions at 2 s

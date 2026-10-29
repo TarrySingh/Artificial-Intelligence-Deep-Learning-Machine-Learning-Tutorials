@@ -1,0 +1,176 @@
+claims:
+- id: audit-hooks-are-not-a-sandbox
+  claim: The Python documentation says that audit hooks are not suitable for implementing a sandbox, and
+    that malicious code can trivially disable or bypass them. The lesson builds a layered teaching sandbox
+    out of one anyway, to measure it, and says so in sections 1 and 9.
+  where: lesson.py section 1 (What this is not) and section 9 (What this is not)
+  source_url: https://docs.python.org/3/library/sys.html#sys.addaudithook
+  source_title: 'Python documentation: sys.addaudithook()'
+  quote: They are not suitable for implementing a “sandbox”. In particular, malicious code can trivially
+    disable or bypass hooks added using this function.
+  quote_context: the second paragraph of the sys.addaudithook() entry; the same sentences are in the 3.11
+    and 3.12 documentation
+  accessed: 2026-10-15
+- id: audit-hooks-can-refuse-an-operation
+  claim: A hook added with sys.addaudithook() can refuse an operation by raising an exception (or end
+    the process). The bootstrap's hook raises PermissionError to refuse; this is also why the policy in
+    exercise 3 returns a reason.
+  where: lesson.py section 5 and the child bootstrap in section 1
+  source_url: https://docs.python.org/3/library/sys.html#sys.addaudithook
+  source_title: 'Python documentation: sys.addaudithook()'
+  quote: Hooks can then log the event, raise an exception to abort the operation, or terminate the process
+    entirely.
+  accessed: 2026-10-15
+- id: pep-578-sandboxing-cpython-has-failed
+  claim: PEP 578, which introduced audit hooks, says that sandboxing CPython has been attempted many times
+    and that each attempt has failed.
+  where: lesson.py section 9 (What this is not)
+  source_url: https://peps.python.org/pep-0578/
+  source_title: 'PEP 578: Python Runtime Audit Hooks (section Why Not A Sandbox)'
+  quote: Sandboxing CPython has been attempted many times in the past, and each past attempt has failed.
+  accessed: 2026-10-15
+- id: pep-578-exposes-use-without-restricting
+  claim: 'PEP 578 says that the proposal does not attempt to restrict functionality, but exposes the fact
+    that the functionality is being used. The lesson reports this as: audit hooks do not try to restrict
+    what code can do, they make the use of it visible.'
+  where: lesson.py section 9 (What this is not)
+  source_url: https://peps.python.org/pep-0578/
+  source_title: 'PEP 578: Python Runtime Audit Hooks (section Why Not A Sandbox)'
+  quote: This proposal does not attempt to restrict functionality, but simply exposes the fact that the
+    functionality is being used.
+  quote_context: the sentence just before the one quoted in pep-578-detection-over-prevention
+  accessed: 2026-10-15
+- id: pep-578-detection-over-prevention
+  claim: 'PEP 578 says that, particularly for intrusion scenarios, detection is significantly more important
+    than early prevention. The lesson reports this as: for intrusion scenarios detection matters more
+    than early prevention.'
+  where: lesson.py section 9 (What this is not)
+  source_url: https://peps.python.org/pep-0578/
+  source_title: 'PEP 578: Python Runtime Audit Hooks (section Why Not A Sandbox)'
+  quote: Particularly for intrusion scenarios, detection is significantly more important than early prevention
+  quote_context: continues '(as early prevention will generally drive attackers to use an alternate, less-detectable,
+    approach)'
+  accessed: 2026-10-15
+- id: audit-event-names-and-arguments
+  claim: 'The audited events the lesson''s policy judges exist under these names with these arguments
+    in the CPython audit events table: open (path, mode, flags), import (module, filename, sys.path, sys.meta_path,
+    sys.path_hooks), os.system (command), os.rename (src, dst, src_dir_fd, dst_dir_fd) and socket.connect
+    (self, address). The lesson''s table of path-bearing events (PATH_ARGS) follows the argument positions
+    of this table. Which events a program raises depends on the Python version, so the lesson records
+    the allow-list on the student''s own interpreter instead of typing it.'
+  where: lesson.py section 5 (event_verdict), PATH_ARGS in section 2
+  source_url: https://docs.python.org/3/library/audit_events.html
+  source_title: 'Python documentation: Audit events table'
+  quote: open | path, mode, flags
+  quote_context: 'the table''s rows for the other four events read, in order: "import | module, filename,
+    sys.path, sys.meta_path, sys.path_hooks", "os.system | command", "os.rename | src, dst, src_dir_fd,
+    dst_dir_fd", "socket.connect | self, address"'
+  accessed: 2026-10-15
+- id: audit-import-event-arguments
+  claim: 'The audited import event carries the module name as its first argument (the lesson judges the
+    top-level package of that dotted name). That the event is raised only for a module that is not already
+    loaded is not taken from the documentation: the lesson measures it, on the student''s machine, in
+    section 5.'
+  where: lesson.py section 5 (event_verdict, import rule, learning-mode cell)
+  source_url: https://docs.python.org/3/library/audit_events.html
+  source_title: 'Python documentation: Audit events table'
+  quote: import | module, filename, sys.path, sys.meta_path, sys.path_hooks
+  accessed: 2026-10-15
+- id: communicate-timeout-does-not-kill
+  claim: Popen.communicate(timeout=...) does not kill the child when the timeout expires; stopping it
+    and finishing the communication is the caller's job. This is why the naive supervisor kills the child
+    itself and why exercise 1 is a function to write.
+  where: lesson.py section 3 (Exercise 1)
+  source_url: https://docs.python.org/3/library/subprocess.html#subprocess.Popen.communicate
+  source_title: 'Python documentation: subprocess, Popen.communicate()'
+  quote: 'The child process is not killed if the timeout expires, so in order to cleanup properly a well-behaved
+    application should kill the child process and finish communication:'
+  accessed: 2026-10-15
+- id: start-new-session-makes-a-session
+  claim: Popen(start_new_session=True) calls setsid() in the child before it executes, which makes the
+    child the leader of a new session and of a new process group whose id is the child's pid. The lesson's
+    launch() relies on it, and exercise 1 relies on proc.pid being the process group's id. (POSIX only;
+    the lesson says so in its first cell.)
+  where: lesson.py section 1 (The child process) and section 3 (Exercise 1)
+  source_url: https://docs.python.org/3/library/subprocess.html#subprocess.Popen
+  source_title: 'Python documentation: subprocess, Popen constructor'
+  quote: If start_new_session is true the setsid() system call will be made in the child process prior
+    to the execution of the subprocess.
+  quote_context: that the new session's leader also leads a process group of the same id is the definition
+    of setsid(); the lesson checks it by behaviour (exercise 1's checks signal the group by proc.pid)
+  accessed: 2026-10-15
+- id: killpg-signals-a-process-group
+  claim: os.killpg(pgid, sig) sends a signal to every process in a process group (Unix only). Exercise
+    1 uses it with the child's pid.
+  where: lesson.py section 3 (Exercise 1)
+  source_url: https://docs.python.org/3/library/os.html#os.killpg
+  source_title: 'Python documentation: os.killpg()'
+  quote: Send the signal sig to the process group pgid.
+  accessed: 2026-10-15
+- id: killpg-zero-is-your-own-group
+  claim: A process group id of 0 given to killpg() means the calling process's own group, so a signal
+    sent that way reaches the caller (the notebook) as well. Exercise 1 warns against it.
+  where: lesson.py section 3 (Exercise 1), the paragraph that begins 'Signal proc.pid and no other group'
+  source_url: https://man7.org/linux/man-pages/man3/killpg.3.html
+  source_title: killpg(3), Linux man-pages
+  quote: If pgrp is 0, killpg() sends the signal to the calling process's process group.
+  accessed: 2026-10-15
+- id: sigkill-cannot-be-caught
+  claim: SIGKILL cannot be caught, blocked or ignored, so a process cannot decline to be stopped by it.
+    Exercise 1's supervisor uses it.
+  where: lesson.py section 3 (Exercise 1)
+  source_url: https://docs.python.org/3/library/signal.html#signal.SIGKILL
+  source_title: 'Python documentation: signal, SIGKILL'
+  quote: It cannot be caught, blocked, or ignored.
+  accessed: 2026-10-15
+- id: resource-limits-differ-by-system
+  claim: The Python documentation of the resource module notes that not all systems use the same symbol
+    or the same value to denote the same resource, and that the module does not attempt to mask platform
+    differences. The lesson therefore sets no resource limit, so that its counts do not depend on which
+    limits a system enforces. Whether a given limit is enforced on a given system is not claimed here.
+  where: lesson.py section 9 (What this is not)
+  source_url: https://docs.python.org/3/library/resource.html
+  source_title: 'Python documentation: resource'
+  quote: Note that not all systems use the same symbol or same value to denote the same resource. This
+    module does not attempt to mask platform differences
+  quote_context: 'the text goes on: ''symbols not defined for a platform will not be available from this
+    module on that platform.'''
+  accessed: 2026-10-15
+- id: rlimit-fsize-bounds-file-size
+  claim: resource.RLIMIT_FSIZE is the maximum size of a file which the process may create. The lesson
+    names it as the kind of limit that would bound attempt 20 (fill the disk), and does not set it.
+  where: lesson.py section 9 (What this is not)
+  source_url: https://docs.python.org/3/library/resource.html#resource.RLIMIT_FSIZE
+  source_title: 'Python documentation: resource, RLIMIT_FSIZE'
+  quote: The maximum size of a file which the process may create.
+  accessed: 2026-10-15
+- id: object-setattr-event-is-for-sensitive-assignments
+  claim: 'The Python data model documentation says that the audited event object.__setattr__ is raised
+    for certain sensitive attribute assignments (not for every assignment). The lesson says that an allow-list
+    of event names cannot tell a harmless such write from a dangerous one: allowing the name allows the
+    event for every object.'
+  where: lesson.py section 5 (learning-mode cell)
+  source_url: https://docs.python.org/3/reference/datamodel.html#object.__setattr__
+  source_title: 'Python documentation: Data model, object.__setattr__()'
+  quote: For certain sensitive attribute assignments, raises an auditing event object.__setattr__ with
+    arguments obj, name, value.
+  quote_context: the same sentence is in the 3.11 and 3.12 documentation
+  accessed: 2026-10-15
+- id: audit-event-os-chown-carries-a-path
+  claim: os.chown is an audited event whose first argument is a path. The lesson's table of path-bearing
+    events (PATH_ARGS) is a policy choice and leaves it out, so the jail half of the policy does not judge
+    it; the table's comment says so.
+  where: lesson.py section 2 (the comment above PATH_ARGS)
+  source_url: https://docs.python.org/3/library/audit_events.html
+  source_title: 'Python documentation: Audit events table'
+  quote: os.chown | path, uid, gid, dir_fd
+  accessed: 2026-10-15
+- id: audit-event-shutil-copytree-carries-paths
+  claim: shutil.copytree is an audited event whose arguments are a source and a destination path. The
+    lesson's table of path-bearing events (PATH_ARGS) leaves it out, so the jail half of the policy does
+    not judge it.
+  where: lesson.py section 2 (the comment above PATH_ARGS)
+  source_url: https://docs.python.org/3/library/audit_events.html
+  source_title: 'Python documentation: Audit events table'
+  quote: shutil.copytree | src, dst
+  accessed: 2026-10-15

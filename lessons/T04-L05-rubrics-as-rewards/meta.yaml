@@ -1,0 +1,71 @@
+id: T04-L05-rubrics-as-rewards
+title: Build a rubric reward for open-ended answers — a weighted checklist score, a false-credit audit
+  and an agreement test against a hidden truth — train a tiny policy against it, and measure how it learns
+  to game the grader and what a penalty and a held-out monitor each repair
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T04-L01-grpo-from-scratch
+objectives:
+- Implement a weighted-checklist reward (the points of the criteria met over the sum of the positive points,
+  with negative points for undesirable behaviour and no per-answer clip) and use it to train a softmax
+  policy with a group-relative policy-gradient update
+- Implement the false-credit rate of a grader per criterion and the pairwise agreement of a reward with
+  a hidden truth, and use them to find which criteria a trained policy satisfies without doing the work
+- Measure rubric reward against hidden true quality over training steps and seeds, and count the seeds
+  in which true quality peaks and then falls
+- Implement a penalty on named padding channels with free allowances, and measure which channels the policy
+  keeps exploiting when only some channels are penalised
+- Implement early stopping on a monitor with patience and a minimum gain in whole thousandths, and compare
+  a monitor that shares the training grader's blind spot with an independently written one by the true
+  quality of the checkpoint each keeps
+before_you_start:
+  assumed:
+  - write Python functions over numpy arrays and select with boolean masks and sums along an axis
+  - say what a policy-gradient update does to a softmax over choices, and what a group-relative advantage
+    is (T04-L01 builds both)
+  - read a mean over several random seeds and say what it hides
+  resources:
+  - title: 'Rubrics as Rewards: Reinforcement Learning Beyond Verifiable Domains'
+    by: Gunjal et al. (arXiv 2507.17746)
+    url: https://arxiv.org/abs/2507.17746
+    kind: free
+    why: sections 2.1 and 2.2 define the weighted checklist reward this lesson implements and the implicit
+      single-score alternative it does not, and its ablations show what rubric design does and does not
+      move
+  - title: 'HealthBench: Evaluating Large Language Models Towards Improved Human Health'
+    by: Arora et al. (arXiv 2505.08775)
+    url: https://arxiv.org/abs/2505.08775
+    kind: free
+    why: section 2 and appendix D define per-criterion points and the score normalisation used here; section
+      6.6 is its own check for length bias
+  - title: Scaling Laws for Reward Model Overoptimization
+    by: Gao, Schulman and Hilton (arXiv 2210.10760)
+    url: https://arxiv.org/abs/2210.10760
+    kind: free
+    why: the measured gold-versus-proxy curves that sections 5 to 8 reproduce in miniature, with a gold
+      reward model standing in for humans
+  - title: OpenIntro Statistics
+    by: Diez, Cetinkaya-Rundel and Barr
+    url: https://www.openintro.org/book/os/
+    kind: free
+    why: chapter 5, on point estimates and sampling variability, explains the spread that a mean over
+      several random seeds hides, which every table of this lesson averages away
+  - title: NumPy, the absolute basics for beginners
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: arrays, boolean masks and sums along an axis, the few numpy operations the five exercises lean
+      on
+datasets:
+- name: T04-L05 synthetic answer space (six slots of four options, 4096 possible answers, four planted
+    checklists, 16 training seeds from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 71
+status: executed
+measured_seconds: 5.3
+measured_peak_mib: 124

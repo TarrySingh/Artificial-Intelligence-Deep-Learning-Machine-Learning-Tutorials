@@ -1,0 +1,84 @@
+id: T05-L03-gptq-and-awq-from-the-math
+title: Implement round-to-nearest, GPTQ and AWQ quantisation from the maths in numpy, quantise the weight
+  matrices of a small language model trained inside the lesson to 4 and 3 bits, and measure the calibration-set
+  size at which each method stops improving
+track: T05
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T03-L03-nanolm-cpu-slice
+objectives:
+- Implement a group-wise integer grid and round-to-nearest quantisation, and measure the error it adds
+  to a layer's output at 4 and 3 bits
+- Derive the layer's output error as a quadratic form in the weight error with the Hessian XtX / n, and
+  implement the Optimal Brain Surgeon update for one rounding error, checked against a brute-force constrained
+  minimiser
+- Implement GPTQ with a damped inverse-Hessian Cholesky factor, prove it equals round-to-nearest for a
+  diagonal Hessian and equals explicit Optimal Brain Surgeon elimination otherwise, and measure that it
+  raises the weight error while lowering the output error
+- Implement AWQ's activation-aware scales and their alpha grid search, and measure on synthetic layers
+  which structure in the inputs (unequal channel magnitudes or correlated channels) each method can use
+- Measure output error, KL divergence from the full-precision model and held-out loss at 4 and 3 bits
+  for round-to-nearest, AWQ and GPTQ, and find the calibration-set size at which each method's held-out
+  error stops improving
+before_you_start:
+  assumed:
+  - multiply matrices with @ in numpy, take a matrix inverse and a trace, and predict the shape of each
+    result
+  - say what a Hessian is, and why the Hessian of a squared-error loss in the weights does not depend
+    on the weights
+  - read the attention and residual lines of the small transformer block in T03-L03, and a two-layer ReLU
+    MLP, without being told what each does
+  - round a number to the nearest multiple of a step and say how large the error can be
+  resources:
+  - title: 'GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers'
+    by: Frantar, Ashkboos, Hoefler and Alistarh (ICLR 2023, arXiv)
+    url: https://arxiv.org/abs/2210.17323
+    kind: free
+    why: section 3 is the layer-wise objective and the Optimal Brain Quantization update, and section
+      4 is the fixed order and the Cholesky reformulation that exercise 5 implements (and the lazy batches
+      it does not)
+  - title: 'AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration'
+    by: Lin et al. (MLSys 2024, arXiv)
+    url: https://arxiv.org/abs/2306.00978
+    kind: free
+    why: section 3.2 derives why scaling up a channel with large activations shrinks its relative quantisation
+      error (equation 2) and sets out the alpha grid search that exercises 6 and 7 implement
+  - title: 'Optimal Brain Compression: A Framework for Accurate Post-Training Quantization and Pruning'
+    by: Frantar, Singh and Alistarh (NeurIPS 2022, arXiv)
+    url: https://arxiv.org/abs/2208.11580
+    kind: free
+    why: an exact and efficient realisation of Optimal Brain Surgeon for pruning and quantisation, the
+      starting point GPTQ builds on and speeds up, and where the layer-wise reconstruction problem is
+      set out
+  - title: Mathematics for Machine Learning, section 5.7 (Higher-Order Derivatives) and section 4.3 (Cholesky
+      Decomposition)
+    by: Deisenroth, Faisal and Ong (Cambridge University Press; PDF free from the authors)
+    url: https://mml-book.github.io/
+    kind: free
+    why: 5.7 defines the Hessian as the matrix of second derivatives, constant for a squared error in
+      the weights (exercise 3); 4.3 gives the factorisation H = L Lt that exercise 5 reads GPTQ's updates
+      from
+datasets:
+- name: 'Shakespeare''s Sonnets (opening excerpt), Project Gutenberg eBook #1041 - the T03-L03 corpus,
+    embedded as a string literal'
+  licence: Public domain (work first published 1609; author died 1616). Project Gutenberg records the
+    copyright status of this eBook as 'Public domain in the USA.'
+  url: https://www.gutenberg.org/ebooks/1041
+  source_file_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
+  copyright: None. William Shakespeare (1564-1616).
+  cached_at: embedded directly in lesson.py as the CORPUS string literal
+  bytes: 5988
+  retrieved: 2026-10-14
+  gated: false
+  notes: The identical 5988-character excerpt T03-L03 embeds (its header and footer are not included),
+    copied so the notebook stands alone. Nothing is downloaded at run time.
+- name: T05-L03 synthetic layers (seeded numpy draws) and a checkpoint trained inside the lesson
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 220
+status: executed
+measured_seconds: 11.7
+measured_peak_mib: 133

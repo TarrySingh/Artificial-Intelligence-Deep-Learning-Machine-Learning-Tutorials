@@ -1,0 +1,63 @@
+{
+  "snapshot_date": "2026-10-14",
+  "about": "Published free-tier limits transcribed by hand from each vendor's own documentation on the snapshot date. A null limit inside a tier means the page lists no such limit. A tier whose limits are null as a whole means the page publishes no numbers at all. Nothing here is measured. See assets/SOURCE.md.",
+  "tiers": [
+    {
+      "id": "groq-free-gpt-oss-120b",
+      "provider": "Groq",
+      "tier": "Free plan",
+      "model": "openai/gpt-oss-120b",
+      "scope": "organisation",
+      "zero_dollar": true,
+      "limits": {"rpm": 30, "tpm": 8000, "rpd": 1000, "tpd": 200000},
+      "note": "The page calls its table a high level summary with possible exceptions and points to the account's own limits page for exact figures. K is read as one thousand.",
+      "source": "https://console.groq.com/docs/rate-limits"
+    },
+    {
+      "id": "openrouter-free-variants",
+      "provider": "OpenRouter",
+      "tier": "Free model variants, below the credit threshold (the table says fewer than 10 credits purchased; the page grants the higher daily ceiling from 9)",
+      "model": "any model id ending in :free",
+      "scope": "account",
+      "zero_dollar": true,
+      "limits": {"rpm": 20, "tpm": null, "rpd": 50, "tpd": null},
+      "note": "Requests only: the page lists no token limit. It says more keys or more accounts do not affect its rate limits and that limits differ for different models (so load can be shared across models), and that the daily figure is counted per UTC day; its FAQ calls the daily figure a total across free models. It does not say whether the 20 a minute is one pool for every :free model or one per model, so the lesson shares one counter across a class, the cautious reading.",
+      "source": "https://openrouter.ai/docs/api-reference/limits.md"
+    },
+    {
+      "id": "openrouter-free-variants-10-credits",
+      "provider": "OpenRouter",
+      "tier": "Free model variants, at the credit threshold (the table says at least 10 credits purchased; the page grants this ceiling from 9)",
+      "model": "any model id ending in :free",
+      "scope": "account",
+      "zero_dollar": false,
+      "why_not_zero_dollar": "the higher daily ceiling is granted only after credits have been purchased (the table's threshold is 10 credits, and the page says the ceiling starts one credit below it)",
+      "limits": {"rpm": 20, "tpm": null, "rpd": 1000, "tpd": null},
+      "note": "Same page and same caveats as the row above; only the daily ceiling differs.",
+      "source": "https://openrouter.ai/docs/api-reference/limits.md"
+    },
+    {
+      "id": "cerebras-free-trial-gpt-oss-120b",
+      "provider": "Cerebras",
+      "tier": "Free Trial",
+      "model": "gpt-oss-120b",
+      "scope": "organisation",
+      "zero_dollar": false,
+      "why_not_zero_dollar": "5 dollars of credits that expire after 30 days, granted only after a verified payment method is added; the page says there is no no-cost tier that renews",
+      "limits": {"rpm": 5, "tpm": 30000, "rpd": null, "tpd": 1000000},
+      "note": "tpm is the uncached-token limit, which the page calls the primary one (total TPM is 90K). The page also lists 1M tokens per hour; with 1M tokens per day that can never bind first, so it is not modelled.",
+      "source": "https://inference-docs.cerebras.ai/support/rate-limits.md"
+    },
+    {
+      "id": "gemini-free-tier",
+      "provider": "Google",
+      "tier": "Free",
+      "model": "varies by model",
+      "scope": "project",
+      "zero_dollar": true,
+      "limits": null,
+      "note": "The rate-limits page publishes no free-tier numbers: it says limits depend on tier and account status and can be viewed in Google AI Studio. Unknown is not unlimited, so this tier cannot be planned from the documentation.",
+      "source": "https://ai.google.dev/gemini-api/docs/rate-limits"
+    }
+  ]
+}

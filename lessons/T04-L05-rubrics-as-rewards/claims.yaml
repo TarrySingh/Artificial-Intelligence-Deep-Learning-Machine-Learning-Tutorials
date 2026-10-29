@@ -1,0 +1,286 @@
+claims:
+- id: healthbench-criteria-carry-signed-points
+  claim: HealthBench grades a response against a rubric of criteria, each with a nonzero point value,
+    positive for desirable behaviour and negative for undesirable behaviour. This is the rubric shape
+    the lesson's rubric_reward takes as input.
+  where: lesson.py sections 1 and 2 (the four checklists; exercise 1)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 2 (Rubric evaluations).'
+  quote: Each rubric criterion has an associated nonzero point value between −10 and 10, with negative
+    points used for criteria that are undesirable.
+  quote_context: section 2, the paragraph describing what a rubric criterion is
+  accessed: 2026-10-14
+- id: healthbench-grader-judges-each-criterion-met-or-not
+  claim: In HealthBench a model-based grader judges each rubric criterion as met or not met, and a met
+    criterion earns its full points. The lesson's grader is a rule standing in for that model.
+  where: lesson.py sections 2 and 3 (rubric_reward; the grader)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 2 (Rubric evaluations).'
+  quote: If the criterion is met, full points are given; otherwise, no points are given.
+  quote_context: section 2; the sentence before it, split from it by a page break, reads 'To score a model
+    response, a model-based grader goes through each rubric criterion independently and determines whether
+    the response meets that criterion.'
+  accessed: 2026-10-14
+- id: healthbench-score-is-points-met-over-maximum-possible
+  claim: HealthBench divides the total points of the criteria met, including the penalties of negative
+    criteria, by the maximum possible score to give an example's score. Appendix D writes the denominator
+    as the sum over the criteria of max(0, p), the positive points only (its Eq. 1). This is the convention
+    exercise 1 implements.
+  where: lesson.py section 2 (exercise 1, rubric_reward)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 2 and appendix D (Calculating HealthBench scores), Eq. (1).'
+  quote: This total is then divided by the maximum possible score to produce the final score for an example.
+  quote_context: section 2; appendix D says the same as 'We compute a final score by dividing the sum
+    of points for criteria met by the maximum possible points in that example.' and gives the denominator
+    in Eq. (1) as the sum of max(0, p_ij)
+  accessed: 2026-10-14
+- id: healthbench-example-score-can-be-negative-and-the-mean-is-clipped
+  claim: A single example's HealthBench score can be negative, and the overall score is the mean of the
+    per-example scores clipped to [0, 1]. The lesson therefore leaves rubric_reward unclipped and clips
+    only the reported mean.
+  where: lesson.py section 2 (exercise 1; clipped_mean) and section 9 (common mistakes)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 2.'
+  quote: We calculate a model’s overall score on HealthBench by taking the mean of its per-example scores
+    and clipping that mean to the range [0, 1].
+  quote_context: 'section 2; two sentences earlier: ''Note that a response’s score for a given example
+    can be negative if more negative points were assigned to it than positive points.'''
+  accessed: 2026-10-14
+- id: healthbench-leaves-out-axis-examples-with-no-positive-points
+  claim: For its scores by axis, which use a subset of each example's criteria, HealthBench's appendix
+    leaves out the examples whose subset has no criterion with positive points (it writes the score as
+    undefined there) and averages over the rest. The lesson's own choice, a reward of 0.0 for a rubric
+    with no positive points, differs from this because a training run cannot leave an answer out, and
+    the lesson says so.
+  where: lesson.py section 2 (exercise 1, the third detail)
+  source_url: https://arxiv.org/html/2505.08775v1
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775v1, appendix D (Calculating HealthBench scores), Eq. (3) and (4).'
+  quote: for those examples where there is at least one relevant criterion with a positive point value
+  quote_context: appendix D, the paragraph after Eq. (1), which explains scores by axis; Eq. (3) gives
+    the axis score as 'undefined' when its denominator is not positive, and the paragraph continues 'We
+    then average that across those examples where there is at least one such criterion.'
+  accessed: 2026-10-15
+- id: healthbench-length-bias-is-a-known-issue-for-model-graders
+  claim: Length bias is a known issue of evaluations that rely on model-based graders, which is why the
+    HealthBench authors checked their own. The lesson plants a stylised version of such a bias to study
+    its consequences; it makes no claim about the size of the bias in any real grader.
+  where: lesson.py section 3 (the grader, and where it leaks)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 6.6 (Score and response length).'
+  quote: Length bias is a known issue of evaluations that rely on model-based graders
+  quote_context: section 6.6, first sentence; the text continues with two citations (Ye et al., 2024;
+    Chen et al., 2024)
+  accessed: 2026-10-14
+- id: healthbench-measured-a-small-length-correlation
+  claim: When the HealthBench authors measured the correlation between response length and score within
+    a model, they found it small, with comparatively little of the variance in scores explained by length.
+    The lesson reports this so that the planted leak is not read as a finding about HealthBench.
+  where: lesson.py sections 3, 5 and 9 (the grader; reading the tables; what the toy does not show)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Arora, R.K. et al. (2025). HealthBench: Evaluating Large Language Models Towards Improved
+    Human Health. arXiv:2505.08775, section 6.6 (Score and response length).'
+  quote: This is a comparatively small correlation, with comparatively little of the variance in evaluation
+    scores explained by length as compared to other factors.
+  quote_context: section 6.6; the preceding sentences give the per-model Pearson correlations (for GPT-4o
+    r = −0.053, for o3 r = 0.123)
+  accessed: 2026-10-14
+- id: rar-extends-rlvr-with-rubric-feedback-and-grpo
+  claim: Rubrics as Rewards (RaR) is an on-policy reinforcement-learning method that extends RLVR beyond
+    verifiable domains by using rubric-based feedback as the reward, and its training pipeline updates
+    the policy with GRPO. The lesson trains with a GRPO-style group-relative update against a rubric reward
+    for the same reason.
+  where: lesson.py section 1 (the setting; the sentence that says RaR trains on rubrics with GRPO)
+  source_url: https://arxiv.org/pdf/2507.17746
+  source_title: 'Gunjal, A. et al. (2025). Rubrics as Rewards: Reinforcement Learning Beyond Verifiable
+    Domains. arXiv:2507.17746, abstract and section 4.2 (Training Details).'
+  quote: 'Policy Update: The policy weights are updated using GRPO based on the computed rewards.'
+  quote_context: section 4.2, the third of three pipeline components; the abstract says RaR 'is an on-policy
+    reinforcement learning method that extends RLVR beyond verifiable domains by using rubric-based feedback'
+  accessed: 2026-10-14
+- id: rar-explicit-aggregation-is-a-normalised-weighted-sum
+  claim: RaR's EXPLICIT aggregation (one of its two) scores each criterion with a judge and normalises
+    the weighted sum by the sum of the weights (its Eq. 1), so that rewards are comparable across prompts
+    with different rubric sizes or weights. It phrases its pitfall criteria in positive form ("the response
+    avoids misinformation") instead of using negative points, a different convention from HealthBench's,
+    which the lesson names.
+  where: lesson.py sections 1 and 2 (the setting; exercise 1)
+  source_url: https://arxiv.org/pdf/2507.17746
+  source_title: 'Gunjal, A. et al. (2025). Rubrics as Rewards: Reinforcement Learning Beyond Verifiable
+    Domains. arXiv:2507.17746, section 2.2 (Reward Aggregation Strategies) and its footnote 3.'
+  quote: Normalization makes rewards comparable across prompts that differ in rubric count or weights.
+  quote_context: section 2.2, the sentence after Eq. (1); footnote 3, attached to section 4.4, says 'Pitfall
+    criteria are phrased in positive form (e.g., “The response avoids misinformation”), so satisfying
+    them contributes positively to the score.'
+  accessed: 2026-10-14
+- id: rar-implicit-aggregation-is-one-judge-score
+  claim: 'RaR''s second aggregation, RaR-Implicit, does not sum points: the judge reads the response as
+    a whole against the prompt-specific rubric and assigns a single Likert rating from 1 to 10, which
+    avoids hand-tuned weights. The lesson says that its weighted sum is the explicit variant only.'
+  where: lesson.py sections 1 and 2 (the setting; exercise 1)
+  source_url: https://arxiv.org/html/2507.17746v2
+  source_title: 'Gunjal, A. et al. (2025). Rubrics as Rewards: Reinforcement Learning Beyond Verifiable
+    Domains. arXiv:2507.17746v2, section 4.4 (Rubric-guided Methods), RaR-Implicit.'
+  quote: a judge model evaluates the response as a whole to assign a single Likert rating (1–10)
+  quote_context: 'section 4.4, the RaR-IMPLICIT item: ''This variant uses the Implicit Aggregation method
+    (Equation 2). It leverages prompt-specific rubrics, where a judge model evaluates the response as
+    a whole to assign a single Likert rating (1–10), avoiding the need for hand-tuned weights.'''
+  accessed: 2026-10-14
+- id: rar-implicit-strongest-overall-explicit-more-control-but-brittle
+  claim: In RaR's own comparison of its two rubric-guided methods, the implicit one (the whole rubric
+    handed to a judge for one score) attains the strongest results overall, while fixed weighted sums,
+    the explicit one, offer more control but can be brittle. The lesson builds the weighted sum anyway,
+    because it is the version whose every point can be audited, and says so; it claims nothing about which
+    aggregation is better for a real system.
+  where: lesson.py section 2 (exercise 1)
+  source_url: https://arxiv.org/html/2507.17746v2
+  source_title: 'Gunjal, A. et al. (2025). Rubrics as Rewards: Reinforcement Learning Beyond Verifiable
+    Domains. arXiv:2507.17746v2, section 5 (Results).'
+  quote: Between the two rubric-guided methods, RaR-Implicit attains the strongest results overall; fixed
+    weighted sums in RaR-Explicit offer more control but can be brittle.
+  quote_context: section 5, the paragraph after the results table; the next sentence says 'Explicit weighting
+    can be difficult to tune but offers greater interpretability; we view the choice as application-dependent
+    and leave it to practitioners.'
+  accessed: 2026-10-14
+- id: rar-saw-minimal-differences-from-weights-and-pitfalls
+  claim: In one ablation on synthetic rubrics, RaR's authors saw minimal performance differences when
+    including rubric weights or pitfall criteria during training. The lesson says its own weights are
+    conventions, not a finding about weights.
+  where: lesson.py section 9 (what the toy does not show)
+  source_url: https://arxiv.org/pdf/2507.17746
+  source_title: 'Gunjal, A. et al. (2025). Rubrics as Rewards: Reinforcement Learning Beyond Verifiable
+    Domains. arXiv:2507.17746, section 6 (Ablations), paragraph ''Elements of Rubric Design''.'
+  quote: Interestingly, we observe minimal performance differences when including rubric weights or pitfall
+    criteria during training.
+  quote_context: section 6, paragraph 'Elements of Rubric Design', after the sentence about Table 2
+  accessed: 2026-10-14
+- id: grpo-group-relative-advantage
+  claim: GRPO scores a group of sampled outputs and normalises the rewards by subtracting the group average
+    and dividing by the group standard deviation. group_advantages in the lesson is that step (T04-L01
+    builds it in full).
+  where: lesson.py section 5 (training a policy against the rubric; the sentence that introduces the group-relative
+    advantage)
+  source_url: https://arxiv.org/html/2402.03300
+  source_title: 'Shao, Z. et al. (2024). DeepSeekMath: Pushing the Limits of Mathematical Reasoning in
+    Open Language Models. arXiv:2402.03300, section 4.1 (Group Relative Policy Optimization).'
+  quote: Subsequently, these rewards are normalized by subtracting the group average and dividing by the
+    group standard deviation.
+  quote_context: section 4.1, the paragraph on outcome supervision
+  accessed: 2026-10-14
+- id: optimising-a-proxy-too-hard-hurts-the-gold-reward
+  claim: Because a reward model is an imperfect proxy, optimising its value too much can hinder ground-truth
+    performance, in accordance with Goodhart's law; Gao et al. measured this with a fixed gold-standard
+    reward model standing in for humans. The lesson reproduces the shape of the effect in a planted toy
+    and claims nothing about its size elsewhere.
+  where: lesson.py section 5 (reading the three tables)
+  source_url: https://arxiv.org/abs/2210.10760
+  source_title: Gao, L., Schulman, J. & Hilton, J. (2022). Scaling Laws for Reward Model Overoptimization.
+    arXiv:2210.10760, abstract.
+  quote: Because the reward model is an imperfect proxy, optimizing its value too much can hinder ground
+    truth performance, in accordance with Goodhart's law.
+  quote_context: abstract, second sentence
+  accessed: 2026-10-14
+- id: rlhf-reward-gains-largely-driven-by-length
+  claim: Singhal et al. found, in three settings, that RLHF improvements in reward were largely driven
+    by increasing response length rather than other features, and that the dominant source of the bias
+    was the reward models. This is the documented kind of exploit the lesson's planted leak stylises.
+  where: lesson.py section 3 (the grader, and where it leaks; Singhal et al. are named there)
+  source_url: https://arxiv.org/abs/2310.03716
+  source_title: 'Singhal, P., Goyal, T., Xu, J. & Durrett, G. (2023). A Long Way to Go: Investigating
+    Length Correlations in RLHF. arXiv:2310.03716, abstract.'
+  quote: we find improvements in reward to largely be driven by increasing response length, instead of
+    other features.
+  quote_context: abstract; the same abstract continues 'we identify the dominant source of these biases
+    to be reward models'
+  accessed: 2026-10-14
+- id: llm-judges-show-verbosity-bias
+  claim: Zheng et al. examined LLM-as-a-judge and listed position, verbosity and self-enhancement biases
+    among its limitations (while finding strong judges agree with human preferences at the level humans
+    agree with each other). Verbosity bias in judges is therefore a documented concern, which is the one
+    the lesson's planted rule stylises.
+  where: lesson.py section 3 (the grader, and where it leaks; Zheng et al. are named there)
+  source_url: https://arxiv.org/abs/2306.05685
+  source_title: Zheng, L. et al. (2023). Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena. arXiv:2306.05685,
+    abstract.
+  quote: We examine the usage and limitations of LLM-as-a-judge, including position, verbosity, and self-enhancement
+    biases, as well as limited reasoning ability, and propose solutions to mitigate some of them.
+  quote_context: abstract, third sentence
+  accessed: 2026-10-14
+- id: checklist-rewards-mix-ai-judges-and-verifier-programs
+  claim: 'Reinforcement Learning from Checklist Feedback (RLCF) extracts a checklist from each instruction
+    and scores every checklist item with an AI judge. Where an item can be checked exactly, a verifier
+    program also scores it, and the program''s score is averaged with the judge''s; the item scores are
+    then combined into the reward. The judge therefore sees every item, and the programs are an addition
+    to it: this is not the split of criteria between programs and a judge that the lesson''s own planted
+    grader has, and the lesson says so.'
+  where: lesson.py section 3 (the grader, and where it leaks; Viswanathan et al. are named there)
+  source_url: https://arxiv.org/html/2507.18624v2
+  source_title: Viswanathan, V. et al. (2025). Checklists Are Better Than Reward Models For Aligning Language
+    Models. arXiv:2507.18624v2 (revised 1 December 2025), section 3 (Reinforcement Learning from Checklist
+    Feedback), paragraph 'Flexible Scoring'.
+  quote: The program-graded score is then averaged with the AI judge’s score.
+  quote_context: section 3, paragraph 'Flexible Scoring', which begins 'Given a prompt, a response, and
+    an individual checklist item, we use a combination of an LM judge and a verifier program to grade
+    the response. For each checklist item, we prompt a judge model' and says the program is written 'only
+    when the model is confident it can exactly check the requirement'; the abstract (https://arxiv.org/abs/2507.18624)
+    says 'From instructions, we extract checklists and evaluate how well responses satisfy each item -
+    using both AI judges and specialized verifier programs - then combine these scores to compute rewards
+    for RL.'
+  accessed: 2026-10-15
+- id: reward-models-differ-across-languages
+  claim: Gureja et al. evaluated reward models in 23 languages and found a significant gap between English
+    and non-English performance, with reward-model preferences that can change substantially from one
+    language to another. The lesson names cross-language judge drift as something its toy leaves out.
+  where: lesson.py section 9 (what the toy does not show)
+  source_url: https://arxiv.org/abs/2410.15522
+  source_title: 'Gureja, S. et al. (2024). M-RewardBench: Evaluating Reward Models in Multilingual Settings.
+    arXiv:2410.15522, abstract.'
+  quote: We identify a significant gap in RMs' performances between English and non-English languages
+    and show that RM preferences can change substantially from one language to another.
+  quote_context: abstract, sixth sentence
+  accessed: 2026-10-14
+- id: NOT-A-CLAIM-planted-leak-and-hidden-truth
+  claim: NOT A CLAIM. The grader's leniency rule (a soft criterion is credited once the length, hedging
+    and format options reach a bar), the hidden truth checklist, every point value and every penalty in
+    this lesson are the lesson's own construction, chosen as plausible reviewer weights. The truth's three
+    pitfalls about dressing (more than six sentences, two or more hedges, headed sections or more) cost
+    5, 4 and 3 points. They were raised once, from 4, 3 and 2, after a first exploratory run showed that
+    the effect on true quality was small (that run wrote the same three behaviours as positive criteria;
+    the review of 2026-10-14 rewrote them as HealthBench-style negative points, which orders every answer
+    the same way and changes the scale of every true-quality figure); no seed was searched. The lesson
+    prints how the result depends on these weights (section 8), including a row for the first-draft weights.
+    That row writes them as pitfalls too, over the same 18 points available, so each of its drops is larger
+    than the first run's own by the ratio of the points available (the first run had 27). The lesson prints
+    that ratio and says its bar of 10 thousandths is on the 18-point scale. The lesson makes no claim
+    that any real grader, rubric or health assistant behaves this way.
+  where: lesson.py sections 1, 3, 8 and 9
+  source_url: https://arxiv.org/abs/2507.17746
+  source_title: 'Recorded omission: nothing to cite.'
+  quote: ''
+  accessed: 2026-10-14
+- id: NOT-A-CLAIM-no-health-content
+  claim: NOT A CLAIM. The lesson states no medical, clinical or local-health fact. The slots are abstract
+    choices, the facility criterion is a placeholder, and nothing in it is medical advice. The setting
+    (an assistant for a community health programme in India or Kenya) frames the exercise and is not a
+    statement about any real programme.
+  where: lesson.py title cell, section 1 and section 9
+  source_url: https://arxiv.org/abs/2505.08775
+  source_title: 'Recorded omission: nothing to cite.'
+  quote: ''
+  accessed: 2026-10-14
+- id: NOT-A-CLAIM-zero-reward-convention
+  claim: NOT A CLAIM. Returning 0.0 for a rubric with no positive points, 0.5 from pair_agreement when
+    no pair can be judged, and 0.0 as the false-credit rate of a criterion that every answer truly meets
+    are this lesson's own conventions, stated in the exercise text. HealthBench's appendix instead leaves
+    out the examples whose denominator would be zero in its scores by axis (the entry healthbench-leaves-out-axis-examples-with-no-positive-points).
+  where: lesson.py sections 2, 4 and 6 (exercises 1, 2 and 3)
+  source_url: https://arxiv.org/pdf/2505.08775
+  source_title: 'Recorded omission: nothing to cite. HealthBench appendix D (Calculating HealthBench scores)
+    describes the filtering.'
+  quote: ''
+  accessed: 2026-10-14

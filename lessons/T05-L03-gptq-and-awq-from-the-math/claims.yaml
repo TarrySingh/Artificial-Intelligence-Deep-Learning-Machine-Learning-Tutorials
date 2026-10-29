@@ -1,0 +1,382 @@
+claims:
+- id: corpus-public-domain
+  claim: 'The text used as the training corpus is an excerpt of Shakespeare''s Sonnets, taken from Project
+    Gutenberg eBook #1041. Project Gutenberg records this eBook''s copyright status as "Public domain
+    in the USA.", and records the author, William Shakespeare, with the dates 1564-1616. The excerpt excludes
+    Project Gutenberg''s own header and footer.'
+  where: meta.yaml datasets; lesson.py section 1 (the corpus).
+  source_url: https://www.gutenberg.org/ebooks/1041
+  source_title: 'Project Gutenberg - Shakespeare''s Sonnets by William Shakespeare, eBook #1041'
+  quote: Public domain in the USA.
+  quote_context: the 'Copyright' row of the eBook's catalogue record; the 'Author' row reads 'Shakespeare,
+    William, 1564-1616'
+  accessed: 2026-10-14
+- id: gptq-paper-version
+  claim: 'The GPTQ paper this lesson follows is Frantar, Ashkboos, Hoefler and Alistarh, "GPTQ: Accurate
+    Post-Training Quantization for Generative Pre-trained Transformers", arXiv 2210.17323, in its second
+    version (22 March 2023), published at ICLR 2023. This is the version cited at authoring time; its
+    equation numbers (equation 2 for the update, equation 3 for the inverse downdate) are the ones the
+    lesson uses.'
+  where: lesson.py section 15 (what this lesson does not cover), the cell that names the versions; exercises
+    4 and 5.
+  source_url: https://arxiv.org/abs/2210.17323
+  source_title: arXiv abstract page of 2210.17323
+  quote: last revised 22 Mar 2023 (this version, v2)
+  quote_context: the submission line of the abstract page; its Comments field reads 'ICLR 2023'
+  accessed: 2026-10-14
+- id: awq-paper-version
+  claim: 'The AWQ paper this lesson follows is Lin et al., "AWQ: Activation-aware Weight Quantization
+    for LLM Compression and Acceleration", arXiv 2306.00978, in its sixth version (25 April 2026), which
+    its Comments field records as having received the MLSys 2024 Best Paper Award. This is the version
+    cited at authoring time; section 3.2 and its equations 2 and 5 are the ones the lesson uses.'
+  where: lesson.py section 15 (what this lesson does not cover), the cell that names the versions; sections
+    7 to 9.
+  source_url: https://arxiv.org/abs/2306.00978
+  source_title: arXiv abstract page of 2306.00978
+  quote: last revised 25 Apr 2026 (this version, v6)
+  quote_context: the submission line of the abstract page; its Comments field reads 'MLSys 2024 Best Paper
+    Award'
+  accessed: 2026-10-14
+- id: gptq-layerwise-objective
+  claim: GPTQ quantises layer by layer, and for each linear layer looks for quantised weights that minimise
+    the squared error against the full-precision layer's output on a small set of inputs. This is the
+    objective of this lesson's exercises 3 to 5 (the output error as a quadratic form in the weight error).
+    The grid is fixed before the process and individual weights can move freely.
+  where: lesson.py sections 2 and 4 (how the lesson measures damage; exercise 3).
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: GPTQ (Frantar et al., ICLR 2023), section 3, Layer-Wise Quantization; read in the arXiv
+    PDF of version 2, https://arxiv.org/pdf/2210.17323v2
+  quote: which minimizes the squared error, relative to the full precision layer output.
+  quote_context: section 3 (Background), paragraph 'Layer-Wise Quantization', after 'Then, the objective
+    is to find a matrix of quantized weights'; the same paragraph says 'we assume that the quantization
+    grid for [the quantized weights] is fixed before the process, and that individual weights can move
+    freely'.
+  accessed: 2026-10-15
+- id: gptq-obs-compensation
+  claim: The GPTQ paper builds on Optimal Brain Quantization (OBQ), which generalises the classic Optimal
+    Brain Surgeon (OBS) second-order weight pruning framework to quantisation. OBQ quantises one weight
+    at a time while always updating all not-yet-quantised weights to compensate for the error incurred;
+    because the layer objective is a quadratic, the optimal update of the other weights (equation 2 of
+    the paper) is a multiple of a column of the inverse Hessian divided by that column's diagonal entry.
+    This lesson's exercise 4 derives that update and checks it against a direct constrained solve.
+  where: lesson.py section 5 (exercise 4) and section 6 (exercise 5).
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: GPTQ (Frantar et al., ICLR 2023), section 2 (related work) and section 3 (background)
+  quote: quantizing one weight at a time while always updating all not-yet-quantized weights, in order
+    to compensate for the error incurred by quantizing a single weight.
+  quote_context: 'section 3, paragraph ''Optimal Brain Quantization''. Section 2 adds: ''Optimal Brain
+    Quantization (OBQ) [citation] generalizes the classic Optimal Brain Surgeon (OBS) second-order weight
+    pruning framework''. The update itself is displayed equation (2) and is not quoted because it is a
+    formula; exercise 4 derives it.'
+  accessed: 2026-10-15
+- id: obc-obs-framework
+  claim: The Optimal Brain Compression paper (Frantar, Singh and Alistarh, NeurIPS 2022), on which GPTQ
+    builds, is based on an exact and efficient realisation of the classical Optimal Brain Surgeon framework,
+    extended to cover weight quantisation. It is listed in the Before-you-start box as a place to learn
+    the starting point GPTQ speeds up.
+  where: meta.yaml before_you_start resources.
+  source_url: https://arxiv.org/abs/2208.11580
+  source_title: arXiv abstract page of 2208.11580, Optimal Brain Compression
+  quote: our approach is based on an exact and efficient realization of the classical Optimal Brain Surgeon
+    (OBS) framework
+  quote_context: 'the abstract; the sentence continues ''of [LeCun, Denker, and Solla, 1990] extended
+    to also cover weight quantization at the scale of modern DNNs''. Comments field: ''Published at NeurIPS
+    2022''. The abstract cites LeCun, Denker and Solla for the framework; the Optimal Brain Surgeon itself
+    is Hassibi and Stork''s (see claim obs-update-rule), and the lesson does not copy the abstract''s
+    attribution.'
+  accessed: 2026-10-14
+- id: gptq-fixed-order-shared-hessian
+  claim: GPTQ quantises the weights of all rows (output channels) in the same fixed order, and, because
+    the Hessian of the remaining weights depends only on the layer inputs and not on any weights, the
+    set of unquantised weights and its inverse Hessian is the same for all rows. This lesson's exercise
+    4 and 5 therefore update a whole matrix with one inverse Hessian. (The paper's matrices have output
+    channels as rows; this lesson stores weights as (inputs, outputs), so its "rows" are the paper's columns.)
+  where: lesson.py sections 4 to 6 (exercises 3 to 5).
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: 'GPTQ (Frantar et al., ICLR 2023), section 4, Step 1: Arbitrary Order Insight'
+  quote: we will aim to quantize the weights of all rows in the same order
+  quote_context: 'section 4, Step 1. The next sentences: ''As a consequence, the set of unquantized weights
+    F and similarly [the inverse Hessian of F] is always the same for all rows''; the reason given is
+    that the Hessian ''depends only on the layer inputs [...] which are the same for all rows, and not
+    on any weights''.'
+  accessed: 2026-10-15
+- id: gptq-cholesky-reformulation
+  claim: The removal of a row and column from the inverse Hessian by Gaussian elimination (the paper's
+    equation 3, which exercise 5's explicit version uses) essentially corresponds to taking a Cholesky
+    decomposition, and GPTQ precomputes the rows of the inverse it needs from a Cholesky factor of the
+    inverse Hessian, which is more numerically stable. This is the factor exercise 5 asks for.
+  where: lesson.py section 6 (exercise 5) and the cell that compares the Cholesky and the explicit version.
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: 'GPTQ (Frantar et al., ICLR 2023), section 4, Step 3: Cholesky Reformulation'
+  quote: essentially corresponds to taking a Cholesky decomposition
+  quote_context: 'section 4, Step 3: ''Indeed, the row removal via (3) for our symmetric [inverse Hessian]
+    essentially corresponds to taking a Cholesky decomposition, except for the minor difference that the
+    latter divides row q by [the square root of its diagonal entry]. Hence, we can leverage state-of-the-art
+    Cholesky kernels''.'
+  accessed: 2026-10-15
+- id: gptq-dampening-one-percent
+  claim: GPTQ applies dampening, adding a small constant to the diagonal of the Hessian, and the paper
+    always chooses 1% of the average diagonal value. The lesson's PERCDAMP constant is that choice.
+  where: lesson.py setup cell (PERCDAMP) and section 6 (exercise 5).
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: GPTQ (Frantar et al., ICLR 2023), section 4, Step 3
+  quote: we always choose 1% of the average diagonal value
+  quote_context: 'section 4, Step 3: ''applying dampening, that is adding a small constant [lambda] (we
+    always choose 1% of the average diagonal value) to the diagonal elements of [the Hessian] appears
+    to be sufficient to avoid numerical issues''.'
+  accessed: 2026-10-15
+- id: gptq-lazy-batches
+  claim: The paper's GPTQ processes columns in lazy batches (128 at a time) so that updates are applied
+    to the whole matrix once per batch; this lesson does not (it updates every later row at every step),
+    which is simpler to read. Without groups, or with groups that start at multiples of the batch size,
+    batching gives the same rounding decisions, because the final rounding decision for a column is affected
+    only by updates made on that very column; with smaller groups the reference code fits some group grids
+    to less compensated weights than this lesson does (claim gptq-reference-group-grids).
+  where: lesson.py section 15 (what this lesson does not cover) and the cell after exercise 5.
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: 'GPTQ (Frantar et al., ICLR 2023), section 4, Step 2: Lazy Batch-Updates'
+  quote: keeping updates contained to those columns and the corresponding
+  quote_context: 'section 4, Step 2: ''Concretely, we apply the algorithm to B=128 columns at a time,
+    keeping updates contained to those columns and the corresponding B x B block of [the inverse Hessian]'';
+    ''The final rounding decisions for column i are only affected by updates performed on this very column''
+    is the observation that makes batching exact.'
+  accessed: 2026-10-15
+- id: gptq-reference-dead-channels-and-damping
+  claim: 'The authors'' reference implementation of GPTQ treats an input channel whose Hessian diagonal
+    entry is exactly zero as dead: it sets that entry to 1 and zeroes that channel''s weights, and it
+    then adds percdamp times the mean of the diagonal (after the fix) to the diagonal. Exercise 5''s damped_inverse_factor
+    and gptq_quantize follow this order. Its default percdamp is .01.'
+  where: lesson.py section 6 (exercise 5).
+  source_url: https://github.com/IST-DASLab/gptq/blob/main/gptq.py
+  source_title: IST-DASLab/gptq, gptq.py, method GPTQ.fasterquant (read as the raw file at https://raw.githubusercontent.com/IST-DASLab/gptq/main/gptq.py)
+  quote: damp = percdamp * torch.mean(torch.diag(H))
+  quote_context: the lines before it read 'dead = torch.diag(H) == 0', 'H[dead, dead] = 1' and 'W[:, dead]
+    = 0'; the signature reads 'blocksize=128, percdamp=.01, groupsize=-1, actorder=False, static_groups=False'.
+  accessed: 2026-10-14
+- id: gptq-reference-group-grids
+  claim: 'In the reference implementation''s grouped mode (groupsize greater than 0, static_groups False)
+    a group''s quantisation grid is fitted when the loop reaches the group''s first column, but to the
+    working matrix W, and W receives the compensation made inside the current block of columns (blocksize
+    128 by default) only once the block is finished: the in-block updates go to a block-local copy W1.
+    A group that starts a block, as every group does when the group size is 128 (the size the AWQ paper
+    uses throughout, claim awq-group-size-128), is therefore fitted to weights that carry the compensation
+    of every earlier column; a group that starts inside a block, as most groups of 16 do, is fitted to
+    weights compensated only up to the start of that block. The default groupsize of -1 means no groups
+    at all: each output channel''s grid is fitted once, to the original weights, before the loop (line
+    73). Exercise 5 always fits the grid to the fully compensated rows: the same as the reference code
+    for block-aligned groups, and a deliberate simplification of it otherwise. The static_groups option
+    instead fits every group''s grid to the original weights before the loop (the lesson''s cell "Which
+    weights should a group''s grid be fitted to?" measures that choice); actorder=True reorders the channels
+    by descending Hessian diagonal. The lesson does not implement either option as a function you write.'
+  where: lesson.py section 6 (exercise 5, and the markdown cell after it), section 13 (common mistakes)
+    and section 15 (what this lesson does not cover).
+  source_url: https://github.com/IST-DASLab/gptq/blob/main/gptq.py
+  source_title: IST-DASLab/gptq, gptq.py, method GPTQ.fasterquant (read as the raw file at https://raw.githubusercontent.com/IST-DASLab/gptq/main/gptq.py)
+  quote: self.quantizer.find_params(W[:, (i1 + i):(i1 + i + groupsize)], weight=True)
+  quote_context: line 123, inside the loop over the columns i of a block that starts at column i1, guarded
+    by 'if (i1 + i) % groupsize == 0:' in the non-static branch, which sits under 'if groupsize != -1:';
+    the argument is W, not the block copy W1. The signature (line 61) reads 'blocksize=128, percdamp=.01,
+    groupsize=-1, actorder=False, static_groups=False', and with groupsize -1 the only grid is the one
+    fitted at line 73, 'self.quantizer.find_params(W, weight=True)' under 'if not self.quantizer.ready():',
+    before the dead channels are zeroed (line 79). The in-block update reads 'W1[:, i:] -= err1.unsqueeze(1).matmul(Hinv1[i,
+    i:].unsqueeze(0))' (line 137) and W is updated after the block by 'W[:, i2:] -= Err1.matmul(Hinv[i1:i2,
+    i2:])' (line 143). The static branch reads 'quantizer.find_params(W[:, i:(i + groupsize)], weight=True)'
+    before the loop; the reordering reads 'perm = torch.argsort(torch.diag(H), descending=True)'. Line
+    numbers are those of the file served on the accessed date.
+  accessed: 2026-10-15
+- id: gptq-hessian-factor-two
+  claim: The GPTQ paper writes the Hessian of the layer-wise objective for the set F of remaining full-precision
+    weights as H_F = 2 X_F X_F^T. Because X_F X_F^T must be a matrix with one row and column per weight
+    in F, the paper's X has the layer's input channels as rows and the data points as columns; the lesson
+    stores the tokens as rows and uses H = X^T X / n, which differs from the paper's by a positive constant
+    factor. Nothing in the lesson's updates depends on that factor, because the update divides a column
+    of the inverse Hessian by one of its own entries and the dampening is a fraction of the mean diagonal.
+  where: lesson.py section 4 (exercise 3), the sentence in brackets after the definition of H.
+  source_url: https://arxiv.org/pdf/2210.17323v2
+  source_title: GPTQ (Frantar et al., ICLR 2023), section 3, Optimal Brain Quantization; read in the arXiv
+    PDF of version 2, https://arxiv.org/pdf/2210.17323v2
+  quote: where F denotes the set of remaining full-precision weights
+  quote_context: 'section 3, paragraph ''Optimal Brain Quantization'': the sentence reads ''whose Hessian
+    is H_F = 2 X_F X_F^T, where F denotes the set of remaining full-precision weights'' (the formula as
+    the PDF prints it, with the transpose on the second X_F). The same section defines X as ''the layer
+    input corresponding to a small set of m data points''; the text does not say in so many words which
+    axis of X the data points run along, which is why the claim above infers it from the size of X_F X_F^T.'
+  accessed: 2026-10-15
+- id: obs-update-rule
+  claim: The Optimal Brain Surgeon (OBS) framework is due to Hassibi and Stork. For a loss that is quadratic
+    around the current weights it gives explicit formulas for the best single weight to remove and for
+    the best update of all the other weights to compensate for the removal; the update is a multiple of
+    the removed weight's column of the inverse Hessian, divided by that column's diagonal entry. The Optimal
+    Brain Compression paper restates the formulas in its section 3 (its equation 3) and notes that for
+    a layer-wise squared-error loss they are exact. Exercise 4 derives the same update for forcing a weight
+    to a grid value (the removal of a weight is the case of the value 0) and checks it against a direct
+    constrained solve.
+  where: lesson.py section 5 (exercise 4) and the lesson's name for the update (the Optimal Brain Surgeon
+    update).
+  source_url: https://arxiv.org/pdf/2208.11580
+  source_title: Optimal Brain Compression (Frantar, Singh and Alistarh, NeurIPS 2022), section 1 and section
+    3 (read as the arXiv PDF of the abstract page https://arxiv.org/abs/2208.11580)
+  quote: Hassibi and Stork [13], who proposed a mathematical framework called the Optimal Brain Surgeon
+  quote_context: 'section 1 (Introduction), which continues ''(OBS), for choosing the set of weights to
+    remove from a trained neural network, by leveraging second-order information''; reference [13] there
+    is ''Babak Hassibi, David G Stork, and Gregory J Wolff. Optimal brain surgeon and general network
+    pruning. In IEEE International Conference on Neural Networks, 1993''. Section 3, ''The Optimal Brain
+    Surgeon (OBS) Framework'', says the framework ''provides explicit formulas for the optimal single
+    weight to remove, as well as the optimal update of the remaining weights which would compensate for
+    the removal''; its equation 3 is the weight w_p = argmin of w_p^2 / [H^-1]_pp and the update delta_p
+    = -(w_p / [H^-1]_pp) times the p-th column of H^-1. Hassibi and Stork''s NIPS paper ''Second order
+    derivatives for network pruning: Optimal Brain Surgeon'' (Advances in Neural Information Processing
+    Systems 5) is at https://proceedings.neurips.cc/paper/1992/hash/303ed4c69846ab36c2904d3ba8573050-Abstract.html
+    and its abstract says ''Crucial to OBS is a recursion relation for calculating the inverse Hessian
+    matrix H-I from training data and structural information of the net.'' The OBC abstract itself cites
+    LeCun, Denker and Solla (1990) for the framework; that is Optimal Brain Damage, and this entry does
+    not rely on it.'
+  accessed: 2026-10-14
+- id: awq-salient-by-activation
+  claim: The AWQ paper observes that the weights of a language model are not equally important, that a
+    small fraction (0.1%-1%) of channels is salient, and that selecting them by activation magnitude,
+    not by weight magnitude, is what makes keeping them in higher precision effective. This is the observation
+    behind exercises 6 and 7; the lesson shows the same dependence on activation spread on its own model
+    and on synthetic layers.
+  where: lesson.py section 7 (AWQ) and section 15 (what this lesson does not cover).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 3.1
+  quote: selecting weights based on activation magnitude can significantly improve the performance despite
+    keeping only 0.1%-1% of channels in FP16.
+  quote_context: 'section 3.1 (Improving LLM Quantization by Preserving 1% Salient Weights), after Table
+    1; the abstract says: ''To identify salient weight channels, we should refer to the activation distribution,
+    not weights.'''
+  accessed: 2026-10-15
+- id: awq-scaling-error-ratio
+  claim: The AWQ paper derives that multiplying a weight by s > 1 and dividing its input by s changes
+    the quantisation error by the factor (new step / old step) x (1 / s), so that scaling up the salient
+    channels reduces their relative quantisation error as long as the step barely changes. Section 7 of
+    the lesson restates this and measures it.
+  where: lesson.py section 7 (AWQ).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 3.2 and the introduction
+  quote: scaling up the salient channels can reduce their relative quantization error
+  quote_context: 'the introduction: ''we analyze the error from weight quantization and derive that scaling
+    up the salient channels can reduce their relative quantization error (Equation 2)''. Section 3.2:
+    ''The ratio of the new error to the original error is [new step / old step] x 1/s''; Table 2 reports
+    the measured ratio on OPT-6.7B.'
+  accessed: 2026-10-15
+- id: awq-scale-search
+  claim: AWQ's scales are the average activation magnitude per input channel raised to a power alpha,
+    with alpha found by a grid search over the interval [0, 1] to minimise the layer's output difference
+    after quantisation; alpha = 0 means no scaling and 1 is the most aggressive scaling in the search
+    space. Exercises 6 and 7 implement this.
+  where: lesson.py sections 8 and 9 (exercises 6 and 7).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 3.2, equations 4 and 5
+  quote: 0 means we do not scale; 1 corresponds to the most aggressive scaling in our search space
+  quote_context: 'section 3.2: ''is the average magnitude of activation (per-channel), and we use a single
+    hyper-parameter [alpha] to balance between the protection of salient and non-salient channels. We
+    can find the best [alpha] by a fast grid search over the interval of [0,1]''.'
+  accessed: 2026-10-15
+- id: awq-fold-into-previous-operator
+  claim: The inverse scale applied to the layer's input can usually be fused into the previous operator,
+    which is why a deployed AWQ model has no extra cost for it. The nanolm in this lesson has no normalisation
+    layers, so exercise 7 returns the equivalent effective weights instead.
+  where: lesson.py section 9 (exercise 7).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 3.2, after equation 4
+  quote: it can usually be fused into the previous operator
+  quote_context: 'section 3.2: ''for [the input divided by s], it can usually be fused into the previous
+    operator''.'
+  accessed: 2026-10-15
+- id: awq-calibration-efficiency
+  claim: The AWQ paper reports that AWQ needs a much smaller calibration set than GPTQ to reach a good
+    quantised performance, because it only measures average activation scales; for OPT-6.7B at 3 bits
+    with groups of 128 it reports better perplexity from a calibration set ten times smaller than GPTQ's.
+    Section 12 of the lesson measures the same question on its own model and does not assume the paper's
+    answer.
+  where: lesson.py section 12 (exercise 8).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 5.3 and Figure 8
+  quote: AWQ needs a much smaller calibration to reach a good quantized performance
+  quote_context: 'the Figure 8 caption and section 5.3 (Analysis), ''Better data-efficiency for the calibration
+    set'': ''it can achieve better perplexity using 10 [times] smaller calibration set compared to GPTQ
+    (16 sequences v.s. 192 sequences)'' on OPT-6.7B with INT3-g128.'
+  accessed: 2026-10-15
+- id: awq-clipping-and-block-scoring
+  claim: The AWQ paper also applies weight clipping to minimise the quantisation MSE, and its reference
+    code scores each candidate scale by the output difference of a whole module (the block that contains
+    the layers), not of one matrix, with one scale shared by the layers that read the same input. This
+    lesson searches neither a clipping range nor shared scales.
+  where: lesson.py section 15 (what this lesson does not cover).
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 3.2
+  quote: We further apply weight clipping to minimize the MSE error of quantization.
+  quote_context: 'section 3.2, after equation 5. The reference code (claim awq-reference-code) states
+    ''module2inspect: if given, we will check the output diff of this module instead of layers'', and
+    its search loop applies one scale vector to every layer in a list (`for fc in linears2scale:`), the
+    layers that read the same input.'
+  accessed: 2026-10-15
+- id: awq-group-size-128
+  claim: The AWQ paper uses grouped weight-only quantisation with a group size of 128 throughout its experiments,
+    except where it says otherwise. The lesson says 128 is the group size the AWQ paper uses (and so a
+    group boundary is also a boundary of the 128-column blocks of GPTQ's reference code); the lesson's
+    own model uses groups of 16, because its matrices are 48 or 192 channels wide.
+  where: lesson.py section 6 (the paragraph before the check of exercise 5, on the reference code's group-grid
+    rule) and the claims entry gptq-reference-group-grids.
+  source_url: https://arxiv.org/pdf/2306.00978v6
+  source_title: AWQ (Lin et al., MLSys 2024), section 5.1 (Settings), paragraph 'Quantization'; the arXiv
+    PDF of version 6
+  quote: We used a group size of 128 throughout the work, except otherwise specified.
+  quote_context: section 5.1, paragraph 'Quantization', which opens 'We focus on weight-only grouped quantization
+    in this work' and continues 'We focus on INT4/INT3 quantization since they are able to mostly preserve
+    the LLMs' performance'. The same sentence is in the arXiv HTML rendering at https://arxiv.org/html/2306.00978v6.
+  accessed: 2026-10-15
+- id: awq-reference-code
+  claim: The AWQ authors' reference implementation searches n_grid = 20 values of the exponent, ratio
+    = j / n_grid for j in range(n_grid) (so 1.0 itself is not tried), computes the activation magnitude
+    as the mean of the absolute values per channel, floors the scales at 1e-4 after the power, divides
+    them by sqrt(max * min), and keeps a candidate only if its loss is strictly lower than the best so
+    far. Exercises 6 and 7 follow these conventions.
+  where: lesson.py sections 8 and 9 (exercises 6 and 7).
+  source_url: https://github.com/mit-han-lab/llm-awq/blob/main/awq/quantize/auto_scale.py
+  source_title: mit-han-lab/llm-awq, awq/quantize/auto_scale.py, function _search_module_scale (read as
+    the raw file at https://raw.githubusercontent.com/mit-han-lab/llm-awq/main/awq/quantize/auto_scale.py)
+  quote: scales = scales / (scales.max() * scales.min()).sqrt()
+  quote_context: preceded by 'scales = x_max.pow(ratio).clamp(min=1e-4).view(-1)'; the loop reads 'n_grid
+    = 20' and 'for ratio in range(n_grid):' with 'ratio = ratio * 1 / n_grid'; the winner test reads 'is_best
+    = loss < best_error'; get_act_scale returns 'x.abs().view(-1, x.shape[-1]).mean(0)'.
+  accessed: 2026-10-14
+- id: autogptq-archived
+  claim: As of 2026-10-14 the AutoGPTQ repository is archived (read-only since 11 April 2025) and its
+    README says the package is unmaintained and recommends GPTQModel.
+  where: lesson.py section 15 (what this lesson does not cover).
+  source_url: https://github.com/AutoGPTQ/AutoGPTQ
+  source_title: GitHub - AutoGPTQ/AutoGPTQ
+  quote: This repository was archived by the owner on Apr 11, 2025. It is now read-only.
+  quote_context: the banner at the top of the repository page; the README's first line reads 'AutoGPTQ
+    is unmaintained - we suggest using GPTQModel for bug fixes and new models support'.
+  accessed: 2026-10-14
+- id: autoawq-deprecated
+  claim: As of 2026-10-14 the AutoAWQ repository is archived (read-only since 11 May 2025), its README
+    states that AutoAWQ is officially deprecated and will no longer be maintained, and says it has been
+    adopted by the vLLM Project's llm-compressor.
+  where: lesson.py section 15 (what this lesson does not cover).
+  source_url: https://github.com/casper-hansen/AutoAWQ
+  source_title: GitHub - casper-hansen/AutoAWQ
+  quote: AutoAWQ is officially deprecated and will no longer be maintained.
+  quote_context: 'the ''Important Notice'' in the README; below it, ''AutoAWQ has been adopted by the
+    vLLM Project: https://github.com/vllm-project/llm-compressor''. The page banner reads ''This repository
+    was archived by the owner on May 11, 2025. It is now read-only.'''
+  accessed: 2026-10-14
+- id: llm-compressor-and-gptqmodel
+  claim: As of 2026-10-14 the vLLM project's llm-compressor lists GPTQ and AWQ among its supported algorithms
+    (with examples for weight-only int4 quantisation using each), and GPTQModel describes itself as an
+    extensible platform for LLM quantisation that covers GPTQ and AWQ among other formats. These are the
+    maintained toolkits the lesson points to.
+  where: lesson.py section 15 (what this lesson does not cover).
+  source_url: https://github.com/vllm-project/llm-compressor
+  source_title: GitHub - vllm-project/llm-compressor (README); and https://github.com/ModelCloud/GPTQModel
+    (README)
+  quote: Weight only quantization to int4 using AWQ
+  quote_context: 'the README''s example list, which also has ''Weight only quantization to int4 using
+    GPTQ'', and a ''Supported Algorithms'' list naming GPTQ and AWQ. The GPTQModel README opens: ''An
+    extensible platform for LLM quantization, validation, and deployment. GPTQ, AWQ, ParoQuant, GGUF,
+    FP8, EXL3, QQQ, and more''.'
+  accessed: 2026-10-14

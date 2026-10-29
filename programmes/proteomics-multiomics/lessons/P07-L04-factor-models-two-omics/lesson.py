@@ -477,9 +477,11 @@ def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = (),
          limit: float = 0) -> None:
     """Run a check, or a demo that depends on your code, without derailing the notebook.
 
-    An exercise check runs under a 0.4-second limit (the reference's slowest check takes a few milliseconds), so a
-    loop that never ends, or one that adds to a list for ever, fails with a message instead of freezing the notebook
-    or filling its memory. A stub you have not filled in yet simply says so. A wrong answer prints the check's own
+    An exercise check runs under a limit of `_CHECK_SECONDS` (2 s; the reference's slowest check takes a few
+    milliseconds) and any other cell under `_DEMO_SECONDS` (45 s), and the guard also stops a check whose memory
+    keeps growing, so a loop that never ends, or one that adds to a list for ever, fails with a message instead of
+    freezing the notebook or filling its memory. A stub you have not filled in yet simply says so. A wrong answer
+    prints the check's own
     message, which names the likely mistake, and the notebook carries on, so one broken
     exercise never hides the feedback on the others. A demo names the exercises it `needs`:
     until each has passed its check, the demo says which one it is waiting for and skips.

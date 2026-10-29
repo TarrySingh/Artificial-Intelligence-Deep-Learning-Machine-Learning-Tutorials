@@ -1861,6 +1861,11 @@ def _check_find_knee() -> None:
         "1.051 is 51 milli-nats above the best and must not qualify at margin 50")
     assert find_knee([1, 2, 4, 8], [1.20, 1.00, 1.10, 0.90], 0) == 8, (
         "with margin 0 only the best itself qualifies, even when the curve is not monotone")
+    got = find_knee([1, 2, 4, 8], [1.300, 1.060, 1.000, 1.080], 50)
+    assert got == 4, (
+        f"find_knee returned {got!r}, expected 4: the best loss is the SMALLEST in the sweep (1.000 at rank 4), "
+        "not the loss of the largest rank (1.080 at rank 8); 1.060 is 60 milli-nats above the best and does "
+        "not qualify at margin 50")
     assert find_knee([1, 2, 4], [float("nan"), 2.0, 1.0], 50) == 4, (
         "a diverged run (nan) is ignored: it is neither the best nor a candidate")
     assert find_knee([1, 2, 4], [float("inf"), 1.0, 1.0], 50) == 2, "inf is ignored as well"
