@@ -1,0 +1,85 @@
+id: P07-L05-leakage-harness
+title: Build a leakage harness for a paired proteomics and metabolomics cohort (duplicate finder, donor
+  merge, batch case share, unit-level label permutations, a release gate) and measure what each planted
+  trap adds to a cross-validated AUC
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 180
+language: python
+prerequisites:
+- P07-L04-factor-models-two-omics
+- T01-L02-leakage-clinic
+objectives:
+- Implement a duplicate-sample finder that compares profiles across modalities, and a merge of the donors
+  it links, so that a split keeps one real person's samples together
+- Implement a case count per batch that counts donors and not samples, and a label permutation that shuffles
+  whole units, optionally inside a group, which together give a permutation p-value for batch confounding
+- Implement a release gate that returns a biomarker AUC only when no check fails and names the failing
+  checks in a fixed order otherwise
+- Measure, over a set of simulated cohorts, how much cross-validated biomarker AUC each planted trap adds
+  (donors on both sides of a split, duplicate samples, a batch confounded with the outcome) against a
+  donor-grouped baseline
+- Explain, from the printed negative-control table, which control catches which trap and which is blind
+  to it
+before_you_start:
+  assumed:
+  - write Python functions with loops and dicts, and index a numpy array with an integer array or a boolean
+    mask
+  - say what AUC measures, as the chance that a randomly chosen case is scored above a randomly chosen
+    control
+  - describe k-fold cross-validation, and say why the samples of one donor are not independent of each
+    other (T01-L02 builds this)
+  - use np.unique with return_index and return_inverse, and np.einsum or a matrix product for a table
+    of dot products
+  resources:
+  - title: 'Cross-validation: evaluating estimator performance (iterators for grouped data; permutation
+      test score)'
+    by: scikit-learn developers
+    url: https://scikit-learn.org/stable/modules/cross_validation.html
+    kind: free
+    why: GroupKFold and LeaveOneGroupOut are the donor-grouped and leave-one-plate-out folds used here;
+      its permutation test score is the sample-level shuffle that exercise 4 replaces with a shuffle between
+      donors
+  - title: The need to approximate the use-case in clinical machine learning
+    by: Saeb, Lonini, Jayaraman, Mohr and Kording (GigaScience 2017, open access)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC5441397/
+    kind: free
+    why: record-wise against subject-wise cross-validation when each person gives several samples, which
+      is the donor trap of section 2 and the reason folds must keep donors whole
+  - title: Tackling the widespread and critical impact of batch effects in high-throughput data
+    by: Leek et al. (Nature Reviews Genetics 2010; author manuscript in PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC3880143/
+    kind: free
+    why: why a batch that is correlated with the outcome is a major problem, the hazard behind the case
+      share per plate of exercise 3 and the batch p-value
+  - title: Permutation Tests for Studying Classifier Performance
+    by: Ojala and Garriga (Journal of Machine Learning Research 2010)
+    url: https://www.jmlr.org/papers/v11/ojala10a.html
+    kind: free
+    why: the permutation test that asks whether a classifier has found real class structure, by permuting
+      the labels, which is the idea behind exercise 4 and the negative-control table
+  - title: numpy.unique
+    by: NumPy documentation
+    url: https://numpy.org/doc/stable/reference/generated/numpy.unique.html
+    kind: free
+    why: the return_index and return_inverse options that give one entry per donor or unit and the way
+      back to one entry per sample, used in exercises 3 and 4
+datasets:
+- name: synthetic-paired-omics-cohort
+  kind: synthetic
+  description: '80 donors (40 cases) with 2 to 4 samples each, a 150-feature proteomics-style layer on
+    4 plates and a 100-feature metabolomics-style layer on 3 runs, in four flavours from one seed (balanced;
+    with 12 donors registered twice; with the protein plates confounded with status; both), with an answer
+    key (identity, copy_of); in lesson.py :: make_cohort(world, duplicates, confounded), each ingredient
+    of world w drawn from np.random.default_rng([20261019, w, ingredient]) for the eight worlds w = 0
+    to 7'
+  generator: 'lesson.py :: make_cohort'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 80
+status: executed
+measured_seconds: 19.8
+measured_peak_mib: 64

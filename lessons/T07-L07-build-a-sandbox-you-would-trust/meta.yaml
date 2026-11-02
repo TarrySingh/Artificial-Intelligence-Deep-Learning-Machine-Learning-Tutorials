@@ -25,6 +25,8 @@ before_you_start:
   - write Python functions with docstrings, try/except and with-statements, and read a traceback
   - start a command with subprocess.run or subprocess.Popen and read its output and exit code
   - tell an absolute path from a relative one, and say what .. and a symbolic link do
+  - 'run a notebook on macOS or Linux, or in Colab, Kaggle, Binder or Codespaces: the lesson uses process
+    groups and sessions, which native Windows does not have (on Windows, use WSL)'
   resources:
   - title: sys.addaudithook() and the audit events table
     by: The Python Software Foundation (Python documentation)
@@ -62,7 +64,7 @@ datasets:
   kind: synthetic
   licence: not applicable - generated at run time by the lesson itself
 points: 84
-status: executed
+status: reviewed
 measured_seconds: 57.7
 measured_peak_mib: 30
 guard_allow:

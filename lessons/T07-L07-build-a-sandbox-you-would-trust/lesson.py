@@ -91,9 +91,9 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # for a temporary-directory jail, and a policy for Python's audit hook — and the escape suite that
 # tells you what each layer stops, alone and in combination, and what gets through all three.
 #
-# **Time:** ~60 minutes · **Runs on:** a laptop CPU on macOS or Linux (the notebook services above
-# are Linux), no GPU, no download · **Prerequisites:** T07-L01-agent-loop-from-scratch (the loop
-# whose tool calls this lesson puts three layers of control around).
+# **Time:** ~90 minutes · **Runs on:** a laptop CPU on macOS or Linux (the notebook services above
+# are Linux; not native Windows, use WSL there), no GPU, no download · **Prerequisites:**
+# T07-L01-agent-loop-from-scratch (the loop whose tool calls this lesson puts three layers of control around).
 #
 # Nothing here is a product. The point is the measurement: twenty-one seeded attempts to get out, each
 # run against an undefended child first, so that "stopped" means something, and then against every
@@ -125,6 +125,7 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # - write Python functions with docstrings, try/except and with-statements, and read a traceback
 # - start a command with subprocess.run or subprocess.Popen and read its output and exit code
 # - tell an absolute path from a relative one, and say what .. and a symbolic link do
+# - run a notebook on macOS or Linux, or in Colab, Kaggle, Binder or Codespaces: the lesson uses process groups and sessions, which native Windows does not have (on Windows, use WSL)
 #
 # **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
 #
@@ -1662,6 +1663,11 @@ def _check_event_verdict_here() -> None:
         assert event_verdict("open", (inside, "r", 0), confined) is None, "a path inside the jail must pass"
         got = event_verdict("open", (outside, "r", 0), confined)
         assert isinstance(got, str) and got, f"got {got!r}: a path outside the jail must be refused"
+        got = event_verdict("open", (Path(outside), "r", 0), confined)
+        assert isinstance(got, str) and got, (
+            f"got {got!r} for a pathlib.Path outside the jail: a path-like argument is a path too, "
+            "judge it as you judge a str or bytes"
+        )
         assert event_verdict("open", (3, "r", 0), confined) is None, (
             "an integer is a file descriptor, not a path: it cannot be judged, so it is not refused"
         )

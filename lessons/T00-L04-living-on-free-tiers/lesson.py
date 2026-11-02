@@ -94,7 +94,7 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # limits into the number of learners who can finish. Then you will simulate a class sharing one key
 # and measure what the planner predicts, what retries waste, and what a quota cut does.
 #
-# **Time:** ~60 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no network, no API key
+# **Time:** ~90 minutes · **Runs on:** a laptop CPU, 8 GiB RAM, no GPU, no network, no API key
 # · **Prerequisites:** `T00-L01-the-8gb-track` (only for the `cpu8` tier vocabulary; nothing from
 # it is imported). Python classes, dictionaries and integer arithmetic.
 #

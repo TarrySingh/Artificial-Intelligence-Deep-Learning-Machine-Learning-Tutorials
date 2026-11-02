@@ -24,7 +24,9 @@ primary source, the section says what changed and why.
 4. **[Integration: factor models for two omics layers](lessons/P07-L04-factor-models-two-omics/lesson.ipynb)** · built · ~150 minutes · Python<br>
    <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open Integration: factor models for two omics layers in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open Integration: factor models for two omics layers in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/proteomics-multiomics/lessons/P07-L04-factor-models-two-omics/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open Integration: factor models for two omics layers in Binder"></picture></a><br>
    <sub>measured 17.0 s · 97 MiB · rubric 94 points in 37 cases</sub>
-5. Cross-modality QC and leakage traps · *specified*
+5. **[Cross-modality QC and leakage traps](lessons/P07-L05-leakage-harness/lesson.ipynb)** · in review (executed) · ~60 minutes · Python<br>
+   <a href="https://colab.research.google.com/github/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L05-leakage-harness/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-colab-dark.svg"><img src="../../brand/readme/open-colab-light.svg" height="24" alt="Open Cross-modality QC and leakage traps in Colab"></picture></a> <a href="https://kaggle.com/kernels/welcome?src=https://github.com/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/blob/master/programmes/proteomics-multiomics/lessons/P07-L05-leakage-harness/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-kaggle-dark.svg"><img src="../../brand/readme/open-kaggle-light.svg" height="24" alt="Open Cross-modality QC and leakage traps in Kaggle"></picture></a> <a href="https://mybinder.org/v2/gh/TarrySingh/Artificial-Intelligence-Deep-Learning-Machine-Learning-Tutorials/master?labpath=programmes/proteomics-multiomics/lessons/P07-L05-leakage-harness/lesson.ipynb"><picture><source media="(prefers-color-scheme: dark)" srcset="../../brand/readme/open-binder-dark.svg"><img src="../../brand/readme/open-binder-light.svg" height="24" alt="Open Cross-modality QC and leakage traps in Binder"></picture></a><br>
+   <sub>measured 19.8 s · 64 MiB · rubric 80 points in 26 cases</sub>
 6. Proteogenomics: variants to protein evidence · *specified*
 7. Capstone: a reproducible multiomics integration, audited for leakage · *specified*
 
@@ -196,22 +198,30 @@ per-feature noise, feature-wise sparsity and missing-value handling.
 
 ---
 
-## Module 5 — Cross-modality QC and leakage traps *(specified)*
+## Module 5 — Cross-modality QC and leakage traps
 
-**Lesson:** not built yet (directory name to be chosen) · tier `cpu8`.
+**Lesson:** `lessons/P07-L05-leakage-harness/` · tier `cpu8` · budget 180 s · builds on `P07-L04-factor-models-two-omics` and `T01-L02-leakage-clinic`.
 
 **The lab, as the catalogue words it.** Build a harness that detects donor and batch leakage across
 modalities before any biomarker is reported.
 
-**The design.** A seeded multi-modal cohort with donor and batch labels and three planted traps:
-the same donor on both sides of a train/test split, a batch confounded with the outcome (the
-hazard in `leek-batch-effects`), and a feature in one modality that is derived from the outcome.
-The student writes the checks that find each trap and a cross-validation that respects donor
-groups.
+**The design, and the departure.** A seeded paired proteomics and metabolomics cohort with an
+answer key and three planted traps: the same donor on both sides of a train/test split, samples
+registered twice under two donor ids, and a batch confounded with the outcome (the hazard in
+`leek-batch-effects`). A feature derived from the outcome is `T01-L02`'s target leak and is not
+rebuilt here; the duplicate-sample trap takes its place. The donor-grouped folds are given, since
+`T01-L02` built them.
 
-**What the student measures.** How much a naive cross-validated biomarker score is inflated
-relative to a donor-grouped one, which planted traps each check catches and which it misses, and
-what a permuted-label negative control reports on the clean and the trapped cohort.
+**The lab.** As built, the lesson has five exercises: a duplicate-sample finder that compares
+profiles across modalities, a merge of the donors it links, a case count per batch that counts
+donors and not samples, a label permutation that shuffles whole units (optionally inside a group),
+and a release gate that returns a biomarker AUC only when no check fails and names the failing checks
+in a fixed order otherwise.
+
+**What the student measures.** How much each planted trap adds to a cross-validated biomarker AUC
+against a donor-grouped baseline, which check catches which trap and which is blind to it, as read
+from the printed negative-control table. The lesson says it does not measure the false-alarm rate of
+the batch check on randomly assigned plates.
 
 ---
 

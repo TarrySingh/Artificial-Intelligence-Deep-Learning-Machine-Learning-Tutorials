@@ -1,0 +1,85 @@
+id: P05-L04-adverse-action-reason-codes
+title: 'Whole-point reason codes for a scorecard and a boosted challenger: stability, reference populations
+  and a proxy screen'
+track: P05
+flagship: ''
+tier: cpu8
+budget_seconds: 300
+language: python
+prerequisites:
+- T00-L01-the-8gb-track
+- P04-L08-explainability-evidence
+- P05-L03-scorecard-versus-boosting
+objectives:
+- Implement whole-point scorecard points with a stated rounding rule, the reference population of Regulation
+  B's commentary (applicants at or just above the cut-off, or all applicants) and the choice of principal
+  reasons from a matrix of shortfalls with a stated tie rule
+- Measure that the points-below-reference method and exact Shapley attributions are the same numbers for
+  an additive scorecard, and use exact attributions for a boosted challenger that is not additive
+- Implement a perturbation test that moves each continuous input up and down by a stated fraction of its
+  spread, and measure how often a declined applicant's first reason, ordered list and reason set change
+  under it and under a change of reference population, read against the noise floor of a sampled background
+- Implement reason codes that add up the shortfalls of inputs sharing a cause, and measure what a twin
+  input does to a list of reasons built input by input
+- Implement citation counts by group and a screen for reasons that behave like a proxy, and use both in
+  an audit of four configurations that reports what dropping the flagged input costs in Gini and in the
+  gap between the groups' decline rates
+before_you_start:
+  assumed:
+  - write numpy code that sorts along an axis, indexes with boolean masks, and sums or counts along an
+    axis
+  - explain what a scorecard's weight of evidence is, and read a Gini coefficient as 2 AUC minus 1 (P04-L07-challenger-from-scratch
+    and P04-L04-discrimination-testing teach them; this lesson introduces its points scale itself)
+  - 'say what a Shapley value is: one input''s average marginal contribution over every order in which
+    the inputs could be revealed, and why the values add up to the prediction minus the baseline'
+  - read a boosted tree model as a sum of small decision trees whose leaves hold weights (P05-L03-scorecard-versus-boosting
+    builds the booster that this lesson carries in as given code)
+  resources:
+  - title: 12 CFR 1002.9, Notifications (Regulation B)
+    by: Consumer Financial Protection Bureau; the text as published in the Electronic Code of Federal
+      Regulations
+    url: https://www.ecfr.gov/current/title-12/chapter-X/part-1002/subpart-A/section-1002.9
+    kind: free
+    why: 'paragraph (b)(2) is the sentence the whole lesson tests its reasons against: specific, principal,
+      and not merely ''failed to achieve a qualifying score'''
+  - title: Supplement I to Part 1002, Official Interpretations (Regulation B)
+    by: Consumer Financial Protection Bureau; the text as published in the Electronic Code of Federal
+      Regulations
+    url: https://www.ecfr.gov/current/title-12/chapter-X/part-1002/appendix-Supplement%20I%20to%20Part%201002
+    kind: free
+    why: the comments on 1002.9(b)(2) set out the two ways of choosing reasons from a scoring system that
+      this lesson builds, and the comments on 1002.6(a) are the passage the proxy screen is read against
+  - title: Interpretable Machine Learning, chapter 'Shapley Values'
+    by: Christoph Molnar (free online book)
+    url: https://christophm.github.io/interpretable-ml-book/shapley.html
+    kind: free
+    why: the definition of the Shapley value and its efficiency property, which this lesson checks numerically,
+      and the discussion of the background data that plays the part of the reference population
+  - title: A Unified Approach to Interpreting Model Predictions
+    by: Lundberg and Lee (NeurIPS 2017, arXiv)
+    url: https://arxiv.org/abs/1705.07874
+    kind: free
+    why: the additive feature attribution view and the local accuracy property (attributions sum to the
+      output minus a baseline) behind the audit's check that every decline has a reason
+  - title: numpy.argsort
+    by: The NumPy developers (documentation)
+    url: https://numpy.org/doc/stable/reference/generated/numpy.argsort.html
+    kind: free
+    why: 'the stable sort that exercise 3''s tie rule depends on: equal shortfalls must keep their input
+      order'
+datasets:
+- name: synthetic-application-book
+  kind: synthetic
+  description: 26,000 applications (14,000 development, 4,000 validation, 8,000 decision rows) with four
+    credit inputs and an area index, a planted default probability that depends on the four inputs and
+    a latent regional economy but never on the group label or the area index itself, and a group label
+    that no model sees; generated in lesson.py by application_book(seed) (seed 20261019; replicate books
+    from fixed seeds derived from it)
+  generator: 'lesson.py :: application_book'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 121
+status: executed
+measured_seconds: 20.5
+measured_peak_mib: 79

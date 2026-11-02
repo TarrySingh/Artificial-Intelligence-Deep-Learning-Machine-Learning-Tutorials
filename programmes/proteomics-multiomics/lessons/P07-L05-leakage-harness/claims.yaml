@@ -1,0 +1,137 @@
+claims:
+- id: saeb-subject-wise-mirrors-use-case
+  claim: When a person gives several samples, subject-wise cross-validation (no person on both sides of
+    a split) mirrors the clinically relevant use case of diagnosis in newly recruited subjects, and record-wise
+    cross-validation (random records) has no such interpretation. The lesson's "donors whole" protocol
+    is the subject-wise one and its "random rows" protocol is the record-wise one.
+  where: lesson.py section 2 (the protocols) and section 1 (what an honest evaluation has to imitate)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:28327985%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Saeb S, Lonini L, Jayaraman A, Mohr DC, Kording KP. The need to approximate the use-case
+    in clinical machine learning. GigaScience 2017;6(5):1-9. DOI 10.1093/gigascience/gix019. PubMed 28327985,
+    PMC5441397, read through Europe PMC's copy of the record
+  quote: While the subject-wise method mirrors the clinically relevant use-case scenario of diagnosis
+    in newly recruited subjects, the record-wise strategy has no such interpretation.
+  quote_context: 'the abstract, the sentence after the one that says the authors compared two popular
+    CV methods: record-wise and subject-wise'
+  accessed: 2026-10-19
+- id: saeb-record-wise-overestimates
+  claim: In that study, record-wise cross-validation often massively overestimated the prediction accuracy
+    of the algorithms (a publicly available dataset and a simulation). The lesson measures the same direction
+    of error on its own simulated cohorts and makes no claim about the size on real data.
+  where: lesson.py section 2 (the protocols; the first paired difference)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:28327985%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Saeb S, Lonini L, Jayaraman A, Mohr DC, Kording KP. The need to approximate the use-case
+    in clinical machine learning. GigaScience 2017;6(5):1-9. DOI 10.1093/gigascience/gix019. PubMed 28327985,
+    PMC5441397, read through Europe PMC's copy of the record
+  quote: Using both a publicly available dataset and a simulation, we found that record-wise CV often
+    massively overestimates the prediction accuracy of the algorithms.
+  quote_context: the abstract, the sentence after the one that contrasts the subject-wise and the record-wise
+    method
+  accessed: 2026-10-19
+- id: kapoor-nonindependence-unless-same-structure
+  claim: Kapoor and Narayanan's taxonomy lists nonindependence between training and test samples as leakage,
+    unless the scientific claim is about a distribution that has the same dependence structure. The lesson's
+    claim is about newly recruited donors, whose samples are not in the training data, so donors on both
+    sides of a split is a leak here; for a claim about re-scoring the same donors it would not be.
+  where: lesson.py section 1 (what an honest evaluation has to imitate)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10499856/fullTextXML
+  source_title: Kapoor S, Narayanan A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9):100804 (2023), PMC10499856, taxonomy item L3.2 (Nonindependence between training
+    and test samples), read as the article's full text through Europe PMC
+  quote: Nonindependence between training and test samples constitutes leakage, unless the scientific
+    claim is about a distribution that has the same dependence structure.
+  quote_context: 'item [L3.2] Nonindependence between training and test samples, in the section ''Toward
+    a solution: A taxonomy of data leakage'': the first sentence after the heading'
+  accessed: 2026-10-19
+- id: kapoor-duplicates
+  claim: 'The same taxonomy lists duplicates in datasets as a type of leakage: if a dataset with duplicates
+    is used to train and to evaluate a model, the same data could exist in the training set and the test
+    set. The lesson''s duplicate trap is this, with near-copies (the same material measured again) in
+    place of exact copies.'
+  where: lesson.py section 3 (exercise 1, duplicate_pairs)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10499856/fullTextXML
+  source_title: Kapoor S, Narayanan A. Leakage and the reproducibility crisis in machine-learning-based
+    science. Patterns 4(9):100804 (2023), PMC10499856, taxonomy item L1.4 (Duplicates in datasets), read
+    as the article's full text through Europe PMC
+  quote: If a dataset with duplicates is used for the purposes of training and evaluating an ML model,
+    the same data could exist in the training set and the test set.
+  quote_context: 'item [L1.4] Duplicates in datasets, in the section ''Toward a solution: A taxonomy of
+    data leakage''; the item is this one sentence under its heading'
+  accessed: 2026-10-19
+- id: leek-batch-effects-correlated-with-outcome
+  claim: Batch effects, which occur because measurements are affected by laboratory conditions, reagent
+    lots and personnel differences, become a major problem when they are correlated with an outcome of
+    interest and lead to incorrect conclusions. This is the hazard the lesson's confounded protein plates
+    plant.
+  where: lesson.py sections 1 and 5 (the batch trap; exercise 3)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:20838408%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Leek JT, Scharpf RB, Bravo HC, Simcha D, Langmead B, Johnson WE, Geman D, Baggerly K,
+    Irizarry RA. Tackling the widespread and critical impact of batch effects in high-throughput data.
+    Nat Rev Genet 2010;11(10):733-9. DOI 10.1038/nrg2825. PubMed 20838408, PMC3880143, read through Europe
+    PMC's copy of the record
+  quote: This becomes a major problem when batch effects are correlated with an outcome of interest and
+    lead to incorrect conclusions.
+  quote_context: the abstract, the sentence after the one that defines batch effects
+  accessed: 2026-10-19
+- id: sklearn-group-kfold
+  claim: 'As of scikit-learn 1.9.1, GroupKFold is a K-fold iterator variant with non-overlapping groups:
+    each group appears exactly once in the test set across all folds. The lesson''s group_folds does the
+    same by hand.'
+  where: lesson.py section 2 (the protocols)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.GroupKFold.html
+  source_title: 'scikit-learn 1.9.1 documentation: sklearn.model_selection.GroupKFold'
+  quote: Each group will appear exactly once in the test set across all folds (the number of distinct
+    groups has to be at least equal to the number of folds).
+  quote_context: the class description, the sentence after 'K-fold iterator variant with non-overlapping
+    groups.'
+  accessed: 2026-10-19
+- id: sklearn-leave-one-group-out
+  claim: As of scikit-learn 1.9.1, LeaveOneGroupOut provides train/test indices so that each training
+    set is all the samples except those of one specific group. With the plate as the group, this is the
+    lesson's leave-one-plate-out protocol.
+  where: lesson.py section 2 (the protocols)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.LeaveOneGroupOut.html
+  source_title: 'scikit-learn 1.9.1 documentation: sklearn.model_selection.LeaveOneGroupOut'
+  quote: Provides train/test indices to split data such that each training set is comprised of all samples
+    except ones belonging to one specific group.
+  quote_context: the class description, the sentence after 'Leave One Group Out cross-validator.'
+  accessed: 2026-10-19
+- id: sklearn-permutation-test-score
+  claim: 'As of scikit-learn 1.9.1, permutation_test_score evaluates the significance of a cross-validated
+    score with permutations: it permutes the targets to generate randomised data and computes the empirical
+    p-value against the null hypothesis that features and targets are independent. This is the library''s
+    version of the lesson''s negative control.'
+  where: lesson.py section 6 (exercise 4)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.permutation_test_score.html
+  source_title: 'scikit-learn 1.9.1 documentation: sklearn.model_selection.permutation_test_score'
+  quote: Permutes targets to generate ‘randomized data’ and compute the empirical p-value against the
+    null hypothesis that features and targets are independent.
+  quote_context: the function description, the sentence after 'Evaluate the significance of a cross-validated
+    score with permutations.'
+  accessed: 2026-10-19
+- id: sklearn-permutation-within-groups
+  claim: 'As of scikit-learn 1.9.1, the groups argument of permutation_test_score is documented as labels
+    to constrain permutation within groups: y values are permuted among samples with the same group identifier,
+    and among all samples when it is not specified. The permutation is therefore among samples, not among
+    whole units, which is why the lesson writes its own permute_units.'
+  where: lesson.py section 6 (exercise 4)
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.permutation_test_score.html
+  source_title: 'scikit-learn 1.9.1 documentation: sklearn.model_selection.permutation_test_score, parameter
+    groups'
+  quote: Labels to constrain permutation within groups, i.e. y values are permuted among samples with
+    the same group identifier. When not specified, y values are permuted among all samples.
+  quote_context: the description of the parameter `groups`
+  accessed: 2026-10-19
+- id: ojala-garriga-label-permutation-test
+  claim: Ojala and Garriga study permutation tests for assessing classifier performance. The first test
+    asks whether the classifier has found a real class structure in the data, and its null distribution
+    is estimated by permuting the labels. This is the negative control the lesson's harness runs; the
+    lesson does not use their second test, which permutes the features within classes.
+  where: lesson.py section 6 (exercise 4)
+  source_url: https://www.jmlr.org/papers/v11/ojala10a.html
+  source_title: Ojala M, Garriga GC. Permutation Tests for Studying Classifier Performance. Journal of
+    Machine Learning Research 11(62):1833-1863, 2010
+  quote: The first test assess whether the classifier has found a real class structure in the data; the
+    corresponding null distribution is estimated by permuting the labels in the data.
+  quote_context: the abstract, the third sentence (the grammar is the authors')
+  accessed: 2026-10-19

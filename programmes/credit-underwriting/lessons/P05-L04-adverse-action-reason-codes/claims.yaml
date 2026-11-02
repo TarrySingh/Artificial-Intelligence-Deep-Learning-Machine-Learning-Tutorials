@@ -1,0 +1,180 @@
+claims:
+- id: reg-b-1002-9-a-2-notification-content
+  claim: Section 1002.9(a)(2) of Regulation B requires a notification of adverse action to be in writing
+    and to carry, among other things, either a statement of specific reasons for the action taken or a
+    disclosure of the applicant's right to a statement of specific reasons within 30 days, if the statement
+    is requested within 60 days of the creditor's notification. The lesson builds the choice of the principal
+    reasons that such a statement contains and does not build the notice itself.
+  where: lesson.py section 1
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&section=1002.9
+  source_title: 12 CFR 1002.9 Notifications (Regulation B), paragraph (a)(2), Electronic Code of Federal
+    Regulations, title 12 as of 15 October 2026; last amended at 88 FR 16537, 20 March 2023
+  quote: 'A notification given to an applicant when adverse action is taken shall be in writing and shall
+    contain a statement of the action taken; the name and address of the creditor; a statement of the
+    provisions of section 701(a) of the Act; the name and address of the Federal agency that administers
+    compliance with respect to the creditor; and either: (i) A statement of specific reasons for the action
+    taken; or (ii) A disclosure of the applicant''s right to a statement of specific reasons within 30
+    days, if the statement is requested within 60 days of the creditor''s notification.'
+  quote_context: 'Paragraph (a)(2), ''Content of notification when adverse action is taken'', under (a)
+    ''Notification of action taken, ECOA notice, and statement of specific reasons''. The same source
+    note as the entry below applies: the section was last amended at 88 FR 16537 on 20 March 2023.'
+  accessed: 2026-10-19
+- id: reg-b-1002-9-b-2-specific-reasons
+  claim: Section 1002.9(b)(2) of Regulation B requires the statement of reasons for adverse action to
+    be specific and to indicate the principal reason or reasons, and says that a statement that the action
+    was based on the creditor's internal standards or policies, or that the applicant failed to achieve
+    a qualifying score on the creditor's credit scoring system, is insufficient. The lesson's "reason"
+    is a principal reason in this sense, and the one-sentence notice it shows is the kind the regulation
+    calls insufficient.
+  where: lesson.py section 1; section 5 (the insufficient notice)
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&section=1002.9
+  source_title: 12 CFR 1002.9 Notifications (Regulation B), paragraph (b)(2), Electronic Code of Federal
+    Regulations, title 12 as of 15 October 2026; last amended at 88 FR 16537, 20 March 2023
+  quote: The statement of reasons for adverse action required by paragraph (a)(2)(i) of this section must
+    be specific and indicate the principal reason(s) for the adverse action. Statements that the adverse
+    action was based on the creditor's internal standards or policies or that the applicant, joint applicant,
+    or similar party failed to achieve a qualifying score on the creditor's credit scoring system are
+    insufficient.
+  quote_context: Paragraph (b)(2), 'Statement of specific reasons', under (b) 'Form of ECOA notice and
+    statement of specific reasons'. The section's source note reads '[76 FR 79445, Dec. 21, 2011, as amended
+    at 88 FR 16537, Mar. 20, 2023]', so the 2026 amendments to part 1002 did not change this section;
+    the versioner lists no version of section 1002.9 after 2023-08-29.
+  accessed: 2026-10-19
+- id: reg-b-comment-9-b-2-5-methods
+  claim: 'The Official Interpretation of Regulation B (Supplement I, comment 9(b)(2)-5) says no one method
+    of selecting reasons is required for a credit scoring system and describes two: the factors for which
+    the applicant''s score fell furthest below the average score of applicants whose total score was at
+    or slightly above the minimum passing score, and the same against the average of all applicants, with
+    the averages calculated during the development or use of the system. It accepts any other method that
+    produces substantially similar results. The lesson builds both references, uses Shapley attributions
+    as a method of the third kind, and measures where the two references differ.'
+  where: lesson.py section 1; sections 4, 5, 6, 9 and 10
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph
+    5, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: One method is to identify the factors for which the applicant's score fell furthest below the
+    average score for each of those factors achieved by applicants whose total score was at or slightly
+    above the minimum passing score. Another method is to identify the factors for which the applicant's
+    score fell furthest below the average score for each of those factors achieved by all applicants.
+    These average scores could be calculated during the development or use of the system. Any other method
+    that produces results substantially similar to either of these methods is also acceptable under the
+    regulation.
+  quote_context: Comment 9(b)(2)-5, 'Credit scoring - method for selecting reasons'. It opens 'The regulation
+    does not require that any one method be used for selecting reasons for a credit denial or other adverse
+    action that is based on a credit scoring system. Various methods will meet the requirements of the
+    regulation.' The paragraph is word for word the same in the 1 December 2025 version of the supplement.
+  accessed: 2026-10-19
+- id: reg-b-comment-9-b-2-1-number
+  claim: Comment 9(b)(2)-1 says the regulation does not mandate a specific number of reasons, but that
+    disclosing more than four is not likely to be helpful to the applicant. The lesson's notice lists
+    a number of its own choosing (a small number, because its toy models have five inputs) and measures
+    how the number changes what a concentration screen can see.
+  where: lesson.py section 1; section 12 (the dilution table); section 15
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph
+    1, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: The regulation does not mandate that a specific number of reasons be disclosed, but disclosure
+    of more than four reasons is not likely to be helpful to the applicant.
+  quote_context: Comment 9(b)(2)-1, 'Number of specific reasons', whose first sentence is 'A creditor
+    must disclose the principal reasons for denying an application or taking other adverse action.'
+  accessed: 2026-10-19
+- id: reg-b-comment-9-b-2-4-scored-factors
+  claim: Comment 9(b)(2)-4 says that when adverse action is based on a credit scoring system the reasons
+    disclosed must relate only to factors actually scored in the system, and that no factor that was a
+    principal reason may be excluded from disclosure. The lesson's reasons are drawn only from the model's
+    own inputs, and its rule never drops an input whose shortfall is among the largest.
+  where: lesson.py section 1; section 5; section 15 (common mistakes)
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph
+    4, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: Moreover, no factor that was a principal reason for adverse action may be excluded from disclosure.
+  quote_context: Comment 9(b)(2)-4, 'Credit scoring system'. The preceding sentence reads 'If a creditor
+    bases the denial or other adverse action on a credit scoring system, the reasons disclosed must relate
+    only to those factors actually scored in the system.'
+  accessed: 2026-10-19
+- id: reg-b-comment-9-b-2-3-wording
+  claim: Comment 9(b)(2)-3 says a creditor need not describe how or why a factor adversely affected an
+    applicant, and gives 'length of residence' rather than 'too short a period of residence' as the example
+    of acceptable wording. The lesson's reason texts are plain labels of the factor.
+  where: lesson.py setup cell (REASON_TEXT); section 5
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph
+    3, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: A creditor need not describe how or why a factor adversely affected an applicant.
+  quote_context: Comment 9(b)(2)-3, 'Description of reasons', which continues 'For example, the notice
+    may say "length of residence" rather than "too short a period of residence."'
+  accessed: 2026-10-19
+- id: reg-b-comment-9-b-2-9-fcra
+  claim: Comment 9(b)(2)-9 says that the Fair Credit Reporting Act separately requires a creditor to disclose
+    a credit score it used in taking adverse action together with up to four key factors that adversely
+    affected the score, and that disclosing those key factors does not satisfy the ECOA requirement to
+    disclose specific reasons. The lesson names the FCRA disclosure as a different disclosure and does
+    not build it.
+  where: lesson.py section 1
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph
+    9, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: Disclosing the key factors that adversely affected the consumer's credit score does not satisfy
+    the ECOA requirement to disclose specific reasons for denying or taking other adverse action on an
+    application or extension of credit.
+  quote_context: Comment 9(b)(2)-9, 'Combined ECOA-FCRA disclosures'. The comment also says that disclosing
+    that a credit report was obtained and used in the denial, as the FCRA requires, 'does not satisfy
+    the ECOA requirement to disclose specific reasons', and ends 'See also comment 9(b)(2)-1.'
+  accessed: 2026-10-19
+- id: reg-b-1002-6-a-effects-test
+  claim: As amended with effect from 21 July 2026, section 1002.6(a) of Regulation B says that the Act
+    does not provide that the effects test applies for determining whether there is discrimination in
+    violation of the Act. The amendment of this paragraph was published on 22 April 2026. The lesson therefore
+    does not present disparate impact as the test its proxy screen serves, and says so.
+  where: lesson.py section 1; section 12; section 15
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&section=1002.6
+  source_title: 12 CFR 1002.6 Rules concerning evaluation of applications (Regulation B), paragraph (a),
+    Electronic Code of Federal Regulations, title 12 as of 15 October 2026; as amended at 91 FR 21668,
+    22 April 2026
+  quote: The Act does not provide that the “effects test” applies for determining whether there is discrimination
+    in violation of the Act.
+  quote_context: Paragraph (a), 'General rule concerning use of information'. The same paragraph as it
+    stood on 1 December 2025 ended with a different sentence, about the legislative history of the Act
+    indicating that Congress intended an 'effects test' concept 'to be applicable to a creditor's determination
+    of creditworthiness' (read in the versioner's 2025-12-01 version). The section's source note now reads
+    '[76 FR 79445, Dec. 21, 2011, as amended at 91 FR 21668, Apr. 22, 2026]'. Paragraph (b)(1), unchanged,
+    still reads 'a creditor shall not take a prohibited basis into account in any system of evaluating
+    the creditworthiness of applicants'.
+  accessed: 2026-10-19
+- id: reg-b-comment-6-a-2-proxies
+  claim: Comment 6(a)-2 of the Official Interpretation, as it stands on 15 October 2026, says the Act
+    does not provide for the prohibition of practices that are facially neutral as to prohibited bases,
+    except to the extent that facially neutral criteria function as proxies for protected characteristics
+    designed or applied with the intention of advantaging or disadvantaging individuals based on protected
+    characteristics. The lesson's screen measures a statistical pattern and says nothing about intent,
+    so it never reads a flag as a finding.
+  where: lesson.py section 1; section 12; section 13; section 15
+  source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
+  source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.6(a), paragraph
+    2, Electronic Code of Federal Regulations, title 12 as of 15 October 2026
+  quote: The Act does not provide for the prohibition of practices that are facially neutral as to prohibited
+    bases, except to the extent that facially neutral criteria function as proxies for protected characteristics
+    designed or applied with the intention of advantaging or disadvantaging individuals based on protected
+    characteristics.
+  quote_context: Comment 6(a)-2, headed 'Disparate treatment' in the version read. The versioner lists
+    Supplement I as amended on several 2026 dates, among them 2026-04-22 and 2026-07-21; the 2025-12-01
+    version carried an 'Effects test' comment under 6(a)-2 instead. The text is as read on the access
+    date, and the rule behind it is the subject of the next entry and of the non-claims below.
+  accessed: 2026-10-19
+- id: cfpb-final-rule-2026-04-22
+  claim: The CFPB published a final rule amending Regulation B on 22 April 2026 (Federal Register document
+    2026-07804, 91 FR 21620), effective 21 July 2026, which amends provisions related to disparate impact,
+    discouragement of applicants or prospective applicants, and special purpose credit programs. This
+    is the change the two entries above reflect.
+  where: lesson.py section 1; closing section
+  source_url: https://www.federalregister.gov/documents/full_text/text/2026/04/22/2026-07804.txt
+  source_title: Equal Credit Opportunity Act (Regulation B), Final rule, Consumer Financial Protection
+    Bureau, Federal Register Vol. 91, No. 77, 22 April 2026, pp. 21620-21670 (document 2026-07804)
+  quote: The Consumer Financial Protection Bureau (Bureau or CFPB) is issuing a final rule that amends
+    provisions related to disparate impact, discouragement of applicants or prospective applicants, and
+    special purpose credit programs under Regulation B
+  quote_context: The SUMMARY of the rule, which continues 'the regulation implementing the Equal Credit
+    Opportunity Act (ECOA or Act). The amendments facilitate compliance with ECOA by clarifying the obligations
+    imposed by the statute.' The DATES paragraph reads 'This final rule is effective July 21, 2026.' The
+    Federal Register's document API gives the same publication and effective dates (2026-04-22 and 2026-07-21).
+  accessed: 2026-10-19
