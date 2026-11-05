@@ -1,0 +1,129 @@
+claims:
+- id: mtbench-three-biases
+  claim: The MT-Bench paper names position bias, verbosity bias and self-enhancement bias as limitations
+    of an LLM used as a judge. Section 1 plants one of each in a scripted judge, under the names position,
+    length and self-preference.
+  where: lesson.py sections 1 and 2 (the setting); before-you-start resource 1
+  source_url: https://arxiv.org/abs/2306.05685
+  source_title: Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena, arXiv 2306.05685
+    (abstract page)
+  quote: We examine the usage and limitations of LLM-as-a-judge, including position, verbosity, and self-enhancement
+    biases, as well as limited reasoning ability, and propose solutions to mitigate some of them.
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: mtbench-swap-positions
+  claim: 'The MT-Bench authors describe the conservative way to address position bias that exercises 1
+    and 2 build: call the judge twice with the two answers swapped, declare a win only when the same answer
+    is preferred in both orders, and call the pair a tie when the two calls are inconsistent.'
+  where: lesson.py section 4 (exercise 2 preamble); exercise 2's docstring
+  source_url: https://arxiv.org/pdf/2306.05685v4
+  source_title: Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena, arXiv 2306.05685v4,
+    section 'Addressing limitations'
+  quote: A conservative approach is to call a judge twice by swapping the order of two answers and only
+    declare a win when an answer is preferred in both orders. If the results are inconsistent after swapping,
+    we can call it a tie.
+  quote_context: Paragraph 'Swapping positions' under the heading 'Addressing limitations'
+  accessed: 2026-10-19
+- id: mtbench-verbosity-bias
+  claim: Verbosity bias is a judge's preference for longer responses even when they are not clearer, better
+    or more accurate than shorter ones. Exercise 3 measures the lesson's version of it as the gap between
+    how often the judge and humans pick the longer answer.
+  where: lesson.py section 5 (exercise 3 preamble)
+  source_url: https://arxiv.org/pdf/2306.05685v4
+  source_title: Zheng et al., Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena, arXiv 2306.05685v4,
+    section on verbosity bias
+  quote: Verbosity bias is when an LLM judge favors longer, verbose responses, even if they are not as
+    clear, high-quality, or accurate as shorter alternatives.
+  quote_context: First sentence of the paragraph 'Verbosity bias' in the section on the limitations of
+    LLM-as-a-judge
+  accessed: 2026-10-19
+- id: llm-evaluators-self-preference
+  claim: Self-preference is the bias in which an LLM evaluator scores its own outputs higher than others'
+    while human annotators consider them of equal quality. The planted self-preference in the scripted
+    judge favours the candidate because the judge belongs to the candidate's family.
+  where: lesson.py section 1 (the setting)
+  source_url: https://arxiv.org/abs/2404.13076
+  source_title: Panickssery, Bowman and Feng, LLM Evaluators Recognize and Favor Their Own Generations,
+    arXiv 2404.13076 (abstract page)
+  quote: One such bias is self-preference, where an LLM evaluator scores its own outputs higher than others'
+    while human annotators consider them of equal quality.
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: alpacaeval-length-preference
+  claim: AlpacaEval, an LLM-judged benchmark, is known to favour models that generate longer outputs even
+    though it is highly correlated with human preferences. This is the same shape as the length bias exercise
+    3 measures.
+  where: lesson.py section 5 (exercise 3 preamble); section 10
+  source_url: https://arxiv.org/abs/2404.04475
+  source_title: 'Dubois, Galambosi, Liang and Hashimoto, Length-Controlled AlpacaEval: A Simple Way to
+    Debias Automatic Evaluators, arXiv 2404.04475 (abstract page)'
+  quote: Despite being highly correlated with human preferences, AlpacaEval is known to favor models that
+    generate longer outputs.
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: alpacaeval-length-control-regression
+  claim: Length-controlled AlpacaEval fits a generalized linear model that predicts the biased judge's
+    preferences from the length difference (and other features) and then obtains length-controlled preferences
+    by predicting with a zero difference in lengths. Section 10 names this as the regression approach
+    the lesson does not build.
+  where: lesson.py section 10
+  source_url: https://arxiv.org/abs/2404.04475
+  source_title: Dubois, Galambosi, Liang and Hashimoto, Length-Controlled AlpacaEval, arXiv 2404.04475
+    (abstract page)
+  quote: We then obtain length-controlled preferences by predicting preferences while conditioning the
+    GLM with a zero difference in lengths.
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: rogan-gladen-adjustment
+  claim: Rogan and Gladen (1978) showed that the frequency of positive results of an imperfect test is
+    a bad estimate of prevalence and gave the adjustment. Exercise 4 applies that adjustment, from the
+    judge's measured sensitivity and specificity, to a judge's observed win rate.
+  where: lesson.py section 6 (exercise 4 preamble) and its docstring
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:623091%20AND%20SRC:MED&resultType=core&format=json
+  source_title: Rogan and Gladen, Estimating prevalence from the results of a screening test, American
+    Journal of Epidemiology 107(1):71-76, 1978 (PMID 623091, doi 10.1093/oxfordjournals.aje.a112510);
+    abstract as served by Europe PMC
+  quote: A common use of tests is to estimate prevalence of disease; frequency of positive tests is shown
+    to be a bad estimate, and the necessary adjustmants are given.
+  quote_context: Last sentence of the abstract; 'adjustmants' is the abstract's own spelling. The paper's
+    full text is behind the publisher's paywall and was not read; the lesson derives the formula itself
+    from the stated relation and checks it against a plain loop.
+  accessed: 2026-10-19
+- id: llm-judge-rogan-gladen
+  claim: A January 2026 arXiv paper describes LLM judges as imperfect predictions of the underlying truth
+    that can make systematic, non-random errors, names Rogan-Gladen-style estimators as a direct measurement-error
+    correction for that, and compares them with prediction-powered inference.
+  where: lesson.py section 6 (exercise 4 preamble); before-you-start resource 3
+  source_url: https://arxiv.org/abs/2601.05420
+  source_title: Efficient Inference for Noisy LLM-as-a-Judge Evaluation, arXiv 2601.05420 (abstract page,
+    v1 of 8 Jan 2026)
+  quote: 'In practice, LLM judges are imperfect predictions for the underlying truth and can exhibit systematic,
+    non-random errors. Two main approaches have recently been proposed to address this issue: (i) direct
+    measurementerror correction based on misclassification models such as Rogan-Gladen-style estimators'
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: ppi-can-beat-measurement-error-correction
+  claim: The same paper characterises conditions under which prediction-powered-inference estimators have
+    strictly smaller asymptotic variance than measurement-error corrections of the Rogan-Gladen kind.
+    Section 10 names this as a reason to look beyond the correction the lesson builds.
+  where: lesson.py section 10
+  source_url: https://arxiv.org/abs/2601.05420
+  source_title: Efficient Inference for Noisy LLM-as-a-Judge Evaluation, arXiv 2601.05420 (abstract page)
+  quote: characterize conditions under which PPI-style estimators attain strictly smaller asymptotic variance
+    than measurement-error corrections.
+  quote_context: Abstract
+  accessed: 2026-10-19
+- id: cohens-kappa-definition
+  claim: Cohen's kappa is (p_o - p_e) / (1 - p_e), where p_o is the observed agreement ratio between two
+    annotators and p_e the agreement expected if both assign labels at random, estimated from each annotator's
+    own label frequencies. The copy of kappa in section 1 (from P02-L06) implements this and the lesson
+    only prints it.
+  where: lesson.py section 1 (the given kappa) and section 2; before-you-start resource 4
+  source_url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+  source_title: scikit-learn API reference, sklearn.metrics.cohen_kappa_score
+  quote: where p_o is the empirical probability of agreement on the label assigned to any sample (the
+    observed agreement ratio), and p_e is the expected agreement when both annotators assign labels randomly.
+    p_e is estimated using a per-annotator empirical prior over the class labels
+  quote_context: First paragraph of the function's description, after the displayed formula (the page
+    typesets p_o and p_e as math; the quote spells them out)
+  accessed: 2026-10-19

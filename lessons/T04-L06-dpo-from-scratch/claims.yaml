@@ -1,0 +1,187 @@
+claims:
+- id: dpo-optimal-policy-of-the-kl-constrained-objective
+  claim: The optimal policy of the KL-constrained reward-maximisation objective has the closed form pi_ref
+    * exp(r / beta) / Z(x), with Z(x) the partition function. Section 6 derives it (by the identity J(pi)
+    = beta log Z - beta KL(pi || pi*)) and checks it numerically.
+  where: lesson.py section 6 (deriving the DPO loss; the derivation check)
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: 'Rafailov, R. et al. (2023). Direct Preference Optimization: Your Language Model is Secretly
+    a Reward Model. arXiv:2305.18290v3, section 4 (Deriving the DPO objective).'
+  quote: the optimal solution to the KL-constrained reward maximization objective in Eq. 3 takes the form
+  quote_context: section 4, the paragraph 'Deriving the DPO objective', before Eq. 4
+  accessed: 2026-10-19
+- id: dpo-bradley-terry-depends-only-on-reward-differences
+  claim: The Bradley-Terry preference model depends only on the difference of the two rewards, which is
+    why the prompt-only term of the implicit reward can be dropped from a pair.
+  where: lesson.py section 6
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: Rafailov, R. et al. (2023). arXiv:2305.18290v3, section 4.
+  quote: the Bradley-Terry model depends only on the difference of rewards between two completions
+  quote_context: section 4, the paragraph after Eq. 5
+  accessed: 2026-10-19
+- id: dpo-partition-function-cancels
+  claim: Substituting the reward written in terms of the optimal policy into the Bradley-Terry model,
+    the partition function cancels, leaving a preference probability in terms of the policy and the reference
+    only.
+  where: lesson.py section 6; exercise 3
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: Rafailov, R. et al. (2023). arXiv:2305.18290v3, section 4; the derivation is in the paper's
+    appendix A.2.
+  quote: the partition function cancels, and we can express the human preference probability in terms
+    of only the optimal policy
+  quote_context: section 4, the sentence before Eq. 6
+  accessed: 2026-10-19
+- id: dpo-loss-fits-an-implicit-reward
+  claim: The DPO loss (Eq. 7 of the paper) is the negative log-likelihood of the preference labels under
+    a Bradley-Terry model whose reward is the policy's log-ratio to the reference scaled by beta; the
+    policy therefore represents an implicit reward. Exercise 3 implements this loss.
+  where: lesson.py sections 6 and 7 (exercise 3)
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: Rafailov, R. et al. (2023). arXiv:2305.18290v3, section 4, Eq. 7 and the sentence after
+    it.
+  quote: we fit an implicit reward using an alternative parameterization
+  quote_context: section 4, the sentence after Eq. 7
+  accessed: 2026-10-19
+- id: dpo-gradient-raises-chosen-lowers-rejected-weighted-by-error
+  claim: The gradient of the DPO loss increases the likelihood of the preferred completion and decreases
+    that of the dispreferred completion, each pair weighted by how wrongly the implicit reward orders
+    it, scaled by beta. Exercises 4 and 5 implement this weighting.
+  where: lesson.py sections 8 and 9 (exercises 4 and 5)
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: Rafailov, R. et al. (2023). arXiv:2305.18290v3, section 4 ('What does the DPO update do?').
+  quote: the gradient of the loss function LDPO increases the likelihood of the preferred completions
+    yw and decreases the likelihood of dispreferred completions
+  quote_context: section 4, the paragraph after the gradient equation; the paragraph continues 'Importantly,
+    the examples are weighed by how much higher the implicit reward model rates the dispreferred completions,
+    scaled by beta'
+  accessed: 2026-10-19
+- id: dpo-pipeline-samples-from-the-reference-and-labels
+  claim: The DPO pipeline samples two completions per prompt from the reference model, has them labelled
+    with preferences to form an offline dataset, and minimises the loss on it. Section 4 of the lesson
+    builds its pairs this way.
+  where: lesson.py section 4 (preference pairs)
+  source_url: https://arxiv.org/pdf/2305.18290
+  source_title: Rafailov, R. et al. (2023). arXiv:2305.18290v3, section 4 ('DPO outline').
+  quote: label with human preferences to construct the offline dataset of preferences
+  quote_context: section 4, the paragraph 'DPO outline', step 1
+  accessed: 2026-10-19
+- id: ipo-regresses-the-log-ratio-gap-to-a-fixed-target
+  claim: The IPO loss regresses the gap between the policy's and the reference's log-likelihood ratios
+    of the chosen and rejected answers to a fixed target, tau^-1 / 2, as the squared error (h - tau^-1
+    / 2)^2 (Eq. 17). Exercise 8 implements it with the lesson's beta in place of tau.
+  where: lesson.py section 15 (exercise 8)
+  source_url: https://arxiv.org/pdf/2310.12036
+  source_title: Azar, M.G. et al. (2023). A General Theoretical Paradigm to Understand Learning from Human
+    Preferences. arXiv:2310.12036v2, section 5.2 and Eq. 17.
+  quote: IPO learns from preferences dataset simply by regressing the gap between log-likelihood ratios
+  quote_context: section 5.2 (Sampled Loss for IPO), the paragraph after Eq. 17; the target is written
+    tau^-1 / 2 in that equation and in the sentence
+  accessed: 2026-10-19
+- id: ipo-regularises-towards-the-reference-unlike-dpo
+  claim: The IPO paper says that, unlike DPO, IPO always regularises its solution towards the reference
+    by controlling the gap between the log-likelihood ratios. Section 16 of the lesson measures this difference
+    in the toy.
+  where: lesson.py sections 15 and 16
+  source_url: https://arxiv.org/pdf/2310.12036
+  source_title: Azar, M.G. et al. (2023). arXiv:2310.12036v2, section 5.2.
+  quote: In other words IPO, unlike DPO, always regularizes its solution towards
+  quote_context: section 5.2 (Sampled Loss for IPO), the paragraph after Eq. 17
+  accessed: 2026-10-19
+- id: likelihood-of-preferred-responses-often-decreases-razin
+  claim: Prior work has observed that the likelihood of preferred responses often decreases during DPO
+    training, a phenomenon named likelihood displacement.
+  where: lesson.py section 12 (exercise 6)
+  source_url: https://arxiv.org/abs/2410.08847
+  source_title: 'Razin, N. et al. (2024). Unintentional Unalignment: Likelihood Displacement in Direct
+    Preference Optimization. arXiv:2410.08847v4, abstract.'
+  quote: prior work has observed that the likelihood of preferred responses often decreases during training
+  quote_context: abstract, second sentence
+  accessed: 2026-10-19
+- id: dpo-loss-can-reduce-preferred-likelihood-smaug
+  claim: The standard DPO loss can reduce the model's likelihood of the preferred examples as long as
+    the relative probability between preferred and dispreferred increases, shown theoretically and empirically.
+  where: lesson.py section 12 (exercise 6)
+  source_url: https://arxiv.org/abs/2402.13228
+  source_title: 'Pal, A. et al. (2024). Smaug: Fixing Failure Modes of Preference Optimisation with DPO-Positive.
+    arXiv:2402.13228v2, abstract.'
+  quote: the standard DPO loss can lead to a reduction of the model's likelihood of the preferred examples,
+    as long as the relative probability between the preferred and dispreferred classes increases
+  quote_context: abstract
+  accessed: 2026-10-19
+- id: dpo-likelihood-reduction-is-strongest-on-low-edit-distance-pairs-smaug
+  claim: The Smaug authors report that the reduction of the preferred examples' likelihood shows up especially
+    on datasets in which the edit distance between the two completions of a pair is low, that is, where
+    the two answers differ little. Section 12 uses this to say where lowering the rejected answer can
+    carry the chosen one with it.
+  where: lesson.py section 12 (exercise 6)
+  source_url: https://arxiv.org/abs/2402.13228
+  source_title: 'Pal, A. et al. (2024). Smaug: Fixing Failure Modes of Preference Optimisation with DPO-Positive.
+    arXiv:2402.13228v2, abstract.'
+  quote: especially datasets in which the edit distance between pairs of completions is low
+  quote_context: abstract, third sentence
+  accessed: 2026-10-19
+- id: rlhf-drives-longer-outputs-singhal
+  claim: RLHF often drives models to produce longer outputs, and a purely length-based reward reproduces
+    most downstream RLHF improvements over supervised fine-tuned models. The lesson plants a length bonus
+    in its labeller for this reason.
+  where: lesson.py sections 1, 4 and 17
+  source_url: https://arxiv.org/abs/2310.03716
+  source_title: 'Singhal, P. et al. (2023). A Long Way to Go: Investigating Length Correlations in RLHF.
+    arXiv:2310.03716v2, abstract.'
+  quote: even a purely length-based reward reproduces most downstream RLHF improvements over supervised
+    fine-tuned models
+  quote_context: abstract; the sentence before it begins 'Alongside these improvements, however, RLHF
+    also often drives models to produce longer outputs.'
+  accessed: 2026-10-19
+- id: dpo-shows-length-exploitation-park
+  claim: Length exploitation has been shown in the DPO setting and linked to out-of-distribution bootstrapping.
+  where: lesson.py sections 11 and 17
+  source_url: https://arxiv.org/abs/2403.19159
+  source_title: Park, R. et al. (2024). Disentangling Length from Quality in Direct Preference Optimization.
+    arXiv:2403.19159v2, abstract.
+  quote: showing significant exploitation in DPO and linking it to out-of-distribution bootstrapping
+  quote_context: abstract
+  accessed: 2026-10-19
+- id: simpo-uses-average-log-probability-as-the-reward
+  claim: SimPO uses the average log probability of a sequence as the implicit reward, which removes the
+    need for a reference model. The lesson names it as left out.
+  where: lesson.py, closing section
+  source_url: https://arxiv.org/abs/2405.14734
+  source_title: 'Meng, Y. et al. (2024). SimPO: Simple Preference Optimization with a Reference-Free Reward.
+    arXiv:2405.14734v3, abstract.'
+  quote: using the average log probability of a sequence as the implicit reward
+  quote_context: abstract
+  accessed: 2026-10-19
+- id: kto-learns-from-a-binary-signal
+  claim: KTO learns from a binary signal of whether an output is desirable, instead of preference pairs.
+    The lesson names it as left out.
+  where: lesson.py, closing section
+  source_url: https://arxiv.org/abs/2402.01306
+  source_title: 'Ethayarajh, K. et al. (2024). KTO: Model Alignment as Prospect Theoretic Optimization.
+    arXiv:2402.01306, abstract.'
+  quote: despite only learning from a binary signal of whether an output is desirable
+  quote_context: abstract
+  accessed: 2026-10-19
+- id: orpo-is-reference-model-free-with-an-odds-ratio
+  claim: ORPO is a reference-model-free, monolithic odds-ratio preference optimisation algorithm used
+    during supervised fine-tuning. The lesson names it as left out.
+  where: lesson.py, closing section
+  source_url: https://arxiv.org/abs/2403.07691
+  source_title: 'Hong, J. et al. (2024). ORPO: Monolithic Preference Optimization without Reference Model.
+    arXiv:2403.07691, abstract.'
+  quote: reference model-free monolithic odds ratio preference optimization algorithm
+  quote_context: abstract
+  accessed: 2026-10-19
+- id: online-dpo-samples-from-the-current-model-each-iteration
+  claim: Online preference methods sample the two responses on each training iteration from the current
+    model and have them labelled then, where offline DPO uses a dataset collected ahead of training and
+    never updated. The lesson names this as left out.
+  where: lesson.py sections 17 and the closing section
+  source_url: https://arxiv.org/abs/2402.04792
+  source_title: Guo, S. et al. (2024). Direct Language Model Alignment from Online AI Feedback. arXiv:2402.04792v2,
+    abstract.
+  quote: on each training iteration, we sample two responses from the current model and prompt the LLM
+    annotator to choose which one is preferred
+  quote_context: abstract; the sentence before it says 'the preference datasets used in DAP methods are
+    usually collected ahead of training and never updated'
+  accessed: 2026-10-19

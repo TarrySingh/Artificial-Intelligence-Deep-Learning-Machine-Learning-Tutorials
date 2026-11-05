@@ -1,0 +1,73 @@
+id: T04-L06-dpo-from-scratch
+title: Follow the derivation of the DPO loss from the KL-regularised reward objective, implement it on
+  a numpy nanolm with a hand-checked gradient, and measure what it does to likelihood, margin, length
+  and distance from the reference
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T03-L03-nanolm-cpu-slice
+- T04-L02-chat-templates-and-masking
+objectives:
+- Follow the derivation of the DPO loss from the KL-regularised reward objective, and check numerically
+  that its closed-form optimum maximises the objective and that the partition function cancels in a pair
+- Implement the stable log-likelihood of a response, the DPO loss with implicit reward margins, its gradient
+  coefficients and the backward pass that re-weights per-sequence log-likelihood gradients, and verify
+  the whole gradient against finite differences
+- Measure on held-out pairs the implicit reward margin and pair accuracy of a DPO-trained model, and count
+  the pairs where the margin rose while the chosen answer became less likely
+- Audit a preference set for a length bias with a length-matched comparison and a length-blind control,
+  and measure how much longer and how much more correct a DPO-trained model's answers are than the reference's
+  and than those of SFT on the chosen answers alone
+- Implement a KL estimate with its standard error and the IPO loss, and measure how beta and the choice
+  of loss change the distance the policy travels from the reference
+before_you_start:
+  assumed:
+  - write numpy code on arrays of shape (batch, time, vocabulary) and take a softmax or a sum along the
+    last axis
+  - say what the log-likelihood of a sequence is, and why the probabilities of its tokens multiply
+  - read a KL divergence between two distributions and say what it measures
+  - apply the chain rule to a composed function (T03-L03 derives the model's backward pass this lesson
+    reuses)
+  resources:
+  - title: 'Direct Preference Optimization: Your Language Model is Secretly a Reward Model'
+    by: Rafailov et al. (arXiv 2305.18290)
+    url: https://arxiv.org/abs/2305.18290
+    kind: free
+    why: section 4 is the derivation of sections 6 to 9 of this lesson (the closed-form optimum, the cancelled
+      partition function, the loss and its gradient), and appendix A has the long form
+  - title: A General Theoretical Paradigm to Understand Learning from Human Preferences
+    by: Azar et al. (arXiv 2310.12036)
+    url: https://arxiv.org/abs/2310.12036
+    kind: free
+    why: section 5.2 derives the IPO loss of exercise 8, and section 4.2 gives the argument for why DPO's
+      logistic loss has no finish line
+  - title: Illustrating Reinforcement Learning from Human Feedback (RLHF)
+    by: Hugging Face blog
+    url: https://huggingface.co/blog/rlhf
+    kind: free
+    why: the pipeline of reward model, KL penalty and policy that section 6 starts from, in words and
+      pictures before the algebra
+  - title: DPO Trainer
+    by: Hugging Face TRL documentation
+    url: https://huggingface.co/docs/trl/dpo_trainer
+    kind: free
+    why: how a production library exposes the same loss and its beta, to compare with the 20 lines you
+      write here
+  - title: NumPy, the absolute basics for beginners
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: arrays, axes and the few operations the eight exercises lean on
+datasets:
+- name: T04-L06 synthetic preference world (1296 four-letter prompts, a reference model pretrained in
+    the lesson, preference pairs sampled from it and labelled by a Bradley-Terry draw with a planted length
+    bonus, all from one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 151
+status: executed
+measured_seconds: 28.5
+measured_peak_mib: 740

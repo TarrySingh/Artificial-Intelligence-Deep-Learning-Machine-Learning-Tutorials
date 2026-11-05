@@ -1400,6 +1400,9 @@ def _check_reasons_differ() -> None:
         got = np.asarray(reasons_differ(a, b, how)).tolist()
         assert got == w, (f"how={how!r} gave {got}, expected {w} for the docstring's example: "
                           "'first' looks at place one only, 'ordered' at every place, 'set' ignores the order")
+    same_sum = np.asarray(reasons_differ(np.array([[1, 4], [0, 3]]), np.array([[2, 3], [3, 0]]), "set")).tolist()
+    assert same_sum == [True, False], (f"got {same_sum} for sets {{1, 4}} against {{2, 3}} and {{0, 3}} against {{3, 0}}: compare "
+                                       "the reasons themselves, not a summary of them such as their sum or their count")
     pad = np.asarray(reasons_differ(np.array([[3, -1, -1], [4, -1, -1]]), np.array([[3, -1, -1], [4, 5, -1]]), "set")).tolist()
     assert pad == [False, True], (f"got {pad} when one applicant has the same single reason on both sides and "
                                   "the other gains a reason: the padding must not count as a reason or as a difference")
@@ -1644,6 +1647,10 @@ def _check_perturbation_flip_rate() -> None:
     assert abs(rate - 0.5) < 1e-12 and isinstance(rate, float), f"rate {rate!r}: the share flipped, as a Python float (2 of 4)"
     _, wide = perturbation_flip_rate(step, X, (0,), np.array([2.0, 1.0]), 0.01, "first")
     assert np.asarray(wide).tolist() == [True, True, False, False], "the move is eps TIMES THE SCALE of that column"
+    _, narrow = perturbation_flip_rate(step, X, (0,), np.array([0.1, 1.0]), 0.01, "first")
+    assert not np.asarray(narrow).any(), (
+        f"got {np.asarray(narrow).tolist()} with scale 0.1 for column 0: a move of 0.01 x 0.1 = 0.001 cannot reach the "
+        "edge at 1.0 from 0.995 or 1.005; use the `scale` you are given, not a spread you compute from X")
     _, other = perturbation_flip_rate(step, np.array([[0.995, 0.0], [1.005, 0.0]]), (1,), np.array([1.0, 1.0]), 0.01, "first")
     assert not np.asarray(other).any(), "only the columns you are asked to move may move: column 0 was moved too"
     step_half = lambda A: np.where(A[:, :1] < 1.5, 0, 1)      # noqa: E731
@@ -2923,8 +2930,9 @@ def _reason_note() -> None:
           f"{N_SAMPLES} samples)")
     print(f"  stability    a move of {EPS_MAIN:g} development standard deviations, up and down, on the continuous inputs; tolerance {STABILITY_TOL:.0%} of the reason set")
     print(f"  the audit    " + "; ".join(f"{name}: {'PASS' if all(val for k, val in v.items() if k != 'flagged') else 'FAIL'}" for name, v in verdicts.items()))
-    print("  known gaps   synthetic data and one book; the group label is assumed available to the test and is never an input; the")
-    print("               tolerance and the screen's thresholds are the lesson's own; 'actionable' reasons are not tested; the")
+    print(f"  known gaps   synthetic data; the audit is of book 0 alone ({len(S['books'])} books give the ranges above); the group label is assumed available")
+    print("               to the test and is never an input; the tolerance and the screen's thresholds are the lesson's own;")
+    print("               'actionable' reasons are not tested; the")
     print("               tree-table attributions are exact for this ensemble and say nothing about a model without that structure; the")
     print("               regulation's text changed in April 2026 and may change again, so re-read it before relying on any sentence here")
 

@@ -1269,6 +1269,11 @@ def _check_batch_case_share() -> None:
     plates, shares = batch_case_share(np.array([1, 2]), np.array([5, 5]), np.array([1, 1]))
     assert plates.tolist() == [1, 2] and shares.tolist() == [1.0, 1.0], (
         "a donor with samples on two plates counts once on EACH plate")
+    plates, shares = batch_case_share(np.array([1, 2]), np.array([2, 1]), np.array([1, 0]))
+    assert plates.tolist() == [1, 2] and shares.tolist() == [1.0, 0.0], (
+        f"expected batches [1, 2] with shares [1.0, 0.0] for (batch 1, donor 2) and (batch 2, donor 1), got {plates.tolist()} "
+        f"and {shares.tolist()}: a (batch, donor) combination is a pair of values; keep both, do not add them or fold them "
+        "into one number that two different combinations can share")
     print("exercise 3 looks right: the case share of every plate, counted by donor")
 
 
@@ -1703,18 +1708,18 @@ if _DEMOS:
 #
 # 1. A flexible model scores a high AUC on folds of random rows and a clearly lower one on folds that keep each donor
 #    whole. Which reading is right for a biomarker that will be used on newly recruited donors?
-#    - (a) the random-row score is right: it uses more of the data for training
-#    - (b) the donor-grouped score is too pessimistic, because it throws samples away
+#    - (a) the random-row score is right: it trains on more of each donor's data, so it is the better estimate
+#    - (b) the donor-grouped score is too pessimistic, because it throws away samples the model could learn from
 #    - (c) only the donor-grouped score describes new donors; the random-row score includes recognising donors
 # 2. Two samples carry different donor ids but have almost identical profiles, far above every other pair. What should
 #    the harness do before any biomarker is reported?
 #    - (a) treat them as one donor: merge their ids and keep them in the same fold
-#    - (b) delete the later sample and carry on
-#    - (c) lower the similarity threshold until more pairs are found
+#    - (b) delete the later of the two samples, keep the earlier one under its own id, and carry on
+#    - (c) lower the similarity threshold until more pairs are found, then review every one of them by hand
 # 3. Why does shuffling labels between samples give a null AUC near chance even for a protocol that memorises donors?
-#    - (a) a null AUC is always near chance
+#    - (a) a null AUC is always near chance, whichever protocol is run and whatever is shuffled
 #    - (b) the shuffle gives each donor mixed labels, so recognising a donor no longer predicts a label
-#    - (c) shuffling removes the batch effect
+#    - (c) shuffling the samples also shuffles the plates, which removes the batch effect from the model
 # 4. Cases have more samples than controls. For "is the plate confounded with status", which share is the right one?
 #    - (a) the share of case donors on each plate
 #    - (b) the share of case samples on each plate

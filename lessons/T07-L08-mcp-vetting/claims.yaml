@@ -1,0 +1,209 @@
+claims:
+- id: mcp-current-revision-2026-07-28
+  claim: As of the access date the Model Context Protocol's current revision is 2026-07-28. The lesson
+    copies the tools/list shape of the legacy 2025-11-25 revision (T07-L02's wire), and says that the
+    two revisions differ in more than the handshake (see the next three entries).
+  where: lesson.py sections 1 and 9 (which revision the copied wire follows)
+  source_url: https://modelcontextprotocol.io/specification/versioning
+  source_title: 'Model Context Protocol: Versioning'
+  quote: The current protocol version is 2026-07-28.
+  quote_context: The Revisions section, the sentence after the Draft, Current and Final definitions
+  accessed: 2026-10-19
+- id: mcp-current-revision-no-handshake
+  claim: 'As of the access date the 2026-07-28 revision has no initialize handshake: every request carries
+    its protocol version. The lesson''s wire copy (initialize, then tools/list) therefore follows the
+    legacy revision only.'
+  where: lesson.py section 9
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/lifecycle
+  source_title: 'Model Context Protocol 2026-07-28: Versioning and Compatibility (Protocol Version Negotiation)'
+  quote: There is no negotiation handshake. Every request carries its protocol version, and the server
+    accepts or rejects each request independently
+  quote_context: The paragraph before the first sequence diagram, near the top of the page
+  accessed: 2026-10-19
+- id: mcp-current-revision-tool-list-shape
+  claim: 'As of the access date the 2026-07-28 tools page differs from the 2025-11-25 one inside the tool
+    and list shapes: a property of a tool''s inputSchema may carry an x-mcp-header annotation, and the
+    tools/list result carries resultType, ttlMs and cacheScope fields. name, description and inputSchema
+    remain fields of a tool definition (previous entry set).'
+  where: lesson.py section 9
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  source_title: 'Model Context Protocol 2026-07-28: Tools (Data Types, Tool)'
+  quote: Properties MAY include an x-mcp-header annotation to expose parameter values as HTTP headers
+  quote_context: The last sub-bullet of the inputSchema bullet in the Tool data type; the Listing Tools
+    response example on the same page shows resultType, ttlMs and cacheScope
+  accessed: 2026-10-19
+- id: mcp-current-revision-list-changed-subscription
+  claim: As of the access date, in the 2026-07-28 revision a server sends the tools list-changed notification
+    only to clients that opened a subscriptions/listen stream asking for it. The lesson's prose about
+    listChanged describes the 2025-11-25 behaviour, and its detector does not rely on a notification in
+    either revision.
+  where: lesson.py sections 5 and 9
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  source_title: 'Model Context Protocol 2026-07-28: Tools (List Changed Notification)'
+  quote: 'servers that declared the listChanged capability SHOULD send a notification to clients that
+    have opened a subscriptions/listen stream with toolsListChanged: true'
+  quote_context: The first sentence of the List Changed Notification section, before the example notification
+  accessed: 2026-10-19
+- id: mcp-tool-definition-fields-current
+  claim: As of the access date a tool definition in the current revision carries a name, a human-readable
+    description and an inputSchema, which is the shape the lesson's scanner and pins operate on.
+  where: lesson.py sections 1 and 9
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  source_title: 'Model Context Protocol 2026-07-28: Tools (Data Types, Tool)'
+  quote: Human-readable description of functionality
+  quote_context: The bullet for the description field in the list of fields a tool definition includes
+    (name, title, description, icons, inputSchema ...)
+  accessed: 2026-10-19
+- id: mcp-tool-names-characters
+  claim: As of the access date the Tools page says the only characters tool names should use are ASCII
+    letters, digits, underscore, hyphen and dot. The lesson's cross-tool rule deliberately treats a hyphen
+    or a dot after a sibling's name as the end of a mention (a conservative tripwire choice), although
+    names such as get_invoice-history and get_invoice.v2 are valid names of other tools.
+  where: lesson.py section 4 (the cross-tool rule)
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  source_title: 'Model Context Protocol 2026-07-28: Tools (Tool Names)'
+  quote: 'The following SHOULD be the only allowed characters: uppercase and lowercase ASCII letters (A-Z,
+    a-z), digits (0-9), underscore (_), hyphen (-), and dot (.)'
+  quote_context: The Tool Names section, the third sentence; the 2025-11-25 Tools page has the same sentence
+  accessed: 2026-10-20
+- id: mcp-tool-names-case-sensitive
+  claim: As of the access date the Tools page says tool names should be considered case-sensitive. The
+    lesson's cross-tool rule casefolds names on purpose (a conservative tripwire choice) and says so.
+  where: lesson.py section 4 (the cross-tool rule)
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/server/tools
+  source_title: 'Model Context Protocol 2026-07-28: Tools (Tool Names)'
+  quote: Tool names SHOULD be considered case-sensitive.
+  quote_context: The Tool Names section, the second sentence; the 2025-11-25 Tools page has the same sentence
+  accessed: 2026-10-20
+- id: mcp-annotations-untrusted
+  claim: The MCP specification requires clients to treat tool annotations as untrusted unless they come
+    from trusted servers. The lesson cites it as a statement about annotations only, as one example of
+    the specification not taking a server's own metadata on trust; it is not a statement about descriptions.
+  where: lesson.py section 7
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25: Tools (Data Types, Tool)'
+  quote: clients MUST consider tool annotations to be untrusted unless they come from trusted servers
+  quote_context: The Warning box that follows the list of fields in the Tool data type, right after the
+    annotations bullet
+  accessed: 2026-10-19
+- id: mcp-human-in-the-loop
+  claim: The MCP specification says there should always be a human in the loop with the ability to deny
+    tool invocations.
+  where: lesson.py section 7
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25: Tools (User Interaction Model)'
+  quote: there SHOULD always be a human in the loop with the ability to deny tool invocations
+  quote_context: The User Interaction Model section, the sentence after the statement that the specification
+    does not mandate a user interaction model
+  accessed: 2026-10-19
+- id: mcp-list-changed-notification
+  claim: 'As of the 2025-11-25 revision, a server that declared the listChanged capability should send
+    a notification when its tool list changes. The lesson''s rug-pull detector does not rely on it: a
+    hostile server need not send one, so the client diffs the list itself.'
+  where: lesson.py section 5 (the rug pull)
+  source_url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+  source_title: 'Model Context Protocol 2025-11-25: Tools (List Changed Notification)'
+  quote: When the list of available tools changes, servers that declared the listChanged capability SHOULD
+    send a notification
+  quote_context: The List Changed Notification section, before the example notifications/tools/list_changed
+    message
+  accessed: 2026-10-19
+- id: mcp-registry-namespace-dns
+  claim: 'As of the access date the MCP Registry offers namespace management through DNS verification:
+    it ties a publisher to a domain or account, which is not a statement about what the published tools''
+    descriptions say.'
+  where: lesson.py sections 7 and 10 (self-check 3)
+  source_url: https://modelcontextprotocol.io/registry/about
+  source_title: 'MCP Registry: About'
+  quote: Namespace management through DNS verification
+  quote_context: The bulleted list of what the MCP Registry provides
+  accessed: 2026-10-19
+- id: mcp-registry-namespace-challenges
+  claim: As of the access date the MCP Registry says publishers must verify ownership of their namespace
+    through GitHub, DNS or HTTP challenges (the lesson's "who owns a namespace"), and that the registry
+    is currently in preview.
+  where: lesson.py section 7
+  source_url: https://modelcontextprotocol.io/registry/about
+  source_title: 'MCP Registry: About (Spam Prevention; top of page)'
+  quote: Publishers must verify ownership of their namespace through GitHub, DNS, or HTTP challenges
+  quote_context: 'The first bullet of the Spam Prevention section; the preview notice is the first sentence
+    of the page: The MCP Registry is currently in preview.'
+  accessed: 2026-10-20
+- id: mcp-registry-delegates-scanning
+  claim: As of the access date the MCP Registry says it focuses on namespace authentication and metadata
+    hosting and relies on the wider ecosystem (package registries, downstream aggregators) for security
+    scanning of actual server code; it does not say the registry scans tool descriptions, and the lesson
+    says "scanning server code".
+  where: lesson.py section 7
+  source_url: https://modelcontextprotocol.io/registry/about
+  source_title: 'MCP Registry: About (Security Scanning)'
+  quote: The MCP Registry focuses on namespace authentication and metadata hosting, while relying on the
+    broader ecosystem for security scanning of actual server code.
+  quote_context: The last sentence of the Security Scanning section
+  accessed: 2026-10-19
+- id: invariant-tool-poisoning-definition
+  claim: The name "tool poisoning" for instructions hidden in an MCP tool description that a user does
+    not see and a model does comes from Invariant Labs' notification of 1 April 2025.
+  where: lesson.py section 1
+  source_url: https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+  source_title: 'Invariant Labs: MCP Security Notification: Tool Poisoning Attacks (2025-04-01)'
+  quote: A Tool Poisoning Attack occurs when malicious instructions are embedded within MCP tool descriptions
+    that are invisible to users but visible to AI models.
+  quote_context: The paragraph that follows the introduction, before 'How the Attack Works'
+  accessed: 2026-10-19
+- id: invariant-rug-pull
+  claim: The name "rug pull" for a server that changes a tool description after the client has approved
+    it comes from the same Invariant Labs notification.
+  where: lesson.py section 1 and 5
+  source_url: https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+  source_title: 'Invariant Labs: MCP Security Notification: Tool Poisoning Attacks (2025-04-01)'
+  quote: a malicious server can change the tool description after the client has already approved it
+  quote_context: The Rug Pulls paragraph, after 'the package or server-based architecture of MCP allows
+    for rug pulls'
+  accessed: 2026-10-19
+- id: invariant-shadowing
+  claim: The name "shadowing" for a malicious tool description that changes the agent's behaviour towards
+    another server's tools, without the malicious tool being called, comes from the same Invariant Labs
+    notification.
+  where: lesson.py section 1 (the cross-tool rule)
+  source_url: https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+  source_title: 'Invariant Labs: MCP Security Notification: Tool Poisoning Attacks (2025-04-01)'
+  quote: but can instead modify the agent's behavior with respect to other servers
+  quote_context: The paragraph after Experiment 2 (Shadowing Tool Descriptions with Cursor)
+  accessed: 2026-10-19
+- id: unicode-tags-block-range
+  claim: The Unicode Tags block spans U+E0000 to U+E007F (the lesson's INVISIBLE_RANGES entry for kind
+    "tag"; the printable ASCII mirror runs from U+E0020 to U+E007E).
+  where: lesson.py section 2
+  source_url: https://www.unicode.org/charts/PDF/UE0000.pdf
+  source_title: 'The Unicode Standard 18.0 code chart: Tags'
+  quote: 'Range: E0000–E007F'
+  quote_context: The first lines of the chart, under the title Tags
+  accessed: 2026-10-19
+- id: unicode-general-punctuation-format-characters
+  claim: U+200B is ZERO WIDTH SPACE and U+202E is RIGHT-TO-LEFT OVERRIDE, format characters in the General
+    Punctuation block (the lesson's zero-width and bidi ranges; the full ranges are listed in the same
+    chart).
+  where: lesson.py section 2
+  source_url: https://www.unicode.org/charts/PDF/U2000.pdf
+  source_title: 'The Unicode Standard 18.0 code chart: General Punctuation'
+  quote: RIGHT-TO-LEFT OVERRIDE
+  quote_context: The names list entry for U+202E, beside U+202A LEFT-TO-RIGHT EMBEDDING
+  accessed: 2026-10-19
+- id: unicode-feff-zero-width-no-break-space
+  claim: U+FEFF is ZERO WIDTH NO-BREAK SPACE (the lesson's last zero-width range entry).
+  where: lesson.py section 2
+  source_url: https://www.unicode.org/charts/PDF/UFE70.pdf
+  source_title: 'The Unicode Standard 18.0 code chart: Arabic Presentation Forms-B'
+  quote: ZERO WIDTH NO-BREAK SPACE
+  quote_context: The names list entry for U+FEFF
+  accessed: 2026-10-19
+- id: python-hashlib-sha256
+  claim: Python's standard library offers SHA-256 through hashlib.sha256(), with hexdigest() for the digest,
+    which is what the lesson's pins use in place of a signing scheme.
+  where: lesson.py section 5
+  source_url: https://docs.python.org/3/library/hashlib.html
+  source_title: 'Python documentation: hashlib'
+  quote: use sha256() to create a SHA-256 hash object.
+  quote_context: The paragraph under Hash algorithms, before the update() example
+  accessed: 2026-10-19

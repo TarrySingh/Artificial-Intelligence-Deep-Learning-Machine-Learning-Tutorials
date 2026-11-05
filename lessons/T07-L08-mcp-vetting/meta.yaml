@@ -1,0 +1,66 @@
+id: T07-L08-mcp-vetting
+title: Build an MCP tool-description scanner, a content-hash pin and a rug-pull detector, and measure
+  the scanner's precision and recall on planted and paraphrased attacks
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T07-L02-mcp-from-the-wire-up
+objectives:
+- Implement a finder for invisible Unicode characters and a decoder for the message hidden in Tag-block
+  characters
+- Implement a text normaliser and a rule-based scanner that flags injected instructions, hidden characters,
+  off-list URLs, cross-tool instructions and shadowing parameter names in an MCP tool definition
+- Implement a canonical SHA-256 content hash of a tool definition and a diff that reports changed, new
+  and removed tools against a set of pins
+- Measure the scanner's precision and recall with exact counts on planted and benign descriptions, and
+  on paraphrased attacks written to get past its phrase lists
+- Explain what a pin, a registry namespace check and a scanner each do and do not tell you about an MCP
+  server
+before_you_start:
+  assumed:
+  - read a JSON object and name its fields, such as the name, description and inputSchema of an MCP tool
+    definition (T07-L02 builds the wire they travel on)
+  - use Python string methods and a regular expression with a group to pick a piece out of a string
+  - 'say what a cryptographic hash function does: the same input always gives the same digest, and a one-character
+    change gives a different one'
+  resources:
+  - title: 'MCP specification 2025-11-25: Tools'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+    kind: free
+    why: the Tool data type (name, description, inputSchema) that every exercise scans and hashes, and
+      the security considerations
+  - title: 'MCP Security Notification: Tool Poisoning Attacks'
+    by: Invariant Labs
+    url: https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+    kind: free
+    why: where the names tool poisoning, shadowing and rug pull come from, with the example attack that
+      exercise 3's rules are built around
+  - title: 'MCP Registry: About'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/registry/about
+    kind: free
+    why: what a registry namespace check does and what it leaves to others, for section 7 and the third
+      self-check question
+  - title: 'hashlib: Secure hashes and message digests'
+    by: Python documentation
+    url: https://docs.python.org/3/library/hashlib.html
+    kind: free
+    why: sha256() and hexdigest(), the two calls exercise 4's pin is made of
+  - title: Unicode HOWTO
+    by: Python documentation
+    url: https://docs.python.org/3/howto/unicode.html
+    kind: free
+    why: code points versus characters and normalisation forms, for exercises 1 and 2
+datasets:
+- name: T07-L08 synthetic tool-definition corpus (planted and benign MCP tool descriptions, from a fixed
+    seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 71
+status: executed
+measured_seconds: 0.4
+measured_peak_mib: 25

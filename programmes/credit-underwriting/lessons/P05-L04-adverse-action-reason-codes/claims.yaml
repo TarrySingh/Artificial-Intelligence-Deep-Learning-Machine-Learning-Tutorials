@@ -107,9 +107,9 @@ claims:
 - id: reg-b-comment-9-b-2-9-fcra
   claim: Comment 9(b)(2)-9 says that the Fair Credit Reporting Act separately requires a creditor to disclose
     a credit score it used in taking adverse action together with up to four key factors that adversely
-    affected the score, and that disclosing those key factors does not satisfy the ECOA requirement to
-    disclose specific reasons. The lesson names the FCRA disclosure as a different disclosure and does
-    not build it.
+    affected the score (or up to five if the number of inquiries is a key factor), and that disclosing
+    those key factors does not satisfy the ECOA requirement to disclose specific reasons. The lesson names
+    the FCRA disclosure as a different disclosure and does not build it.
   where: lesson.py section 1
   source_url: https://www.ecfr.gov/api/versioner/v1/full/2026-10-15/title-12.xml?part=1002&appendix=Supplement%20I%20to%20Part%201002
   source_title: Supplement I to Part 1002, Official Interpretations, Comment for 1002.9(b)(2), paragraph

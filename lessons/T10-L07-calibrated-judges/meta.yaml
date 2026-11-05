@@ -1,0 +1,66 @@
+id: T10-L07-calibrated-judges
+title: Calibrate an LLM-as-judge against human labels — probe it for position and length bias, resolve
+  its verdicts across a swap, and correct its win rate with an interval
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T10-L06-eval-power-and-ranks
+- T07-L03-evaluating-agents
+- P02-L06-review-queues-real-reviewers
+objectives:
+- Implement a swap-order probe that counts how often a judge picks the first slot in both orders, the
+  second slot in both, and the same answer in both, and measure the position bias from it
+- Implement a swap-resolved verdict (a win only when the same answer wins in both orders) and measure
+  what it improves and what it leaves untouched
+- Implement a length probe that compares how often the longer answer wins for the judge and for humans
+  on the same pairs, and measure the judge's length bias as the gap
+- Implement a prevalence-corrected win rate from the judge's sensitivity and specificity against human
+  labels, and measure how far it moves the raw win rate towards the humans'
+- Implement a paired bootstrap interval for the corrected win rate and measure how often it covers the
+  target, on pairs like the calibration pairs and on pairs that are not
+before_you_start:
+  assumed:
+  - 'use numpy boolean arrays: compare, combine with & and ~, and take a mean or a count over a mask'
+  - read Cohen's kappa as agreement between two raters corrected for chance (P02-L06 builds it; this lesson
+    reuses it)
+  - 'recognise a pairwise judge: it is shown two answers to one prompt and asked which is better'
+  resources:
+  - title: Judging LLM-as-a-Judge with MT-Bench and Chatbot Arena
+    by: Zheng et al. (arXiv 2306.05685)
+    url: https://arxiv.org/abs/2306.05685
+    kind: free
+    why: the paper that names position, verbosity and self-enhancement bias and proposes the swap-order
+      fix used in exercises 1 and 2
+  - title: Length-Controlled AlpacaEval, a simple way to debias automatic evaluators
+    by: Dubois, Galambosi, Liang and Hashimoto (arXiv 2404.04475)
+    url: https://arxiv.org/abs/2404.04475
+    kind: free
+    why: a worked account of a judge's length preference and a regression that controls for it, the next
+      step after exercise 3
+  - title: Efficient Inference for Noisy LLM-as-a-Judge Evaluation
+    by: Chen et al., arXiv 2601.05420
+    url: https://arxiv.org/abs/2601.05420
+    kind: free
+    why: compares Rogan-Gladen-style correction, the method of exercises 4 and 5, with prediction-powered
+      inference on LLM-judge win rates
+  - title: sklearn.metrics.cohen_kappa_score
+    by: scikit-learn developers (official documentation)
+    url: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.cohen_kappa_score.html
+    kind: free
+    why: the reference definition of the kappa that section 2 prints, to check your reading of the numbers
+  - title: NumPy, the absolute basics for beginners
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: boolean masks, indexing and means, the few numpy operations every exercise here is written in
+datasets:
+- name: T10-L07 synthetic judged pairs (a planted scripted judge, planted human noise, one fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 60
+status: executed
+measured_seconds: 1.7
+measured_peak_mib: 45
