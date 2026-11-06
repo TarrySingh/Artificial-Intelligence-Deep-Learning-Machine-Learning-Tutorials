@@ -1,0 +1,62 @@
+id: T08-L03-five-workflow-patterns-with-evals
+title: Build the five workflow patterns (chaining, routing, voting, orchestration, evaluate-and-refine)
+  over a scripted model, and measure each against a single call for accuracy, calls and failure modes
+track: T08
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T07-L01-agent-loop-from-scratch
+- T07-L03-evaluating-agents
+objectives:
+- Implement prompt chaining with a programmatic gate and a retry on each step, and a router that normalises
+  its classifier's label and falls back when it is unknown
+- Implement parallel voting with a stated tie rule, and an orchestrator that plans its own sub-tasks,
+  runs one worker per sub-task and synthesises their replies
+- Implement evaluate-and-refine with a revision cap, and explain why the last draft returned must be the
+  last draft evaluated
+- Measure for each pattern its accuracy, its calls per task, its paired gains and losses against a single
+  call, and the failure modes it adds
+- Explain from the sweep over slip rates why a pattern that adds correct answers at one rate only adds
+  calls at another, and why a result from a scripted model is evidence about mechanics and not about a
+  language model
+before_you_start:
+  assumed:
+  - write a Python function that loops over a list, builds strings with f-strings and returns a dict
+  - read a model call as ask(prompt) returning text, the way the agent loop of T07-L01 treats it, and
+    count correct episodes as T07-L03 does
+  - use collections.Counter and fractions.Fraction, and read a table of counts of wins and losses on the
+    same tasks
+  resources:
+  - title: Building effective agents
+    by: Anthropic
+    url: https://www.anthropic.com/engineering/building-effective-agents
+    kind: free
+    why: where the five workflows (prompt chaining, routing, parallelization, orchestrator-workers, evaluator-optimizer)
+      and the advice to start simple are written down; this lesson builds each one
+  - title: Agent patterns (basic_workflows, orchestrator_workers, evaluator_optimizer)
+    by: Anthropic Cookbook
+    url: https://github.com/anthropics/anthropic-cookbook/tree/main/patterns/agents
+    kind: free
+    why: runnable notebooks of the same patterns against a real model, for the step this lesson leaves
+      out (replace SimModel by a class whose ask calls the model)
+  - title: 'collections: Counter'
+    by: Python documentation
+    url: https://docs.python.org/3/library/collections.html#collections.Counter
+    kind: free
+    why: counting votes; Counter keeps first-seen order, which exercise 3's tie rule depends on
+  - title: 'fractions: rational numbers'
+    by: Python documentation
+    url: https://docs.python.org/3/library/fractions.html
+    kind: free
+    why: the exact agreement and rate values that exercise 3 and the sign test use
+datasets:
+- name: T08-L03 synthetic order lines, messages, labelling items, case files and briefs (generated from
+    a fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 83
+status: executed
+measured_seconds: 2.3
+measured_peak_mib: 26

@@ -1,0 +1,62 @@
+id: T07-L09-designing-tools-an-agent-can-use
+title: Specify the same tools badly and well, build a corrective validator, a spec linter and an episode
+  loop, and measure with exact counts which design lever changes a scripted agent's results
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T07-L01-agent-loop-from-scratch
+- T07-L03-evaluating-agents
+objectives:
+- Implement a validator that returns corrective messages naming the parameter, the value received and
+  what is accepted
+- Implement a linter that flags vague tool names, thin descriptions, bare parameter names and unchecked
+  ids, and a finder for confusable tool names
+- Implement the call loop of an agent episode and exact metrics for success, wasted calls, silent failures
+  and recovery
+- Measure with exact counts how tool names, parameter design and error text each change a scripted policy's
+  results, and which single fix gains most
+- Explain why a result from a scripted policy with planted tendencies is evidence about a specification's
+  mechanics and not about a language model
+before_you_start:
+  assumed:
+  - write a Python function that loops over a list of dicts, builds a list of strings with f-strings and
+    returns it
+  - read a tool definition made of a name, a description and typed parameters, as the agent loop of T07-L01
+    uses them
+  - use a regular expression with re.fullmatch, and compute exact fractions with fractions.Fraction
+  resources:
+  - title: Writing effective tools for agents
+    by: Anthropic Engineering
+    url: https://www.anthropic.com/engineering/writing-tools-for-agents
+    kind: free
+    why: the guidance on unambiguous parameter names, actionable error responses and consolidated tools
+      that the two toolsets in this lesson are modelled on (the good descriptions are shorter than the
+      vendor's 3-4 sentences)
+  - title: Building effective agents
+    by: Anthropic
+    url: https://www.anthropic.com/engineering/building-effective-agents
+    kind: free
+    why: where the term agent-computer interface comes from, and its appendix on prompt-engineering your
+      tools
+  - title: Define tools
+    by: Claude API documentation
+    url: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools
+    kind: free
+    why: what a tool definition holds (name, description, input schema) and the vendor's best practices
+      for the description
+  - title: Regular Expression HOWTO
+    by: Python documentation
+    url: https://docs.python.org/3/howto/regex.html
+    kind: free
+    why: fullmatch and character classes, for exercise 1's id pattern and exercise 2's name rule
+datasets:
+- name: T07-L09 synthetic ticket tracker and task list (generated from a fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 63
+status: executed
+measured_seconds: 0.8
+measured_peak_mib: 23

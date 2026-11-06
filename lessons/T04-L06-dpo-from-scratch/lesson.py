@@ -1284,10 +1284,11 @@ def _check_dpo_loss() -> None:
         f"when the policy equals the reference every margin is 0 and the loss is log 2 = {np.log(2.0):.6f}; got loss {loss}, margins {np.asarray(margins).tolist()}")
     with np.errstate(over="raise", invalid="raise", divide="raise"):
         loss, margins = dpo_loss(np.array([-1000.0]), np.array([0.0]), np.array([0.0]), np.array([0.0]), 1.0)
-    assert abs(loss - 1000.0) < 1e-9, f"a margin of -1000 should cost about 1000; got {loss}. Use np.logaddexp(0, -margin) so that exp() never overflows"
+    assert abs(loss - 1000.0) < 1e-9, f"a margin of -1000 should cost about 1000; got {loss}. Compute it with the tool hint 2 names, so that exp() never overflows"
     loss, _ = dpo_loss(np.array([1000.0]), np.array([0.0]), np.array([0.0]), np.array([0.0]), 1.0)
     assert 0.0 <= loss < 1e-12, f"a margin of +1000 should cost about 0; got {loss}"
     assert type(loss) is float, f"return the loss as a Python float, not {type(loss).__name__}"
+    assert isinstance(margins, np.ndarray), f"return the margins as a numpy array, not {type(margins).__name__}"
     for bad in (lambda: dpo_loss([0.0], [0.0], [0.0], [0.0], 0.0), lambda: dpo_loss([0.0], [0.0], [0.0], [0.0], -1.0),
                 lambda: dpo_loss([0.0, 1.0], [0.0], [0.0], [0.0], 0.1), lambda: dpo_loss([], [], [], [], 0.1)):
         try:
@@ -1358,13 +1359,14 @@ def _check_dpo_coefficients() -> None:
         f"at margin 0 the weight is beta * sigmoid(0) = 0.25 for one pair; got c_w {np.asarray(c_w).tolist()}, c_l {np.asarray(c_l).tolist()}. The chosen answer's coefficient is negative, the rejected one's positive")
     m = np.array([-2.0, 0.0, 3.0, 1.5])
     c_w, c_l = dpo_coefficients(m, 0.2)
-    want = 0.2 / (1.0 + np.exp(m)) / 4
+    want = np.array([0.04403985389889412, 0.025, 0.002371293658878339, 0.009121276190317818])   # worked out by hand from the derivative
     assert np.allclose(c_w, -want, rtol=0, atol=1e-12) and np.allclose(c_l, want, rtol=0, atol=1e-12), (
         f"got c_w {np.round(c_w, 5).tolist()}, expected {np.round(-want, 5).tolist()}: the weight is proportional to beta and to 1 / (number of pairs), and it FALLS as the margin grows")
     with np.errstate(over="raise", invalid="raise", divide="raise"):
         c_w, c_l = dpo_coefficients(np.array([-1000.0, 1000.0]), 1.0)
     assert np.allclose(c_l, [0.5, 0.0], rtol=0, atol=1e-12), (
-        f"margins of -1000 and +1000 should give weights 1/2 and 0 for two pairs; got {np.asarray(c_l).tolist()}. Compute sigmoid(-m) as exp(-logaddexp(0, m)) so exp() never overflows")
+        f"margins of -1000 and +1000 should give weights 1/2 and 0 for two pairs; got {np.asarray(c_l).tolist()}. Compute sigmoid(-m) with the safe tool of exercise 3, so exp() never overflows")
+    assert isinstance(c_w, np.ndarray) and isinstance(c_l, np.ndarray), f"return two numpy arrays, not {type(c_w).__name__} and {type(c_l).__name__}"
     # the coefficients really are the derivative of the loss
     rng = np.random.default_rng(1)
     lp_w, lp_l, ref_w, ref_l = rng.normal(size=(4, 5))
@@ -1925,6 +1927,7 @@ def _check_ipo_loss() -> None:
     loss, c_w, c_l = ipo_loss(np.array([1.0, 0.0]), np.array([0.0, 0.0]), np.array([0.0, 0.0]), np.array([0.0, 0.0]), 1.0)
     assert abs(loss - 0.25) < 1e-12 and np.allclose(c_w, [0.5, -0.5], rtol=0, atol=1e-12), (
         f"two pairs with h = 1 and 0 at beta = 1 (target 0.5): errors 0.5 and -0.5, loss 0.25, c_w [0.5, -0.5]; got {loss}, {np.asarray(c_w).tolist()}. The loss is a MEAN over pairs, so each coefficient carries a 1/n")
+    assert isinstance(c_w, np.ndarray) and isinstance(c_l, np.ndarray), f"return the coefficients as two numpy arrays, not {type(c_w).__name__} and {type(c_l).__name__}"
     loss, c_w, c_l = ipo_loss(np.array([0.5]), np.array([0.0]), np.array([0.0]), np.array([0.0]), 1.0)
     assert loss == 0.0 and c_w[0] == 0.0 and c_l[0] == 0.0, "a pair exactly at the target gap has no loss and no gradient"
     rng = np.random.default_rng(3)
@@ -2036,7 +2039,7 @@ def _bottom_line() -> None:
           f"SFT on the chosen answers moved them by {lq:+.2f} and {ls:+.2f}.")
     rep = pair_report(POLICIES["dpo"][0], HELD_PAIRS, HELD_REF_W, HELD_REF_L, BETA)
     c = displacement_counts(rep["lp_w"], rep["lp_l"], HELD_REF_W, HELD_REF_L)
-    print(f"On held-out pairs the margin rose for {c['margin_up']} of {c['pairs']}, and the chosen answer became less likely for {c['chosen_down']} of them.")
+    print(f"On held-out pairs the margin rose for {c['margin_up']} of {c['pairs']}, and the chosen answer became less likely for {c['chosen_down']} of the {c['pairs']} ({c['displaced']} pairs had both at once).")
     gained_len = ll > 0.5
     gained_q = ql > 0
     if gained_len and gained_q:

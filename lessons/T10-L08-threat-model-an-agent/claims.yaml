@@ -1,0 +1,64 @@
+claims:
+- id: owasp-agentic-top10-exists
+  claim: The OWASP GenAI Security Project publishes a list called the OWASP Top 10 for Agentic Applications
+    2026, a peer-reviewed framework of the most critical security risks of autonomous and agentic AI systems,
+    published on 9 December 2025. The lesson maps components to its categories ASI01 to ASI10.
+  where: lesson.py section 1; before-you-start; section 9
+  source_url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+  source_title: OWASP GenAI Security Project, OWASP Top 10 for Agentic Applications for 2026 (resource
+    page)
+  quote: The OWASP Top 10 for Agentic Applications 2026 is a globally peer-reviewed framework that identifies
+    the most critical
+  quote_context: First sentence of the page's descriptive paragraph (the fetch tool truncated the sentence
+    at this point); the page also shows the date December 9, 2025
+  accessed: 2026-10-20
+- id: owasp-asi-titles
+  claim: The titles of ASI01 to ASI10 used in the lesson (Agent Goal Hijack; Tool Misuse and Exploitation;
+    Identity and Privilege Abuse; Agentic Supply Chain Vulnerabilities; Unexpected Code Execution (RCE);
+    Memory & Context Poisoning; Insecure Inter-Agent Communication; Cascading Failures; Human-Agent Trust
+    Exploitation; Rogue Agents) are those on the contents page of the published PDF, version 2026, December
+    2025. That document writes "&" in the title of ASI06 and "and" in that of ASI03 (it also writes "Identity
+    & Privilege Abuse" in running text); the lesson keeps the contents-page spelling.
+  where: lesson.py section 1 (ASI_TITLES); section 9
+  source_url: https://genai.owasp.org/download/52117/?tmstv=1765059207
+  source_title: OWASP Top 10 For Agentic Applications 2026 (OWASP Gen AI Security Project, Agentic Security
+    Initiative), PDF, version 2026, December 2025; linked as Download from the resource page
+  quote: 'ASI06: Memory & Context Poisoning'
+  quote_context: 'Contents page and the chapter heading; the same contents page lists ASI01: Agent Goal
+    Hijack, ASI03: Identity and Privilege Abuse and ASI05: Unexpected Code Execution (RCE)'
+  accessed: 2026-10-20
+- id: owasp-asi-titles-earlier-sources
+  claim: Earlier public sources differ from the published PDF in places, which is why the lesson says
+    to check the titles against the release in use. The first public draft README in the project's repository
+    titles ASI01 Agent Behaviour Hijack, ASI03 Identity & Privilege Abuse and ASI06 Memory & Context Poisoning;
+    a community mapping table in issue 802 of the same repository titles ASI05 Unexpected Code Execution
+    without "(RCE)".
+  where: lesson.py section 9
+  source_url: https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/blob/main/initiatives/agent_security_initiative/agentic-top-10/Sprint%201-first-public-draft-expanded/README.md
+  source_title: OWASP/www-project-top-10-for-large-language-model-applications, agent_security_initiative/agentic-top-10,
+    first public draft README
+  quote: ASI01 | Agent Behaviour Hijack
+  quote_context: Row ASI01 of the README's table, under the heading 'Top Ten for Agentic Applications
+    – 1st Public Draft'; issue 802 (https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/issues/802)
+    is a community post, not an OWASP publication
+  accessed: 2026-10-20
+- id: owasp-pdf-licence-and-date
+  claim: The published PDF is dated December 2025 (version 2026) and is licensed CC BY-SA 4.0; the lesson
+    credits the OWASP GenAI Security Project in section 9.
+  where: lesson.py section 9
+  source_url: https://genai.owasp.org/download/52117/?tmstv=1765059207
+  source_title: OWASP Top 10 For Agentic Applications 2026, PDF front matter
+  quote: This document is licensed under Creative Commons, CC BY-SA 4.0
+  quote_context: '''License and Usage'' paragraph on the front page, under ''Version 2026, December 2025'''
+  accessed: 2026-10-20
+- id: owasp-content-licence
+  claim: OWASP's site content is licensed CC BY-SA 4.0 unless stated otherwise. The lesson therefore reproduces
+    only the identifiers and short titles of the list and writes its own rules, mitigation catalogue and
+    checks.
+  where: lesson.py section 1; meta.yaml comments
+  source_url: https://genai.owasp.org/resource/owasp-top-10-for-agentic-applications-for-2026/
+  source_title: OWASP Gen AI Security Project site footer
+  quote: Unless otherwise specified, all content on the site is Creative Commons Attribution-ShareAlike
+    v4.0
+  quote_context: Footer of the page, before 'and provided without warranty of service or accuracy'
+  accessed: 2026-10-20

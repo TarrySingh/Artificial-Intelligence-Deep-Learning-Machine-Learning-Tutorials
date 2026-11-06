@@ -1,0 +1,63 @@
+id: T10-L08-threat-model-an-agent
+title: Threat-model an agent as data — find where outside text travels, build a risk register mapped to
+  the OWASP agentic list, generate the mitigation checklist, and run checks that fail until each mitigation
+  is present
+track: T10
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T07-L01-agent-loop-from-scratch
+- T07-L02-mcp-from-the-wire-up
+objectives:
+- Implement a finder for the data flows that cross a trust boundary, and measure how many of them enter
+  the system from outside
+- Implement a taint propagation, cycles included, and measure how many components outside text can reach
+  compared with a one-step view
+- Implement a risk register that maps components and flows to the categories of the OWASP agentic list
+  by capability tags and taint
+- Implement a mitigation checklist generated from the register that merges the work two categories ask
+  for
+- Implement a check runner that fails closed, and measure how the failing checks fall as mitigations are
+  added to the configuration
+before_you_start:
+  assumed:
+  - 'use Python sets and frozensets: subset tests, union, and building a set up in a loop'
+  - read a nested dict and a list of dicts, and sort tuples of strings
+  - say what an LLM agent does in a loop, calling tools and reading their results (T07-L01 builds one;
+    T07-L02 builds the tool wire)
+  resources:
+  - title: Threat Modeling Cheat Sheet
+    by: OWASP Cheat Sheet Series
+    url: https://cheatsheetseries.owasp.org/cheatsheets/Threat_Modeling_Cheat_Sheet.html
+    kind: free
+    why: the four questions of threat modelling and the data-flow-diagram habit that exercises 1 and 2
+      turn into code
+  - title: The lethal trifecta for AI agents
+    by: Simon Willison
+    url: https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/
+    kind: free
+    why: a short worked argument for why private data, untrusted content and an outward channel together
+      are the dangerous combination, the idea behind the rules table in section 4
+  - title: 'MCP specification 2025-11-25: Tools'
+    by: Model Context Protocol project
+    url: https://modelcontextprotocol.io/specification/2025-11-25/server/tools
+    kind: free
+    why: the tool definition and its security considerations, the third-party tool server component in
+      the seeded architecture
+  - title: 'Threat Modeling: Designing for Security'
+    by: Adam Shostack (Wiley)
+    url: https://www.wiley.com/en-us/Threat+Modeling%3A+Designing+for+Security-p-9781118809990
+    kind: paid
+    why: the standard book on trust boundaries and data flow diagrams, if you want the method behind exercise
+      1 in depth
+datasets:
+- name: T10-L08 seeded agent architecture (an invented support assistant written into the lesson; no random
+    draws)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 68
+status: executed
+measured_seconds: 2.0
+measured_peak_mib: 21

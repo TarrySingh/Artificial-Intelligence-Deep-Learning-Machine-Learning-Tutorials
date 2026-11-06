@@ -1,0 +1,77 @@
+claims:
+- id: aci-term-and-principle
+  claim: As of the access date Anthropic's "Building effective agents" names the agent-computer interface
+    (ACI) and says to craft it through thorough tool documentation and testing. The lesson borrows the
+    term and the tutorial title.
+  where: lesson.py section 12
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Carefully craft your agent-computer interface (ACI) through thorough tool documentation and testing.
+  quote_context: The third of three core principles in the Summary section
+  accessed: 2026-10-19
+- id: unambiguous-parameter-names
+  claim: As of the access date Anthropic's "Writing effective tools for agents" advises naming input parameters
+    unambiguously, with user_id in place of user as its example. The good toolset's ticket_id, parent_id
+    and group_by follow that advice; the bad toolset's id and by do not.
+  where: lesson.py section 1 (vendor guidance paragraph and the params lever)
+  source_url: https://www.anthropic.com/engineering/writing-tools-for-agents
+  source_title: 'Anthropic: Writing effective tools for agents (published 11 September 2025)'
+  quote: 'input parameters should be unambiguously named: instead of a parameter named user, try a parameter
+    named user_id.'
+  quote_context: The paragraph on prompt-engineering tool descriptions and specs, a few sentences before
+    the one about small refinements
+  accessed: 2026-10-19
+- id: actionable-error-responses
+  claim: As of the access date the same article advises that tool error responses communicate specific
+    and actionable improvements rather than opaque error codes or tracebacks. Exercise 1's corrective
+    messages follow that advice; the bad errors lever returns an opaque message.
+  where: lesson.py section 1 (vendor guidance paragraph) and exercise 1
+  source_url: https://www.anthropic.com/engineering/writing-tools-for-agents
+  source_title: 'Anthropic: Writing effective tools for agents (published 11 September 2025)'
+  quote: you can prompt-engineer your error responses to clearly communicate specific and actionable improvements,
+    rather than opaque error codes or tracebacks.
+  quote_context: The paragraph on token efficiency, immediately before the truncated, unhelpful and helpful
+    response examples
+  accessed: 2026-10-19
+- id: consolidate-operations-in-tools
+  claim: As of the access date the same article says a tool can consolidate several discrete operations
+    under the hood. Both toolsets in the lesson do this (two operations per tool), so consolidation is
+    held fixed and not measured.
+  where: lesson.py section 1 and section 8
+  source_url: https://www.anthropic.com/engineering/writing-tools-for-agents
+  source_title: 'Anthropic: Writing effective tools for agents (published 11 September 2025)'
+  quote: Tools can consolidate functionality, handling potentially multiple discrete operations (or API
+    calls) under the hood.
+  quote_context: The paragraph on choosing which tools to implement, after the list_contacts example
+  accessed: 2026-10-19
+- id: detailed-descriptions
+  claim: As of the access date Anthropic's Claude API documentation calls detailed descriptions by far
+    the most important factor in tool performance. The good toolset's descriptions are longer than the
+    bad toolset's one-liners; the lesson's linter checks only a word count.
+  where: lesson.py section 1 (vendor guidance paragraph)
+  source_url: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools
+  source_title: 'Claude API documentation: Define tools (Best practices for tool definitions)'
+  quote: Provide extremely detailed descriptions. This is by far the most important factor in tool performance.
+  quote_context: The first best-practice bullet under Best practices for tool definitions
+  accessed: 2026-10-19
+- id: fewer-more-capable-tools
+  claim: As of the access date the same documentation advises consolidating related operations into fewer
+    tools, with an action parameter. The lesson holds the number of tools fixed and does not test this
+    advice.
+  where: lesson.py section 8
+  source_url: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools
+  source_title: 'Claude API documentation: Define tools (Best practices for tool definitions)'
+  quote: Consolidate related operations into fewer tools.
+  quote_context: A best-practice bullet after the one on input_examples
+  accessed: 2026-10-19
+- id: description-length-guidance
+  claim: As of the access date the same documentation asks for at least 3 to 4 sentences for each tool
+    description. The good toolset's descriptions are shorter than that, so the lesson does not claim they
+    meet this guidance; its linter checks only a word count.
+  where: lesson.py section 1 (vendor guidance paragraph)
+  source_url: https://platform.claude.com/docs/en/agents-and-tools/tool-use/define-tools
+  source_title: 'Claude API documentation: Define tools (Best practices for tool definitions)'
+  quote: Aim for at least 3–4 sentences for each tool description, more if the tool is complex.
+  quote_context: In the best-practice paragraph on descriptions, after the one on what the tool does and
+    when to use it
+  accessed: 2026-10-20

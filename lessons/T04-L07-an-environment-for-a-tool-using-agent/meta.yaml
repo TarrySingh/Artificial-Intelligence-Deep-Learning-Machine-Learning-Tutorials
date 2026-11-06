@@ -1,0 +1,67 @@
+id: T04-L07-an-environment-for-a-tool-using-agent
+title: Build a tool environment with reset, step and reward, train a tabular agent on it with a group-relative
+  update, and measure what happens when the reward pays for tool calls instead of outcomes
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T04-L01-grpo-from-scratch
+- T07-L01-agent-loop-from-scratch
+objectives:
+- Implement the dynamics, the reward modes and the reset / step / state interface of a small tool environment,
+  following the conventions of the environment hubs, and prove them on a scripted episode
+- Implement episode collection with a softmax policy, the group-relative advantage with its zero-variance
+  case, the policy gradient of a tabular softmax, a batch update and a training loop
+- Measure success rate, average steps and the fraction of zero-variance groups over a fixed set of seeds
+  as a policy learns which tool to call, and how the group size changes it
+- Measure the reward-hacking rate when the environment pays for tool calls instead of outcomes, and show
+  that a progress reward that cannot be repeated has no such loophole
+- Explain what this toy shows and does not show about training real agents in environments
+before_you_start:
+  assumed:
+  - write Python functions and classes, and index numpy arrays with integer arrays
+  - say what a probability distribution over actions is, and draw a sample from one with a single uniform
+    random number
+  - say what an episode, a state, an action and a reward are in reinforcement learning
+  - compute a mean, and say why a reward is averaged over a batch
+  resources:
+  - title: Gymnasium documentation, Basic Usage
+    by: Farama Foundation
+    url: https://gymnasium.farama.org/introduction/basic_usage/
+    kind: free
+    why: shows reset and step, and the terminated and truncated flags, the convention the environment
+      you write follows
+  - title: OpenEnv documentation
+    by: Hugging Face and the OpenEnv project
+    url: https://huggingface.co/docs/openenv
+    kind: free
+    why: the environment hub whose reset, step and observation conventions this lesson mirrors, and where
+      its current interface is documented
+  - title: 'Spinning Up in Deep RL: Part 3, Intro to Policy Optimization'
+    by: OpenAI (Joshua Achiam)
+    url: https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html
+    kind: free
+    why: derives the gradient of the log-probability of a sampled action and why a baseline such as a
+      group mean leaves it unbiased, which is exercises 6 and 7
+  - title: 'DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models'
+    by: Shao et al. (arXiv)
+    url: https://arxiv.org/abs/2402.03300
+    kind: free
+    why: section 4.1 introduces the group-relative advantage that exercise 6 implements
+  - title: Reward Hacking in Reinforcement Learning
+    by: Lilian Weng (Lil'Log)
+    url: https://lilianweng.github.io/posts/2024-11-28-reward-hacking/
+    kind: free
+    why: surveys how an agent exploits a flawed reward, the failure that sections 16 and 17 plant on purpose
+      and measure
+datasets:
+- name: T04-L07 synthetic tool tasks (twenty tasks drawn from a fixed seed; every episode is played by
+    the policy the lesson trains, from fixed seeds)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 220
+status: executed
+measured_seconds: 14.0
+measured_peak_mib: 40

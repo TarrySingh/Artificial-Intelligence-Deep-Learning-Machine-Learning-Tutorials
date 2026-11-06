@@ -911,7 +911,7 @@ def _check_normalise() -> None:
         "full-width letters become ordinary letters under NFKC; casefold comes after it")
     assert normalise_text("a \u200b b") == "a b", (
         "delete invisible characters before collapsing whitespace, or a gap is left behind")
-    assert normalise_text("a b") == "a b", "a no-break space is whitespace after NFKC"
+    assert normalise_text("a\u00a0b") == "a b", "a no-break space is whitespace after NFKC"
     assert normalise_text("hello" + chr(0xE0041) + " world") == "hello world", "tag characters are deleted too"
     assert normalise_text("  \n ") == "", "all whitespace normalises to the empty string"
     assert normalise_text("Zürich") == "zürich", "visible non-ASCII letters stay (casefolded)"
@@ -942,8 +942,8 @@ if __name__ == "__main__":
 #   has none, and is not a URL for this rule;
 # * `shadow-param`: a property name of `inputSchema["properties"]` (if any), casefolded, is in `SHADOW_PARAMS`;
 # * `cross-tool`: some **sentence** of `text` (split after `.`, `!` or `?` followed by whitespace) holds
-#   the whole name of a sibling tool and one of `CROSS_WORDS`. Both are plain substring matches on the
-#   casefolded text, so `nevertheless` contains `never`. Sibling names are casefolded before the match,
+#   the whole name of a sibling tool and one of `CROSS_WORDS`. Both are looked for in the casefolded text; a
+#   cross word is a plain substring match, so `nevertheless` contains `never`. Sibling names are casefolded before the match,
 #   whatever case they are given in. A name counts as a whole name when the characters on either side of
 #   it are not an ASCII letter (`a` to `z` after casefolding), an ASCII digit or `_`; any other character
 #   is a boundary, a hyphen, a dot and an accented letter included, so `get_invoice-history` mentions `get_invoice`.

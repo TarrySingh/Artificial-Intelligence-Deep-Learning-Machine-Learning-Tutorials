@@ -1,0 +1,116 @@
+claims:
+- id: workflows-versus-agents
+  claim: As of the access date Anthropic's "Building effective agents" defines workflows as systems in
+    which models and tools are orchestrated through predefined code paths, and agents as systems in which
+    the model directs its own process. The lesson uses "workflow" in the first sense (the code fixes the
+    path) and leaves the second to T07-L01.
+  where: lesson.py intro
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Workflows are systems where LLMs and tools are orchestrated through predefined code paths.
+  quote_context: The paragraph that draws the architectural distinction between workflows and agents,
+    near the start of the article
+  accessed: 2026-10-20
+- id: prompt-chaining
+  claim: As of the access date the article describes prompt chaining as a sequence of steps in which each
+    call processes the output of the previous one, with optional programmatic checks (gates) on intermediate
+    steps. Exercise 1 and its gates follow that description.
+  where: lesson.py section 2 (exercise 1)
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Prompt chaining decomposes a task into a sequence of steps, where each LLM call processes the
+    output of the previous one.
+  quote_context: 'First sentence of the section ''Workflow: Prompt chaining''; the next sentence says
+    programmatic checks (gates) can be added on any intermediate step'
+  accessed: 2026-10-20
+- id: chaining-trade-off
+  claim: As of the access date the article states the aim of prompt chaining as trading latency for accuracy
+    by making each call an easier task. The lesson's chain table measures that aim in the scripted model;
+    it does not test it on a real model.
+  where: lesson.py section 2
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: The main goal is to trade off latency for higher accuracy, by making each LLM call an easier
+    task.
+  quote_context: The 'When to use this workflow' paragraph of the prompt-chaining section
+  accessed: 2026-10-20
+- id: routing
+  claim: As of the access date the article describes routing as classifying an input and directing it
+    to a specialised follow-up task, and says it works where there are distinct categories and the classification
+    can be handled accurately. Exercise 2 follows the first statement; the classifier's mistakes in the
+    lesson test the second.
+  where: lesson.py section 3 (exercise 2)
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Routing classifies an input and directs it to a specialized followup task.
+  quote_context: 'First sentence of the section ''Workflow: Routing''; the ''When to use'' paragraph adds
+    that classification must be handled accurately'
+  accessed: 2026-10-20
+- id: parallelization-forms
+  claim: 'As of the access date the article names two forms of parallelization: sectioning (independent
+    subtasks run in parallel) and voting (the same task run several times to get diverse outputs). Exercise
+    3 builds voting; sectioning is named and not built.'
+  where: lesson.py section 4 (exercise 3); section 9 names sectioning again
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: 'Voting: Running the same task multiple times to get diverse outputs.'
+  quote_context: 'The second of two bullet-style definitions after ''Sectioning: Breaking a task into
+    independent subtasks run in parallel.'''
+  accessed: 2026-10-20
+- id: orchestrator-workers
+  claim: As of the access date the article describes orchestrator-workers as a central model that dynamically
+    breaks down tasks, delegates them to worker models and synthesises their results. Exercise 4 follows
+    that structure.
+  where: lesson.py section 5 (exercise 4)
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: In the orchestrator-workers workflow, a central LLM dynamically breaks down tasks, delegates
+    them to worker LLMs, and synthesizes their results.
+  quote_context: 'First sentence of the section ''Workflow: Orchestrator-workers'''
+  accessed: 2026-10-20
+- id: orchestrator-subtasks-not-predefined
+  claim: 'As of the access date the article says the difference from parallelization is flexibility: the
+    subtasks are not pre-defined but determined by the orchestrator from the input. The lesson''s case
+    files have an unknown number of documents for that reason.'
+  where: lesson.py section 5 (exercise 4)
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: subtasks aren't pre-defined, but determined by the orchestrator based on the specific input.
+  quote_context: The sentence after 'Whereas it's topographically similar, the key difference from parallelization
+    is its flexibility'
+  accessed: 2026-10-20
+- id: evaluator-optimizer
+  claim: As of the access date the article describes evaluator-optimizer as one call generating a response
+    while another provides evaluation and feedback in a loop, and says it is effective with clear evaluation
+    criteria. Exercise 5 uses an executable evaluator because the criteria are mechanical; the lesson's
+    noisy judge shows what a weaker evaluator costs.
+  where: lesson.py section 6 (exercise 5)
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: In the evaluator-optimizer workflow, one LLM call generates a response while another provides
+    evaluation and feedback in a loop.
+  quote_context: 'First sentence of the section ''Workflow: Evaluator-optimizer''; the ''When to use''
+    paragraph names clear evaluation criteria'
+  accessed: 2026-10-20
+- id: start-simple
+  claim: As of the access date the article's summary advises starting with simple prompts, optimising
+    them with comprehensive evaluation, and adding multi-step agentic systems only when simpler solutions
+    fall short. The lesson's baseline-first design follows that advice.
+  where: lesson.py intro and section 7
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Start with simple prompts, optimize them with comprehensive evaluation, and add multi-step agentic
+    systems only when simpler solutions fall short.
+  quote_context: The second paragraph of the Summary section
+  accessed: 2026-10-20
+- id: latency-and-cost-trade
+  claim: As of the access date the article says agentic systems often trade latency and cost for better
+    task performance. Section 8 prints extra calls per additional correct answer as the lesson's stand-in
+    for that trade; it counts calls and does not measure latency or cost.
+  where: lesson.py sections 8 and 9
+  source_url: https://www.anthropic.com/engineering/building-effective-agents
+  source_title: 'Anthropic: Building effective agents (published 19 December 2024)'
+  quote: Agentic systems often trade latency and cost for better task performance, and you should consider
+    when this tradeoff makes sense.
+  quote_context: The paragraph 'When (and when not) to use agents'
+  accessed: 2026-10-20
