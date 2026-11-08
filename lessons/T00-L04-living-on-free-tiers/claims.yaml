@@ -129,18 +129,23 @@ claims:
   source_url: https://openrouter.ai/docs/api-reference/limits.md
   source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
   quote: The `limit` tier is selected by all-time credits purchased, independently of `is_free_tier`.
-  accessed: 2026-10-14
+  accessed: 2026-11-04
 - id: openrouter-higher-ceiling-from-nine
-  claim: OpenRouter's page says the higher daily ceiling is granted starting one credit below the table's
-    threshold, which it states is currently 9 credits (the threshold of 10 minus one), to absorb rounding
-    and top-up fees. So the lower daily ceiling applies below 9 credits purchased, not below 10, which
-    is why the snapshot's tier labels give both figures.
+  claim: 'OpenRouter''s page says the higher daily ceiling is granted starting one credit below the table''s
+    threshold, to absorb rounding and top-up fees. The table''s threshold is 10 credits, so the higher
+    ceiling starts at 9 and the lower daily ceiling applies below 9 credits purchased, not below 10, which
+    is why the snapshot''s tier labels give both figures. The 9 is that arithmetic, not a figure the page
+    prints: since the page stopped defining its constants (by 2026-10-29), its "currently ... credits"
+    aside shows an unfilled template expression in place of the number (re-read 2026-11-04).'
   where: assets/free_tiers.json (tier labels of the two openrouter rows)
   source_url: https://openrouter.ai/docs/api-reference/limits.md
   source_title: 'OpenRouter docs: API Credit & Rate Limits (markdown source)'
-  quote: the higher daily ceiling is granted starting one credit below the table's threshold (currently
-    {FREE_MODEL_CREDITS_THRESHOLD - 1} credits)
-  accessed: 2026-10-14
+  quote: To absorb rounding and top-up fees, the higher daily ceiling is granted starting one credit below
+    the table's threshold
+  quote_context: the paragraph under the free-usage table; it continues with a parenthesis whose number
+    is an unfilled template expression on 2026-11-04 (the page no longer defines the constant it names),
+    so the quote stops before it
+  accessed: 2026-11-04
 - id: openrouter-more-keys-do-not-raise-limits
   claim: OpenRouter says that making additional accounts or API keys does not affect its rate limits,
     because it governs capacity globally, and that it has different rate limits for different models,

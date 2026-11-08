@@ -420,10 +420,19 @@ import contextlib, gc, os, signal, subprocess, sys, threading, time
 #    a row (one per handler it has to leave), and no more, so the `finally:` blocks and context
 #    managers that run as the stop travels out are not interrupted again. On 3.11 sys.settrace is
 #    unset by the interpreter each time it raises, so only the innermost one is peeled per alarm.
-#  * It also watches memory: every 0.1 s it compares the process's resident memory with what it
-#    was when the block started, and stops the block as soon as the growth passes `memory_mib`.
-#    A loop that appends to a list reaches gigabytes in seconds, long before any sensible time
-#    limit, so the time limit alone does not bound it. (Resident memory NOW, not the peak so
+#  * It also watches memory: it compares the process's resident memory with what it was when the
+#    block started, and stops the block as soon as the growth passes `memory_mib`. After a memory
+#    stop it looks every 5 ms and stops again at once only if the memory is still growing (a bare
+#    `except:` swallowed the stop; clean-up that itself allocates over 32 MiB looks the same);
+#    otherwise the stop repeats after 0.25 s, as a time stop does, so `finally:` blocks and
+#    context managers can clean up. It looks after 0.01 s,
+#    then every 0.02 s, and more often (down to every 2 ms) once the growth passes a quarter of
+#    the limit or is fast enough to get there soon: numpy can add a gigabyte in a tenth of a
+#    second. A loop that appends to a list reaches gigabytes in seconds, long before
+#    any sensible time limit, so the time limit alone does not bound it. The limit is 768 MiB:
+#    mybinder.org gives a whole notebook 2 GB, the heaviest lesson holds about 800 MiB before a
+#    check starts, and a runaway check runs twice in "Run all" (its cell, then the board). The
+#    largest growth a correct answer needs in any lesson is 512 MiB. (Resident memory NOW, not the peak so
 #    far: a peak only ever rises, so after one runaway check the next would be allowed another
 #    `memory_mib` on top of it, and five looping exercises would reach ten gigabytes. Where the
 #    system will not say, /proc on Linux and libproc on macOS being the two that do, it falls
@@ -491,8 +500,8 @@ def _time_limit(seconds: float, what: str, memory_mib: float = 0):
 
     def _arm(now, soonest=0.001):                        # one shot, at whichever deadline is next
         due = [t for t in (state["next"], state["outer"]) if t is not None]
-        if used_mib and state["next"] is not None and not state["fired"]:
-            due.append(now + 0.1)                        # and look at the memory every 0.1 s
+        if used_mib and state["next"] is not None and (not state["fired"] or state.get("memory")):
+            due.append(now + state.get("poll", 0.01))    # and look at the memory: first after 0.01 s, then as _fire says
         if due:
             signal.setitimer(signal.ITIMER_REAL, max(min(due) - now, soonest))
             state["unseen"] = True
@@ -532,12 +541,20 @@ def _time_limit(seconds: float, what: str, memory_mib: float = 0):
                     state["outer"], state["every"] = time.monotonic() + left, every
                 _arm(time.monotonic())
             now = time.monotonic()
-        grown = used_mib() - base_mib if used_mib and not state["fired"] else 0
-        if grown > memory_mib and state["next"] is not None:       # out of memory before out of time
+        grown = used_mib() - base_mib if used_mib and (not state["fired"] or state.get("memory")) else 0
+        if used_mib and not state["fired"]:              # close to the limit, or fast enough to come close soon
+            rate = (grown - state.get("grown", 0)) / max(now - state.get("seen", started), 0.001)   # MiB a second
+            state["grown"], state["seen"] = grown, now
+            state["poll"] = (0.02 if grown <= memory_mib / 4 and rate * 0.02 <= (memory_mib - grown) / 4 else   # near: by
+                                         max(0.002, min(0.01, (memory_mib - grown) / max(rate, 1.0) / 4)))  # a 1/4 of the time left
+        if grown > memory_mib and state["next"] is not None and not state["fired"]:   # out of memory before out of time
             state["message"] = (f"{what} was using over {memory_mib:g} MiB more memory than when it started, "
                                 f"after {now - started:.1f} s: a loop that keeps adding to a list or a string "
                                 "never stops; give every loop a cap")
             state["next"] = now
+            state["memory"], state["at_stop"], state["poll"] = True, grown, 0.005   # then look every 5 ms
+        elif state.get("memory") and state["fired"] and grown - state["at_stop"] > 32 and state["next"] is not None:
+            state["next"], state["at_stop"] = now, grown        # still growing: a bare `except:` swallowed the stop
         if state["next"] is not None and now >= state["next"] - 0.005:
             swallowed = state["fired"]                   # a second stop: the first did not end the block
             state["fired"] = True
@@ -637,7 +654,7 @@ def _time_limit(seconds: float, what: str, memory_mib: float = 0):
 # only a loop that never stops, or one that keeps appending until memory runs out, ever meets one.
 _CHECK_SECONDS = 10    # an exercise's check
 _DEMO_SECONDS = 30     # any other cell that runs your code: a demo, a table, a figure
-_MEMORY_MIB = 2048     # how far a check may grow the process's resident memory before it is stopped
+_MEMORY_MIB = 768      # how far a check may grow the process's resident memory before it is stopped
 
 
 def _limited(label: str, check):

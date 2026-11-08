@@ -14,8 +14,10 @@ point: a student should always see which part works.
 A test that runs longer than COMMONS_GRADE_TIMEOUT seconds (default 45) is stopped and
 scored as a failure: an answer that loops forever must cost its own points, not hang the
 grader. So is a test that makes the process's resident memory grow by more than
-COMMONS_GRADE_MEMORY_MIB (default 2048): an answer that appends to a list for ever reaches
-gigabytes in seconds, long before the time limit. All rows together get COMMONS_GRADE_TOTAL seconds
+COMMONS_GRADE_MEMORY_MIB (default 768, the lessons' own limit: a whole notebook gets 2 GB on
+mybinder.org): an answer that appends to a list for ever reaches gigabytes in seconds, long before
+the time limit. Importing the lesson runs its whole notebook, whose every check carries the
+lesson's own 768 MiB limit; the import as a whole is allowed 2048 MiB of growth, as a backstop. All rows together get COMMONS_GRADE_TOTAL seconds
 (default 300): once earlier rows have used that up, later rows are reported as not run, so several
 looping answers cannot keep the grader busy for many minutes. This needs SIGALRM (Linux, macOS:
 every place these notebooks run); without it the limits are skipped. A loop wrapped in a bare
@@ -23,7 +25,8 @@ every place these notebooks run); without it the limits are skipped. A loop wrap
 
 A row whose honest work is slow on an emulated or shared CPU may ask for more than the default by
 setting an attribute on its test function, `test_x.grade_seconds = 120`. It never gets less than
-COMMONS_GRADE_TIMEOUT, and the total budget above still caps it. A grader without this feature
+COMMONS_GRADE_TIMEOUT, and the total budget above still caps it. A row whose honest work needs more
+memory says so the same way, `test_x.grade_memory_mib = 1536` (never less than the default). A grader without this feature
 simply ignores the attribute and applies the default.
 """
 import contextlib, gc, importlib.util, os, signal, sys, threading, time, traceback
@@ -31,7 +34,9 @@ from pathlib import Path
 
 TIMEOUT = float(os.environ.get("COMMONS_GRADE_TIMEOUT", "45"))
 TOTAL = float(os.environ.get("COMMONS_GRADE_TOTAL", "300"))
-MEMORY_MIB = float(os.environ.get("COMMONS_GRADE_MEMORY_MIB", "2048"))
+MEMORY_MIB = float(os.environ.get("COMMONS_GRADE_MEMORY_MIB", "768"))      # a rubric row
+IMPORT_MEMORY_MIB = float(os.environ.get("COMMONS_GRADE_IMPORT_MEMORY_MIB", "2048"))   # the import: the notebook's
+# own checks, each under its own 768 MiB, add up; this is only a backstop
 
 
 class _TooSlow(BaseException):
@@ -94,8 +99,8 @@ def _deadline(seconds: float, memory_mib: float = 0):
 
     def _arm(now, soonest=0.001):                        # one shot, at whichever deadline is next
         due = [t for t in (state["next"], state["outer"]) if t is not None]
-        if used_mib and state["next"] is not None and not state["fired"]:
-            due.append(now + 0.1)                        # and look at the memory every 0.1 s
+        if used_mib and state["next"] is not None and (not state["fired"] or state.get("memory")):
+            due.append(now + state.get("poll", 0.01))    # and look at the memory: first after 0.01 s, then as _fire says
         if due:
             signal.setitimer(signal.ITIMER_REAL, max(min(due) - now, soonest))
             state["unseen"] = True
@@ -135,10 +140,18 @@ def _deadline(seconds: float, memory_mib: float = 0):
                     state["outer"], state["every"] = time.monotonic() + left, every
                 _arm(time.monotonic())
             now = time.monotonic()
-        grown = used_mib() - base_mib if used_mib and not state["fired"] else 0
-        if grown > memory_mib and state["next"] is not None:       # out of memory before out of time
+        grown = used_mib() - base_mib if used_mib and (not state["fired"] or state.get("memory")) else 0
+        if used_mib and not state["fired"]:              # close to the limit, or fast enough to come close soon
+            rate = (grown - state.get("grown", 0)) / max(now - state.get("seen", started), 0.001)   # MiB a second
+            state["grown"], state["seen"] = grown, now
+            state["poll"] = (0.02 if grown <= memory_mib / 4 and rate * 0.02 <= (memory_mib - grown) / 4 else   # near: by
+                                         max(0.002, min(0.01, (memory_mib - grown) / max(rate, 1.0) / 4)))  # a 1/4 of the time left
+        if grown > memory_mib and state["next"] is not None and not state["fired"]:   # out of memory before out of time
             state["message"] = f"was stopped after {now - started:.1f} s: its memory grew by over {memory_mib:g} MiB"
             state["next"] = now
+            state["memory"], state["at_stop"], state["poll"] = True, grown, 0.005   # then look every 5 ms
+        elif state.get("memory") and state["fired"] and grown - state["at_stop"] > 32 and state["next"] is not None:
+            state["next"], state["at_stop"] = now, grown        # still growing: a bare `except:` swallowed the stop
         if state["next"] is not None and now >= state["next"] - 0.005:
             swallowed = state["fired"]                   # a second stop: the first did not end the block
             state["fired"] = True
@@ -264,7 +277,7 @@ def main() -> int:
     sys.path.insert(0, str(lesson))
     try:
         # importing the lesson can itself run the student's code (the notebook's checks): time-box that too
-        mod = _run_with_timeout(lambda: load(tests, "test_lesson"), 3 * TIMEOUT)
+        mod = _run_with_timeout(lambda: load(tests, "test_lesson"), 3 * TIMEOUT, IMPORT_MEMORY_MIB)
     except _TooSlow as stop:
         why = stop.args[0] if stop.args else f"was stopped after {3 * TIMEOUT:g} s"
         print(f"importing the lesson {why}: a check in the notebook is looping forever or keeps growing a list. "
@@ -287,9 +300,9 @@ def main() -> int:
                          f"that never stops, fix it, re-run) | hint: {hint}"))
             continue
         limit = max(TIMEOUT, float(getattr(fn, "grade_seconds", 0) or 0))   # a row may ask for longer
-        gc.collect()      # what the last stopped row built stays in a reference cycle until now; it is not this row's growth
+        memory = max(MEMORY_MIB, float(getattr(fn, "grade_memory_mib", 0) or 0))   # or for more memory
         try:
-            _run_with_timeout(fn, min(limit, left))
+            _run_with_timeout(fn, min(limit, left), memory)
             earned += points
             rows.append(("PASS", points, points, fn.__name__, ""))
         except NotImplementedError:
@@ -298,25 +311,31 @@ def main() -> int:
             why = stop.args[0] if stop.args else f"was stopped after {min(limit, max(left, 0)):.3g} s"
             rows.append(("FAIL", 0, points, fn.__name__,
                          f"{why} (row limit {limit:g} s, total budget {TOTAL:g} s, memory growth limit "
-                         f"{MEMORY_MIB:g} MiB): an infinite loop, a list that grows for ever, or a loop that never "
+                         f"{memory:g} MiB): an infinite loop, a list that grows for ever, or a loop that never "
                          f"reaches its stopping condition? | hint: {hint}"))
         except AssertionError as e:
             rows.append(("FAIL", 0, points, fn.__name__, f"{e} | hint: {hint}"))
         except Exception:
             tb = traceback.format_exc(limit=1).strip().splitlines()[-1]
             rows.append(("ERROR", 0, points, fn.__name__, f"{tb} | hint: {hint}"))
+        if rows[-1][0] != "PASS":
+            # A row that failed (stopped, wrong or raised) can leave what it built in a reference cycle with its
+            # frames: free it now, before the next row starts, so its memory is neither counted as the next row's
+            # growth nor kept for the rest of the run.
+            gc.collect()
 
     w = max(len(r[3]) for r in rows) + 2
     print()
     for status, got, pts, name, msg in rows:
         print(f"  [{status:5s}] {name:<{w}} {got}/{pts}  {msg}")
-    pct = 100 * earned / total if total else 0
-    print(f"\n  score: {earned}/{total}  ({pct:.0f}%)")
-    if pct < 100:
+    perfect = total > 0 and earned == total
+    pct = 100 * earned // total if total else 0      # rounded DOWN: 203/204 is 99 %, never 100 %
+    print(f"\n  score: {earned}/{total}  ({pct}%)")
+    if not perfect:
         print("  keep going: fix the first FAIL, then re-run this grader.\n")
     else:
         print("  all checks green.\n")
-    return 0 if pct == 100 else 1
+    return 0 if perfect else 1
 
 
 if __name__ == "__main__":

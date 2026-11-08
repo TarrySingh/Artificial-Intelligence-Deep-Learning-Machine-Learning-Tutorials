@@ -293,7 +293,7 @@ def _resident() -> float:
 
 
 @contextlib.contextmanager
-def _time_limit(seconds: int, memory_mib: float = 2048):
+def _time_limit(seconds: int, memory_mib: float = 768):
     """Turn a check that runs far too long into a failure, instead of a notebook that hangs.
 
     Uses the operating system's alarm, so it works where that exists (Linux, macOS, Colab) and is
@@ -331,8 +331,8 @@ def _time_limit(seconds: int, memory_mib: float = 2048):
 
     def _arm(now, soonest=0.001):                        # one shot, at whichever deadline is next
         due = [t for t in (state["next"], state["outer"]) if t is not None]
-        if used_mib and state["next"] is not None and not state["fired"]:
-            due.append(now + 0.1)                        # and look at the memory every 0.1 s
+        if used_mib and state["next"] is not None and (not state["fired"] or state.get("memory")):
+            due.append(now + state.get("poll", 0.01))    # and look at the memory: first after 0.01 s, then as _fire says
         if due:
             signal.setitimer(signal.ITIMER_REAL, max(min(due) - now, soonest))
             state["unseen"] = True
@@ -372,12 +372,20 @@ def _time_limit(seconds: int, memory_mib: float = 2048):
                     state["outer"], state["every"] = time.monotonic() + left, every
                 _arm(time.monotonic())
             now = time.monotonic()
-        grown = used_mib() - base_mib if used_mib and not state["fired"] else 0
-        if grown > memory_mib and state["next"] is not None:       # out of memory before out of time
+        grown = used_mib() - base_mib if used_mib and (not state["fired"] or state.get("memory")) else 0
+        if used_mib and not state["fired"]:              # close to the limit, or fast enough to come close soon
+            rate = (grown - state.get("grown", 0)) / max(now - state.get("seen", started), 0.001)   # MiB a second
+            state["grown"], state["seen"] = grown, now
+            state["poll"] = (0.02 if grown <= memory_mib / 4 and rate * 0.02 <= (memory_mib - grown) / 4 else   # near: by
+                                     max(0.002, min(0.01, (memory_mib - grown) / max(rate, 1.0) / 4)))  # a 1/4 of the time left
+        if grown > memory_mib and state["next"] is not None and not state["fired"]:   # out of memory before out of time
             state["message"] = (f"was using over {memory_mib:g} MiB more memory than when it started, "
                                 f"after {now - started:.1f} s: a loop that keeps adding to a list or a string "
                                 "never stops; give every loop a cap")
             state["next"] = now
+            state["memory"], state["at_stop"], state["poll"] = True, grown, 0.005   # then look every 5 ms
+        elif state.get("memory") and state["fired"] and grown - state["at_stop"] > 32 and state["next"] is not None:
+            state["next"], state["at_stop"] = now, grown        # still growing: a bare `except:` swallowed the stop
         if state["next"] is not None and now >= state["next"] - 0.005:
             swallowed = state["fired"]                   # a second stop: the first did not end the block
             state["fired"] = True
@@ -484,7 +492,7 @@ def _try(label: str, check: Callable[[], None], needs: tuple[str, ...] = (), lim
 
     The exercise checks run in milliseconds, so an exercise's check gets `_CHECK_SECONDS` (2 s) and
     any other cell `_DEMO_SECONDS`, unless a heavy demo asks for more with `limit`; memory that grows
-    by more than 2 GiB stops it too. A loop that never ends is stopped before it can fill the
+    by more than 768 MiB stops it too. A loop that never ends is stopped before it can fill the
     machine's memory.
 
     A stub you have not filled in yet simply says so. A wrong answer prints the check's own

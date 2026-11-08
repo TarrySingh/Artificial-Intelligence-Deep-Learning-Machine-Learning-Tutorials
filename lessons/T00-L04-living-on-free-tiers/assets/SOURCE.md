@@ -38,7 +38,8 @@ Hand-made choices, so a reviewer can check them:
   about any learner's country or account, and no page read states that any of these free allowances
   expires or when it would be withdrawn.
 - OpenRouter's two rows are named for the table's threshold of 10 credits. The page grants the higher daily
-  ceiling from one credit below it (9), so the lower ceiling applies below 9 credits purchased; the
+  ceiling from one credit below it (10 - 1 = 9: the page's own "currently ... credits" figure is an unfilled
+  template expression since it stopped defining its constants), so the lower ceiling applies below 9 credits purchased; the
   `tier` labels in the file say so. The row ids keep the table's wording.
 - `scope` is the unit a page says the limit belongs to: an organisation (Groq, Cerebras), a project
   (Google) or an account (OpenRouter, whose page also says additional accounts or API keys will not

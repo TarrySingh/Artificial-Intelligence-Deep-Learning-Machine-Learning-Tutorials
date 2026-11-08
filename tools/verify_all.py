@@ -34,7 +34,7 @@ For every lesson directory under lessons/, flagships/*/lessons/ and programmes/*
              `partial`, `map`, a thread, `exec`; meta.yaml `guard_allow` names the given calls a human has checked), whose
              COMMONS TIME LIMIT block (and, in a C or C++ lesson, COMMONS CHILD LIMIT block) differs from the one in
              tools/lesson_template, that does not declare `_CHECK_SECONDS`/`_DEMO_SECONDS` and arm `_try` with them, or whose
-             limits are out of bounds (check 10 s, demo within `budget_seconds`, memory 2048 MiB, exercise cells x limit within
+             limits are out of bounds (check 10 s, demo within `budget_seconds`, memory 768 MiB, exercise cells x limit within
              the grader's 135 s import limit; `guard_limits_reason` in meta.yaml explains an exception).
 Gates 13-14 are tools/notebooks.py --check and tools/verify_portable.py. What no tool can judge --
 whether an objective is measurable, whether a hint is specific, whether a claim's quote is on the
@@ -68,7 +68,10 @@ def run(cmd, timeout=1800):
 
 def score(out):
     m = re.search(r"score:\s*(\d+)/(\d+)\s*\((\d+)%\)", out)
-    return int(m.group(3)) if m else None
+    if not m:
+        return None
+    earned, total = int(m.group(1)), int(m.group(2))
+    return 100 * earned // total if total else 0   # from the points, rounded down: only a perfect score is 100
 
 
 def meta_field(d, key):
@@ -485,7 +488,69 @@ def outside_try(d: Path, allow=()) -> list:
 BLOCK = re.compile(r"(?ms)^# --- COMMONS TIME LIMIT v\d+.*?^# --- END COMMONS TIME LIMIT ---$")
 LIMIT_LINE = re.compile(r"(?m)^(_CHECK_SECONDS|_DEMO_SECONDS|_MEMORY_MIB) = [\d.]+\s*#.*$")
 TEMPLATE = ROOT / "tools" / "lesson_template" / "lesson.py"
-CHECK_CAP, MEMORY_CAP, IMPORT_CAP = 10.0, 2048.0, 135.0    # seconds, MiB, seconds (tools/grade.py: 3 x 45 s)
+CHECK_CAP, MEMORY_CAP, IMPORT_CAP = 10.0, 768.0, 135.0     # seconds, MiB, seconds (tools/grade.py: 3 x 45 s)
+# MEMORY_CAP: a check stopped at +768 MiB keeps a Run all of the heaviest lesson under mybinder.org's 2 GB (GUARD-MEMCAP-2026-11)
+OWN_MEMORY = re.compile(r"memory_mib: float = (\d+(?:\.\d+)?)")
+# what every guard that watches memory carries since GUARD-MEMCAP-2026-11 (internal/retrofit_guard.py --memcap)
+MEMORY_WATCH = ('due.append(now + state.get("poll", 0.01))', 'state["poll"] = (0.02 if grown <= memory_mib / 4',
+                'state["memory"], state["at_stop"], state["poll"] = True, grown, 0.005',
+                'grown - state["at_stop"] > 32', 'and (not state["fired"] or state.get("memory"))')
+ROW_MEMORY_CAP = 2 * 768.0          # a rubric row's grade_memory_mib above this needs guard_limits_reason
+GUARD_FILES = ("lesson.py", "solutions/lesson_solution.py", "tests/test_lesson.py")
+
+
+def memory_guard_problems(d: Path, reason: str) -> list:
+    """Gate T, memory: in lesson.py, the solution and the rubric, every guard that watches memory looks soon and
+    often enough (MEMORY_WATCH), and no memory limit there (`_MEMORY_MIB`, a `*_MEMORY_MIB` constant, a guard's
+    `memory_mib` default, a literal `memory_mib=` argument) is above MEMORY_CAP unless meta.yaml says why."""
+    bad = []
+    for rel in GUARD_FILES:
+        f = d / rel
+        if not f.exists():
+            continue
+        src = f.read_text()
+        if "used_mib" in src:
+            missing = [w for w in MEMORY_WATCH if w not in src]
+            if missing:
+                bad.append(f"gT: {rel}: the guard does not watch memory as the template does (missing {missing[0]!r}; "
+                           "internal/retrofit_guard.py --memcap)")
+        if reason:
+            continue
+        values = [float(x) for x in OWN_MEMORY.findall(src)]
+        try:
+            tree = ast.parse(src)
+        except SyntaxError:
+            continue
+        consts = _constants(tree)
+        values += [v for k, v in consts.items() if k.endswith("MEMORY_MIB") and isinstance(v, (int, float))]
+
+        def number(node):                                # a literal, or a module constant
+            if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)) and not isinstance(node.value, bool):
+                return float(node.value)
+            if isinstance(node, ast.Name) and isinstance(consts.get(node.id), (int, float)):
+                return float(consts[node.id])
+            return None
+        where = {n.name: [a.arg for a in n.args.args].index("memory_mib") for n in tree.body
+                 if isinstance(n, ast.FunctionDef) and n.name in _guard_functions(tree)
+                 and "memory_mib" in [a.arg for a in n.args.args]}   # guard -> position of its memory_mib
+        for c in ast.walk(tree):
+            if isinstance(c, ast.Call):
+                for k in c.keywords:
+                    if k.arg == "memory_mib" and number(k.value) is not None:
+                        values.append(number(k.value))
+                i = where.get(_call_name(c))
+                if i is not None and len(c.args) > i and number(c.args[i]) is not None:
+                    values.append(number(c.args[i]))     # e.g. _time_limit(seconds, what, 4096)
+            if (isinstance(c, ast.Assign) and any(isinstance(x, ast.Attribute) and x.attr == "grade_memory_mib"
+                                                   for x in c.targets)
+                    and (number(c.value) or 0) > ROW_MEMORY_CAP):
+                bad.append(f"gT: {rel}: a rubric row asks for {number(c.value):g} MiB (grade_memory_mib), above "
+                           f"{ROW_MEMORY_CAP:g} (meta.yaml guard_limits_reason explains an exception)")
+        over = sorted({v for v in values if v > MEMORY_CAP})
+        if over:
+            bad.append(f"gT: {rel}: a memory limit of {over[-1]:g} MiB is above {MEMORY_CAP:g} "
+                       "(meta.yaml guard_limits_reason explains an exception)")
+    return bad
 
 
 def block_problems(d: Path) -> list:
@@ -518,7 +583,7 @@ def _constants(tree) -> dict:
 def limit_problems(d: Path, meta: dict) -> list:
     """Gate T, limits: every lesson declares `_CHECK_SECONDS` (an exercise's check), `_DEMO_SECONDS` (any other
     cell) and `_MEMORY_MIB` as module-level numbers, its `_try` arms the guard with them, and they are sane: an
-    exercise check stops within 10 s, a demo within the lesson's budget, memory growth within 2048 MiB, and every
+    exercise check stops within 10 s, a demo within the lesson's budget, memory growth within 768 MiB, and every
     exercise cell looping must fit the grader's 135 s import limit. A lesson that needs more says why in
     meta.yaml `guard_limits_reason`."""
     bad = []
@@ -550,10 +615,14 @@ def limit_problems(d: Path, meta: dict) -> list:
                        "declared limits are the ones in force")
         if mem is None:
             consts_mem = [c for c in armed if len(c.args) > 2 or any(k.arg == "memory_mib" for k in c.keywords)]
-            if not consts_mem and "memory_mib: float = 2048" not in src:
-                bad.append("gT: the time limit has no memory tripwire (_time_limit(..., memory_mib=2048))")
+            own = [float(x) for x in OWN_MEMORY.findall(src)]
+            if not consts_mem and not any(0 < x for x in own):
+                bad.append(f"gT: the time limit has no memory tripwire (_time_limit(..., memory_mib={MEMORY_CAP:g}))")
+            elif any(x > MEMORY_CAP for x in own) and not reason:
+                bad.append(f"gT: the guard's memory_mib default is above {MEMORY_CAP:g} MiB")
     elif mem is None:
         bad.append("gT: lesson.py's block declares no _MEMORY_MIB")
+    bad += memory_guard_problems(d, reason)
     by = consts.get("_CHECK_SECONDS_BY_LABEL") or {}     # limits of single exercises, for the few that need more
     if by and not (isinstance(by, dict) and all(isinstance(v, (int, float)) for v in by.values())):
         bad.append("gT: _CHECK_SECONDS_BY_LABEL must map exercise labels to numbers")
