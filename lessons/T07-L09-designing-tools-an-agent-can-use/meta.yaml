@@ -57,6 +57,6 @@ datasets:
   kind: synthetic
   licence: not applicable - generated at run time by the lesson itself
 points: 63
-status: executed
-measured_seconds: 0.8
-measured_peak_mib: 23
+status: reviewed
+measured_seconds: 0.4
+measured_peak_mib: 25

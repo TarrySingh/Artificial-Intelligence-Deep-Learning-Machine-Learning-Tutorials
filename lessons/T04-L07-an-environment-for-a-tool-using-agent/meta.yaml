@@ -11,7 +11,8 @@ prerequisites:
 - T07-L01-agent-loop-from-scratch
 objectives:
 - Implement the dynamics, the reward modes and the reset / step / state interface of a small tool environment,
-  following the conventions of the environment hubs, and prove them on a scripted episode
+  following the conventions of the environment hub this lesson follows (OpenEnv), and prove them on a
+  scripted episode
 - Implement episode collection with a softmax policy, the group-relative advantage with its zero-variance
   case, the policy gradient of a tabular softmax, a batch update and a training loop
 - Measure success rate, average steps and the fraction of zero-variance groups over a fixed set of seeds
@@ -34,7 +35,7 @@ before_you_start:
     why: shows reset and step, and the terminated and truncated flags, the convention the environment
       you write follows
   - title: OpenEnv documentation
-    by: Hugging Face and the OpenEnv project
+    by: the OpenEnv project (github.com/openenv; documentation hosted by Hugging Face)
     url: https://huggingface.co/docs/openenv
     kind: free
     why: the environment hub whose reset, step and observation conventions this lesson mirrors, and where
@@ -62,6 +63,6 @@ datasets:
   kind: synthetic
   licence: not applicable - generated at run time by the lesson itself
 points: 220
-status: executed
-measured_seconds: 14.0
+status: reviewed
+measured_seconds: 13.8
 measured_peak_mib: 40

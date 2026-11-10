@@ -8,10 +8,10 @@ claims:
   source_title: OWASP GenAI Security Project, OWASP Top 10 for Agentic Applications for 2026 (resource
     page)
   quote: The OWASP Top 10 for Agentic Applications 2026 is a globally peer-reviewed framework that identifies
-    the most critical
-  quote_context: First sentence of the page's descriptive paragraph (the fetch tool truncated the sentence
-    at this point); the page also shows the date December 9, 2025
-  accessed: 2026-10-20
+    the most critical security risks facing autonomous and agentic AI systems.
+  quote_context: First sentence of the page's descriptive paragraph under 'About' (completed on 2026-11-08;
+    the 2026-10-20 fetch had truncated it); the page also shows the date December 9, 2025
+  accessed: 2026-11-08
 - id: owasp-asi-titles
   claim: The titles of ASI01 to ASI10 used in the lesson (Agent Goal Hijack; Tool Misuse and Exploitation;
     Identity and Privilege Abuse; Agentic Supply Chain Vulnerabilities; Unexpected Code Execution (RCE);
@@ -39,7 +39,8 @@ claims:
     first public draft README
   quote: ASI01 | Agent Behaviour Hijack
   quote_context: Row ASI01 of the README's table, under the heading 'Top Ten for Agentic Applications
-    – 1st Public Draft'; issue 802 (https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/issues/802)
+    – 1st Public Draft'; in the raw markdown the identifier is a link ('[ASI01](ASI01_Agent_Behaviour_Hijack.md)')
+    and the cell is padded with spaces, both left out of the quote (re-read 2026-11-08); issue 802 (https://github.com/OWASP/www-project-top-10-for-large-language-model-applications/issues/802)
     is a community post, not an OWASP publication
   accessed: 2026-10-20
 - id: owasp-pdf-licence-and-date

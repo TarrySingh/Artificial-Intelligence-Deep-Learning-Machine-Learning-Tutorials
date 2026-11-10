@@ -4,78 +4,86 @@ claims:
     for isolated execution environments for agentic reinforcement learning with a Gymnasium-style API
     (reset, step and state). The lesson does not import it; it follows these conventions in plain Python.
   where: lesson.py sections 1 and 5; OPENENV_REVISION and OPENENV_DATE in the setup cell
-  source_url: https://raw.githubusercontent.com/huggingface/OpenEnv/main/README.md
-  source_title: OpenEnv README (github.com/huggingface/OpenEnv, main branch)
+  source_url: https://raw.githubusercontent.com/openenv/OpenEnv/main/README.md
+  source_title: OpenEnv README (github.com/openenv/OpenEnv, main branch)
   quote: An end-to-end framework for creating, deploying and using isolated execution environments for
     agentic RL, with a simple Gymnasium-style API.
-  quote_context: First paragraph under the title
+  quote_context: First paragraph under the title; re-read at github.com/openenv/OpenEnv (the repository
+    moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-release-v0-9-0
   claim: As of 2026-10-20 the latest release of OpenEnv on GitHub is v0.9.0, published on 2026-10-15 (the
     tag URL pins the release; the lesson does not claim it stays the latest). The lesson names this revision
     because the interface was still changing; a later release may differ.
   where: lesson.py setup cell (OPENENV_REVISION, OPENENV_DATE) and section 1
-  source_url: https://api.github.com/repos/huggingface/OpenEnv/releases/tags/v0.9.0
-  source_title: 'GitHub releases API, huggingface/OpenEnv, release v0.9.0 (html page: https://github.com/huggingface/OpenEnv/releases/tag/v0.9.0)'
+  source_url: https://api.github.com/repos/openenv/OpenEnv/releases/tags/v0.9.0
+  source_title: 'GitHub releases API, openenv/OpenEnv, release v0.9.0 (html page: https://github.com/openenv/OpenEnv/releases/tag/v0.9.0)'
   quote: '"published_at": "2026-10-15T06:24:33Z"'
-  quote_context: The published_at field of the release whose tag_name is v0.9.0
+  quote_context: The published_at field of the release whose tag_name is v0.9.0; re-read at github.com/openenv/OpenEnv
+    (the repository moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-environment-base-class
   claim: In OpenEnv v0.9.0 the base class of an environment follows the Gym/Gymnasium API, with abstract
     reset, step and state members. reset returns the initial observation; step takes an action and returns
     an observation. This is the shape of the ToolEnv class in exercise 3.
   where: lesson.py section 1 and exercise 3 (ToolEnv.reset, ToolEnv.step, ToolEnv.state)
-  source_url: https://github.com/huggingface/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/interfaces.py
+  source_url: https://github.com/openenv/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/interfaces.py
   source_title: OpenEnv v0.9.0, src/openenv/core/env_server/interfaces.py, class Environment
   quote: Base class for all environment servers following Gym/Gymnasium API.
-  quote_context: The first line of the docstring of class Environment
+  quote_context: The first line of the docstring of class Environment; re-read at github.com/openenv/OpenEnv
+    (the repository moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-reset-returns-observation
   claim: In OpenEnv v0.9.0, reset returns the initial observation (and takes an optional seed and episode
     id, which is why ToolEnv.reset accepts them).
   where: lesson.py exercise 3 (ToolEnv.reset)
-  source_url: https://github.com/huggingface/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/interfaces.py
+  source_url: https://github.com/openenv/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/interfaces.py
   source_title: OpenEnv v0.9.0, src/openenv/core/env_server/interfaces.py, Environment.reset
   quote: Reset the environment and return initial observation.
-  quote_context: The docstring of Environment.reset
+  quote_context: The docstring of Environment.reset; re-read at github.com/openenv/OpenEnv (the repository
+    moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-observation-done-reward
   claim: In OpenEnv v0.9.0 the observation itself carries the episode's done flag and the reward of the
     last action (and a metadata dictionary), where Gymnasium returns them as separate tuple members. The
     lesson's Observation has the same three fields.
   where: lesson.py section 1 and exercise 3 (class Observation)
-  source_url: https://github.com/huggingface/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
+  source_url: https://github.com/openenv/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
   source_title: OpenEnv v0.9.0, src/openenv/core/env_server/types.py, class Observation
   quote: Reward signal from the last action
   quote_context: The description of the reward field of class Observation; the done and metadata fields
-    are quoted in the two entries below
+    are quoted in the two entries below; re-read at github.com/openenv/OpenEnv (the repository moved from
+    huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-observation-done
   claim: In OpenEnv v0.9.0 the observation carries a done flag that says the episode has terminated.
   where: lesson.py section 1 and exercise 3 (class Observation)
-  source_url: https://github.com/huggingface/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
+  source_url: https://github.com/openenv/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
   source_title: OpenEnv v0.9.0, src/openenv/core/env_server/types.py, class Observation
   quote: Whether the episode has terminated
-  quote_context: The description of the done field of class Observation
+  quote_context: The description of the done field of class Observation; re-read at github.com/openenv/OpenEnv
+    (the repository moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-observation-metadata
   claim: In OpenEnv v0.9.0 the observation carries a metadata dictionary for additional information, which
     the lesson uses for the event and the truncated flag.
   where: lesson.py section 1 and exercise 3 (class Observation)
-  source_url: https://github.com/huggingface/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
+  source_url: https://github.com/openenv/OpenEnv/blob/v0.9.0/src/openenv/core/env_server/types.py
   source_title: OpenEnv v0.9.0, src/openenv/core/env_server/types.py, class Observation
   quote: Additional metadata for the observation
-  quote_context: The description of the metadata field of class Observation
+  quote_context: The description of the metadata field of class Observation; re-read at github.com/openenv/OpenEnv
+    (the repository moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: openenv-trainer-runs-loop-env-supplies-reward
   claim: 'In the OpenEnv integration style for environments used as tools, the trainer runs the multi-turn
     tool loop while the environment supplies the tools and the reward. That is the division of labour
     the lesson builds: run_episode and the update are the trainer; ToolEnv is the environment.'
   where: lesson.py section 1
-  source_url: https://raw.githubusercontent.com/huggingface/OpenEnv/main/README.md
+  source_url: https://raw.githubusercontent.com/openenv/OpenEnv/main/README.md
   source_title: OpenEnv README, bullet 'Environments as tools (white-box)'
   quote: The trainer runs the multi-turn tool loop and the environment supplies the tools and the reward.
-  quote_context: The bullet that begins 'Environments as tools (white-box)'
+  quote_context: The bullet that begins 'Environments as tools (white-box)'; re-read at github.com/openenv/OpenEnv
+    (the repository moved from huggingface/OpenEnv, which redirects) on 2026-11-08
   accessed: 2026-10-20
 - id: gymnasium-truncated
   claim: 'Gymnasium separates the two ways an episode can end: terminated (the task''s own end) and truncated

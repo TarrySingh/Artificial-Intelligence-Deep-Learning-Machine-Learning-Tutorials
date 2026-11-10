@@ -559,7 +559,8 @@ def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
 # * **Load.** A call that packs in more separate jobs slips more often on each job (a fixed extra rate per added job).
 # * **Samples.** The same prompt with the same `sample` always gives the same answer. A different `sample` is a fresh draw,
 #   like asking again at a non-zero temperature. Repeating a call with the same `sample` therefore tells you nothing new.
-# * **Correlated errors.** On some labelling items the model is biased toward one fixed wrong label (the decoy), so repeated draws agree on the mistake.
+# * **A decoy on hard items.** On some labelling items one fixed wrong label (the decoy) is more likely on each draw than the true
+#   label. Each draw is still a fresh draw; the bias is in the item, so repeated draws tend to land on the same wrong label.
 # * **Regressions.** A revision usually fixes the problem it is shown, sometimes does not, and sometimes breaks a different constraint.
 #
 # The `scale` argument of `SimModel` multiplies every slip rate. At scale zero the model never slips, which will matter in section 8.
@@ -927,9 +928,14 @@ def show_world() -> None:
     m = SimModel("demo")
     a, b = m.ask("label: ticket-000", 0), m.ask("label: ticket-000", 0)
     print(f"\nthe same prompt and the same sample twice: {a!r} and {b!r}, identical: {a == b}")
-    draws = [SimModel("demo").ask("label: ticket-005", s) for s in range(8)]
-    print(f"eight different samples of one hard item: {draws}")
-    print(f"(the true label of that item is {ITEMS['ticket-005']['true']!r}, its decoy {ITEMS['ticket-005']['decoy']!r})")
+    item = next(k for k, v in ITEMS.items() if v["hard"])          # the first hard item, chosen by code
+    it = ITEMS[item]
+    draws = [SimModel("demo").ask(f"label: {item}", s) for s in range(8)]
+    print(f"eight different samples of {item} (hard: {it['hard']}): {draws}")
+    print(f"(the true label of that item is {it['true']!r}, its decoy {it['decoy']!r}; the decoy is {draws.count(it['decoy'])} of these 8)")
+    many = [SimModel("demo").ask(f"label: {item}", s) for s in range(400)]
+    print(f"over 400 samples of {item} the decoy came up ≈{100 * many.count(it['decoy']) / 400:.1f}% of the time, the true label "
+          f"≈{100 * many.count(it['true']) / 400:.1f}%")
 
 
 if __name__ == "__main__":
@@ -986,15 +992,20 @@ STEPS = [("extract", gate_record), ("total", gate_total), ("format", gate_senten
 
 
 class _Fake:
-    """A model whose answers are a function of (prompt, sample); it records every ask. Used only by the checks."""
+    """A model whose answers are a function of (prompt, sample); it records every ask. Used only by the checks.
+    It offers what SimModel offers (ask, calls, prompts, outputs, stream, scale), plus its own record `asked`."""
 
-    def __init__(self, answer):
+    def __init__(self, answer, stream: str = "fake", scale: Fraction = Fraction(1)):
         self.answer, self.asked, self.calls = answer, [], 0
+        self.stream, self.scale, self.prompts, self.outputs = stream, float(scale), [], []
 
     def ask(self, prompt, sample=0):
         self.calls += 1
         self.asked.append((prompt, sample))
-        return self.answer(prompt, sample)
+        out = self.answer(prompt, sample)
+        self.prompts.append(prompt)
+        self.outputs.append(out)
+        return out
 
 
 def _check_chain() -> None:
@@ -1006,22 +1017,49 @@ def _check_chain() -> None:
     got = chain(fake, [("up", None), ("bang", None)], "abc", 0)
     assert got == {"output": "ABC!", "failed_at": None}, f"got {got}: each step's output is the next step's input, and a clean run has failed_at None"
     assert fake.asked == [("up: abc", 0), ("bang: ABC", 0)], f"asked {fake.asked}: the prompt is f'{{skill}}: {{x}}' with the previous accepted output"
-    flaky = _Fake(lambda p, s: "T" if p.startswith("t") else ("good" if s >= 1 else "bad"))
-    got = chain(flaky, [("s", lambda t: t == "good"), ("t", None)], "x", 2)
-    assert got["output"] == "T" and flaky.asked[:2] == [("s: x", 0), ("s: x", 1)], (
-        f"asked {flaky.asked}: a retry must pass the next sample number, or the model repeats its answer")
-    assert flaky.calls == 3 and flaky.asked[2] == ("t: good", 0), "the accepted retry feeds the next step, which starts again at sample 0; stop retrying once a gate accepts"
+    flaky = _Fake(lambda p, s: "T" if p.startswith("t") else ("good" if s >= 2 else "bad"))
+    got = chain(flaky, [("s", lambda t: t == "good"), ("t", None)], "x", 3)
+    assert got["output"] == "T" and flaky.asked[:3] == [("s: x", 0), ("s: x", 1), ("s: x", 2)], (
+        f"asked {flaky.asked}: each retry must pass the next sample number (0, 1, 2, ...), or the model repeats its answer")
+    assert flaky.calls == 4 and flaky.asked[3] == ("t: good", 0), "the accepted retry feeds the next step, which starts again at sample 0; stop retrying once a gate accepts"
     never = _Fake(lambda p, s: "bad")
     got = chain(never, [("a", None), ("b", lambda t: False), ("c", None)], "x", 1)
     assert got == {"output": None, "failed_at": 1}, f"got {got}: report the index of the step that never passed, from 0"
-    assert never.calls == 3, f"{never.calls} calls: step a once, step b twice (retries=1), and step c never"
+    assert never.asked == [("a: x", 0), ("b: bad", 0), ("b: bad", 1)], (
+        f"asked {never.asked}: step a once, step b twice (retries=1) with samples 0 and 1, and step c never")
+    got = chain(_Fake(lambda p, s: "bad"), [("a", lambda t: False), ("b", None)], "x", 0)
+    assert got == {"output": None, "failed_at": 0}, f"got {got}: the first step can fail too, and its index is 0, not None"
     padded = _Fake(lambda p, s: "  ABC " if p.startswith("up") else p)
     chain(padded, [("up", None), ("echo", None)], "abc", 0)
     assert padded.asked[1] == ("echo:   ABC ", 0), f"asked {padded.asked[1]}: the accepted output goes on exactly as it came back, so do not strip or tidy it"
-    zero = _Fake(lambda p, s: "bad")
-    chain(zero, [("a", lambda t: False)], "x", 0)
-    assert zero.calls == 1, "retries=0 means one attempt, not none"
+    strict = _Fake(lambda p, s: " ok " if s == 0 else "ok")
+    got = chain(strict, [("a", lambda t: t == "ok")], "x", 1)
+    assert got == {"output": "ok", "failed_at": None} and strict.calls == 2, (
+        f"got {got}: the gate sees the step's output exactly as it came back, so a padded output it rejects must be retried")
+    for first in ("ok\n", " ok"):
+        tidy = _Fake(lambda p, s, first=first: first if s == 0 else "ok")
+        got = chain(tidy, [("a", lambda t: t == "ok")], "x", 1)
+        assert got == {"output": "ok", "failed_at": None} and tidy.calls == 2, (
+            f"got {got} for a first output of {first!r}: the gate sees the output untouched, so do not strip a trailing newline or a leading space before it")
+    for retries in range(4):
+        rejected = _Fake(lambda p, s: "bad")
+        chain(rejected, [("a", lambda t: False)], "x", retries)
+        assert rejected.calls == retries + 1, f"retries={retries} made {rejected.calls} asks: one first attempt plus `retries` more (retries=0 is one attempt, not none)"
+    last = _Fake(lambda p, s: "ok" if s == 2 else "bad")
+    assert chain(last, [("a", lambda t: t == "ok")], "x", 2) == {"output": "ok", "failed_at": None}, "with retries=2 the attempt at sample 2 is still allowed, and it is accepted"
+    late = _Fake(lambda p, s: "ok" if s == 3 else "bad")
+    assert chain(late, [("a", lambda t: t == "ok")], "x", 2) == {"output": None, "failed_at": 0}, "with retries=2 there is no attempt at sample 3"
+    free = _Fake(lambda p, s: "anything")
+    assert chain(free, [("a", None)], "x", 5) == {"output": "anything", "failed_at": None} and free.calls == 1, (
+        f"{free.calls} asks: a step with gate None accepts its first output, however many retries are allowed")
     assert chain(_Fake(lambda p, s: "z"), [], "start", 3) == {"output": "start", "failed_at": None}, "no steps: the input comes back unchanged"
+    start = _Fake(lambda p, s: p.partition(": ")[2].upper())
+    got = chain(start, [("up", None)], "  abc\n", 0)
+    assert start.asked == [("up:   abc\n", 0)] and got == {"output": "  ABC\n", "failed_at": None}, (
+        f"asked {start.asked}: the starting text goes into the first prompt exactly as given, padding included")
+    loose = _Fake(lambda p, s: " ok\n" if p.startswith("a") else p)
+    got = chain(loose, [("a", lambda t: t.strip() == "ok"), ("echo", None)], "x", 0)
+    assert loose.asked[1] == ("echo:  ok\n", 0), f"asked {loose.asked}: an output that the gate accepts goes on exactly as it came back, padding included"
     print("exercise 1 looks right")
 
 
@@ -1034,11 +1072,13 @@ def _chain_rows(scale: Fraction = Fraction(1)) -> list:
     """Four ways to run the order-line task, each over every task: (label, correct, calls, loud, silent)."""
     rows = []
     ungated = [(s, None) for s, _ in STEPS]
-    for label, steps, retries, stream in (("chain, no gates", ungated, 0, "x0"), ("chain, gates, no retry", STEPS, 0, "x1"),
-                                          ("chain, gates, one retry", STEPS, RETRIES, "s")):
+    # One stream per task for all three chain rows (the scoreboard's stream), so the rows compare the same draws: a row differs from
+    # the one before it only by its gates or its retry.
+    for label, steps, retries in (("chain, no gates", ungated, 0), ("chain, gates, no retry", STEPS, 0),
+                                  ("chain, gates, one retry", STEPS, RETRIES)):
         correct = calls = loud = silent = 0
         for i in range(N_TASKS):
-            t, m = chain_task(i), SimModel(f"chain|{i}|{stream}", scale)
+            t, m = chain_task(i), SimModel(f"chain|{i}|s", scale)
             r = chain(m, steps, t["raw"], retries)
             ok = r["output"] == t["expected"]
             correct, calls = correct + ok, calls + m.calls
@@ -1055,9 +1095,18 @@ def _chain_rows(scale: Fraction = Fraction(1)) -> list:
 def show_chain() -> None:
     print(f"{'order line -> sentence':<32}{'correct':>9}{'calls/task':>12}{'stopped by':>12}{'wrong, no':>11}")
     print(f"{'':<32}{'of ' + str(N_TASKS):>9}{'':>12}{'a gate':>12}{'gate fired':>11}")
-    for label, correct, calls, loud, silent in _chain_rows():
+    rows = _chain_rows()
+    for label, correct, calls, loud, silent in rows:
         print(f"{label:<32}{correct:>9}{'≈%.2f' % float(calls):>12}{loud:>12}{silent:>11}")
-    print("\na gate turns some wrong answers into loud ones and, with a retry, into right ones; it can only catch what code can check")
+    (_, plain, _, _, _), (_, gated, _, gated_loud, _), (_, retried, _, _, _) = rows[1:]
+    print("\nthe three chain rows use the same draws (one stream per task).")
+    if gated == plain:
+        print(f"gates alone changed no answer from right to wrong ({plain} and {gated} correct): they made {gated_loud} of the\n"
+              f"wrong answers loud instead of silent; the retry is what added right answers ({retried - gated:+d}), and a retry\n"
+              f"fires only when a gate rejects an answer.")
+    else:
+        print(f"gates alone changed the correct count by {gated - plain:+d}; the retry changed it by {retried - gated:+d}.")
+    print("a gate can only catch what code can check")
 
 
 if __name__ == "__main__":
@@ -1077,7 +1126,8 @@ if __name__ == "__main__":
 # **`route(model, message, labels)`** asks `classify: {message}`, then **normalises** the answer: strip whitespace, lower-case it, and
 # only then remove any trailing full stops (a full stop is not whitespace: `"refund . "` becomes `"refund "`, which is not a label). If the result is one of `labels`, ask `{label}: {message}` and return
 # `{"answer": reply, "label": label, "fell_back": False}`. Otherwise ask the generic prompt `answer: {message}` (which covers every
-# kind) and return `{"answer": reply, "label": None, "fell_back": True}`. Either way that is exactly two asks.
+# kind) and return `{"answer": reply, "label": None, "fell_back": True}`. Either way that is exactly two asks. Only the label is tidied:
+# both prompts carry `message` exactly as given, and `reply` is returned exactly as it came back.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -1124,6 +1174,14 @@ def _check_route() -> None:
     assert route(say("re.fund"), "m", ["refund"])["fell_back"], "only TRAILING full stops go; an inner one makes the label unknown"
     assert route(say(".refund"), "m", ["refund"])["fell_back"], "a LEADING full stop is not removed either"
     assert route(say("refund . "), "m", ["refund"])["fell_back"], "strip and lower-case first, then remove only full stops: `refund .` leaves `refund ` with a space, which is no label"
+    assert route(say("\tRefund.\n"), "m", ["refund"])["label"] == "refund", "strip ALL whitespace, a tab and a newline included, not only spaces"
+    assert route(say(""), "m", ["refund"])["fell_back"], "an empty label names no handler: test exact membership of the whole label in `labels`, not a part of one"
+    assert route(say("refund x"), "m", ["refund"])["fell_back"], "`refund x` is not the label `refund`: compare the whole normalised text"
+    for raw, second in (("refund", "refund"), ("unsure", "answer")):
+        loose = _Fake(lambda p, s, raw=raw: raw if p.startswith("classify") else f" <{p}>\n")
+        got = route(loose, "  m\t", ["refund", "reset"])
+        assert loose.asked == [("classify:   m\t", 0), (f"{second}:   m\t", 0)], f"asked {loose.asked}: the message goes into both prompts exactly as given"
+        assert got["answer"] == f" <{second}:   m\t>\n", f"got {got}: the answer is the reply exactly as it came back; only the label is tidied"
     print("exercise 2 looks right")
 
 
@@ -1133,7 +1191,7 @@ if __name__ == "__main__":
 
 # %%
 def show_route() -> None:
-    tidy = untidy = fell = misrouted = slipped = routed_ok = single_ok = 0
+    tidy = untidy = fell = misrouted = slipped = routed_ok = single_ok = routed_calls = single_calls = 0
     for i in range(N_TASKS):
         t = route_task(i)
         m = SimModel(f"route|{i}|s")
@@ -1144,10 +1202,13 @@ def show_route() -> None:
         misrouted += (not r["fell_back"]) and r["label"] != t["category"]
         slipped += (not r["fell_back"]) and r["label"] == t["category"] and r["answer"] != t["expected"]
         routed_ok += r["answer"] == t["expected"]
-        single_ok += SimModel(f"route|{i}|b").ask("answer: " + t["message"]) == t["expected"]
+        b = SimModel(f"route|{i}|b")
+        single_ok += b.ask("answer: " + t["message"]) == t["expected"]
+        routed_calls, single_calls = routed_calls + m.calls, single_calls + b.calls
     print(f"of {N_TASKS} messages: the classifier's text needed tidying {untidy} times, named no handler {fell} times,"
           f" sent {misrouted} to the wrong handler, and the right handler slipped {slipped} times")
-    print(f"correct: one prompt for everything {single_ok}, routed {routed_ok}; calls per message: 1 against 2")
+    print(f"correct: one prompt for everything {single_ok}, routed {routed_ok}; calls per message: "
+          f"≈{single_calls / N_TASKS:.2f} against ≈{routed_calls / N_TASKS:.2f}")
 
 
 if __name__ == "__main__":
@@ -1159,12 +1220,14 @@ if __name__ == "__main__":
 #
 # As of 20 October 2026 the article names two forms of **parallelisation**. *Sectioning* splits a task into independent parts run side by side; the answer does not
 # change, only the time it takes. *Voting* runs the same task several times and takes the majority. Voting spends calls to
-# buy confidence, and it helps only where the repeated draws are independent. Here one labelling task has easy items (errors
-# independent) and hard items (errors correlated, the model prefers the same wrong label each time).
+# buy confidence, and a majority amplifies whichever label is the most likely on one draw: it helps where that label is the
+# right one and hurts where one wrong label is more likely than the right one. Here one labelling task has easy items (the
+# true label is the most likely draw, and the errors split between the other labels) and hard items (one decoy is more likely
+# than the true label on each draw).
 #
-# **`majority(answers)`** strips each answer, counts them and returns `(winner, count)`; on a tie the winner is the answer that
+# **`majority(answers)`** strips each answer, counts them (compared exactly once stripped: case matters) and returns `(winner, count)`; on a tie the winner is the answer that
 # appears **first** in the list; an empty list raises `ValueError`.
-# **`parallel_vote(model, prompt, n)`** asks `n` times, the i-th ask with `sample=i`, and returns
+# **`parallel_vote(model, prompt, n)`** asks `prompt`, exactly as given, `n` times, the i-th ask with `sample=i`, and returns
 # `{"answer": winner, "count": winner's count, "n": n, "agreement": Fraction(count, n)}`; `n < 1` raises `ValueError`.
 # (The calls are independent, so a real system sends them at once. Here they run one after another and only calls are counted.)
 #
@@ -1214,25 +1277,39 @@ def _check_vote() -> None:
     assert majority([" a", "a", "b"]) == ("a", 2), f"got {majority([' a', 'a', 'b'])}: strip each answer before counting, so ' a' and 'a' are one answer"
     assert majority(["x"]) == ("x", 1) and majority(["q", "r", "s"]) == ("q", 1), "a three-way tie goes to the first answer seen"
     assert majority(["r", "q", "q"]) == ("q", 2), "a clear majority beats the first-seen rule"
+    assert majority(["Bug", "bug", "bug"]) == ("bug", 2), "answers are compared exactly once stripped: `Bug` and `bug` are two answers"
+    assert majority(["x\n", "y", "\tx"]) == ("x", 2), "strip ALL whitespace, a newline and a tab included, not only spaces"
+    assert majority(["z", "y", "x", "x", "y"]) == ("y", 2), (
+        "on a tie the winner is the tied answer seen first (`y` before `x`), not simply the first answer in the list")
     try:
         majority([])
+        refused = False
     except ValueError:
-        pass
-    else:
-        raise AssertionError("an empty list has no winner: raise ValueError")
+        refused = True
+    assert refused, "an empty list has no winner: raise ValueError"
     fake = _Fake(lambda p, s: ["x", "y", "x"][s])
     got = parallel_vote(fake, "label: t", 3)
     assert got == {"answer": "x", "count": 2, "n": 3, "agreement": Fraction(2, 3)}, f"got {got}"
     assert [s for _, s in fake.asked] == [0, 1, 2], f"samples used {[s for _, s in fake.asked]}: the i-th ask needs sample=i, or all the draws are the same draw"
+    for n in range(1, 6):
+        loose = _Fake(lambda p, s: "a")
+        parallel_vote(loose, " label: t\n", n)
+        assert loose.asked == [(" label: t\n", i) for i in range(n)], f"n={n}: asked {loose.asked}: the prompt is asked exactly as given, n times, at samples 0..n-1"
+    tie = parallel_vote(_Fake(lambda p, s: ["y", "x"][s]), "p", 2)
+    assert tie == {"answer": "y", "count": 1, "n": 2, "agreement": Fraction(1, 2)}, f"got {tie}: a tie goes to the answer drawn first, as in majority"
     assert isinstance(got["agreement"], Fraction), "agreement is an exact Fraction"
-    one = parallel_vote(_Fake(lambda p, s: "z"), "p", 1)
-    assert one["answer"] == "z" and one["agreement"] == 1, "n=1 is a plain call"
-    try:
-        parallel_vote(_Fake(lambda p, s: "z"), "p", 0)
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("n=0 must raise ValueError")
+    padded = parallel_vote(_Fake(lambda p, s: [" x", "x ", "y"][s]), "p", 3)
+    assert padded["answer"] == "x" and padded["count"] == 2 and padded["agreement"] == Fraction(2, 3), (
+        f"got {padded}: parallel_vote counts the answers the way majority does, stripped (call majority rather than counting again)")
+    one = parallel_vote(_Fake(lambda p, s: " z\n"), "p", 1)
+    assert one == {"answer": "z", "count": 1, "n": 1, "agreement": Fraction(1)}, f"got {one}: n=1 is one ask, counted the way majority counts (stripped)"
+    for bad in (0, -1):
+        try:
+            parallel_vote(_Fake(lambda p, s: "z"), "p", bad)
+            refused = False
+        except ValueError:
+            refused = True
+        assert refused, f"n={bad} must raise ValueError: n below 1 is refused"
     print("exercise 3 looks right")
 
 
@@ -1270,8 +1347,15 @@ def show_vote() -> None:
     one, many = sum(right[1][i] for i in hard), sum(right[VOTES][i] for i in hard)
     easy_one, easy_many = sum(right[1][i] for i in easy), sum(right[VOTES][i] for i in easy)
     print(f"\non the easy items {VOTES} draws got {easy_many} right against {easy_one} for one draw; on the hard items {many} against {one}.")
-    print("By the planted rules the draws on a hard item mostly pick the same decoy, so a vote has no independent draws to average there;"
-          " agreement then measures how consistent the draws are, not whether they are right.")
+    def maj(p_right: Fraction, n: int) -> Fraction:     # P(more than half of n fresh draws give a label of probability p_right)
+        return sum((Fraction(comb(n, k)) * p_right ** k * (1 - p_right) ** (n - k) for k in range(n // 2 + 1, n + 1)), Fraction(0))
+    p_easy, p_hard = 1 - PLANTED["label, easy item"], PLANTED["label, hard item (picks the decoy)"]
+    print(f"By the planted rules a draw is right with probability {_pct(p_easy)} on an easy item, and picks the decoy with probability "
+          f"{_pct(p_hard)} on a hard one; each draw is a fresh draw.")
+    print(f"A majority amplifies whichever label is most likely on one draw: the decoy wins a majority of {VOTES} fresh draws with probability "
+          f"{_pct(maj(p_hard, VOTES))} (one draw: {_pct(p_hard)}), while on an easy item the true label wins at least "
+          f"{_pct(maj(p_easy, VOTES))}" + (" (one draw: " + _pct(p_easy) + ")." if maj(p_easy, VOTES) > p_easy else "."))
+    print("Agreement then measures how consistent the draws are, not whether they are right.")
     print("The rows share their draws (one stream per item), so a row differs from the one before it only through the draws added.")
 
 
@@ -1292,9 +1376,9 @@ if __name__ == "__main__":
 #
 # **`parse_plan(text)`** returns the planned document ids, one per line: strip each line, remove one leading `- ` or `* ` marker
 # and strip again, skip empty lines, and keep each id only once, in first-seen order. Ids are case-sensitive and kept as written.
-# **`orchestrate(model, index)`** asks `plan: {index}` and parses it. With no sub-task it returns `{"answer": "", "plan": []}`
+# **`orchestrate(model, index)`** asks `plan: {index}` (the index exactly as given) and parses it. With no sub-task it returns `{"answer": "", "plan": []}`
 # after that one call. Otherwise it asks `digest: {sub}` once per sub-task in plan order, then once `merge: ` followed by the worker
-# replies joined with `"\n"`, and returns `{"answer": the merge reply, "plan": the sub-tasks}`. Every ask here uses the default `sample` of 0.
+# replies, untouched, joined with `"\n"`, and returns `{"answer": the merge reply as it came back, "plan": the sub-tasks}`. Every ask here uses the default `sample` of 0.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -1345,6 +1429,14 @@ def _check_orchestrate() -> None:
     assert parse_plan("-  d1") == ["d1"], "strip again after removing the marker"
     assert parse_plan("-d1") == ["-d1"], "a marker is `- ` or `* ` with the space; `-d1` is an id"
     assert parse_plan("D1\nd1\nD1") == ["D1", "d1"], "ids are case-sensitive: keep them as written, so `D1` and `d1` are two ids"
+    assert parse_plan("- - d1") == ["- d1"], "remove ONE leading marker, not every marker: `- - d1` plans the id `- d1`"
+    assert parse_plan("  * d1") == ["d1"], "strip the line BEFORE looking for the marker, then strip again after removing it"
+    assert parse_plan("\t\n d1\t") == ["d1"], "strip ALL whitespace, a tab included, not only spaces: a line of one tab is blank"
+    assert parse_plan("- * d1") == ["* d1"] and parse_plan("* - d1") == ["- d1"], (
+        "remove ONE leading marker, whichever comes first: `- * d1` plans the id `* d1`, and `* - d1` plans `- d1`")
+    assert parse_plan("*d1") == ["*d1"], "a star marker needs its space too: `*d1` is an id"
+    assert parse_plan("a\r\nb") == ["a", "b"], "a Windows line end (\\r\\n) ends a line too: the ids are `a` and `b`"
+    assert parse_plan("d1\nd10\nd1") == ["d1", "d10"], "ids are compared whole: `d10` is not a repeat of `d1`"
 
     def planner(prompt, sample):
         skill, _, text = prompt.partition(": ")
@@ -1356,9 +1448,21 @@ def _check_orchestrate() -> None:
     assert [p for p, _ in fake.asked] == ["plan: a;b", "digest: b", "digest: a", "merge: b=1\na=1"], (
         f"asked {[p for p, _ in fake.asked]}: plan once, one digest per DISTINCT sub-task in plan order, one merge of the replies joined by a newline")
     assert all(sample == 0 for _, sample in fake.asked), f"samples used {[sample for _, sample in fake.asked]}: every ask in this exercise uses the default sample 0"
-    empty = _Fake(lambda p, s: "")
-    got = orchestrate(empty, "a;b")
-    assert got == {"answer": "", "plan": []} and empty.calls == 1, f"got {got} after {empty.calls} calls: an empty plan stops after the planning call"
+    lone = _Fake(planner)
+    lone.answer = lambda p, s: {"plan": "only", "digest": "only=1", "merge": "M"}[p.partition(": ")[0]]
+    got = orchestrate(lone, "only")
+    assert got == {"answer": "M", "plan": ["only"]} and lone.calls == 3, (
+        f"got {got} after {lone.calls} calls: one sub-task is still a plan, one worker and one merge")
+    for text in ("", "\n\n", "\n \t\n"):
+        empty = _Fake(lambda p, s, text=text: text)
+        got = orchestrate(empty, "a;b")
+        assert got == {"answer": "", "plan": []} and empty.calls == 1, (
+            f"plan text {text!r}: got {got} after {empty.calls} calls; a plan with no sub-task (blank lines only) stops after the planning call")
+    loose = _Fake(lambda p, s: {"plan": "a\nb", "digest": f" {p.partition(': ')[2]}=1\n", "merge": " M\n"}[p.partition(": ")[0]])
+    got = orchestrate(loose, " a;b\t")
+    assert [p for p, _ in loose.asked] == ["plan:  a;b\t", "digest: a", "digest: b", "merge:  a=1\n\n b=1\n"], (
+        f"asked {[p for p, _ in loose.asked]}: the index goes into the plan prompt exactly as given, and the worker replies are joined untouched")
+    assert got["answer"] == " M\n", f"got {got}: the answer is the merge reply exactly as it came back"
     print("exercise 4 looks right")
 
 
@@ -1371,9 +1475,11 @@ def show_orchestrate() -> None:
     dropped = repeated = bulleted = 0
     buckets = {"2-3 documents": range(2, 4), "4-5 documents": range(4, 6), "6-7 documents": range(6, 8)}
     tally = {b: [0, 0, 0] for b in buckets}                         # cases, orchestrated correct, single call correct
+    calls = documents = 0
     for i, c in enumerate(CASES):
         m = SimModel(f"orchestrate|{i}|s")
         r = orchestrate(m, c["index"])
+        calls, documents = calls + m.calls, documents + len(c["ids"])
         raw = m.outputs[0]
         dropped += set(r["plan"]) != set(c["ids"])
         repeated += len(re.findall(r"c\d+d\d", raw)) != len(set(re.findall(r"c\d+d\d", raw)))
@@ -1383,10 +1489,19 @@ def show_orchestrate() -> None:
         row[1] += r["answer"] == c["expected"]
         row[2] += SimModel(f"orchestrate|{i}|b").ask("digest_all: " + c["index"]) == c["expected"]
     print(f"of {N_TASKS} case files: the plan dropped a document {dropped} times, repeated one {repeated} times, and came back as a bulleted list {bulleted} times")
-    print(f"\n{'size of case file':<18}{'cases':>7}{'one call':>10}{'orchestrated':>14}")
+    print(f"\n{'size of case file':<18}{'cases':>7}{'one call':>10}{'rate':>8}{'orchestrated':>14}{'rate':>8}   (correct)")
     for b, (n, orch, single) in tally.items():
-        print(f"{b:<18}{n:>7}{single:>10}{orch:>14}   (correct)")
-    print("\nthe single call gets worse as the file grows; the orchestrator pays a fixed risk (a dropped document, a dropped line) and calls per document")
+        print(f"{b:<18}{n:>7}{single:>10}{_pct(Fraction(single, n)):>8}{orch:>14}{_pct(Fraction(orch, n)):>8}")
+    first, last = tally[next(iter(tally))], tally[list(tally)[-1]]
+    fall = lambda k: Fraction(first[k], first[0]) - Fraction(last[k], last[0])     # drop in rate from the smallest to the largest files
+    def trend(k):
+        return "falls" if fall(k) > 0 else "does not fall"
+    print(f"\nfrom the smallest files to the largest, the single call's rate {trend(2)} by ≈{100 * float(fall(2)):.1f} points and the "
+          f"orchestrator's {trend(1)} by ≈{100 * float(fall(1)):.1f} points.")
+    if 0 < fall(1) < fall(2):
+        print("both fall: every worker can slip, so the orchestrator's risk also grows with the number of documents, but by one worker's\n"
+              "slip per document rather than a load on one call that grows with the file; it carries a fixed plan and merge risk on top.")
+    print(f"the orchestrator spends ≈{calls / documents:.2f} calls per document (a plan, one worker per planned document, a merge).")
 
 
 if __name__ == "__main__":
@@ -1407,7 +1522,9 @@ if __name__ == "__main__":
 # of problems (empty means it passes). While there is a problem and fewer than `max_rounds` revisions have been made,
 # ask `revise: {first problem} :: {brief} :: {draft}` for a new draft and evaluate it. Return
 # `{"answer": last draft, "history": every evaluate result in order (the first draft's included), "accepted": the last result is empty, "revisions": how many revise asks}`.
-# The last draft is always evaluated, so `accepted` describes the draft you return.
+# The last draft is always evaluated, so `accepted` describes the draft you return. Each revise names the first problem of the
+# **latest** evaluation. Every ask here uses the default `sample` of 0 (each revise prompt is already new, because the draft changes).
+# The brief, the problem and the draft go into the prompts exactly as they are, and `evaluate` sees each draft exactly as it came back.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -1454,18 +1571,45 @@ def _check_refine() -> None:
     got = refine(fake, evaluate, "B", 5)
     assert got == {"answer": "v2", "history": [["p0", "q"], ["p1", "q"], []], "accepted": True, "revisions": 2}, f"got {got}"
     assert fake.asked[1][0] == "revise: p0 :: B :: v0", f"revise prompt was {fake.asked[1][0]!r}: the FIRST problem, then the brief, then the current draft, joined by ' :: '"
+    assert fake.asked == [("draft: B", 0), ("revise: p0 :: B :: v0", 0), ("revise: p1 :: B :: v1", 0)], (
+        f"asked {fake.asked}: each revise uses the first problem of the LATEST evaluation (p1 for v1, not p0 again), "
+        "and every ask uses the default sample 0")
     assert seen == ["v0", "v1", "v2"], f"evaluate saw {seen}: once per draft, in order, and not again after it passes"
     seen.clear()
-    fake = _Fake(say)
-    got = refine(fake, lambda d: seen.append(d) or ["p"], "B", 2)
-    assert got["revisions"] == 2 and not got["accepted"] and got["answer"] == "v2" and seen == ["v0", "v1", "v2"] and fake.calls == 3, (
-        f"got {got}, evaluate saw {seen}: with a cap of 2 there are 2 revisions, and the last draft is still evaluated")
+    for cap in range(5):
+        seen.clear()
+        fake = _Fake(say)
+        got = refine(fake, lambda d: seen.append(d) or ["p"], "B", cap)
+        assert got["revisions"] == cap and not got["accepted"] and got["answer"] == f"v{cap}" and fake.calls == cap + 1, (
+            f"got {got} with a cap of {cap}: a draft that never passes gets exactly `max_rounds` revisions")
+        assert seen == [f"v{i}" for i in range(cap + 1)] and len(got["history"]) == cap + 1, (
+            f"evaluate saw {seen} with a cap of {cap}: the last draft is still evaluated when the cap stops the loop")
     fake = _Fake(say)
     got = refine(fake, lambda d: ["p"], "B", 0)
     assert got == {"answer": "v0", "history": [["p"]], "accepted": False, "revisions": 0} and fake.calls == 1, f"got {got}: a cap of zero revises nothing but still evaluates the draft"
     fake = _Fake(say)
     got = refine(fake, lambda d: [], "B", 3)
     assert got["revisions"] == 0 and got["accepted"] and fake.calls == 1, "a first draft that passes is returned as it is"
+    fake = _Fake(say)
+    got = refine(fake, lambda d: [] if d == "v2" else ["p"], "B", 2)
+    assert got["accepted"] is True and got["revisions"] == 2 and got["answer"] == "v2", (
+        f"got {got}: a draft that passes on the last allowed revision is accepted; accepted is whether the last result is empty, "
+        "not whether rounds were left over")
+    fake = _Fake(say)
+    refine(fake, lambda d: [] if d == "v1" else ["q", "p0"], "B", 3)
+    assert fake.asked[1][0] == "revise: q :: B :: v0", (
+        f"revise prompt was {fake.asked[1][0]!r}: revise the FIRST problem in the list as the evaluator gave it, not the smallest")
+    fake = _Fake(say)
+    refine(fake, lambda d: ["p"], "B", 3)
+    assert all(sample == 0 for _, sample in fake.asked), (
+        f"samples used {[sample for _, sample in fake.asked]}: every ask in this exercise uses the default sample 0")
+    loose, seen = _Fake(lambda p, s: " v0\n" if p.startswith("draft") else "v1 "), []
+    verdicts = {" v0\n": [" p "], "v1 ": []}
+    got = refine(loose, lambda d: seen.append(d) or verdicts.get(d, []), " B ", 3)
+    assert loose.asked == [("draft:  B ", 0), ("revise:  p  ::  B  ::  v0\n", 0)], (
+        f"asked {loose.asked}: the brief, the problem and the draft go into the prompts exactly as they are, padding included")
+    assert seen == [" v0\n", "v1 "], f"evaluate saw {seen}: evaluate sees each draft exactly as it came back"
+    assert got["answer"] == "v1 ", f"answer {got['answer']!r}: return the last draft exactly as it came back"
     print("exercise 5 looks right")
 
 
@@ -1521,7 +1665,7 @@ if __name__ == "__main__":
 # version) as the baseline. That is the article's advice, as of 20 October 2026, to start simple and add structure only when simpler solutions fall short. For each pattern the next cell prints the correct count, calls per task, and the **paired** result: tasks the pattern got
 # right and the baseline wrong (gains), and the reverse (losses). A sign test (`sign_test`, given) turns gains and losses into **p**, the chance of a
 # split at least this lopsided if both kinds of change were equally likely. It describes this sample of tasks only; with other tasks the counts would move.
-# Then the failure modes each pattern adds, counted from what the episode did, not from the answer alone.
+# Then what went wrong inside each pattern, and what its extra work repaired, counted from what the episode did, not from the answer alone.
 
 # %%
 def sign_test(gains: int, losses: int) -> Fraction:
@@ -1706,8 +1850,8 @@ if __name__ == "__main__":
 # ## 9. What this measurement tells you, and what it does not
 #
 # * **It tells you about mechanics.** Where each pattern gets its gain (fewer jobs per call, a gate that catches what code can check,
-#   a specialised prompt, independent draws, a planned decomposition, a loop with a real evaluator) and where it leaks (a gate that cannot
-#   see a wrong value, a misroute, correlated votes, a dropped sub-task, a revision that breaks a rule, a judge that waves bad drafts through).
+#   a specialised prompt, a majority of fresh draws, a planned decomposition, a loop with a real evaluator) and where it leaks (a gate that cannot
+#   see a wrong value, a misroute, a majority for a likely wrong label, a dropped sub-task, a revision that breaks a rule, a judge that waves bad drafts through).
 # * **It neither confirms nor refutes the vendor's guidance.** Every statement attributed above to Anthropic's article is dated 20 October 2026
 #   and describes the article, not this script. The script has planted rules, so a result here can illustrate why a pattern should help or fail;
 #   it cannot show that the article is right or wrong about real models.
@@ -1723,8 +1867,8 @@ if __name__ == "__main__":
 # ## 10. Common mistakes
 #
 # * **Retrying with the same sample.** A retry that cannot differ is a wasted call. Exercise 1's check catches it.
-# * **Trusting agreement.** Five matching votes show that the draws are consistent. Where the draws share a bias, as on the hard items, they
-#   can be consistent about the wrong label; section 4 prints how a vote fares on each kind of item.
+# * **Trusting agreement.** Five matching votes show that the draws are consistent. Where one wrong label is the most likely draw, as on the
+#   hard items, they can be consistent about the wrong label; section 4 prints how a vote fares on each kind of item.
 # * **Forgetting the fall-back.** A label the router does not know is data, not an exception.
 # * **Evaluating the wrong draft.** The draft you return must be the one that was evaluated last.
 # * **Judging a pattern by accuracy alone.** Read the calls, the losses and the failure modes beside it.
@@ -1739,27 +1883,27 @@ if __name__ == "__main__":
 # ## 11. Self-check
 #
 # 1. Suppose the gated chain scores above the one-call baseline in section 2's table. Which conclusion does the lesson's design support?
-#    - (a) Splitting a task into steps never costs anything, so a chain beats one call on any task and any model.
+#    - (a) Splitting a task into steps never costs anything extra, so a chain beats one call on any task, with any model and any prompt.
 #    - (b) The gates made the model smarter, because a model that knows it will be checked answers more carefully.
-#    - (c) In this script a call slips more as it carries more jobs and a gate stops some slips early; whether a real model's slips grow with load needs its own test.
-#    - (d) The retry did all of the work, so the gates could be removed without changing what the table shows.
+#    - (c) In this script a call slips more as it carries more jobs and a gate stops some slips early; a real model needs its own test.
+#    - (d) The retry did all of the work, so the gates could be removed without changing what the table shows, on this task or on any other task with steps.
 #
 # 2. On a hard item the script picks the decoy with the planted rate on each draw, and the draws are otherwise independent. Roughly how often is the majority of
 #    five draws the decoy, and what follows for a high agreement score on such an item?
 #    - (a) About 4 times in 100, so a high agreement is a reliable sign that the answer is right.
-#    - (b) About 1 time in 3, so a high agreement usually means the draws found the true label.
+#    - (b) About 1 time in 3, so a high agreement usually means the draws found the true label, and five votes beat one draw on hard items as on easy ones.
 #    - (c) About 99 times in 100, so every hard item is lost and a vote should never be used.
 #    - (d) About 2 times in 3, so a vote does worse there than one draw, and a high agreement can be agreement on the decoy.
 #
 # 3. At a slip scale of zero the single call is already right on every task. Which statement holds for all five patterns?
-#    - (a) Each adds correct answers, because extra structure is a form of correctness.
-#    - (b) None can add a correct answer; whether one still spends extra calls depends on whether it ever needs a second call.
+#    - (a) Each adds correct answers, because extra structure is itself a form of correctness that a single call cannot have.
+#    - (b) None can add a correct answer; whether one still spends extra calls depends on whether it needs a second call.
 #    - (c) None can run, because a slip probability of zero is not allowed.
-#    - (d) Each spends extra calls, because a gate, a vote, a plan or a loop always makes at least one more ask.
+#    - (d) Each spends extra calls, because a gate, a vote, a plan or a loop always makes at least one more ask of the model.
 #
 # 4. Why does evaluate-and-refine use `check_message` (code) rather than another model call as its evaluator?
 #    - (a) The loop can only improve a draft as far as its evaluator tells good from bad; an executable check cannot be talked round, while a judge that accepts failing drafts lets them through.
-#    - (b) Code is always cheaper than a model call, so the loop with a code evaluator costs fewer calls at every cap.
+#    - (b) Code is always cheaper than a model call, so the loop with a code evaluator costs fewer calls at every cap, and that saving in calls, not the quality of its verdicts, is the reason to prefer it.
 #    - (c) A model call cannot read a draft that another model wrote, so only code can act as the evaluator.
 #    - (d) Code can see the whole draft at once, while a model call is shown only the first problem in it.
 #

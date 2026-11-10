@@ -692,25 +692,36 @@ def boundary_crossings(components, flows):
 
 
 # Public checks — run these as often as you like.
+def _raised(kind, call):
+    """Given: the exception of class `kind` that call() raised, or None when it returned normally."""
+    try:
+        call()
+    except kind as exc:
+        return exc
+    return None
+
+
 _TINY = {"a": {"trust": 0, "tags": frozenset()}, "b": {"trust": 2, "tags": frozenset()}, "c": {"trust": 2, "tags": frozenset()},
-         "d": {"trust": 1, "tags": frozenset()}}
+         "d": {"trust": 1, "tags": frozenset()}, "p": {"trust": 3, "tags": frozenset()}}
 
 
 def _check_boundary_crossings() -> None:
     flows = [{"id": "fz", "src": "a", "dst": "b", "tags": frozenset()}, {"id": "fy", "src": "b", "dst": "c", "tags": frozenset()},
              {"id": "fm", "src": "d", "dst": "a", "tags": frozenset()}, {"id": "fb", "src": "c", "dst": "a", "tags": frozenset()},
-             {"id": "fk", "src": "a", "dst": "d", "tags": frozenset()}]
+             {"id": "fk", "src": "a", "dst": "d", "tags": frozenset()}, {"id": "fs", "src": "b", "dst": "b", "tags": frozenset()},
+             {"id": "fw", "src": "p", "dst": "a", "tags": frozenset()}]
     got = boundary_crossings(_TINY, flows)
-    assert dict(got) == {"fz": "up", "fm": "down", "fb": "down", "fk": "up"}, (
-        f"got {dict(got)}. A flow crosses a boundary only when its two ends differ in trust; 'up' is from a lower "
-        "trust level to a higher one. A flow between two components at the same level is not a crossing.")
-    assert list(got) == ["fz", "fm", "fb", "fk"], "keep the order of `flows` (the ids here are not in sorted order); a difference of one level counts"
-    try:
-        boundary_crossings(_TINY, [{"id": "q", "src": "a", "dst": "nowhere", "tags": frozenset()}])
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("a flow that names an unknown component must raise ValueError")
+    assert dict(got) == {"fz": "up", "fm": "down", "fb": "down", "fk": "up", "fw": "down"}, (
+        f"got {dict(got)}. A flow crosses a boundary only when its two ends differ in trust, by one level or by three; 'up' is "
+        "from a lower trust level to a higher one. A flow between two components at the same level, or from a component to "
+        "itself, is not a crossing.")
+    assert list(got) == ["fz", "fm", "fb", "fk", "fw"], "keep the order of `flows` (the ids here are not in sorted order); a difference of one level counts"
+    assert dict(boundary_crossings(_TINY, [])) == {}, "no flows, no crossings: an empty dict"
+    for bad in ({"id": "q", "src": "a", "dst": "nowhere", "tags": frozenset()},
+                {"id": "q", "src": "nowhere", "dst": "a", "tags": frozenset()}):
+        assert _raised(ValueError, lambda: boundary_crossings(_TINY, [bad])) is not None, (
+            f"a flow whose {'dst' if bad['dst'] == 'nowhere' else 'src'} names an unknown component must "
+            "raise ValueError: call check_architecture, which checks both ends")
     print("exercise 1 looks right")
 
 
@@ -742,10 +753,11 @@ _try("boundaries", _show_crossings, needs=("exercise 1",))
 # reachable by whoever controls that source.
 #
 # Write `tainted_components(components, flows)`. The **sources** are the components at trust 0. A flow
-# tagged `"content"` carries its source's text to its destination; a flow without that tag (an approval
-# signal, say) carries none. Return the sorted list of component names that are the destination of a
-# content flow from a source or from an already-tainted component. A source is in the list only if some
-# content flow from a tainted or source component reaches it. The architecture has cycles: do not loop.
+# tagged `"content"` carries its source's text to its destination, whatever other tags it has; a flow
+# without that tag (an approval signal, say) carries none. Return the sorted list of component names that
+# are the destination of a content flow from a source or from an already-tainted component. A source is in
+# the list only if some content flow from a tainted or source component reaches it. The architecture has
+# cycles: do not loop. A flow that names a component not in `components` raises `ValueError`, whatever its tags.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -768,9 +780,10 @@ def tainted_components(components, flows):
 
     Args:
         components: dict, name -> {"trust": int, "tags": frozenset}. The sources are those with trust 0.
-        flows: list of dicts with "id", "src", "dst", "tags". Only flows tagged "content" carry text.
+        flows: list of dicts with "id", "src", "dst", "tags". Only flows tagged "content" (among any
+            other tags) carry text.
 
-    A flow that names an unknown component raises ``ValueError``. Cycles are normal.
+    A flow that names an unknown component raises ``ValueError``, whatever its tags. Cycles are normal.
 
     Returns:
         A sorted list of names: those that are the destination of a content flow whose source is a
@@ -792,18 +805,96 @@ def _check_tainted_components() -> None:
     n = frozenset
     comps = {"s": {"trust": 0, "tags": n()}, "zz": {"trust": 2, "tags": n()}, "aa": {"trust": 2, "tags": n()},
              "c": {"trust": 2, "tags": n()}, "t": {"trust": 1, "tags": n()}, "e": {"trust": 2, "tags": n()},
-             "w": {"trust": 0, "tags": n()}}
+             "w": {"trust": 0, "tags": n()}, "q": {"trust": 2, "tags": n()}}
     fl = [{"id": "3", "src": "aa", "dst": "zz", "tags": n({"content"})},
           {"id": "2", "src": "zz", "dst": "aa", "tags": n({"content"})},
           {"id": "1", "src": "s", "dst": "zz", "tags": n({"content"})},
           {"id": "4", "src": "aa", "dst": "c", "tags": n({"approval"})},
           {"id": "5", "src": "t", "dst": "e", "tags": n({"content"})},
-          {"id": "6", "src": "zz", "dst": "s", "tags": n({"content"})}]
+          {"id": "6", "src": "zz", "dst": "s", "tags": n({"content"})},
+          {"id": "7", "src": "q", "dst": "zz", "tags": n({"content"})}]
     got = tainted_components(comps, fl)
     assert isinstance(got, list) and got == ["aa", "s", "zz"], (
-        f"got {got}. Follow content flows as far as they go, however the flows are listed (aa to zz is listed before s to zz) and "
-        "round the cycle; do not follow a flow that is not tagged content (aa to c); only trust-0 components are sources (t, at "
+        f"got {got}. Follow content flows as far as they go, from each flow's source to its destination and never backwards, "
+        "however the flows are listed (aa to zz is listed before s to zz) and round the cycle; do not follow a flow that is not tagged content (aa to c); only trust-0 components are sources (t, at "
         "trust 1, is not); a source is listed only if a tainted component sends it text (s yes, w no); return a sorted list.")
+    assert _raised(ValueError, lambda: tainted_components(comps, fl + [{"id": "8", "src": "s", "dst": "nowhere", "tags": n({"content"})}])) \
+        is not None, "a flow that names a component not in `components` must raise ValueError"
+    assert _raised(ValueError, lambda: tainted_components(comps, fl + [{"id": "8", "src": "c", "dst": "nowhere", "tags": n({"approval"})}])) \
+        is not None, "a flow that names a component not in `components` raises ValueError whatever it carries, an approval flow too"
+    src, core = {"trust": 0, "tags": n()}, {"trust": 2, "tags": n()}
+    two = tainted_components({"s1": src, "s2": src, "a": core, "b": core},
+                             [{"id": "1", "src": "s1", "dst": "a", "tags": n({"content"})},
+                              {"id": "2", "src": "s2", "dst": "b", "tags": n({"content"})}])
+    assert two == ["a", "b"], f"got {two}: every trust-0 component is a source, s2 as well as s1"
+    tagged = tainted_components({"s": src, "a": core, "b": core},
+                                [{"id": "1", "src": "s", "dst": "a", "tags": n({"content", "agent_to_agent"})},
+                                 {"id": "2", "src": "a", "dst": "b", "tags": n({"content", "persistent_memory"})}])
+    assert tagged == ["a", "b"], (f"got {tagged}: a flow tagged content carries text whatever other tags it has (these two are "
+                                  "also tagged agent_to_agent and persistent_memory)")
+    links = [("s", "k0")] + [(f"k{i}", f"k{i + 1}") for i in range(11)]
+    chain = tainted_components(dict({"s": src}, **{f"k{i}": core for i in range(12)}),
+                               [{"id": f"c{i}", "src": a, "dst": b, "tags": n({"content"})} for i, (a, b) in reversed(list(enumerate(links)))])
+    assert chain == sorted(f"k{i}" for i in range(12)), (
+        f"got {chain}: text passes along a chain of any length, here twelve links listed last link first; and the list is "
+        "sorted as strings (k10 before k2)")
+    assert tainted_components({"a": core, "b": core}, [{"id": "1", "src": "a", "dst": "b", "tags": n({"content"})}]) == [], \
+        "no trust-0 component, no source: nothing is tainted"
+    assert tainted_components({"s": src, "a": core}, []) == [], "no flows: nothing is reached, and a source on its own is not listed"
+    alone = tainted_components({"s": src, "x": core, "d": core},
+                               [{"id": "1", "src": "s", "dst": "x", "tags": n({"content"})},
+                                {"id": "2", "src": "d", "dst": "d", "tags": n({"content"})}])
+    assert alone == ["x"], f"got {alone}: d sends text only to itself and nothing tainted reaches it, so it carries no outside text"
+    lone = tainted_components({"src": {"trust": 0, "tags": n()}, "x": {"trust": 2, "tags": n()}},
+                              [{"id": "1", "src": "src", "dst": "x", "tags": n({"content"})}])
+    assert lone == ["x"], (f"got {lone}: a source is listed only when tainted text reaches it, not because it sends text "
+                           "(here nothing sends text back to src)")
+    relay = tainted_components({"s": {"trust": 0, "tags": n()}, "person": {"trust": 3, "tags": n()},
+                                "x": {"trust": 2, "tags": n()}, "w": {"trust": 0, "tags": n()}},
+                               [{"id": "1", "src": "s", "dst": "person", "tags": n({"content"})},
+                                {"id": "2", "src": "person", "dst": "x", "tags": n({"content"})},
+                                {"id": "3", "src": "x", "dst": "w", "tags": n({"approval"})}])
+    assert relay == ["person", "x"], (
+        f"got {relay}: every tainted component passes text on, a person at trust 3 included (so x is tainted); and a flow "
+        "that is not tagged content carries no text, even into a source (so w is not listed)")
+    loop = tainted_components({"s": {"trust": 0, "tags": n()}, "x": {"trust": 2, "tags": n()}},
+                              [{"id": "1", "src": "s", "dst": "s", "tags": n({"content"})},
+                               {"id": "2", "src": "s", "dst": "x", "tags": n({"content"})}])
+    assert loop == ["s", "x"], (
+        f"got {loop}: a source that sends content to itself is the destination of a content flow from a source, so it is "
+        "listed (unlike exercise 1, where a flow to itself crosses no boundary, here a self-loop is followed like any flow)")
+    into = tainted_components({"s": {"trust": 0, "tags": n()}, "w": {"trust": 0, "tags": n()},
+                               "q": {"trust": 2, "tags": n()}, "x": {"trust": 2, "tags": n()}},
+                              [{"id": "1", "src": "s", "dst": "x", "tags": n({"content"})},
+                               {"id": "2", "src": "q", "dst": "w", "tags": n({"content"})}])
+    assert into == ["x"], (
+        f"got {into}: a source counts only when text from a tainted component or a source reaches it; a content flow into "
+        "a source from a component that carries no outside text (q here) does not list it")
+    for kind, want in ((n(), []), (n({"agent_to_agent"}), []), (n({"unattended"}), []), (n({"persistent_memory"}), []), (n({"content", "approval"}), ["a"])):
+        one = tainted_components({"s": src, "a": core}, [{"id": "1", "src": "s", "dst": "a", "tags": kind}])
+        assert one == want, (
+            f"got {one} for a single flow from s to a tagged {sorted(kind) or 'with nothing at all'}: read again which tag decides "
+            "whether a flow carries text, and whether any other tag changes that")
+    roles = tainted_components({"s": src, "fetch": {"trust": 1, "tags": n({"tool", "reads_untrusted"})},
+                                "p": {"trust": 3, "tags": n({"human", "approves"})}, "x": core, "y": core},
+                               [{"id": "1", "src": "s", "dst": "p", "tags": n({"content"})},
+                                {"id": "2", "src": "p", "dst": "x", "tags": n({"content"})},
+                                {"id": "3", "src": "fetch", "dst": "y", "tags": n({"content"})}])
+    assert roles == ["p", "x"], (
+        f"got {roles}: a component's own tags play no part in this exercise; which components are sources, and which pass "
+        "text on, is decided as the exercise says, whatever tags they carry")
+    relays = tainted_components({"s": src, "fetch": {"trust": 1, "tags": n({"tool", "reads_untrusted"})},
+                                 "mem": {"trust": 2, "tags": n({"persistent_memory"})}, "x": core,
+                                 "gate": {"trust": 1, "tags": n({"llm"})}, "y": core},
+                                [{"id": "1", "src": "s", "dst": "fetch", "tags": n({"content"})},
+                                 {"id": "2", "src": "fetch", "dst": "mem", "tags": n({"content"})},
+                                 {"id": "3", "src": "mem", "dst": "x", "tags": n({"content"})},
+                                 {"id": "4", "src": "s", "dst": "gate", "tags": n({"content"})},
+                                 {"id": "5", "src": "gate", "dst": "y", "tags": n({"content"})}])
+    assert relays == ["fetch", "gate", "mem", "x", "y"], (
+        f"got {relays}: the list holds the destination of a content flow from a source or from an already-tainted component; "
+        "read again which components count as already tainted once text has reached them (on the way here: a trust-1 "
+        "fetcher, a trust-1 gate and a memory store)")
     print("exercise 2 looks right")
 
 
@@ -860,8 +951,10 @@ print(f"{len(RULES)} rules over {len({r[0] for r in RULES})} of the {len(ASI_IDS
 # Write `risk_register(components, flows, tainted, rules)`: a dict with **one key for every category in
 # `ASI_IDS`**, each value the sorted list of ids of the items exposed to it (component names, or flow ids
 # for a flow rule). An item matches a rule when it carries **all** the rule's tags and, if the rule needs
-# taint, it is tainted. An item can match two rules of one category and must be listed once. A rule that
-# names a category not in `ASI_IDS`, or a scope other than the two, raises `ValueError`.
+# taint, it is tainted. Taint comes only from the `tainted` argument (any collection of names): a component
+# is tainted when its name is in it, whatever its trust level, and a flow when its destination is. An item
+# can match two rules of one category and must be listed once. A rule that names a category not in
+# `ASI_IDS` (they are written exactly as there), or a scope other than the two, raises `ValueError`.
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
@@ -884,7 +977,8 @@ def risk_register(components, flows, tainted, rules):
 
     Args:
         components, flows: as in exercise 1.
-        tainted: the names from exercise 2 (a flow is reached when its destination is in this collection).
+        tainted: the names from exercise 2, any collection; the only source of taint (a component is tainted
+            when its name is in it, a flow when its destination is).
         rules: list of (category, scope, tags, needs_taint).
 
     A rule with a category outside ``ASI_IDS`` or a scope that is not "component" or "flow" raises ``ValueError``.
@@ -902,9 +996,9 @@ def risk_register(components, flows, tainted, rules):
 
 
 def _check_risk_register() -> None:
-    comps = {"m": {"trust": 2, "tags": frozenset({"persistent_memory", "tool"})},
+    comps = {"u": {"trust": 1, "tags": frozenset({"tool"})},                       # deliberately NOT in sorted order
              "t": {"trust": 1, "tags": frozenset({"tool", "sends_external"})},
-             "u": {"trust": 1, "tags": frozenset({"tool"})}}
+             "m": {"trust": 2, "tags": frozenset({"persistent_memory", "tool"})}}
     fl = [{"id": "f1", "src": "u", "dst": "t", "tags": frozenset({"agent_to_agent"})}]
     rules = [("ASI06", "component", frozenset({"persistent_memory"}), True),
              ("ASI02", "component", frozenset({"tool", "sends_external"}), True),
@@ -912,20 +1006,89 @@ def _check_risk_register() -> None:
              ("ASI07", "flow", frozenset({"agent_to_agent"}), True)]
     rules = rules + [("ASI03", "component", frozenset({"tool"}), False)]
     got = risk_register(comps, fl, ["t", "u"], rules)
+    assert all(type(v) is list for v in got.values()), f"got {got!r}: each value is a sorted list (not a tuple or a set)"
     assert list(got) == list(ASI_IDS), "one key for every category, in ASI_IDS order, including the empty ones"
     assert got["ASI06"] == [], "ASI06 needs taint and memory is not tainted here"
     assert got["ASI02"] == ["t"], (
         f"got {got['ASI02']}: the item matches two rules of the same category and is listed once; the tool 'u' lacks "
         "'sends_external', and a rule needs ALL of its tags")
-    assert got["ASI03"] == ["m", "t", "u"], f"got {got['ASI03']}: each category's list is sorted"
+    assert got["ASI03"] == ["m", "t", "u"], (
+        f"got {got['ASI03']}: each category's list is sorted, not in the order of `components` (u, t, m here)")
     got = risk_register(comps, fl + [{"id": "f2", "src": "t", "dst": "u", "tags": frozenset({"agent_to_agent"})}], ["t"], rules)
     assert got["ASI07"] == ["f1"], "a flow is reached when its DESTINATION is tainted: f1 goes to t, f2 goes to u"
-    for bad in (("ASI11", "component", frozenset(), False), ("ASI01", "edge", frozenset(), False)):
-        try:
-            risk_register(comps, fl, [], [bad])
-        except ValueError:
-            continue
-        raise AssertionError("a category outside ASI_IDS, or a scope that is neither component nor flow, must raise ValueError")
+    later = [{"id": "f3", "src": "u", "dst": "t", "tags": frozenset({"agent_to_agent"})}] + fl
+    got = risk_register(comps, later, ["t"], rules)
+    assert got["ASI07"] == ["f1", "f3"], f"got {got['ASI07']}: flow ids are sorted too, not in the order of `flows` (f3, f1 here)"
+    got = risk_register(comps, fl, ("t",), rules)
+    assert got["ASI07"] == ["f1"], f"got {got['ASI07']}: `tainted` may be any collection of names, a tuple here"
+    empty = risk_register(comps, fl, [], [])
+    assert list(empty) == list(ASI_IDS) and all(v == [] for v in empty.values()), (
+        f"got {empty!r}: with no rules every category is still there, each an empty list")
+    outside = {"web": {"trust": 0, "tags": frozenset({"llm"})}, "bot": {"trust": 2, "tags": frozenset({"llm"})}}
+    got = risk_register(outside, [], ["bot"], [("ASI01", "component", frozenset({"llm"}), True)])
+    assert got["ASI01"] == ["bot"], (
+        f"got {got['ASI01']}: taint comes only from `tainted`; a trust-0 component that is not in it is not tainted here")
+    many = {n: {"trust": 2, "tags": frozenset({"persistent_memory"})} for n in ("k5", "k3", "k1", "k4", "k2")}
+    got = risk_register(many, [], ["k4", "k1", "k5", "k2", "k3"], [("ASI06", "component", frozenset({"persistent_memory"}), True)])
+    assert got["ASI06"] == ["k1", "k2", "k3", "k4", "k5"], (
+        f"got {got['ASI06']}: every component in `tainted` counts as tainted, however long the list is, and the list "
+        "is sorted, not in the order of `components` or of `tainted`")
+    mixed = {"a2a": {"trust": 2, "tags": frozenset({"agent_to_agent"})}}
+    odd = [{"id": "f9", "src": "a2a", "dst": "a2a", "tags": frozenset({"persistent_memory"})}]
+    got = risk_register(mixed, odd, [], [("ASI07", "flow", frozenset({"agent_to_agent"}), False),
+                                         ("ASI06", "component", frozenset({"persistent_memory"}), False)])
+    assert got["ASI07"] == [] and got["ASI06"] == [], (
+        f"got ASI07 {got['ASI07']}, ASI06 {got['ASI06']}: a flow rule looks only at flows and a component rule only at "
+        "components, whatever tags the other kind carries")
+    got = risk_register(comps, fl, [], [("ASI03", "component", frozenset(), False)])
+    assert got["ASI03"] == ["m", "t", "u"], (
+        f"got {got['ASI03']}: a rule with no tags asks for nothing, so every component carries all of them; sorted, not in "
+        "the order of `components`")
+    for bad in (("ASI11", "component", frozenset(), False), ("ASI01", "edge", frozenset(), False),
+                ("ASI11", "component", frozenset({"nope"}), False), ("ASI01", "edge", frozenset({"nope"}), False),
+                ("asi01", "component", frozenset(), False)):
+        assert _raised(ValueError, lambda: risk_register(comps, fl, [], [bad])) is not None, (
+            f"rule {bad[:3]}: a category outside ASI_IDS (spelt exactly as there), or a scope that is neither component nor "
+            "flow, must raise ValueError whether or not the rule matches anything")
+    pair = [{"id": "f5", "src": "u", "dst": "t", "tags": frozenset({"agent_to_agent"})},
+            {"id": "f4", "src": "t", "dst": "m", "tags": frozenset({"agent_to_agent", "content"})}]
+    got = risk_register(comps, pair, [], [("ASI07", "flow", frozenset({"agent_to_agent", "content"}), False)])
+    assert got["ASI07"] == ["f4"], f"got {got['ASI07']}: a flow rule with two tags; read again what matching a rule asks of an item"
+    got = risk_register(comps, pair, [], [("ASI07", "flow", frozenset(), False)])
+    assert got["ASI07"] == ["f4", "f5"], f"got {got['ASI07']}: a flow rule with no tags; read again what matching a rule asks of an item, and sort"
+    ends = {"a2a": {"trust": 2, "tags": frozenset({"agent_to_agent"})}, "m": {"trust": 2, "tags": frozenset({"persistent_memory"})}}
+    via = [{"id": "g1", "src": "m", "dst": "a2a", "tags": frozenset({"persistent_memory"})},
+           {"id": "g2", "src": "a2a", "dst": "m", "tags": frozenset({"agent_to_agent"})}]
+    pools = [("ASI07", "flow", frozenset({"agent_to_agent"}), False), ("ASI06", "component", frozenset({"persistent_memory"}), False)]
+    got = risk_register(ends, via, [], pools)
+    assert got["ASI07"] == ["g2"], (f"got ASI07 {got['ASI07']}: whose tags does a flow rule read? Only the item it looks at counts, "
+                                    "not the components at either end")
+    assert got["ASI06"] == ["m"], (f"got ASI06 {got['ASI06']}: whose tags does a component rule read? Only the item it looks at counts, "
+                                   "not the flows into or out of it")
+    keys = {"web": {"trust": 0, "tags": frozenset({"holds_credentials"})}, "vault": {"trust": 2, "tags": frozenset({"holds_credentials"})}}
+    got = risk_register(keys, [], [], [("ASI03", "component", frozenset({"holds_credentials"}), False)])
+    assert got["ASI03"] == ["vault", "web"], (
+        f"got {got['ASI03']}: a component rule lists every component that carries its tags, a trust-0 one too; trust "
+        "matters only through `tainted`, and this rule does not need taint")
+    edge = {"web": {"trust": 0, "tags": frozenset({"llm"})}, "bot": {"trust": 2, "tags": frozenset({"llm"})}}
+    back = [{"id": "b1", "src": "bot", "dst": "web", "tags": frozenset({"agent_to_agent"})}]
+    got = risk_register(edge, back, ["web", "bot"], [("ASI01", "component", frozenset({"llm"}), True),
+                                                     ("ASI07", "flow", frozenset({"agent_to_agent"}), True)])
+    assert got["ASI01"] == ["bot", "web"] and got["ASI07"] == ["b1"], (
+        f"got ASI01 {got['ASI01']}, ASI07 {got['ASI07']}: both components are in `tainted` here; read again what makes a "
+        "component tainted, and a flow reached")
+    outer = {"w": {"trust": 0, "tags": frozenset()}, "v": {"trust": 2, "tags": frozenset()}}
+    got = risk_register(outer, [{"id": "o1", "src": "w", "dst": "v", "tags": frozenset({"agent_to_agent"})}], [],
+                        [("ASI07", "flow", frozenset({"agent_to_agent"}), True)])
+    assert got["ASI07"] == [], (
+        f"got {got['ASI07']}: this rule needs taint and `tainted` is empty; read again when a flow counts as reached")
+    cross = {"a": {"trust": 2, "tags": frozenset({"agent_to_agent"})}, "b": {"trust": 2, "tags": frozenset()}}
+    link = [{"id": "l1", "src": "a", "dst": "b", "tags": frozenset({"agent_to_agent"})}]
+    got = risk_register(cross, link, [], [("ASI08", "flow", frozenset({"agent_to_agent"}), False),
+                                          ("ASI07", "component", frozenset({"agent_to_agent"}), False)])
+    assert got["ASI08"] == ["l1"] and got["ASI07"] == ["a"], (
+        f"got ASI08 {got['ASI08']}, ASI07 {got['ASI07']}: two rules unlike any in RULES; read again which part of a rule "
+        "says whether it looks at components or at flows")
     print("exercise 3 looks right")
 
 
@@ -959,7 +1122,8 @@ _try("register", _show_register, needs=("exercise 2", "exercise 3"))
 #
 # Write `mitigation_checklist(register, controls)`: one row `(item, mitigation, categories)` for every
 # distinct `(item, mitigation)` pair the register calls for, where `categories` is the sorted **tuple** of
-# every category that asks for it. Sort the rows by item, then mitigation. A category that has exposed items but
+# every category that asks for it. Sort the rows by item, then mitigation. A register written by hand may hold only
+# some of the categories: take the categories from the register itself. A category that has exposed items but
 # no entry in `controls` raises `ValueError` naming it: a risk with no listed mitigation must not
 # vanish from the list in silence. A key present with an empty list *is* an entry: it adds no rows and does not raise.
 
@@ -998,7 +1162,8 @@ def mitigation_checklist(register, controls):
     """The mitigations each exposed item needs, merged across categories.
 
     Args:
-        register: dict category -> sorted list of item ids (exercise 3).
+        register: dict category -> sorted list of item ids (exercise 3, or written by hand with only some
+            of the categories as keys).
         controls: dict category -> list of mitigation ids.
 
     A category with exposed items and no key in ``controls`` raises ``ValueError``. A key with an empty
@@ -1017,19 +1182,22 @@ def mitigation_checklist(register, controls):
 
 
 def _check_mitigation_checklist() -> None:
-    reg = {"ASI02": ["t", "u"], "ASI03": ["t"], "ASI05": []}
-    ctl = {"ASI02": ["a", "b"], "ASI03": ["b", "c"]}
+    reg = {"ASI03": ["t"], "ASI02": ["t", "u"], "ASI05": []}       # keys and mitigations deliberately NOT in sorted order
+    ctl = {"ASI02": ["b", "a"], "ASI03": ["c", "b"]}
     got = mitigation_checklist(reg, ctl)
+    assert all(type(r) is tuple and type(r[2]) is tuple for r in got), (
+        f"got {got!r}: each row is an (item, mitigation, categories) tuple, not a list, and categories is a tuple too")
     want = [("t", "a", ("ASI02",)), ("t", "b", ("ASI02", "ASI03")), ("t", "c", ("ASI03",)), ("u", "a", ("ASI02",)), ("u", "b", ("ASI02",))]
     assert [tuple(r) for r in got] == want, (
-        f"got {[tuple(r) for r in got]}. One row per distinct (item, mitigation), sorted by item then mitigation; "
-        "when two categories ask for the same pair the row says both, as a sorted tuple.")
-    try:
-        mitigation_checklist({"ASI09": ["h"]}, {"ASI02": ["a"]})
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("a category with exposed items and no mitigation listed must raise ValueError")
+        f"got {[tuple(r) for r in got]}. One row per distinct (item, mitigation), sorted by item AND then by mitigation; "
+        "when two categories ask for the same pair the row says both, as a sorted tuple (categories sorted, not in register order).")
+    for reg, ctl in (({"ASI09": ["h"]}, {"ASI02": ["a"]}), ({"ASI02": ["a"], "ASI09": ["h"]}, {"ASI02": ["x"]}), ({"ASI09": ["h"]}, {})):
+        exc = _raised(ValueError, lambda: mitigation_checklist(reg, ctl))
+        assert exc is not None, f"register {reg}, controls {ctl}: a category with exposed items and no mitigation listed must raise ValueError"
+        assert "ASI09" in str(exc), f"the ValueError says {str(exc)!r}: name the category that has no mitigation listed"
+    assert mitigation_checklist({}, {}) == [] and mitigation_checklist({"ASI01": []}, {}) == [], "nothing exposed: an empty list"
+    assert mitigation_checklist({"ASI09": ["h"]}, {"ASI09": []}) == [], \
+        "a key with an empty list is an entry: it adds no rows and does not raise"
     print("exercise 4 looks right")
 
 
@@ -1057,8 +1225,9 @@ _try("checklist", _show_checklist, needs=("exercise 2", "exercise 3", "exercise 
 # in place. The next cell gives them: read how each decides. A checker here is deliberately fragile, and a
 # mitigation has no checker at all, because not everything can be tested yet.
 #
-# Write `run_checks(checklist, arch, checkers)` that runs the checker of every row and returns the failing
-# rows as `(item, mitigation, reason)` in checklist order, with reason:
+# Write `run_checks(checklist, arch, checkers)` that calls `checker(arch, item)` for every row, passing the same `arch`
+# object you were given (not a copy), and returns the failing rows as `(item, mitigation, reason)` in checklist order
+# (a row that appears twice and fails both times is reported twice), with reason:
 #
 # * `"missing"`: the checker returned anything other than the exact value `True`;
 # * `"error"`: the checker raised an `Exception`. A check that cannot run is not a pass: **fail closed**;
@@ -1098,7 +1267,7 @@ def run_checks(checklist, arch, checkers):
 
     Args:
         checklist: list of (item, mitigation, categories), as from exercise 4.
-        arch: the architecture dict; passed to each checker unchanged.
+        arch: the architecture dict; the same object (not a copy) is passed to each checker.
         checkers: dict mitigation id -> function ``checker(arch, item)``.
 
     Returns:
@@ -1108,7 +1277,7 @@ def run_checks(checklist, arch, checkers):
 
     Example:
         >>> run_checks([("x", "m1", ()), ("x", "m2", ()), ("x", "m3", ())], {},
-        ...            {"m1": lambda a, i: True, "m2": lambda a, i: 1 / 0})
+        ...            {"m1": lambda arch, item: True, "m2": lambda arch, item: 1 / 0})
         [('x', 'm2', 'error'), ('x', 'm3', 'no checker')]
     """
     # YOUR CODE HERE
@@ -1116,29 +1285,61 @@ def run_checks(checklist, arch, checkers):
 
 
 def _check_run_checks() -> None:
-    rows = [("y", "m1", ()), ("x", "m2", ()), ("x", "m3", ()), ("y", "m4", ()), ("x", "m5", ()), ("x", "m6", ())]
+    rows = [("y", "m1", ()), ("x", "m2", ()), ("x", "m3", ()), ("y", "m4", ()), ("x", "m5", ()), ("x", "m6", ()), ("x", "m7", ()),
+            ("y", "m8", ())]
+    rows = rows + [("x", "m9", ())]
     calls = []
 
-    def seen(a, i):
-        calls.append(i)
-        return a == {"k": 1} and i in ("x", "y")
-    ck = {"m1": seen, "m2": lambda a, i: {}["boom"], "m4": lambda a, i: "yes", "m5": lambda a, i: False, "m6": lambda a, i: 1}
-    got = [tuple(r) for r in run_checks(rows, {"k": 1}, ck)]
+    given = {"k": 1}
+
+    def seen(arch, item):
+        calls.append(item)
+        return arch is given and item in ("x", "y")
+    ck = {"m1": seen, "m2": lambda arch, item: {}["boom"], "m4": lambda arch, item: "yes", "m5": lambda arch, item: False,
+          "m6": lambda arch, item: 1, "m7": lambda arch, item: None, "m8": lambda arch, item: 1.0, "m9": lambda arch, item: []}
+    raw = run_checks(rows, given, ck)
+    assert all(type(r) is tuple for r in raw), f"got {raw!r}: each failing row is an (item, mitigation, reason) tuple, not a list"
+    got = [tuple(r) for r in raw]
     assert calls == ["y"], f"call checker(arch, item) exactly once per row, with the architecture you were given; got calls {calls}"
-    assert got == [("x", "m2", "error"), ("x", "m3", "no checker"), ("y", "m4", "missing"), ("x", "m5", "missing"), ("x", "m6", "missing")], (
-        f"got {got}. Only an exact True passes ('yes' is not True); a checker that raises is an 'error', not a pass and "
-        "not a crash; a mitigation with no checker is 'no checker'; keep the checklist's order.")
+    assert ("y", "m1", "missing") not in [tuple(r) for r in raw], (
+        "the checker was given a different architecture object: pass the same `arch` you were given, not a copy")
+    assert got == [("x", "m2", "error"), ("x", "m3", "no checker"), ("y", "m4", "missing"), ("x", "m5", "missing"), ("x", "m6", "missing"),
+                   ("x", "m7", "missing"), ("y", "m8", "missing"), ("x", "m9", "missing")], (
+        f"got {got}. Only an exact True passes ('yes', 1, 1.0 and [] are not True); a checker that returns None answered, so it is "
+        "'missing', not an 'error'; a checker that raises is an 'error', not a pass and not a crash; a mitigation with no checker "
+        "is 'no checker'; keep the checklist's order.")
+    order = []
+
+    def note(arch, item):
+        order.append(item)
+        return item == "keep"
+    again = run_checks([("drop", "m", ()), ("keep", "m", ()), ("drop", "m", ())], given, {"m": note})
+    assert order == ["drop", "keep", "drop"], (
+        f"calls {order}: call the checker once for every row, in checklist order, even when a row repeats an earlier one")
+    assert [tuple(r) for r in again] == [("drop", "m", "missing"), ("drop", "m", "missing")], (
+        f"got {again}: only the rows whose checker said False fail, and a row that appears twice and fails is reported twice")
+    assert list(run_checks([], given, {})) == [], "an empty checklist has no failures"
+    odd = run_checks([("x", "t", ())], {}, {"t": lambda arch, item: len(item) + "s"})
+    assert [tuple(r) for r in odd] == [("x", "t", "error")], \
+        f"got {odd}: a checker that raises any Exception (a TypeError here) is an 'error'"
+    class _Odd(Exception):
+        """An exception class of a checker's own: no tuple of built-in exceptions names it."""
+
+    def own(arch, item):
+        raise _Odd("a checker's own failure")
+    assert _raised(_Odd, lambda: run_checks([("x", "o", ())], {}, {"o": own})) is None, (
+        "a checker raised an exception class of its own and run_checks let it out: catch every "
+        "Exception, not a list of the ones you expect (KeyError, TypeError, ...)")
+    mine = run_checks([("x", "o", ())], {}, {"o": own})
+    assert [tuple(r) for r in mine] == [("x", "o", "error")], \
+        f"got {mine}: a checker that raises an exception of its own class is an 'error' too"
     class _Halt(BaseException):
         """Stands in for the notebook's time limit, which is not an Exception either."""
 
     def halt(arch, item):
         raise _Halt()
-    try:
-        run_checks([("x", "h", ())], {}, {"h": halt})
-    except _Halt:
-        pass
-    else:
-        raise AssertionError("catch Exception, not BaseException: the time limit that protects this notebook must get through")
+    assert _raised(_Halt, lambda: run_checks([("x", "h", ())], {}, {"h": halt})) is not None, (
+        "catch Exception, not BaseException: the time limit that protects this notebook must get through")
     print("exercise 5 looks right")
 
 
@@ -1217,27 +1418,27 @@ _try("hardening", _show_hardening, needs=("exercise 2", "exercise 3", "exercise 
 #
 # 1. A teammate says the agent is safe because the only entry point for outside text is the web fetcher,
 #    and the fetcher is sandboxed. What does your taint result say about that?
-#    - (a) Nothing: the entry points are the only places where a threat model needs to look.
+#    - (a) Nothing: the entry points are the only places where a threat model needs to look, and the fetcher is the only one.
 #    - (b) Other components read and pass on the fetcher's output, so the exposure sits downstream.
-#    - (c) A sandbox on one component makes every component that it feeds trusted as well.
+#    - (c) A sandbox on one component makes every component that it feeds trusted as well, whatever they do with its text.
 #    - (d) Taint matters only for the components that are able to send mail outside.
 #
 # 2. Why is a flow that carries only an approval signal left out of the taint propagation?
-#    - (a) Approvals are always honest, so nothing needs to be tracked through them.
-#    - (b) A signal is encrypted in transit, so nothing can be injected into it.
+#    - (a) Approvals are always honest, so nothing needs to be tracked through them on the way to the next step.
+#    - (b) A signal is encrypted in transit, so nothing can be injected into it by anyone on the path.
 #    - (c) It carries a constrained value, not free text a receiver reads as instructions.
-#    - (d) It forms a cycle, and cycles are skipped by the propagation to avoid looping.
+#    - (d) It forms a cycle, and cycles are skipped by the propagation so that it cannot loop for ever on two components.
 #
 # 3. `run_checks` finds that a checker raised `KeyError`. What is the sound way to report the row?
 #    - (a) Passing, because nothing was found to be wrong with the configuration.
-#    - (b) Skipped, because a broken test says nothing either way about the item.
+#    - (b) Skipped, because a broken test says nothing either way about the item, so it counts neither for nor against it.
 #    - (c) Raise the `KeyError` to the caller so the whole run stops at that row.
 #    - (d) Failing as an error, since a check that could not run is no evidence of it.
 #
 # 4. After every mitigation with a checker is in place, some rows still fail. What does that tell you?
-#    - (a) Those mitigations cannot be shown by this suite, a gap to close and not to hide.
+#    - (a) Those mitigations have no checker yet, so this suite cannot show them: a gap to close, not to hide.
 #    - (b) The register has too many categories for the checklist to be completed.
-#    - (c) The configuration is wrong in some way that the checkers are unable to find.
+#    - (c) The configuration is wrong in some way that the checkers cannot find, so more checkers would turn the rows green.
 #    - (d) The checks should be dropped from the run so that the board reads all green.
 #
 # Answers come with this lesson's worked solution when you enrol on Synapsa.
@@ -1268,7 +1469,7 @@ if __name__ == "__main__":
 # * **Catching every exception, `BaseException` included.** The time limit that protects your notebook is
 #   an exception too; swallowing it hides a hung check.
 # * **Trusting a green board.** The checkers here read configuration; they do not attack anything. A passing
-#   run says the settings are present, not that the system resists a real injection (see the next lesson).
+#   run says the settings are present, not that the system resists a real injection (a later lesson in this track).
 
 # %% [markdown]
 # ## 9. What this lesson does NOT cover
@@ -1283,6 +1484,9 @@ if __name__ == "__main__":
 #   but "and" in that of ASI03, and the lesson keeps its spelling. Titles of the list: OWASP GenAI Security Project,
 #   OWASP Top 10 for Agentic Applications 2026, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/).
 #   Check them against the release you use.
+# * **A user who is not trusted.** The seed treats the assistant's user as a trusted operator (trust 3), so direct
+#   injection by the user, which ASI01 also covers, is outside this model. A public-facing assistant would put the user
+#   at trust 0, which makes `f01` an entry point.
 # * **Attacking the system.** The checks read configuration. Measuring how often a defence stops real injections
 #   needs attacks, a labelled set and a score; that is a different lesson.
 # * **Automatic discovery.** The architecture is typed in. Extracting it from a running system or from a tool

@@ -87,8 +87,8 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # %% [markdown]
 # # T04-L07 · An environment for a tool-using agent: reset, step and reward, and a group-relative update that learns which tool to call
 #
-# **You will build:** a small environment in the shape that the environment hubs for reinforcement
-# learning use (`reset`, `step`, an observation that carries `done` and `reward`), twenty multi-step
+# **You will build:** a small environment in the shape that the environment hub this lesson follows (OpenEnv)
+# uses for reinforcement learning (`reset`, `step`, an observation that carries `done` and `reward`), twenty multi-step
 # tool tasks to run in it, and a tabular softmax policy trained on those tasks with a group-relative
 # advantage update. Then you will measure what the environment's *reward* does to the agent: the same
 # training run, pointed at a reward for outcomes and at a reward for tool calls.
@@ -99,7 +99,8 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # By the end you will be able to:
 #
 # 1. Implement the dynamics, the reward and the `reset` / `step` / `state` interface of a small tool
-#    environment, following the conventions of the environment hubs, and prove them on a scripted episode.
+#    environment, following the conventions of the environment hub this lesson follows (OpenEnv), and prove them
+#    on a scripted episode.
 # 2. Implement episode collection with a softmax policy, the group-relative advantage with its
 #    zero-variance case, the policy gradient of a tabular softmax, and a group-relative training loop.
 # 3. Measure success rate, average steps and the fraction of groups that teach nothing, over a fixed set
@@ -128,7 +129,7 @@ print("ready on " + commons_host() + ("; fetched " + ", ".join(_fetched) if _fet
 # **New to some of that? These are good places to learn it** (free to read online first, then paid books). You do not need any of them if the list above already reads as familiar.
 #
 # - [Gymnasium documentation, Basic Usage](https://gymnasium.farama.org/introduction/basic_usage/) · Farama Foundation · *free* — shows reset and step, and the terminated and truncated flags, the convention the environment you write follows
-# - [OpenEnv documentation](https://huggingface.co/docs/openenv) · Hugging Face and the OpenEnv project · *free* — the environment hub whose reset, step and observation conventions this lesson mirrors, and where its current interface is documented
+# - [OpenEnv documentation](https://huggingface.co/docs/openenv) · the OpenEnv project (github.com/openenv; documentation hosted by Hugging Face) · *free* — the environment hub whose reset, step and observation conventions this lesson mirrors, and where its current interface is documented
 # - [Spinning Up in Deep RL: Part 3, Intro to Policy Optimization](https://spinningup.openai.com/en/latest/spinningup/rl_intro3.html) · OpenAI (Joshua Achiam) · *free* — derives the gradient of the log-probability of a sampled action and why a baseline such as a group mean leaves it unbiased, which is exercises 6 and 7
 # - [DeepSeekMath: Pushing the Limits of Mathematical Reasoning in Open Language Models](https://arxiv.org/abs/2402.03300) · Shao et al. (arXiv) · *free* — section 4.1 introduces the group-relative advantage that exercise 6 implements
 # - [Reward Hacking in Reinforcement Learning](https://lilianweng.github.io/posts/2024-11-28-reward-hacking/) · Lilian Weng (Lil'Log) · *free* — surveys how an agent exploits a flawed reward, the failure that sections 16 and 17 plant on purpose and measure
@@ -733,6 +734,8 @@ def _check_transition() -> None:
     assert transition(task, 0, 3) == (0, "error"), "a tool that serves no sub-goal here should be an error"
     assert transition(task, 1, 1) == (1, "repeat"), "a tool that already met an earlier sub-goal is a 'repeat'"
     assert transition(task, 2, 7) == (2, "repeat"), "after the last sub-goal, a tool from the chain is a 'repeat'"
+    assert transition(task, 2, 1) == (2, "repeat"), \
+        "a tool that met ANY sub-goal before the pending one is a 'repeat', not only the most recent one"
     assert transition(task, 2, 3) == (2, "error"), "after the last sub-goal, any other tool is still an error"
     assert transition(task, 2, SUBMIT) == (2, "solved"), "submitting with every sub-goal met is 'solved'"
     assert transition(task, 1, SUBMIT) == (1, "gave_up"), "submitting with a sub-goal pending is 'gave_up'"
@@ -740,8 +743,15 @@ def _check_transition() -> None:
     other = (1, (0, 1))     # files: grep (3), then read_file (2)
     assert transition(other, 0, 3) == (1, "advanced"), "the tool for a sub-goal depends on the domain: GOAL_TOOL[domain][goal]"
     assert transition(other, 0, 0) == (0, "error"), "tool 0 serves sub-goal 0 only in the web domain"
+    assert transition(other, 1, 3) == (1, "repeat"), "a 'repeat' is judged with the task's own domain too, not with web's tools"
+    assert transition(other, 2, 3) == (2, "repeat"), \
+        "after the last sub-goal, a tool from the chain is a 'repeat' in every domain, judged with that domain's tools"
+    longer = (2, (0, 1, 2, 4))     # data: these four sub-goals use tools 5, 6, 3 and 7
+    assert transition(longer, 1, 3) == (1, "error"), \
+        "a tool that serves a LATER sub-goal is an error at any progress, not only at the start"
+    assert transition(longer, 1, 7) == (1, "error"), "a tool for a sub-goal further ahead is an error too, at any progress"
     progress, event = transition(task, 0, 1)
-    assert isinstance(progress, int) and isinstance(event, str), "return a (progress, event) pair of an int and a string"
+    assert type(progress) is int and type(event) is str, "return a (progress, event) pair of a plain int and a string"
     print("exercise 1 looks right")
 
 
@@ -759,7 +769,9 @@ _try("exercise 1", _check_transition)
 #   that use their tools.
 # - `"progress"`: `CALL_REWARD` for `"advanced"` only, plus `SOLVED_REWARD` for `"solved"`, otherwise `0.0`.
 #
-# Any other mode raises `ValueError` (a typo in a mode name should stop the run, not train on zeros).
+# Any other mode raises `ValueError`, whatever the event (a typo in a mode name should stop the run, not train on
+# zeros). Names are matched exactly: `"Outcome"` and `"calls "` are other modes.
+# Every return value is a plain Python float, `0.0` and not `0` where nothing is paid (not a numpy float).
 # Compare the second and third modes now: they differ in one word, and section 16 measures what it costs.
 #
 # <details><summary>Hint 1: what to think about</summary>
@@ -771,7 +783,8 @@ _try("exercise 1", _check_transition)
 # <details><summary>Hint 2: the approach in words</summary>
 #
 # Check the mode first and raise for a name you do not know, even when the event would pay nothing.
-# Then return the constant for the events the mode pays for and `0.0` for the rest. Return floats.
+# Then return the constant for the events the mode pays for and `0.0` for the rest. Return plain Python
+# floats, `0.0` included, never the integer `0` or a numpy float.
 # </details>
 
 # %%
@@ -787,7 +800,7 @@ def step_reward(event: str, mode: str) -> float:
         (0.1, 0.0)
 
     Returns:
-        A float. Raises ValueError for a mode not in MODES.
+        A plain Python float (0.0, not 0, where nothing is paid). Raises ValueError for a mode not in MODES.
     """
     # YOUR CODE HERE
     raise NotImplementedError("implement step_reward")
@@ -804,14 +817,21 @@ def _check_step_reward() -> None:
     assert step_reward("advanced", "progress") == CALL_REWARD, "progress mode pays for an advance"
     assert step_reward("repeat", "progress") == 0.0, "progress mode must not pay for a repeat, or it has the same loophole"
     assert step_reward("solved", "progress") == SOLVED_REWARD, "progress mode pays the solved reward as well"
-    assert step_reward("error", "progress") == 0.0, "an error pays nothing"
-    try:
-        step_reward("solved", "outcomes")
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("an unknown mode should raise ValueError, not fall through to a default")
-    assert isinstance(step_reward("advanced", "calls"), float), "return a float"
+    assert step_reward("error", "progress") == 0.0 and step_reward("gave_up", "progress") == 0.0, \
+        "progress mode pays nothing for an error or a give-up"
+    for mode in ("outcomes", "Outcome", "calls ", ""):
+        for event in EVENTS:
+            try:
+                step_reward(event, mode)
+            except ValueError:
+                continue
+            raise AssertionError(f"step_reward({event!r}, {mode!r}) should raise ValueError: check the mode before the "
+                                 "event, and match its name exactly (no lower-casing, no stripping), not fall through to 0.0")
+    for mode in MODES:
+        for event in EVENTS:
+            assert type(step_reward(event, mode)) is float, (
+                f"step_reward({event!r}, {mode!r}) returned {type(step_reward(event, mode)).__name__}: return a "
+                "plain Python float (wrap it in float(), and write 0.0, not 0), not a numpy float or an int")
     print("exercise 2 looks right")
 
 
@@ -826,14 +846,15 @@ _try("exercise 2", _check_step_reward)
 # the `Observation` from them. `state` is done for you.
 #
 # - **`reset(seed=None, episode_id=None, task_id=0)`** starts an episode on task `task_id`: progress and steps back
-#   to zero, not finished, an episode id (`episode_id` if given, otherwise `"episode-N"` with N counting resets from 1
-#   on this object). It returns `self._observe(None, False, {})`: the reward of a first observation is `None`,
-#   not `0.0`. `seed` is accepted for the interface and ignored: this world is deterministic.
+#   to zero, not finished, an episode id (`episode_id` if given, otherwise `"episode-N"`, where N counts every reset
+#   on this object from 1, including one given an explicit `episode_id`). It returns `self._observe(None, False, {})`:
+#   the reward of a first observation is `None`, not `0.0`. `seed` is accepted for the interface and ignored: this world is deterministic.
 # - **`step(action)`** applies `transition`, then `step_reward` with `self.reward_mode`, and counts the step.
 #   The episode **ends** when the event is `"solved"` or `"gave_up"`, and is **truncated** when it has not ended
 #   and the step count has reached `MAX_STEPS`; `done` is true in both cases. It returns the observation with the
-#   float reward, `done`, and `metadata={"event": event, "truncated": truncated}`. Calling `step` before `reset`, or
-#   after `done`, raises `RuntimeError`.
+#   float reward, `done`, and `metadata={"event": event, "truncated": truncated}`, where `done` and `truncated` are
+#   plain Python bools (`True` or `False`, not `1` or `0`). Calling `step` before `reset`, or after `done`, raises
+#   `RuntimeError`.
 #
 # <details><summary>Hint 1: what to think about</summary>
 #
@@ -946,11 +967,16 @@ def _check_env() -> None:
     assert obs.reward is None and obs.done is False and obs.metadata == {}, \
         "reset returns an observation with reward None (not 0.0), done False and empty metadata"
     assert env.state.step_count == 0 and env.state.task_id == 2 and env.state.progress == 0, "reset should clear the counters"
-    assert env.state.episode_id == "episode-1", "the default episode id is 'episode-N', N counting resets from 1"
-    steps = 0
+    assert env.state.episode_id == "episode-1", "the default episode id is 'episode-N', N counting every reset on this object from 1"
+    assert obs.domain == TASKS[2][0] and obs.pending == TASKS[2][1][0] and obs.state_id == TASKS[2][0] * (N_GOALS + 1) + TASKS[2][1][0], \
+        "reset's observation shows the task you asked for: its domain and its first needed sub-goal (build it with _observe)"
+    steps, events = 0, []
     while not obs.done:
         obs = env.step(oracle_action(obs))
         steps += 1
+        events.append(obs.metadata["event"])
+    assert events == ["advanced"] * len(TASKS[2][1]) + ["solved"], \
+        f"a perfect agent's events should be one 'advanced' per needed sub-goal, then 'solved'; got {events}"
     assert obs.metadata == {"event": "solved", "truncated": False}, "a perfect agent should end with event 'solved'"
     assert obs.reward == SOLVED_REWARD and env.state.step_count == steps == len(TASKS[2][1]) + 1, \
         "a perfect agent needs one step per needed sub-goal plus the submit; the outcome reward arrives on the last one"
@@ -964,18 +990,75 @@ def _check_env() -> None:
     assert env.state.episode_id == "abc" and env.state.step_count == 0, "reset should accept an episode id and restart the count"
     for k in range(MAX_STEPS):
         assert not obs.done, f"the episode ended after {k} steps; the cap is MAX_STEPS = {MAX_STEPS}"
+        assert k == 0 or obs.metadata["truncated"] is False, f"after {k} of {MAX_STEPS} steps the episode is live, not truncated"
         obs = env.step(5)
+        if k == 0:
+            assert obs.reward == 0.0 and obs.metadata == {"event": "error", "truncated": False} and env.state.progress == 0, \
+                "a failed call: reward 0.0, metadata {'event': 'error', 'truncated': False}, progress unchanged"
     assert obs.done and obs.metadata["truncated"] and obs.metadata["event"] == "error", \
         "an episode that reaches MAX_STEPS without submitting is done and truncated"
+    assert env.state.step_count == MAX_STEPS, "the truncating step is counted: step_count equals MAX_STEPS"
+    assert type(obs.done) is bool and type(obs.metadata["truncated"]) is bool, (
+        f"done has type {type(obs.done).__name__} and truncated type {type(obs.metadata['truncated']).__name__}: both are "
+        "plain Python bools (True or False, not 1 or 0, not a numpy bool)")
+    try:
+        env.step(0)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("step() after a truncated episode should raise RuntimeError: done covers every way an "
+                             "episode ends, so mark it finished when it is truncated as well")
     obs = env.reset(task_id=0)
+    assert env.state.episode_id == "episode-3", \
+        "N in 'episode-N' counts every reset on this object, including one given an explicit episode_id"
     for _ in range(MAX_STEPS - 1):
         obs = env.step(5)
     obs = env.step(SUBMIT)
     assert obs.done and obs.metadata == {"event": "gave_up", "truncated": False}, \
         "a submit ends the episode; it is 'truncated' only when the cap cut the episode short"
+    try:
+        env.step(0)
+    except RuntimeError:
+        pass
+    else:
+        raise AssertionError("step() after a given-up episode should raise RuntimeError: done covers every way an "
+                             "episode ends, so mark it finished when it gives up as well")
+    obs = env.reset(task_id=0)
+    for _ in range(MAX_STEPS - len(TASKS[0][1]) - 1):
+        obs = env.step(5)
+    while obs.pending != DONE_GOAL:
+        obs = env.step(oracle_action(obs))
+    obs = env.step(SUBMIT)
+    assert env.state.step_count == MAX_STEPS and obs.metadata == {"event": "solved", "truncated": False}, \
+        "a submit that solves the task on the last allowed step ends the episode: it is solved, not truncated"
     calls = ToolEnv("calls")
     first = calls.reset(task_id=0)
-    assert calls.step(oracle_action(first)).reward == CALL_REWARD, "step should use the env's reward_mode"
+    live = calls.step(oracle_action(first))
+    assert live.reward == CALL_REWARD, "step should use the env's reward_mode"
+    assert type(live.reward) is float, "the reward in a step's observation is a plain Python float"
+    assert live.pending == TASKS[0][1][1] and calls.state.progress == 1 and calls.state.step_count == 1, \
+        "an advance moves the pending sub-goal on by one and counts the step"
+    assert type(live.done) is bool and type(live.metadata["truncated"]) is bool, (
+        f"done has type {type(live.done).__name__} and truncated type {type(live.metadata['truncated']).__name__} on a live "
+        "step: both are plain Python bools (False here, not 0, not a numpy bool)")
+    first = calls.reset(task_id=0)
+    assert calls.state.step_count == 0 and calls.state.progress == 0 and first.pending == TASKS[0][1][0], \
+        "a reset in the middle of an episode starts again from scratch: step count and progress back to zero"
+    for _ in range(MAX_STEPS - 1):
+        calls.step(5)
+    calls.reset(task_id=0)
+    assert calls.step(5).done is False, "after a reset the step count restarts, so the cap is not reached early"
+    progress_env, total = ToolEnv("progress"), 0.0
+    obs = progress_env.reset(task_id=0)
+    first_tool = oracle_action(obs)
+    while not obs.done:
+        obs = progress_env.step(oracle_action(obs))
+        total += obs.reward
+    assert abs(total - (len(TASKS[0][1]) * CALL_REWARD + SOLVED_REWARD)) < 1e-9, \
+        "in progress mode a perfect agent is paid for every advance and for the solve: step pays step_reward(event, reward_mode)"
+    progress_env.reset(task_id=0)
+    paid = progress_env.step(first_tool).reward + progress_env.step(first_tool).reward
+    assert abs(paid - CALL_REWARD) < 1e-12, "in progress mode an advance pays and the repeat after it does not"
     print("exercise 3 looks right")
 
 
@@ -1044,9 +1127,13 @@ def _check_softmax_sample() -> None:
         "a logit of 1000 overflows exp: subtract the largest logit first"
     assert softmax_sample(np.array([1000.0, 0.0]), 0.999999) == 0, "all of the mass is on index 0"
     assert softmax_sample(np.array([0.0, 0.0, 0.0]), 1.0) == 2, "u at the top of the range should give the last index, not run past it"
+    assert softmax_sample(np.array([1000.0, 1000.0, 0.0]), 0.75) == 1, \
+        "two logits of 1000 overflow exp to inf, and inf / inf is nan: subtract the largest logit first"
+    assert softmax_sample(np.zeros(10), 1.0) == 9, \
+        "ten equal slices add up to a hair below 1.0, so no cumulative sum reaches u = 1.0: cap the index at the last one"
     hits = np.bincount([softmax_sample(np.log([0.1, 0.6, 0.3]), u) for u in (np.arange(1000) + 0.5) / 1000], minlength=3)
     assert list(hits) == [100, 600, 300], "the slice of each index should be as wide as its probability"
-    assert isinstance(softmax_sample(flat, 0.3), int), "return a plain int"
+    assert type(softmax_sample(flat, 0.3)) is int, "return a plain int (not a numpy integer, not a bool)"
     print("exercise 4 looks right")
 
 
@@ -1063,6 +1150,7 @@ _try("exercise 4", _check_softmax_sample)
 # - `states`, `actions`, `events`: one entry per step (the event string comes from `obs.metadata["event"]`);
 # - `reward`: the sum of the step rewards (`obs.reward`); `steps`: the number of steps;
 # - `solved`: whether the **last** event is `"solved"`; `truncated`: the last observation's `metadata["truncated"]`.
+#   Both are plain Python bools.
 #
 # The state recorded for a step is the one the agent saw **before** acting.
 #
@@ -1139,6 +1227,66 @@ def _check_run_episode() -> None:
     ep = run_episode(env, oracle_table(), 0, np.random.default_rng(1))
     again = run_episode(env, oracle_table(), 0, np.random.default_rng(1))
     assert ep == again, "the same table, task and generator state must give the same episode"
+    paid = run_episode(ToolEnv("calls"), oracle_table(), 0, np.random.default_rng(3))
+    assert abs(paid.reward - len(chain) * CALL_REWARD) < 1e-9, \
+        "in calls mode a perfect agent is paid on every step that advanced: the episode reward adds up every step's reward"
+    assert paid.solved, "solved means the last event is 'solved', whatever the reward added up to (here it is below 0.5)"
+    k = next(t for t in range(N_TASKS) if TASKS[t][0] != TASKS[0][0] and len(TASKS[t][1]) != len(chain))
+    table = oracle_table()
+    kept = table.copy()
+    other = run_episode(env, table, k, np.random.default_rng(3))
+    assert other.steps == len(TASKS[k][1]) + 1 and other.solved and other.states[0] == TASKS[k][0] * (N_GOALS + 1) + TASKS[k][1][0], \
+        f"reset the environment on the task_id you were given (task {k} here), not on a default task"
+    assert np.array_equal(table, kept), "run_episode only reads the policy table: do not change it"
+    quitter = np.full((N_STATES, N_ACTIONS), -50.0)
+    quitter[:, SUBMIT] = 50.0
+    gave = run_episode(env, quitter, 0, np.random.default_rng(3))
+    assert gave.events == ["gave_up"] and not gave.solved and not gave.truncated, \
+        "an agent that submits early gave up: the episode ended, so it is neither solved nor truncated"
+
+    class _Stalled(ToolEnv):
+        """Task 0 with the first `stall` tool calls failing (tool 5 serves none of its sub-goals); then the agent's own."""
+
+        def __init__(self, stall):
+            super().__init__("outcome")
+            self.stall, self.calls = stall, 0
+
+        def reset(self, *args, **kwargs):
+            self.calls = 0
+            return super().reset(*args, **kwargs)
+
+        def step(self, action):
+            self.calls += 1
+            return super().step(5 if self.calls <= self.stall else action)
+
+    late = run_episode(_Stalled(MAX_STEPS - 1 - len(chain)), oracle_table(), 0, np.random.default_rng(3))
+    assert late.steps == MAX_STEPS and late.solved and not late.truncated, \
+        ("a submit that solves the task on step MAX_STEPS ends the episode, it is not cut off: truncated is the last "
+         "observation's metadata['truncated'], not a count of the steps")
+    quit_late = run_episode(_Stalled(MAX_STEPS - 1), quitter, 0, np.random.default_rng(3))
+    assert quit_late.steps == MAX_STEPS and quit_late.events[-1] == "gave_up", "the stalled agent submits on step MAX_STEPS"
+    assert not quit_late.solved and not quit_late.truncated, \
+        ("a give-up on step MAX_STEPS ended the episode, it was not cut off: truncated is the last observation's "
+         "metadata['truncated'], not 'did not solve and used every step'")
+    assert all(type(v) is bool for v in (late.solved, late.truncated, quit_late.solved, quit_late.truncated)), \
+        "solved and truncated are plain Python bools (wrap them in bool()), not numpy bools or ints"
+    noisy = np.random.default_rng(7).normal(scale=1.5, size=(N_STATES, N_ACTIONS))
+    ep = run_episode(ToolEnv("outcome"), noisy, 4, np.random.default_rng(5))
+    draws, replay = np.random.default_rng(5), ToolEnv("outcome")
+    obs = replay.reset(task_id=4)
+    for s, a, e in zip(ep.states, ep.actions, ep.events):
+        assert s == obs.state_id, "each recorded state is the observation the agent saw BEFORE its action"
+        assert a == softmax_sample(noisy[s], draws.random()), \
+            "each action is softmax_sample(table[state], u) with u that step's own rng.random(), drawn in order"
+        obs = replay.step(a)
+        assert e == obs.metadata["event"], "each event is obs.metadata['event'] of the step just taken"
+    assert obs.done and ep.steps == len(ep.actions), "play until the observation is done"
+    loop = np.zeros((N_STATES, N_ACTIONS))
+    loop[:, GOAL_TOOL[TASKS[0][0]][chain[0]]] = 60.0
+    looped = run_episode(ToolEnv("calls"), loop, 0, np.random.default_rng(3))
+    assert looped.truncated and not looped.solved and abs(looped.reward - MAX_STEPS * CALL_REWARD) < 1e-9, \
+        ("an agent that repeats one working tool is paid on every step in calls mode, and still never solves: solved comes "
+         "from the last event and reward adds up every step")
     print("exercise 5 looks right")
 
 
@@ -1153,8 +1301,9 @@ _try("exercise 5", _check_run_episode, needs=("exercise 1", "exercise 2", "exerc
 # deviation (`ddof=0`) plus `ADV_EPS` (added to the standard deviation, not to the variance).
 #
 # Write `group_advantages(rewards, group_size)` returning a flat array in the same order, and
-# `zero_variance_fraction(rewards, group_size)`: the fraction of groups in which **every reward is exactly
-# equal to the group's first**. Such a group has advantage zero everywhere: it teaches the update nothing.
+# `zero_variance_fraction(rewards, group_size)`: the fraction, as a plain Python `float` (not a numpy float), of
+# groups in which **every reward is exactly equal to the group's first**. Such a group has advantage zero everywhere: it teaches the update nothing.
+# Neither function changes `rewards` (it may be a numpy array the caller still needs).
 # The equality is exact on purpose: rewards here are sums of a few constants.
 #
 # <details><summary>Hint 1: what to think about</summary>
@@ -1193,7 +1342,7 @@ def zero_variance_fraction(rewards, group_size: int) -> float:
         0.5
 
     Returns:
-        A float in [0, 1].
+        A plain Python float in [0, 1] (not a numpy float).
     """
     # YOUR CODE HERE
     raise NotImplementedError("implement zero_variance_fraction")
@@ -1206,13 +1355,23 @@ def _check_advantages() -> None:
         "advantage = (reward - group mean) / (population std + ADV_EPS); is the std the sample std (ddof=1)?"
     assert np.all(adv[4:] == 0.0), "a group whose rewards are all equal has advantage exactly zero"
     assert adv.shape == (8,), "return one flat advantage per reward"
+    given = np.array([3.0, 1.0, 2.0, 2.0])
+    group_advantages(given, 2)
+    zero_variance_fraction(given, 2)
+    assert np.array_equal(given, [3.0, 1.0, 2.0, 2.0]), \
+        "do not change the rewards you are given: np.asarray returns the caller's own array, so work on a new one, not in place"
     two = group_advantages([1.0, 0.0, 3.0, 5.0], 2)
     assert np.allclose(two, [0.5 / (0.5 + ADV_EPS), -0.5 / (0.5 + ADV_EPS), -1 / (1 + ADV_EPS), 1 / (1 + ADV_EPS)], rtol=0, atol=1e-12), \
         "the mean and std are per group, not over the whole batch"
     assert abs(group_advantages([1.0, 0.0], 2)[0] - 0.5 / (0.5 + ADV_EPS)) < 1e-12, "add ADV_EPS to the standard deviation"
     assert zero_variance_fraction([1.0, 1.0, 0.0, 1.0], 2) == 0.5, "count groups whose rewards are all equal"
     assert zero_variance_fraction([0.0, 0.1, 0.0, 0.0], 2) == 0.5, "a gap of 0.1 is a difference: compare exactly"
+    assert zero_variance_fraction([0.5, 0.5 + 1e-12], 2) == 0.0, "even a gap of 1e-12 is a difference: no tolerance"
     assert zero_variance_fraction([0.0, 0.0, 1.0, 1.0], 2) == 1.0, "equal within each group counts, even if the groups differ"
+    assert zero_variance_fraction([0.0, 0.0, 1.0, 0.0, 2.0, 2.0, 2.0, 2.0], 4) == 0.5, \
+        "a group is tied only when every reward in it is equal: the odd one out can sit anywhere, not just second or last"
+    assert type(zero_variance_fraction([1.0, 1.0], 2)) is float, \
+        "return a plain Python float (wrap it in float()), not a numpy float"
     print("exercise 6 looks right")
 
 
@@ -1225,7 +1384,8 @@ _try("exercise 6", _check_advantages)
 # gradient of `log π(a | s)` with respect to row `s` is `onehot(a) - softmax(table[s])`, and zero for every
 # other row. Write `policy_gradient(table, states, actions, weights)`: the gradient, with respect to `table`,
 # of `sum_i weights[i] * log π(actions[i] | states[i])`. The same state appears many times in a batch, so the
-# contributions to its row **add up**. Do not change `table`. (Moving the table along this gradient makes
+# contributions to its row **add up**. Do not change `table`. `states`, `actions` and `weights` may each be a
+# plain Python list or a numpy array (exercise 8 passes lists). (Moving the table along this gradient makes
 # the actions with positive weight more likely and those with negative weight less likely.)
 #
 # <details><summary>Hint 1: what to think about</summary>
@@ -1280,6 +1440,8 @@ def _check_policy_gradient() -> None:
     assert worst < 1e-6, (f"the gradient is off from a finite-difference check by {worst:.1e}: rows are onehot(action) - "
                           "softmax(row), scaled by the weight; when a state repeats, its contributions add")
     assert np.all(grad[2] == 0) and np.all(grad[4] == 0), "states that do not appear in the batch have a zero gradient"
+    as_lists = policy_gradient(table, list(states), list(actions), weights.tolist())
+    assert np.allclose(as_lists, grad, rtol=0, atol=1e-12), "states, actions and weights may be plain lists: np.asarray them first"
     before = table.copy()
     policy_gradient(table, states, actions, weights)
     assert np.array_equal(table, before), "do not change the table you are given"
@@ -1349,10 +1511,22 @@ def _check_grpo_update() -> None:
         "the success has advantage A over 1 step; the batch has 2 episodes: weight A / steps / len(episodes)"
     assert abs(new[2, 3] - adv[1] / 2 / 2 * 0.75) < 1e-9, "the failure's weight is shared over its 2 steps"
     assert new[1, 2] < 0 < new[0, 1], "the failure's action should be pushed down, the success's pushed up"
+    twice = grpo_update(table, [good, bad, good, bad], 2, 1.0)
+    assert np.allclose(twice, new, rtol=0, atol=1e-12), \
+        "divide by len(episodes), the whole batch: the same batch twice over must give the same step"
     tied = grpo_update(table, [good, good], 2, 1.0)
     assert np.all(tied == 0), "a group whose rewards are tied teaches nothing: the table should not move"
     half = grpo_update(table, [good, bad], 2, 0.5)
     assert np.allclose(half - table, (new - table) / 2, rtol=0, atol=1e-12), "the step is proportional to lr"
+    other = Episode([3], [0], ["solved"], 1.0, 1, True, False)
+    four = grpo_update(np.zeros((4, 4)), [good, bad, other, other], 2, 1.0)
+    assert np.all(four[3] == 0), ("the advantages are per group of group_size episodes: the second group is tied, so its "
+                                  "state's row must not move, whatever the first group did")
+    some = Episode([0, 0], [1, 3], ["repeat", "gave_up"], 0.1, 2, False, False)
+    none = Episode([1, 1], [2, 3], ["error", "gave_up"], 0.0, 2, False, False)
+    graded = grpo_update(np.zeros((3, 4)), [some, none], 2, 1.0)
+    assert graded[0, 1] > 0 > graded[1, 2], \
+        "the advantage comes from each episode's reward, not from whether it was solved (neither episode here was)"
     print("exercise 8 looks right")
 
 
@@ -1395,7 +1569,7 @@ def train_grpo(mode: str, seed: int, iterations: int = ITERATIONS, group_size: i
     Example:
         >>> table, history = train_grpo("outcome", 0, iterations=2, group_size=2)
         >>> table.shape, len(history), sorted(history[0])
-        ((54, 9), 2, ['reward', 'steps', 'success', 'zero_var'])
+        ((24, 9), 2, ['reward', 'steps', 'success', 'zero_var'])
 
     Returns:
         (table, history) as described above.
@@ -1417,11 +1591,46 @@ def _check_train() -> None:
     assert abs(history[0]["reward"] - np.mean([e.reward for e in first])) < 1e-12 and \
         abs(history[0]["steps"] - np.mean([e.steps for e in first])) < 1e-12, \
         "iteration 0 plays the all-zero table, with one iteration_rng(seed, iteration, task) per group, tasks in order"
+    assert abs(history[0]["success"] - np.mean([e.solved for e in first])) < 1e-12, \
+        "success is the fraction of EPISODES with solved"
+    assert history[0]["zero_var"] == zero_variance_fraction([e.reward for e in first], 2), \
+        "zero_var is zero_variance_fraction of the batch's rewards, in groups of the group_size you were given"
     assert np.abs(table).max() > 0, "the table should have moved away from zero"
+    moved = grpo_update(np.zeros((N_STATES, N_ACTIONS)), first, 2, LR)
+    second = []
+    for t in range(N_TASKS):
+        rng = iteration_rng(0, 1, t)
+        second.extend(run_episode(env, moved, t, rng) for _ in range(2))
+    for key, value in (("reward", np.mean([e.reward for e in second])), ("success", np.mean([e.solved for e in second])),
+                       ("steps", np.mean([e.steps for e in second]))):
+        assert abs(history[1][key] - value) < 1e-12, \
+            (f"iteration 1 ({key}) plays the table after ONE update, grpo_update(zero table, iteration 0's batch, group_size, "
+             "lr), with iteration_rng(seed, 1, task): carry the table forward and pass the iteration number")
+    assert history[1]["zero_var"] == zero_variance_fraction([e.reward for e in second], 2), "zero_var of iteration 1's batch"
+    after_two = train_grpo("outcome", 0, iterations=2, group_size=2)[0]
+    assert np.allclose(after_two, grpo_update(moved, second, 2, LR), rtol=0, atol=1e-12), \
+        "each update starts from the table the previous one returned (not from zeros), with group_size and lr"
+    empty_table, empty = train_grpo("outcome", 0, iterations=0, group_size=2)
+    assert empty == [] and empty_table.shape == (N_STATES, N_ACTIONS) and np.all(empty_table == 0), \
+        "zero iterations: the all-zero table and an empty history"
     again = train_grpo("outcome", 0, iterations=3, group_size=2)
     assert np.array_equal(again[0], table) and again[1] == history, "the same arguments must give the same run"
     other = train_grpo("outcome", 1, iterations=3, group_size=2)
     assert not np.array_equal(other[0], table), "a different seed should give a different run"
+    calls = train_grpo("calls", 0, iterations=1, group_size=2)[1]
+    first_calls = []
+    for t in range(N_TASKS):
+        rng = iteration_rng(0, 0, t)
+        first_calls.extend(run_episode(ToolEnv("calls"), np.zeros((N_STATES, N_ACTIONS)), t, rng) for _ in range(2))
+    assert abs(calls[0]["reward"] - np.mean([e.reward for e in first_calls])) < 1e-12, \
+        "train in the reward mode you were given: build the environment as ToolEnv(mode)"
+    assert abs(calls[0]["success"] - np.mean([e.solved for e in first_calls])) < 1e-12, \
+        ("success is the fraction of episodes with solved, not with a positive reward: in outcome mode the two agree, "
+         "in calls mode they differ")
+    one = train_grpo("outcome", 0, iterations=1, group_size=2)[0]
+    two = train_grpo("outcome", 0, iterations=1, group_size=2, lr=2 * LR)[0]
+    assert np.allclose(two, 2 * one, rtol=0, atol=1e-12), \
+        "pass lr on to grpo_update: from the zero table, one iteration at twice the learning rate moves the table twice as far"
     print("exercise 9 looks right")
 
 
@@ -1432,7 +1641,8 @@ _try("exercise 9", _check_train, needs=("exercise 1", "exercise 2", "exercise 3"
 # ## 12. Exercise 10: what to measure
 #
 # A training reward says what the agent was paid, not what you wanted. So the metrics come from the **events**,
-# not from the reward. Write `episode_metrics(episodes)` returning a dict with three floats:
+# not from the reward. Write `episode_metrics(episodes)` returning a dict with three plain Python floats (not numpy
+# floats):
 #
 # - `"success_rate"`: the fraction of episodes with `solved`;
 # - `"mean_steps"`: the mean number of steps;
@@ -1473,7 +1683,7 @@ def _check_metrics() -> None:
     win = Episode([0, 0], [1, 8], ["advanced", "solved"], 1.0, 2, True, False)
     loop = Episode([0] * 5, [1] * 5, ["advanced"] + ["repeat"] * 4, 0.5, 5, False, True)
     edge = Episode([0] * 5, [1] * 5, ["advanced", "repeat", "repeat", "repeat", "error"], 0.4, 5, False, True)
-    below = Episode([0] * 4, [1] * 4, ["advanced", "repeat", "error", "error"], 0.2, 4, False, True)
+    below = Episode([0] * 4, [1] * 4, ["advanced", "repeat", "repeat", "error"], 0.3, 4, False, True)
     submitted = Episode([0] * 5, [1] * 5, ["repeat"] * 4 + ["gave_up"], 0.4, 5, False, False)
     m = episode_metrics([win, loop, edge, below, submitted])
     assert m["success_rate"] == 0.2, "success_rate is the fraction of episodes with solved true"
@@ -1481,7 +1691,15 @@ def _check_metrics() -> None:
     assert m["hack_rate"] == 0.4, ("hack_rate counts truncated episodes with at least HACK_REPEATS 'repeat' events: "
                                    "exactly the threshold counts, one below does not, and a submitted episode never does")
     assert episode_metrics([win])["hack_rate"] == 0.0 and episode_metrics([loop])["hack_rate"] == 1.0, "check a single episode"
-    assert all(isinstance(v, float) for v in m.values()), "return floats"
+    assert all(type(v) is float for v in m.values()), \
+        "return a plain Python float (wrap it in float()), not a numpy float, for each of the three values"
+    calls_win = Episode([0, 0, 0], [1, 2, 8], ["advanced", "advanced", "solved"], 2 * CALL_REWARD, 3, True, False)
+    paid_loop = Episode([0] * MAX_STEPS, [1] * MAX_STEPS, ["advanced"] + ["repeat"] * (MAX_STEPS - 1),
+                        MAX_STEPS * CALL_REWARD, MAX_STEPS, False, True)
+    assert calls_win.reward != SOLVED_REWARD and paid_loop.reward > SOLVED_REWARD
+    assert episode_metrics([calls_win, calls_win, paid_loop])["success_rate"] == 2 / 3, \
+        (f"success_rate is the fraction of episodes with solved, read from the events, not from the reward: in calls "
+         f"mode a solve pays {2 * CALL_REWARD:.1f} and a loop pays {MAX_STEPS * CALL_REWARD:.1f}")
     print("exercise 10 looks right")
 
 

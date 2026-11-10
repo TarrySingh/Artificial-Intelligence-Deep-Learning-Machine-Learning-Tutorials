@@ -17,7 +17,7 @@ objectives:
 - Implement evaluate-and-refine with a revision cap, and explain why the last draft returned must be the
   last draft evaluated
 - Measure for each pattern its accuracy, its calls per task, its paired gains and losses against a single
-  call, and the failure modes it adds
+  call, what went wrong inside it and what its extra work repaired
 - Explain from the sweep over slip rates why a pattern that adds correct answers at one rate only adds
   calls at another, and why a result from a scripted model is evidence about mechanics and not about a
   language model
@@ -57,6 +57,6 @@ datasets:
   kind: synthetic
   licence: not applicable - generated at run time by the lesson itself
 points: 83
-status: executed
+status: reviewed
 measured_seconds: 2.3
-measured_peak_mib: 26
+measured_peak_mib: 27

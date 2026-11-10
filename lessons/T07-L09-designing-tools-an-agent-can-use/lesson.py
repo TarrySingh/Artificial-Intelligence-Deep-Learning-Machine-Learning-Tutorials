@@ -558,11 +558,13 @@ def _try(label: str, check: Callable[[], None], needs: tuple = ()) -> None:
 # * **names**: the tool names and descriptions (`bad`: `tickets` and `ticket`, one-line descriptions that overlap;
 #   `good`: `find_tickets`, `get_ticket`, and a description that says what the tool does and returns);
 # * **params**: the parameters (`bad`: `id`, `p`, `by`, a generic `field` and `value`, no descriptions, strings
-#   everywhere; `good`: `ticket_id`, `assignee`, `group_by`, each described, with enums and an id pattern);
-# * **errors**: what a failed call says and whether the call is checked (`bad`: the backend does not validate a person,
-#   status or priority, accepts a wrong value and does the wrong thing, and a rejected call says `Error: invalid request`;
-#   `good`: your `check_args` and the backend validate, and a message names the parameter, the value received and what
-#   is accepted). So this lever bundles **validation with wording**: the lesson cannot say which of the two did the work.
+#   almost everywhere, with no enums or patterns; `good`: `ticket_id`, `assignee`, `group_by`, each described, with enums and an id pattern);
+# * **errors**: what a failed call says and which calls are checked. `bad`: the find tool does not check a person or a
+#   status, and a search that matches nothing returns an empty list with no error; the create tool accepts any priority;
+#   the update and count tools still reject a wrong value, but only as `Error: invalid request`, and so does every
+#   other rejected call. `good`: your `check_args` and the backend validate every call, a message names the parameter,
+#   the value received and what is accepted, and a search that matches nothing is an error that points to the get
+#   tool. So this lever bundles **validation with wording**: the lesson cannot say which of the two did the work.
 #
 # Crossing the levers gives every combination of bad and good, so the lesson can say which lever did the work.
 #
@@ -1065,7 +1067,7 @@ TENDENCIES = [
 # %% [markdown]
 # ## 2. Read the two specifications and the policy's tendencies
 #
-# Run the next cell. It prints the all-bad and the all-good toolset side by side, the policy's tendencies with their
+# Run the next cell. It prints the all-bad and then the all-good toolset, one after the other, the policy's tendencies with their
 # rates, and a few of the tasks with the wording a user would use. Nothing in it is yours to write.
 
 # %%
@@ -1102,12 +1104,13 @@ if __name__ == "__main__":
 #
 # 1. for each name in `args` that is not a parameter of the spec, in sorted order:
 #    `unknown parameter 'NAME'; this tool takes [a, b]` (the parameter names in declared order, joined by `, `);
-# 2. then for each parameter of the spec in declared order, at most one problem each:
+# 2. then for each parameter of the spec in declared order, at most one problem each, testing in the order below
+#    and stopping at the first that applies:
 #    * absent, or `None`, and `required`: `missing required parameter 'NAME' (TYPE): DESCRIPTION`;
 #    * absent and not required: no problem (a `None` value counts as absent here too, so `None` on an optional parameter is no problem and no type error);
 #    * wrong type (`string` needs a `str`, `integer` an `int` that is not a `bool`, `boolean` a `bool`):
 #      `parameter 'NAME' must be a string; got VALUE` (`an integer` for integer; `a boolean` for boolean), where VALUE is `repr(value)`;
-#    * a type-correct value not in `enum` (when the parameter has one):
+#    * a type-correct value not in `enum` (when the parameter has one; an exact, case-sensitive match):
 #      `parameter 'NAME' must be one of [a, b, c]; got VALUE`;
 #    * a type-correct string that does not match `pattern` in full (`re.fullmatch`), when it has one:
 #      `parameter 'NAME' must look like EXAMPLE; got VALUE`.
@@ -1167,6 +1170,43 @@ def _check_args() -> None:
     got = check_args(_PROBE, {"zeta": 1, "alpha": 2, "ticket_id": "T004"})
     assert got == ["unknown parameter 'alpha'; this tool takes [ticket_id, status, limit, full]",
                    "unknown parameter 'zeta'; this tool takes [ticket_id, status, limit, full]"], f"got {got}: unknown names first, sorted, each listing the real parameters"
+    assert check_args(_PROBE, {"ticket_id": "T0045"}) == ["parameter 'ticket_id' must look like T004; got 'T0045'"], (
+        "the pattern must match the WHOLE value (re.fullmatch): 'T0045' starts like an id but is not one")
+    assert check_args(_PROBE, {"ticket_id": "T004\n"}) == ["parameter 'ticket_id' must look like T004; got 'T004\\n'"], (
+        "re.fullmatch, not re.match with '^...$': '$' also matches just before a trailing newline, so 'T004\\n' would pass")
+    assert check_args(_PROBE, {"ticket_id": "T004", "status": 5}) == ["parameter 'status' must be a string; got 5"], (
+        "test the type first: a value of the wrong type gets the type message, not the enum message")
+    assert check_args(_PROBE, {"ticket_id": "T004", "limit": None}) == [], "None on an optional parameter counts as absent: no problem"
+    assert check_args(_PROBE, {"ticket_id": "T004", "zeta": None}) == [
+        "unknown parameter 'zeta'; this tool takes [ticket_id, status, limit, full]"], (
+        "an unknown name is reported whatever its value: 'None counts as absent' is a rule for the tool's own parameters")
+    assert check_args(_PROBE, {"ticket_id": None}) == ["missing required parameter 'ticket_id' (string): The id, like T004."], (
+        "None on a required parameter counts as absent, so it is missing")
+    assert check_args(_PROBE, {"ticket_id": ""}) == ["parameter 'ticket_id' must look like T004; got ''"], (
+        "an empty string is a value, not an absent parameter: only a missing name or None is absent")
+    for args, want in (({"ticket_id": "T004", "limit": 2.5}, "parameter 'limit' must be an integer; got 2.5"),
+                       ({"ticket_id": "T004", "full": 1}, "parameter 'full' must be a boolean; got 1"),
+                       ({"ticket_id": "T004", "full": "true"}, "parameter 'full' must be a boolean; got 'true'")):
+        got = check_args(_PROBE, args)
+        assert got == [want], f"{args}: got {got}; an integer must be an int (not a float), a boolean a bool (not 1, not 'true')"
+    two = {"name": "two", "description": "d", "params": [
+        {"name": "b", "type": "string", "description": "Bee.", "required": True},
+        {"name": "a", "type": "integer", "description": "Ay.", "required": True}]}
+    got = check_args(two, {})
+    assert got == ["missing required parameter 'b' (string): Bee.", "missing required parameter 'a' (integer): Ay."], (
+        f"got {got}: the per-parameter problems follow the spec's DECLARED order (b before a here), not sorted names")
+    for value in ("Open", ""):
+        assert check_args(_PROBE, {"ticket_id": "T004", "status": value}) == [
+            f"parameter 'status' must be one of [open, closed]; got {value!r}"], (
+            f"status {value!r}: the enum test is an exact, case-sensitive membership test, and an empty string is a value")
+    coded = {"name": "coded", "description": "d", "params": [
+        {"name": "code", "type": "string", "description": "A code.", "required": False, "enum": ["ab"], "pattern": "[a-z]+", "example": "ab"}]}
+    assert check_args(coded, {"code": "Z9"}) == ["parameter 'code' must be one of [ab]; got 'Z9'"], (
+        "a value that misses both the enum and the pattern: test the enum first and stop there (one problem per parameter)")
+    spec, args = copy.deepcopy(_PROBE), {"zeta": 1, "ticket_id": None, "limit": None, "full": "x"}
+    before = copy.deepcopy(args)
+    check_args(spec, args)
+    assert args == before and spec == _PROBE, "never change spec or args: not even to drop a None value or an unknown name"
     print("exercise 1 looks right")
 
 
@@ -1185,7 +1225,8 @@ if __name__ == "__main__":
 # * `thin-description`: the description has fewer than `MIN_WORDS` words (`str.split()`);
 # * `bare-param`: some parameter's name is in `BARE_NAMES`;
 # * `undescribed-param`: some parameter's description is empty or only whitespace;
-# * `unchecked-id`: some parameter named `id` or ending in `_id` has no `pattern`.
+# * `unchecked-id`: some parameter named `id` or ending in `_id` has no `pattern` (a missing, `None` or empty
+#   pattern counts as none).
 #
 # **`confusable_pairs(specs)`** takes a list of specs and returns the list of `(name_a, name_b)` pairs, `a` before `b`
 # in the list, whose names are confusable: split each name on `_`, drop one trailing `s` from each piece longer than
@@ -1253,14 +1294,49 @@ def _check_lint() -> None:
     bare = dict(ok_param, name="q", description="Query.")
     assert lint_tool(_s(params=[bare])) == ["bare-param"], "a bare name, described, with no id in it"
     assert lint_tool(_s(params=[dict(ok_param, description="  ")])) == ["undescribed-param"], "whitespace is not a description"
+    assert lint_tool(_s(params=[dict(ok_param, description="\n\t")])) == ["undescribed-param"], "a newline or a tab is whitespace too: strip all of it"
+    assert lint_tool(_s(name="get_ticket_2")) == ["unclear-name"], "the WHOLE name must match the pattern (re.fullmatch), not just its start"
+    assert lint_tool(_s(params=[dict(ok_param, name="paid_on", pattern=None)])) == [], (
+        "only a name that is `id` or ends in `_id` needs a pattern, not any name that contains the letters id")
+    assert lint_tool(_s(params=[dict(ok_param, name="paid", pattern=None)])) == [], (
+        "`paid` ends in the letters id but not in `_id`: only `id` itself or a name ending in `_id` needs a pattern")
     assert lint_tool(_s(params=[{k: v for k, v in ok_param.items() if k != "pattern"}])) == ["unchecked-id"], "an _id parameter with no pattern"
+    assert lint_tool(_s(params=[dict(ok_param, pattern="")])) == ["unchecked-id"], "an empty pattern is no pattern"
+    for verb in ("get", "find", "list", "read", "create", "update", "delete", "count"):
+        assert lint_tool(_s(name=verb + "_tickets")) == [], f"{verb}_tickets: every one of the eight listed verbs is allowed"
+    for bad_name in ("Get_ticket", "get__ticket", "get_ticket_"):
+        assert lint_tool(_s(name=bad_name)) == ["unclear-name"], (
+            f"{bad_name!r}: lower-case words joined by SINGLE underscores, matched in full and with case")
+    assert lint_tool(_s(description="one\ttwo\tthree\tfour\tfive\tsix\tseven\teight")) == [], (
+        "eight words separated by tabs are eight words: count with str.split() and no argument, which splits on any whitespace")
+    assert lint_tool(_s(description="one  two  three  four  five  six  seven")) == ["thin-description"], (
+        "seven words separated by double spaces are seven words, not thirteen: str.split() with no argument")
+    for name in BARE_NAMES:
+        got = lint_tool(_s(params=[dict(ok_param, name=name, pattern="x")]))
+        assert got == ["bare-param"], f"got {got} for a parameter named {name!r}: every name in BARE_NAMES is bare, with or without a pattern"
+    assert lint_tool(_s(params=[ok_param, dict(ok_param, name="note", description="")])) == ["undescribed-param"], (
+        "read every parameter, not only the first")
+    spec = _s(name="x", params=[dict(ok_param, name="id", description="")])
+    before = copy.deepcopy(spec)
+    lint_tool(spec)
+    assert spec == before, "lint_tool must not change the spec it is given"
     both = dict(ok_param, name="id", description="", pattern=None)
     got = lint_tool(_s(name="x", description="", params=[both]))
-    assert got == ["bare-param", "thin-description", "unchecked-id", "unclear-name", "undescribed-param"], f"got {got}: sorted, each code once"
+    assert got == ["bare-param", "thin-description", "unchecked-id", "unclear-name", "undescribed-param"], f"got {got}: sorted, each code once (and a pattern of None is no pattern)"
     pairs = confusable_pairs([_s("ticket"), _s("tickets"), _s("get_ticket"), _s("summary")])
     assert pairs == [("ticket", "tickets"), ("ticket", "get_ticket"), ("tickets", "get_ticket")], f"got {pairs}: strip one trailing s, then test subset in both directions"
     assert confusable_pairs([_s("find_tickets"), _s("get_ticket"), _s("count_tickets")]) == [], "sharing a piece is not enough: one set must contain the other"
     assert confusable_pairs([_s("status"), _s("stat")]) == [], "pieces of three letters or fewer keep their s; `status` becomes `statu`"
+    assert confusable_pairs([_s("bus"), _s("bu")]) == [], (
+        "`bus` has three letters, so it keeps its s: only a piece LONGER than three letters (four or more) loses one")
+    assert confusable_pairs([_s("get_tickets_by"), _s("get_ticket_by")]) == [("get_tickets_by", "get_ticket_by")], (
+        "drop the s from each PIECE after splitting on _, not from the end of the whole name: `tickets` is an inner piece here")
+    assert confusable_pairs([_s("list_tags"), _s("list_tag")]) == [("list_tags", "list_tag")], "a piece of four letters such as `tags` loses its s"
+    assert confusable_pairs([_s("get_ticket"), _s("ticket")]) == [("get_ticket", "ticket")], (
+        "test the subset in both directions: here the second name's pieces sit inside the first's")
+    assert confusable_pairs([_s("class"), _s("clas")]) == [], (
+        "drop ONE trailing s: class becomes clas and clas becomes cla, which differ (rstrip('s') would drop both)")
+    assert confusable_pairs([_s("ticket"), _s("ticket")]) == [("ticket", "ticket")], "equal sets of pieces are confusable too"
     print("exercise 2 looks right")
 
 
@@ -1292,7 +1368,7 @@ if __name__ == "__main__":
 # **`run_episode(policy, toolset, task, max_steps)`** starts from `fresh_world()` and repeats, at most `max_steps`
 # times: ask `policy.propose(calls)` (passing the list of records so far) for the next call; `None` ends the
 # episode; otherwise call `toolset.call(world, tool_name, args)`, which returns `(ok, text)`, and append a record
-# `{"tool": ..., "args": ..., "ok": ..., "text": ...}`; an `ok` call also ends the episode (the policy stops at the
+# with exactly these four keys, `{"tool": ..., "args": ..., "ok": ..., "text": ...}`; an `ok` call also ends the episode (the policy stops at the
 # first call that returns without an error). It returns a dict with:
 #
 # * `calls`: the records, in order; `steps`: how many calls were made; `errors`: how many of them were not `ok`;
@@ -1316,10 +1392,12 @@ if __name__ == "__main__":
 def run_episode(policy, toolset, task: dict, max_steps: int) -> dict:
     """One episode of `policy` using `toolset` on `task`, as described above.
 
-    Example (a policy that makes one call and stops on its success):
-        >>> ep = run_episode(policy, toolset, task, 6)    # doctest: +SKIP
-        >>> sorted(ep)
-        ['calls', 'errors', 'stopped_ok', 'steps', 'success']
+    Example (a scripted policy that makes one right call and stops on its success; `_Scripted` is defined below):
+        >>> task = next(t for t in TASKS if t["op"] == "read_ticket")
+        >>> one = _Scripted([("get_ticket", {"ticket_id": task["canon"]["ticket"]})])
+        >>> ep = run_episode(one, Toolset("good", "good", "good"), task, 6)
+        >>> sorted(ep), ep["steps"], ep["errors"], ep["stopped_ok"], ep["success"]
+        (['calls', 'errors', 'steps', 'stopped_ok', 'success'], 1, 0, True, True)
 
     Returns:
         A dict with keys calls, steps, errors, stopped_ok and success.
@@ -1336,6 +1414,7 @@ class _Scripted:
 
     def propose(self, calls):
         self.seen.append(len(calls))
+        self.records = [dict(c) if isinstance(c, dict) else c for c in calls]
         return self.script[len(calls)] if len(calls) < len(self.script) else None
 
 
@@ -1350,19 +1429,42 @@ def _check_episode() -> None:
     assert ep["steps"] == 2 and ep["errors"] == 1 and ep["stopped_ok"] and ep["success"], (
         f"got {ep['steps']} steps, {ep['errors']} errors: the first call fails, the second succeeds and ends the episode")
     assert pol.seen == [0, 1], f"propose saw {pol.seen}: it is given the records so far, so its argument grows by one each step"
+    rec = pol.records
+    assert len(rec) == 1 and isinstance(rec[0], dict) and rec[0].get("tool") == "get_ticket" and rec[0].get("args") == wrong[1] \
+        and rec[0].get("ok") is False, f"propose was last given {rec}: pass it the list of call records so far, not a count or anything else"
     assert [c["ok"] for c in ep["calls"]] == [False, True] and ep["calls"][0]["tool"] == "get_ticket" and ep["calls"][0]["args"] == wrong[1], (
         "each record holds the tool, the args as sent, ok and the text")
-    ep = run_episode(_Scripted([wrong] * 9), ts, task, 3)
-    assert ep["steps"] == 3 and ep["errors"] == 3 and not ep["stopped_ok"] and not ep["success"], "the step budget ends the episode"
-    ep = run_episode(_Scripted([]), ts, task, 3)
-    assert ep["steps"] == 0 and ep["calls"] == [] and ep["stopped_ok"] is False and ep["success"] is False, "a policy that makes no call has not stopped on a success"
     other = next(t for t in TASKS if t["op"] == "set_status")
     a = ("update_ticket", {"ticket_id": other["canon"]["ticket"], "status": other["canon"]["status"]})
     first = run_episode(_Scripted([a]), ts, other, 3)
-    second = run_episode(_Scripted([a]), ts, other, 3)
-    assert first["success"] and second["success"], "every episode starts from a fresh world: a write made by one episode must not leak into the next"
+    after = run_episode(_Scripted([right]), ts, task, 3)
+    assert first["success"] and after["success"], (
+        "every episode starts from a fresh world: a write made by one episode must not leak into the next "
+        "(is one world shared by every episode?)")
+    ep = run_episode(_Scripted([wrong] * 9), ts, task, 3)
+    assert ep["steps"] == 3 and ep["errors"] == 3 and not ep["stopped_ok"] and not ep["success"], "the step budget ends the episode"
+    pol = _Scripted([wrong, wrong])
+    ep = run_episode(pol, ts, task, 6)
+    assert ep["steps"] == 2 and not ep["stopped_ok"] and pol.seen == [0, 1, 2], (
+        f"propose was asked {len(pol.seen)} times ({pol.seen}): None ends the episode (break), so the policy is asked "
+        "three times here and never again after it returned None")
+    ep = run_episode(_Scripted([]), ts, task, 3)
+    assert ep["steps"] == 0 and ep["calls"] == [] and ep["stopped_ok"] is False and ep["success"] is False, "a policy that makes no call has not stopped on a success"
     ep = run_episode(_Scripted([("get_ticket", {"ticket_id": "T999"})]), ts, task, 3)
     assert ep["errors"] == 1 and not ep["success"], "an error from the toolset is recorded, not raised"
+
+    class _Fixed:
+        """A toolset with two fixed answers, so the records can be compared exactly."""
+
+        def call(self, world, name, args):
+            return (False, "Error: try again") if args.get("n") == 1 else (True, "done")
+
+    ep = run_episode(_Scripted([("a", {"n": 1}), ("b", {"n": 2})]), _Fixed(), task, 4)
+    assert ep["calls"] == [{"tool": "a", "args": {"n": 1}, "ok": False, "text": "Error: try again"},
+                           {"tool": "b", "args": {"n": 2}, "ok": True, "text": "done"}], (
+        f"got {ep['calls']}: each record has exactly the four keys tool, args, ok and text (the toolset's text), no more")
+    ep = run_episode(_Scripted([wrong] * 3), _Fixed(), task, 0)
+    assert ep["steps"] == 0 and ep["calls"] == [], "a step budget of zero allows no call at all"
     print("exercise 3 looks right")
 
 
@@ -1431,7 +1533,9 @@ if __name__ == "__main__":
 # * `wasted`: errors per episode, a `Fraction` (total `errors` over `n`);
 # * `silent`: the **count** of episodes that did not succeed although they stopped on a call without an error
 #   (the tool accepted something wrong);
-# * `gave_up`: the count of episodes that did not stop on a call without an error;
+# * `gave_up`: the count of episodes that did not stop on a call without an error, whether or not they succeeded
+#   (decide it from the stop alone; with this lesson's toolsets such an episode cannot succeed, but your function is
+#   also given episodes from elsewhere);
 # * `recovery`: among episodes with at least one error, the fraction that still succeeded, as a `Fraction`
 #   (`Fraction(0)` when no episode had an error).
 #
@@ -1439,8 +1543,8 @@ if __name__ == "__main__":
 #
 # <details><summary>💡 Hint 1 — what to think about</summary>
 #
-# `silent` and `gave_up` are two ways not to succeed, and both are counts. Which two fields of each episode decide
-# which one it is? What denominators do `success`, `wasted` and `recovery` use, and are they the same?
+# `silent` and `gave_up` are both counts, and they ask different questions: `silent` is about failures that stopped
+# cleanly, `gave_up` only about how the episode stopped. Which field, or fields, does each one read? What denominators do `success`, `wasted` and `recovery` use, and are they the same?
 #
 # </details>
 # <details><summary>💡 Hint 2 — the approach in words</summary>
@@ -1470,10 +1574,20 @@ def _check_summary() -> None:
            {"errors": 1, "success": False, "stopped_ok": True}, {"errors": 3, "success": False, "stopped_ok": False}]
     got = summarise(eps)
     assert got["n"] == 4 and got["success"] == Fraction(1, 2) and isinstance(got["success"], Fraction), f"got success {got['success']!r}: successes over episodes, exact"
-    assert got["wasted"] == Fraction(3, 2), f"got {got['wasted']!r}: total errors over ALL episodes, including those with none"
+    assert got["wasted"] == Fraction(3, 2) and isinstance(got["wasted"], Fraction), (
+        f"got {got['wasted']!r}: total errors over ALL episodes, including those with none, as a Fraction (1.5 is a float)")
+    assert set(got) == {"n", "success", "wasted", "silent", "gave_up", "recovery"}, f"got the keys {sorted(got)}: exactly the six documented keys"
+    assert type(got["silent"]) is int and type(got["gave_up"]) is int, "silent and gave_up are integer counts, not fractions"
     assert got["silent"] == 1 and got["gave_up"] == 1, f"got silent {got['silent']}, gave_up {got['gave_up']}: silent is failure after a clean-looking stop; gave_up is no clean stop"
-    assert got["recovery"] == Fraction(1, 3), f"got {got['recovery']!r}: only episodes that met an error count, and they are three"
-    assert summarise([{"errors": 0, "success": True, "stopped_ok": True}])["recovery"] == Fraction(0), "no errors anywhere: recovery is Fraction(0), not an error"
+    assert got["recovery"] == Fraction(1, 3) and isinstance(got["recovery"], Fraction), (
+        f"got {got['recovery']!r}: only episodes that met an error count, and they are three; keep it an exact Fraction")
+    none = summarise([{"errors": 0, "success": True, "stopped_ok": True}])["recovery"]
+    assert none == Fraction(0) and type(none) is Fraction, (
+        f"got {none!r}: no errors anywhere, so recovery is Fraction(0), an exact Fraction like the others (not the int 0)")
+    odd = summarise([{"errors": 1, "success": True, "stopped_ok": False}])
+    assert odd["gave_up"] == 1 and odd["silent"] == 0, "gave_up is decided by the stop alone: an episode with no clean stop counts, even if it succeeded"
+    quiet = summarise([{"errors": 0, "success": False, "stopped_ok": False}])
+    assert quiet["gave_up"] == 1 and quiet["silent"] == 0, "an episode that made no call never stopped on an ok call, so it gave up, even with no error at all"
     try:
         summarise([])
     except ValueError:
@@ -1575,14 +1689,30 @@ def _check_effects() -> None:
     assert got == (Fraction(5), Fraction(5), Fraction(5)) and all(isinstance(g, Fraction) for g in got), (
         f"got {got}: divide by four exactly, with Fraction, not a float or integer division")
     assert best_single_fix(synergy) == (0, 0), "when only the full set of fixes helps, no single fix gains anything; the lowest index wins the tie"
+    lone = {k: 1 if k == (1, 0, 0) else 0 for k in keys}
+    assert main_effects(lone) == (Fraction(1, 4), Fraction(-1, 4), Fraction(-1, 4)), (
+        f"got {main_effects(lone)}: a total that four does not divide must stay exact, so no integer division")
     skew = {k: 10 * k[1] - 4 * k[0] for k in keys}
     assert best_single_fix(skew) == (1, 10) and main_effects(skew)[0] == Fraction(-4), "a lever can hurt: a negative effect stays negative"
+    based = {k: 7 for k in keys}
+    based.update({(0, 0, 0): 10, (1, 0, 0): 8, (0, 1, 0): 9, (0, 0, 1): 12})
+    assert best_single_fix(based) == (2, 2), "the gain is measured against the all-bad corner's own value (10 here), not against zero"
+    assert type(best_single_fix(based)[1]) is int and type(best_single_fix(based)[0]) is int, (
+        "index and gain are plain ints: the gain is a difference of two success counts, not a Fraction or a float")
     try:
         main_effects({k: 1 for k in keys[:7]})
     except ValueError:
         pass
     else:
         raise AssertionError("a table with a missing combination must raise ValueError")
+    for odd, what in (({**{k: 1 for k in keys}, (2, 0, 0): 1}, "an extra key"),
+                      ({**{k: 1 for k in keys[:7]}, (1, 1, 2): 1}, "eight keys with one of them not a combination")):
+        try:
+            main_effects(odd)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"a table with {what} must raise ValueError: the keys must be exactly the eight combinations")
     print("exercise 5 looks right")
 
 
@@ -1597,11 +1727,19 @@ if __name__ == "__main__":
 
 # %%
 def _measure() -> None:
-    table, summaries = {}, {}
+    table, summaries, silent_ends = {}, {}, {}
     for a in (0, 1):
         for b in (0, 1):
             for c in (0, 1):
-                s = summarise(play_all(tuple("good" if x else "bad" for x in (a, b, c))))
+                levers = tuple("good" if x else "bad" for x in (a, b, c))
+                episodes = play_all(levers)
+                s = summarise(episodes)
+                if c == 0:
+                    kind_of = Toolset(*levers).kind_of
+                    for e in episodes:
+                        if e["stopped_ok"] and not e["success"]:
+                            kind = kind_of[e["calls"][-1]["tool"]]
+                            silent_ends[kind] = silent_ends.get(kind, 0) + 1
                 summaries[(a, b, c)] = s
                 table[(a, b, c)] = int(s["success"] * s["n"])
     n = summaries[(0, 0, 0)]["n"]
@@ -1609,6 +1747,8 @@ def _measure() -> None:
     print(f"{'names':>6}{'params':>8}{'errors':>8}{'success':>9}{'wasted/task':>13}{'silent':>8}{'gave up':>9}{'recovery':>10}")
     for k, s in summaries.items():
         print(f"{k[0]:>6}{k[1]:>8}{k[2]:>8}{table[k]:>9}{'≈%.2f' % float(s['wasted']):>13}{s['silent']:>8}{s['gave_up']:>9}{_pct(s['recovery']):>10}")
+    ends = ", ".join(f"the {k} tool {silent_ends[k]}" for k in KINDS if k in silent_ends)
+    print(f"\nwhere the {sum(silent_ends.values())} silent episodes of the four bad-errors rows ended: {ends}")
     effects = main_effects(table)
     index, gain = best_single_fix(table)
     lever = ("names", "params", "errors")
@@ -1626,10 +1766,10 @@ def _measure() -> None:
         print(f"the all-good toolset succeeds on every task, with ≈{good_wasted:.2f} wasted calls per task: the policy's slips still\n"
               "reach it, and its corrective errors repair them. That is the script's ceiling and not a prediction; a real model has\n"
               "failure modes this script lacks")
-    print("\nthe errors lever switches validation on as well as improving the wording, so its effect is both together. The\n"
-          "policy's tendencies are assumptions, so read these as which parts of a specification the stated rules punish.\n"
-          "Testing a real model would need a policy of your own whose propose(calls) asks the model and returns (tool, args),\n"
-          "run through the loop of exercise 3 on the same toolsets and tasks.")
+    print("\nthe errors lever switches validation on (for the find and create tools) as well as improving the wording, so its\n"
+          "effect is both together. The policy's tendencies are assumptions, so read these as which parts of a\n"
+          "specification the stated rules punish. Testing a real model would need a policy of your own whose propose(calls)\n"
+          "asks the model and returns (tool, args), run through the loop of exercise 3 on the same toolsets and tasks.")
 
 
 if __name__ == "__main__":
@@ -1651,11 +1791,13 @@ if __name__ == "__main__":
 #   date. Nothing printed above confirms or refutes it; to test it on a model you would write a policy whose
 #   `propose(calls)` asks the model and returns `(tool, args)`, and run it through the loop of exercise 3, as this
 #   lesson runs the script. T07-L01 and T07-L03 build the loop and the metrics, not a path that calls a model.
-# * **The errors lever is two levers.** Good errors validate as well as explain; bad errors let a wrong value through,
-#   and the silent column counts those. The table cannot separate validation from wording, and the policy reads only
-#   the author's message shape.
-# * **The extremes are built in.** In the bad toolsets some operations cannot be finished by any reader, because a
-#   value they need (`assignee` for the update tool's `field`) appears nowhere in the specification. In the all-good
+# * **The errors lever is two levers.** Good errors validate every call as well as explain; bad errors leave the find
+#   and create tools unchecked. Most silent failures in the bad-errors rows are episodes that end on the find tool,
+#   which accepts a call meant for another job and answers it with a list (empty, or of the wrong tickets); the line
+#   under the table counts where they ended. The table cannot separate validation from wording, and the policy reads
+#   only the author's message shape.
+# * **The extremes are built in.** In the toolsets with bad parameters and bad errors some operations cannot be
+#   finished by any reader, because a value they need (`assignee` for the update tool's `field`) appears nowhere in the specification. In the all-good
 #   toolset the corrective errors repair the policy's slips. The floor and the ceiling show information absent or
 #   present, not ambiguity.
 # * **Consolidation was held fixed.** Both specifications have the same tools doing the same pairs of jobs. Whether
@@ -1693,18 +1835,18 @@ if __name__ == "__main__":
 #
 # 1. Suppose a table like this one showed the toolset with corrective error text recovering far more often than the one with vague error text. What could you conclude?
 #    - (a) A real model would recover from corrective errors at the same rate, because the table was computed exactly and its seeds are fixed.
-#    - (b) For a reader that acts on such messages, as the script does, naming the fix is worth a gain; whether a model acts on them needs its own run.
+#    - (b) For a reader that acts on such messages, as the script does, naming the fix pays; a real model would need a run of its own to show the same.
 #    - (c) Corrective error text matters only for tool names, because the script never reads a message when a parameter is wrong.
 #    - (d) Vague errors would be better, because they push the agent to try other tools, and trying another tool is how a stuck agent recovers.
 #
 # 2. A tool answers an unknown person name with an empty list and no error. Why is that worse than an error?
-#    - (a) The agent retries an empty list until the step cap, so the episode always ends in giving up.
-#    - (b) Empty lists use more tokens than error strings, so the episode costs more.
-#    - (c) The agent takes the empty list for a finished job and stops; the failure shows in no error count.
-#    - (d) Empty lists take longer to produce than error strings, so the wasted-call count rises.
+#    - (a) The agent retries an empty list again and again until the step cap, so the episode always ends in giving up.
+#    - (b) Empty lists use more tokens than short error strings, so every episode that meets one costs more to run.
+#    - (c) The agent takes the empty list for a finished job and stops there; the failure shows up in no error count.
+#    - (d) Empty lists take longer to produce than error strings, so the wasted-call count rises with every one returned.
 #
 # 3. Why is each episode's random generator seeded from the toolset's levers and the task id, instead of using one generator for the whole run?
-#    - (a) So that run order cannot change what an episode does, and any one episode can be replayed alone.
+#    - (a) So that the order of the run cannot change what an episode does, and any single episode can be replayed on its own.
 #    - (b) Because a single generator would give every episode the same sequence of coin flips, so every tie would break the same way.
 #    - (c) Because Python's random module cannot be seeded more than once in a process, so each episode needs its own object.
 #    - (d) Because the policy needs the task id to know which tool is the correct one for the job.
@@ -1713,7 +1855,7 @@ if __name__ == "__main__":
 #    - (a) One of the two functions has a bug, since both measure the same thing, and the lesson's table cannot tell you which.
 #    - (b) The table has too few episodes for averages to mean anything, so the larger of the two is noise.
 #    - (c) Averages over several settings are always larger than a single change, so they pick the lever with more settings.
-#    - (d) The levers interact: an average over all eight settings is not the gain from changing one lever in the all-bad toolset.
+#    - (d) The levers interact: an average over eight settings is not the gain of one change from all-bad.
 #
 # Answers, with reasoning, come with this lesson's worked solution when you enrol on Synapsa.
 
