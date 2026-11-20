@@ -1,0 +1,242 @@
+claims:
+- id: corpus-public-domain
+  claim: 'The text used as the training corpus is an excerpt of Shakespeare''s Sonnets, taken from Project
+    Gutenberg eBook #1041. Project Gutenberg records this eBook''s copyright status as "Public domain
+    in the USA.", and records the author, William Shakespeare, with the dates 1564-1616. The excerpt excludes
+    Project Gutenberg''s own header and footer, and writes the Gutenberg text''s typographic apostrophes
+    as straight ones; every line of it was compared with pg1041.txt on the access date.'
+  where: meta.yaml datasets; lesson.py section 2 (the corpus).
+  source_url: https://www.gutenberg.org/ebooks/1041
+  source_title: 'Project Gutenberg - Shakespeare''s Sonnets by William Shakespeare, eBook #1041'
+  quote: Public domain in the USA.
+  quote_context: the 'Copyright Status' row of the eBook's catalogue record; the 'Author' row reads 'Shakespeare,
+    William, 1564-1616'
+  accessed: 2026-11-13
+- id: mx-spec-version
+  claim: The specification this lesson follows for MXFP4, E2M1 and E8M0 is the Open Compute Project's
+    "OCP Microscaling Formats (MX) Specification", Version 1.0, dated September 2023, authored by Microsoft,
+    AMD, Arm, Intel, Meta, NVIDIA and Qualcomm.
+  where: lesson.py section 1; sections 5 to 7.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: OCP Microscaling Formats (MX) Specification Version 1.0
+  quote_context: 'the title page; its date line reads ''Date: Sep 2023'''
+  accessed: 2026-11-13
+- id: mxfp4-block-and-scale
+  claim: MXFP4 is defined by the MX specification as an E2M1 (FP4) element, a scaling block of 32 elements
+    and an E8M0 scale of 8 bits.
+  where: lesson.py sections 1, 7 and 10 (MXFP4 blocks of 32, a scale byte per block).
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: MXFP4 FP4 (E2M1) 4 32 E8M0 8
+  quote_context: 'Table 1, Format names and parameters of concrete MX-compliant formats: the columns are
+    element data type, element bits, scaling block size, scale data type and scale bits'
+  accessed: 2026-11-13
+- id: mx-block-layout-open
+  claim: The MX specification does not prescribe how a block is laid out in memory, so the order in which
+    two 4-bit codes share a byte in this lesson (the first in the low half) is this lesson's choice.
+  where: lesson.cpp exercise 1; lesson.py section 3.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: The layout of the block in physical memory is not prescribed in this specification.
+  quote_context: section 5.1, Microscaling (MX)
+  accessed: 2026-11-13
+- id: e2m1-no-inf-nan
+  claim: E2M1 reserves no encoding for infinity or NaN, so all 16 patterns are numbers.
+  where: lesson.cpp exercise 3; lesson.py section 5.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: No encodings are reserved for Inf or NaN in FP4.
+  quote_context: section 5.3.3, FP4
+  accessed: 2026-11-13
+- id: e2m1-ties-to-even
+  claim: An MX implementation must support round-to-nearest, ties to even, when converting values to FP4.
+  where: lesson.cpp exercises 2 and 3; lesson.py sections 4 and 5.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: An implementation must support the roundTiesToEven rounding mode for converting values to FP4.
+  quote_context: section 5.3.3, FP4
+  accessed: 2026-11-13
+- id: e2m1-saturation
+  claim: An MX implementation must support clamping (saturating) a value that exceeds the FP4 range to
+    the maximum FP4 magnitude, keeping the sign.
+  where: lesson.cpp exercise 3; lesson.py section 5.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: an implementation must support clamping (saturating) the value to the maximum FP4 magnitude,
+    preserving the sign.
+  quote_context: section 5.3.3, FP4, the paragraph after the first one
+  accessed: 2026-11-13
+- id: e2m1-and-e4m3-maxima
+  claim: The largest magnitudes representable in E2M1 and E4M3 are 6 and 448.
+  where: lesson.cpp (E2M1_MAX, E4M3_MAX); lesson.py sections 1, 5 and 9.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), appendix B.1
+  quote: the maximum representable magnitudes in the E2M1 and E4M3 formats, respectively.
+  quote_context: 'appendix B.1, Global tensor-level scaling: the sentence before it says ''6 and 448 are''
+    and the equation s_enc = (6 x 448) / amax_x'
+  accessed: 2026-11-13
+- id: e8m0-encoding
+  claim: E8M0 is an unsigned biased exponent with bias 127 and a supported exponent range of -127 to 127,
+    with no infinity and one NaN.
+  where: lesson.cpp exercise 4; lesson.py section 6.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: Exponent bias 127 Supported exponent range -127 to 127
+  quote_context: Table 7, Scale data type E8M0 encoding details (the table's NaN row reads 11111111 in
+    binary); section 5.4.1 says 'there is no representation for Inf and only a single NaN encoding is
+    reserved.'
+  accessed: 2026-11-13
+- id: mx-nan-scale
+  claim: When an MX block's scale is NaN, every value in the block is NaN, whatever the element encodings
+    are.
+  where: lesson.cpp exercise 5; lesson.py section 7.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: When the scale is NaN, all values in the MX block are NaNs and the element encodings are ignored.
+  quote_context: section 5.1, Microscaling (MX), the paragraph after the list that gives the values v_1
+    to v_k inferred from the fields (its first bullet reads, with math symbols, 'If X = NaN, then v_i
+    = NaN for 1 <= i <= k regardless of P_i')
+  accessed: 2026-11-13
+- id: mx-scale-rule
+  claim: The MX conversion rule sets the block scale to the largest power of two not above the block's
+    largest magnitude, divided by the largest power of two representable in the element type, and clamps
+    elements that exceed the element type's maximum normal value to it, keeping the sign. For E2M1 the
+    divisor is 4.
+  where: lesson.cpp exercises 4 and 5; lesson.py sections 6 and 7.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: power-of-two representable in the element data type.
+  quote_context: section 6.3, Conversion from Vector of Scalar Elements to MX-compliant Format, step 1;
+    step 2 reads 'normal numbers that exceed the max normal representation of the element data type should
+    be clamped to the max normal, preserving the sign.'
+  accessed: 2026-11-13
+- id: e4m3-definition
+  claim: E4M3 has 1 sign bit, 4 exponent bits, 3 mantissa bits and an exponent bias of 7.
+  where: lesson.cpp exercise 6; lesson.py section 8.
+  source_url: https://www.opencompute.org/documents/ocp-8-bit-floating-point-specification-ofp8-revision-1-0-2023-12-01-pdf-1
+  source_title: OCP 8-bit Floating Point Specification (OFP8), Revision 1.0 (PDF)
+  quote: 'E4M3: An OFP8 format with 1 sign bit, 4 biased exponent bits, 3 mantissa bits, and an exponent
+    bias of 7.'
+  quote_context: section 4.1, Definitions
+  accessed: 2026-11-13
+- id: e4m3-max-448
+  claim: The largest magnitude of an E4M3 number is 448.
+  where: lesson.cpp exercise 6; lesson.py sections 8 and 9.
+  source_url: https://www.opencompute.org/documents/ocp-8-bit-floating-point-specification-ofp8-revision-1-0-2023-12-01-pdf-1
+  source_title: OCP 8-bit Floating Point Specification (OFP8), Revision 1.0 (PDF)
+  quote: 'max_E4M3: The maximum magnitude of a number in the E4M3 format. It has the value 448.'
+  quote_context: section 4.1, Definitions
+  accessed: 2026-11-13
+- id: e4m3-no-infinity
+  claim: E4M3 has no infinity and uses two bit patterns for NaN (one pattern with either sign).
+  where: lesson.cpp exercise 6; lesson.py section 8.
+  source_url: https://www.opencompute.org/documents/ocp-8-bit-floating-point-specification-ofp8-revision-1-0-2023-12-01-pdf-1
+  source_title: OCP 8-bit Floating Point Specification (OFP8), Revision 1.0 (PDF)
+  quote: The E4M3 format does not represent infinities and uses only two bit patterns for NaN (a single
+    mantissa-exponent bit pattern but allowing both values of the sign bit)
+  quote_context: section 5.1, OFP8 Binary Interchange Formats; the sentence continues 'in order to increase
+    emax to 8'
+  accessed: 2026-11-13
+- id: e4m3-saturating-mode
+  claim: An MX implementation must support a saturating conversion to FP8 (SAT) for values from another
+    format; the lesson's encoder uses it (infinity and anything at or above 448 give the largest finite
+    value).
+  where: lesson.cpp exercise 6; lesson.py section 8.
+  source_url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+  source_title: OCP Microscaling Formats (MX) Specification, Version 1.0 (PDF)
+  quote: An implementation must support the saturate (SAT) and overflow (OVF) methods outlined in Table
+    3 for handling conversions of values from another format to FP8.
+  quote_context: section 5.3.1, FP8
+  accessed: 2026-11-13
+- id: nvfp4-block-and-scale-format
+  claim: NVFP4 uses a block of 16 elements instead of MXFP4's 32, stores block scale factors in E4M3 instead
+    of UE8M0, and applies an FP32 scale at the tensor level.
+  where: lesson.py sections 1, 9 and 14; lesson.cpp exercise 7.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), section 2
+  quote: block scale factors are stored in E4M3 rather than UE8M0, trading some exponent range for additional
+    mantissa bits.
+  quote_context: the sentences around it read 'First, by reducing the block size from 32 to 16 elements,
+    NVFP4 narrows the dynamic range within each block' and 'Third, an FP32 scale is applied at the tensor
+    level to retain the range of block scales.'
+  accessed: 2026-11-13
+- id: nvfp4-block-size-16
+  claim: NVFP4 reduces the block size from 32 to 16 elements.
+  where: lesson.py sections 1 and 14.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), section 2
+  quote: First, by reducing the block size from 32 to 16 elements, NVFP4 narrows the dynamic range within
+    each block
+  quote_context: section 2, the paragraph that begins 'NVFP4 is an enhanced 4-bit format'
+  accessed: 2026-11-13
+- id: nvfp4-local-encode-scale
+  claim: NVFP4's real local encode scale is the inverse of the quantised E4M3 local decode scale, taken
+    in higher precision and scaled back to its original range; that is why the encoder divides by the
+    decoded scale byte.
+  where: lesson.cpp exercise 7; lesson.py section 9.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), appendix B.2
+  quote: We obtain the real local encode scale factor by inverting the quantized local decode scale in
+    higher precision and scaling it back to its original representable range
+  quote_context: appendix B.2, Local block-level scaling; the sentence ends in the formula s_enc,b = 1
+    / (fp32(s_dec,b,e4m3) x s_dec)
+  accessed: 2026-11-13
+- id: nvfp4-scale-rounding
+  claim: NVFP4's E4M3 decode scale is rounded to nearest even.
+  where: lesson.cpp exercise 7; lesson.py section 9.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), appendix B.2
+  quote: Round-to-nearest-even is used when computing the decode scale factor in Equation 3.
+  quote_context: appendix B.2, the last sentence
+  accessed: 2026-11-13
+- id: mxfp4-round-up-scales
+  claim: The NVFP4 paper reports that rounding MX scale factors up to the next representable UE8M0 value
+    is beneficial, citing Mishra et al. (2025); the lesson's 'E8M0 rounded up' row is its own reading
+    of that, not a published recipe.
+  where: lesson.py section 14.
+  source_url: https://arxiv.org/abs/2509.25149
+  source_title: Pretraining Large Language Models with NVFP4 (arXiv 2509.25149), section 2
+  quote: Mishra et al. (2025) found that it is beneficial to round scale factors up to the next representable
+    UE8M0 value to avoid saturations.
+  quote_context: section 2, the paragraph on MXFP4
+  accessed: 2026-11-13
+- id: nvfp4-paper-version
+  claim: The NVFP4 paper this lesson follows is NVIDIA's 'Pretraining Large Language Models with NVFP4',
+    arXiv 2509.25149, as the PDF served on the access date (its page header carries the date 2026-3-6,
+    which is a later version than the first submission).
+  where: meta.yaml before_you_start; lesson.py sections 9 and 17.
+  source_url: https://arxiv.org/pdf/2509.25149
+  source_title: arXiv PDF of 2509.25149
+  quote: Pretraining Large Language Models with NVFP4
+  quote_context: the page header of the PDF; the date 2026-3-6 sits on the first page
+  accessed: 2026-11-13
+- id: nvidia-blackwell-nvfp4
+  claim: NVIDIA's Blackwell fifth-generation Tensor Core architecture implements NVFP4.
+  where: lesson.py sections 1 and 17.
+  source_url: https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/
+  source_title: NVIDIA Technical Blog - Introducing NVFP4 for Efficient and Accurate Low-Precision Inference
+  quote: NVIDIA Blackwell fifth-generation Tensor Core architecture implements NVFP4
+  quote_context: the sentence continues 'and can automatically handle the microscaled FP4 data including
+    the grouping of elements, dynamic scaling, and 4-bit matrix operations.'
+  accessed: 2026-11-13
+- id: nvidia-blog-nvfp4-scaling
+  claim: NVIDIA describes NVFP4 as a fine-grained scale for each 16-value micro-block plus a second-level
+    FP32 scalar per tensor (the blog calls the block scale an FP8 scale; the lesson's E4M3 comes from
+    the paper).
+  where: lesson.py section 1.
+  source_url: https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/
+  source_title: NVIDIA Technical Blog - Introducing NVFP4 for Efficient and Accurate Low-Precision Inference
+  quote: applying a fine-grained FP8 scale to each 16-value micro-block and a second-level FP32 scalar
+    per tensor
+  quote_context: the sentence begins 'NVFP4 reduces quantization error by'
+  accessed: 2026-11-13
+- id: amd-cdna4-mx-formats
+  claim: AMD's CDNA 4 matrix cores add hardware support for the OCP MX formats MXFP8, MXFP6 and MXFP4.
+  where: lesson.py sections 1 and 17.
+  source_url: https://rocm.docs.amd.com/en/latest/reference/gpu-arch/mi350.html
+  source_title: AMD Instinct MI350 Series microarchitecture (ROCm documentation)
+  quote: The CDNA4 Matrix Cores add hardware support for industry-standard micro-scaling (OCP MX) formats
+    including MXFP8, MXFP6, and MXFP4, alongside existing formats such as FP16, BF16, FP8, and INT8.
+  quote_context: the section 'Matrix cores and precision support'
+  accessed: 2026-11-13

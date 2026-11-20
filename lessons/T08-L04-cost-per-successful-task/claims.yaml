@@ -1,0 +1,200 @@
+claims:
+- id: anthropic-prefix-order
+  claim: As of the access date the Claude documentation says prompt caching covers the prefix made of
+    tools, then system, then messages, in that order, up to the block marked for caching. The lesson's
+    layouts put the static tools and system text first for that reason.
+  where: lesson.py introduction and section 1
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: 'Prompt caching covers the full prefix: tools, system, and messages (in that order), up to and
+    including the block designated with cache_control.'
+  quote_context: Introductory paragraph of the page, before the first code example
+  accessed: 2026-11-13
+- id: anthropic-changing-breakpoint
+  claim: 'As of the access date the documentation describes the common mistake of marking a block that
+    changes on every request (a timestamp plus the user message): the prefix hash differs each time, so
+    the request pays for a fresh cache write every time and never gets a read. The timestamp-first layout
+    of the lesson reproduces that outcome under the lesson''s more generous cache model.'
+  where: lesson.py introduction, sections 1 and 6, self-check 1
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: You pay for a fresh cache write on every request and never get a read.
+  quote_context: 'Under ''Common mistake: Breakpoint on content that changes every request'', Request
+    2 of the example; the previous sentence says the timestamp differs, so the prefix hash differs'
+  accessed: 2026-11-13
+- id: anthropic-writes-at-breakpoints
+  claim: As of the access date the documentation says cache writes occur only at the marked breakpoint,
+    that up to four breakpoints may be defined, and that the lookback window checks at most 20 positions.
+    The lesson's cache writes every segment boundary and finds any earlier match, and says so as a limit.
+  where: lesson.py section 8
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: Cache writes occur only at your breakpoint.
+  quote_context: First of the 'Three core principles' under 'How automatic prefix checking works'; the
+    same page says 'The lookback window is 20 blocks.' and 'You can define up to 4 cache breakpoints'
+  accessed: 2026-11-13
+- id: anthropic-lifetime
+  claim: As of the access date the default lifetime of a Claude prompt-cache entry is 5 minutes (300 seconds
+    in the snapshot).
+  where: lesson.py PRICE_SNAPSHOT (ttl_s) for the two Claude profiles
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: ephemeral is the only supported cache type, which by default has a 5-minute lifetime.
+  quote_context: Under 'Cache limitations', after the minimum cacheable prompt lengths
+  accessed: 2026-11-13
+- id: anthropic-min-tokens
+  claim: As of the access date the minimum cacheable prompt length on the Claude API is 512 tokens for
+    Claude Sonnet 5.5 and 1,024 tokens for Claude Sonnet 4.6, and a prompt shorter than the minimum is
+    processed without caching and without an error. The snapshot's min_tokens values and exercise 3's
+    below-minimum rule follow this.
+  where: lesson.py PRICE_SNAPSHOT (min_tokens), section 4
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: 512 tokens for Claude Fable 5.2, Claude Mythos 5.2, Claude Fable 5.1, Claude Mythos 5.1, Claude
+    Opus 5.5, Claude Opus 5, Claude Sonnet 5.5, Claude Fable 5, Claude Mythos 5, and Claude Haiku 5.5
+  quote_context: First bullet under 'the minimum cacheable prompt length is'; the 1,024-token bullet names
+    Claude Sonnet 4.6, and the next paragraph says 'Shorter prompts cannot be cached, even if marked with
+    cache_control. Any requests to cache fewer than this number of tokens are processed without caching,
+    and no error is returned.'
+  accessed: 2026-11-13
+- id: anthropic-cache-multipliers
+  claim: As of the access date Anthropic prices a 5-minute cache write at 1.25 times the base input price,
+    valid for 5 minutes, and a cache read at 0.1 times on most models and 0.05 times (a price of 0.10
+    US dollars per million tokens) on Claude Sonnet 5.5. Prompt caching reduces cost and latency by reusing
+    previously processed parts of a prompt.
+  where: lesson.py PRICE_SNAPSHOT (write and read), section 1
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Anthropic: Pricing (Claude API documentation)'
+  quote: 5-minute cache write 1.25x base input price Cache valid for 5 minutes
+  quote_context: 'The prompt-caching multiplier table under ''Feature-specific pricing''; the table that
+    follows it lists ''Claude Sonnet 5.5 0.05x $0.10 USD'' and ''All other models 0.1x''. The section
+    opens: ''Prompt caching reduces costs and latency by reusing previously processed portions of your
+    prompt across API calls.'''
+  accessed: 2026-11-13
+- id: anthropic-sonnet-5-5-row
+  claim: As of the access date the Claude Sonnet 5.5 row of the model pricing table is 2 dollars input,
+    10 dollars output, 2.50 dollars for 5-minute cache writes and 0.10 dollars for cache hits, per million
+    tokens.
+  where: lesson.py PRICE_SNAPSHOT, profile claude-sonnet-5.5
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Anthropic: Pricing (Claude API documentation)'
+  quote: Claude Sonnet 5.5 $2 / MTok $2.50 / MTok $4 / MTok $0.10 / MTok $10 / MTok
+  quote_context: Model pricing table; columns are Base input tokens, 5m cache writes, 1h cache writes,
+    Cache hits and refreshes, Output tokens (in that order on the page)
+  accessed: 2026-11-13
+- id: anthropic-sonnet-4-6-row
+  claim: As of the access date the Claude Sonnet 4.6 row of the model pricing table is 3 dollars input,
+    15 dollars output, 3.75 dollars for 5-minute cache writes and 0.30 dollars for cache hits, per million
+    tokens.
+  where: lesson.py PRICE_SNAPSHOT, profile claude-sonnet-4.6
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Anthropic: Pricing (Claude API documentation)'
+  quote: Claude Sonnet 4.6 $3 / MTok $3.75 / MTok $6 / MTok $0.30 / MTok $15 / MTok
+  quote_context: Model pricing table; same columns and order as the Claude Sonnet 5.5 row
+  accessed: 2026-11-13
+- id: openai-full-prefix-match
+  claim: As of the access date OpenAI's documentation says that cache reuse requires the entire rendered
+    prefix to match. This is the rule the lesson's prefix matching implements for every profile.
+  where: lesson.py introduction and section 1
+  source_url: https://developers.openai.com/api/docs/guides/prompt-caching
+  source_title: 'OpenAI: Prompt caching (API guide)'
+  quote: Cache reuse requires the entire rendered prefix to match.
+  quote_context: Paragraph after the description of what a reusable prefix is, in the section on how caching
+    works
+  accessed: 2026-11-13
+- id: openai-write-read-rates
+  claim: As of the access date, for GPT-5.6 and later models, OpenAI charges cache writes at 1.25 times
+    the standard uncached input rate for the default 30-minute lifetime, and cache reads at 0.1 times
+    on most of these models and 0.05 times on GPT-6.1 Sol and GPT-6.1 Terra.
+  where: lesson.py PRICE_SNAPSHOT, profile gpt-6.1-sol (write and read)
+  source_url: https://developers.openai.com/api/docs/guides/prompt-caching
+  source_title: 'OpenAI: Prompt caching (API guide)'
+  quote: For GPT-5.6 and later, cache writes cost 1.25× the standard, uncached input-token rate for the
+    default 30-minute lifetime.
+  quote_context: Under the cache breakpoints section, 'GPT-5.6 and later'; the next sentence says 'Subsequent
+    reads cost 0.1× the ordinary input rate on most of these models and 0.05× on GPT-6.1 Sol and GPT-6.1
+    Terra, regardless of the selected lifetime.'
+  accessed: 2026-11-13
+- id: openai-min-tokens
+  claim: As of the access date the minimum cacheable prompt length is 1,024 tokens for GPT-5.6 and later
+    models.
+  where: lesson.py PRICE_SNAPSHOT, profile gpt-6.1-sol (min_tokens)
+  source_url: https://developers.openai.com/api/docs/guides/prompt-caching
+  source_title: 'OpenAI: Prompt caching (API guide)'
+  quote: The minimum cacheable prompt length is 1,024 tokens for GPT-5.6 and later and varies by request
+    settings for earlier models.
+  quote_context: Under the cache breakpoints section, second paragraph, after 'A prompt prefix must meet
+    the model’s minimum cacheable token length before it can be cached.'
+  accessed: 2026-11-13
+- id: openai-lifetime
+  claim: As of the access date the default minimum lifetime of an OpenAI cache entry for GPT-5.6 and later
+    models is 30 minutes (1,800 seconds in the snapshot), and OpenAI may retain entries longer than the
+    requested minimum. The lesson uses the minimum.
+  where: lesson.py PRICE_SNAPSHOT (ttl_s), sections 7 and 8
+  source_url: https://developers.openai.com/api/docs/guides/prompt-caching
+  source_title: 'OpenAI: Prompt caching (API guide)'
+  quote: OpenAI may retain entries longer than the requested minimum;
+  quote_context: Paragraph after the table of 'ttl' values ('30m' default, '12h'), which lists the 30-minute
+    minimum lifetime and its 1.25× write rate
+  accessed: 2026-11-13
+- id: openai-gpt-6-1-sol-row
+  claim: As of the access date the gpt-6.1-sol row of OpenAI's standard pricing table is 2.00 dollars
+    input, 10.00 dollars output, 0.10 dollars cached input and 2.50 dollars for a 30-minute cache write,
+    per million tokens, for short context (272K input tokens or fewer).
+  where: lesson.py PRICE_SNAPSHOT, profile gpt-6.1-sol
+  source_url: https://developers.openai.com/api/docs/pricing
+  source_title: 'OpenAI: Pricing (API documentation)'
+  quote: gpt-6.1-sol $2.00 $10.00 $0.10 $2.50 $5.00
+  quote_context: Standard tier, prompt caching table; the five prices sit under the Short context columns
+    (Short context input, output, cached input, 30m write, 12h write; the page defines short context as
+    272K input tokens or fewer). Batch and Flex tiers are priced differently and the lesson does not use
+    them
+  accessed: 2026-11-13
+- id: concurrent-requests-wait
+  claim: As of the access date the Claude documentation says a cache entry only becomes available after
+    the first response starts, so concurrent requests do not share a fresh entry. The lesson's replay
+    ignores this and says so as a limit.
+  where: lesson.py section 8
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: For concurrent requests, note that a cache entry only becomes available after the first response
+    starts.
+  quote_context: Under 'Cache limitations', after the paragraph on prompts that fall short of the minimum
+  accessed: 2026-11-13
+- id: anthropic-tokenizer
+  claim: As of the access date the Claude pricing page says Claude 4.7 and later models use a newer tokenizer
+    that produces approximately 30% more tokens for the same text, and that Claude Sonnet 4.6 and earlier
+    models use the previous tokenizer. The lesson prices one fixed token count under both Claude profiles
+    and says that a real comparison needs each model's own count.
+  where: lesson.py section 8
+  source_url: https://platform.claude.com/docs/en/about-claude/pricing
+  source_title: 'Anthropic: Pricing (Claude API documentation)'
+  quote: This tokenizer produces approximately 30% more tokens for the same text.
+  quote_context: 'Paragraph after the model pricing table: ''Claude 4.7 and later models and Claude Mythos
+    Preview use a newer tokenizer ...''; it ends ''Claude Sonnet 4.6 and earlier models use the previous
+    tokenizer.'''
+  accessed: 2026-11-13
+- id: anthropic-input-tokens-after-breakpoint
+  claim: As of the access date the Claude documentation says the usage field input_tokens counts only
+    the tokens after the last cache breakpoint, so content after the last breakpoint is neither read from
+    nor written to the cache. The lesson instead bills every unread token at the write price, which is
+    the same as a breakpoint on the final block, and says so.
+  where: lesson.py section 8
+  source_url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+  source_title: 'Anthropic: Prompt caching (Claude API documentation)'
+  quote: The `input_tokens` field represents only the tokens that come after the last cache breakpoint
+    in your request, not all the input tokens you sent.
+  quote_context: Note under 'Understanding the token breakdown' in the cache performance section
+  accessed: 2026-11-13
+- id: openai-after-last-breakpoint
+  claim: As of the access date OpenAI's documentation says that, with explicit breakpoints, content after
+    the last selected breakpoint is processed at the uncached input-token rate without a cache-write charge.
+    The lesson's write charge on every unread token is the same as a breakpoint on the final block, and
+    says so.
+  where: lesson.py section 8
+  source_url: https://developers.openai.com/api/docs/guides/prompt-caching
+  source_title: 'OpenAI: Prompt caching (API guide)'
+  quote: Content after the last selected breakpoint is processed at the uncached input-token rate without
+    a cache-write charge,
+  quote_context: Explicit breakpoint mode, in the cache breakpoints section
+  accessed: 2026-11-13

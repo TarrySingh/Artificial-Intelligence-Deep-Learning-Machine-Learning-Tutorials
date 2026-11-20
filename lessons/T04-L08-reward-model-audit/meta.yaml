@@ -1,0 +1,71 @@
+id: T04-L08-reward-model-audit
+title: Train a Bradley-Terry reward model and audit what it really learned — write its loss and gradient,
+  measure accuracy against two sets of labels, isolate each shortcut with counterfactual pairs, run best-of-n
+  against the learned reward, and put an interval on the drop
+track: T04
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T04-L06-dpo-from-scratch
+- T10-L07-calibrated-judges
+- P04-L07-challenger-from-scratch
+objectives:
+- Implement the Bradley-Terry loss and its gradient without overflow, and measure that a fitted reward
+  model sits where the gradient vanishes
+- Implement pairwise accuracy with half credit for exact ties, and measure the same model against swayed-annotator,
+  control-annotator and gold labels
+- Implement counterfactual pairs that swap or equalise one feature, and measure how much accuracy each
+  shortcut is worth to a swayed and a control model
+- Implement best-of-n selection against the learned reward, and measure the learned and the gold reward
+  of the winners as n grows
+- Implement a paired bootstrap interval for the accuracy drop under a counterfactual, and measure whether
+  the whole interval lies above zero for each model
+before_you_start:
+  assumed:
+  - read a logistic regression as a sigmoid of a weighted sum, fitted by minimising a log-loss, and a
+    gradient as the slope of that loss
+  - 'use numpy 2-D arrays: index rows and columns, take a mean along an axis, and build a boolean mask'
+  - 'recall what a bootstrap does: resample the data with replacement many times and read an interval
+    off the spread of the results'
+  resources:
+  - title: 'Direct Preference Optimization: Your Language Model is Secretly a Reward Model'
+    by: Rafailov et al. (arXiv 2305.18290)
+    url: https://arxiv.org/abs/2305.18290
+    kind: free
+    why: sections 3 and 4 state the Bradley-Terry preference model that exercise 1's loss is the negative
+      log-likelihood of
+  - title: 'RewardBench 2: Advancing Reward Model Evaluation'
+    by: Malik et al. (arXiv 2506.01937)
+    url: https://arxiv.org/abs/2506.01937
+    kind: free
+    why: the best-of-4 scoring with a 25% random baseline that section 6 reproduces in miniature, and
+      its handling of ties
+  - title: 'A Long Way to Go: Investigating Length Correlations in RLHF'
+    by: Singhal et al. (arXiv 2310.03716)
+    url: https://arxiv.org/abs/2310.03716
+    kind: free
+    why: the evidence that length is a real shortcut in reward models, the one exercise 3 isolates with
+      a swap
+  - title: Scaling Laws for Reward Model Overoptimization
+    by: Gao et al. (arXiv 2210.10760)
+    url: https://arxiv.org/abs/2210.10760
+    kind: free
+    why: the gold-reward and proxy-reward design, and the best-of-n curves of the gold score, that section
+      6 and exercise 4 reproduce at small scale
+  - title: 'NumPy: the absolute basics for beginners'
+    by: The NumPy project
+    url: https://numpy.org/doc/stable/user/absolute_beginners.html
+    kind: free
+    why: 2-D indexing, axis arguments and boolean masks, the few numpy operations every exercise here
+      is written in
+datasets:
+- name: T04-L08 synthetic preference pairs (hidden quality, noisy readouts, planted annotator sway, one
+    fixed seed)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 61
+status: reviewed
+measured_seconds: 0.7
+measured_peak_mib: 56

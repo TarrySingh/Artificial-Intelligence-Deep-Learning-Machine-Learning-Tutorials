@@ -1,0 +1,87 @@
+id: T05-L04-microscaling-formats-cpp
+title: Implement INT4, MXFP4 and NVFP4 encoders and decoders in C++, check them bit for bit against a
+  numpy reference, and measure bits per weight, round-trip error and the held-out loss of a small language
+  model trained inside the lesson
+summary: Write the INT4, MXFP4 and NVFP4 encoders and decoders in C++, and measure what each costs and
+  what each loses on a small model's weights.
+track: T05
+flagship: ''
+tier: cpu8
+budget_seconds: 90
+language: cpp
+prerequisites:
+- T03-L02-bpe-merge-loop-in-cpp
+- T03-L03-nanolm-cpu-slice
+objectives:
+- 'Implement in C++ the bit-level pieces of three 4-bit formats: nibble packing, an INT4 block with a
+  float scale, the E2M1 element, an E8M0 power-of-two scale and an E4M3 scale'
+- Implement the MXFP4 block encoder and the two-level NVFP4 tensor encoder, and show that each agrees
+  with a numpy reference bit for bit on every probe, halfway values and saturation included
+- Measure bits per weight as an exact fraction from the bytes the encoder wrote, and the relative round-trip
+  error of each format on seeded Gaussian and heavy-tailed tensors and on the weights of a small language
+  model trained inside the lesson
+- Measure how that model's held-out loss and its KL divergence from the unquantised model change when
+  its six weight matrices go through each format
+- Explain, from measurements, how much of NVFP4's advantage over MXFP4 comes from its block size and how
+  much from the precision of its scale, and what MXFP4's scale rule clips
+before_you_start:
+  assumed:
+  - write C++17 functions over arrays and pointers, compile them with clang++ or g++, and run make in
+    a terminal
+  - use shifts and masks (&, |, <<, >>) to pull a bit field out of an integer and put one back
+  - say what the sign, exponent and mantissa of a floating-point number are, and why 0.1 + 0.2 is not
+    exactly 0.3
+  - read numpy code that reshapes an array into blocks and takes a maximum along an axis
+  resources:
+  - title: OCP Microscaling Formats (MX) Specification, Version 1.0
+    by: Open Compute Project (Microsoft, AMD, Arm, Intel, Meta, NVIDIA, Qualcomm)
+    url: https://www.opencompute.org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf
+    kind: free
+    why: section 5 defines MXFP4, E2M1 and E8M0 and section 6.3 gives the conversion rule for the block
+      scale that exercises 4 and 5 implement
+  - title: Pretraining Large Language Models with NVFP4
+    by: NVIDIA (arXiv 2509.25149)
+    url: https://arxiv.org/abs/2509.25149
+    kind: free
+    why: section 2 and appendix B define NVFP4 and its two-level scaling, which exercise 7 implements,
+      and appendix B.4 explains what MXFP4's power-of-two scale loses
+  - title: Bit manipulation with bitwise operators and bit masks
+    by: Alex on learncpp.com
+    url: https://www.learncpp.com/cpp-tutorial/bit-manipulation-with-bitwise-operators-and-bit-masks/
+    kind: free
+    why: shifts, masks and bitwise or on small unsigned integers, the whole of exercise 1
+  - title: std::ilogb, std::ilogbf
+    by: cppreference.com
+    url: https://en.cppreference.com/w/cpp/numeric/math/ilogb
+    kind: free
+    why: the function that reads a float's exponent exactly, which exercise 4 needs in place of a rounded
+      logarithm
+  - title: 'Computer Systems: A Programmer''s Perspective, 3rd edition'
+    by: Bryant and O'Hallaron (Pearson)
+    url: https://csapp.cs.cmu.edu/
+    kind: paid
+    why: section 2.4 on floating point covers sign, exponent, fraction, subnormals and round-to-even,
+      the encoding rules behind E2M1 and E4M3
+datasets:
+- name: 'Shakespeare''s Sonnets (opening excerpt), Project Gutenberg eBook #1041 - the T03-L03 corpus,
+    embedded as a string literal'
+  licence: Public domain (work first published 1609; author died 1616). Project Gutenberg records the
+    copyright status of this eBook as 'Public domain in the USA.'
+  url: https://www.gutenberg.org/ebooks/1041
+  source_file_url: https://www.gutenberg.org/cache/epub/1041/pg1041.txt
+  copyright: None. William Shakespeare (1564-1616).
+  cached_at: embedded directly in lesson.py as the CORPUS string literal
+  bytes: 5988
+  retrieved: 2026-11-13
+  gated: false
+  notes: The identical 5988-character excerpt T03-L03 and T05-L03 embed (Project Gutenberg's header and
+    footer are not included), with the typographic apostrophes of the Gutenberg text written as straight
+    ones. Every line of the excerpt was checked against pg1041.txt on the retrieval date. Nothing is downloaded
+    at run time.
+- name: T05-L04 synthetic tensors (seeded numpy draws) and a checkpoint trained inside the lesson
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 136
+status: reviewed
+measured_seconds: 17.2
+measured_peak_mib: 120

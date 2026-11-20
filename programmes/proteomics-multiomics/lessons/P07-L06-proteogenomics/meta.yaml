@@ -1,0 +1,80 @@
+id: P07-L06-proteogenomics
+title: Build a proteogenomic search from called variants (translation and variant effect on either strand,
+  variant-specific peptides, a database whose decoys keep their group, a group-wise error rate, a reference-twin
+  mass check, per-variant peptide support) and measure how many reported variants have spectra behind
+  them
+track: T15
+programme: proteomics-multiomics
+flagship: null
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- P07-L01-search-engine-and-fdr
+- P07-L05-leakage-harness
+objectives:
+- Implement translation of a coding sequence and the effect of a single-nucleotide variant on it, from
+  a genome coordinate and a strand, and say which kinds of variant cannot change a protein
+- Implement the list of variant-specific peptides, reading leucine and isoleucine as one residue, and
+  a search database whose decoys keep the group of the peptide they came from
+- Implement a target-decoy error rate computed inside a group, and measure how far it differs from the
+  pooled error rate for variant peptides
+- Implement a precursor-mass check of a variant spectrum against its reference twin, and a count of the
+  distinct peptides behind each variant
+- Measure, over simulated genomes with an answer key, how many reported variants have multi-peptide, single-peptide
+  or no spectral support, and explain which errors a false discovery rate cannot see
+before_you_start:
+  assumed:
+  - write Python functions over strings, dicts and sets, and slice a string by position
+  - read a DNA sequence as codons and say what the reverse complement of a strand is
+  - 'describe target-decoy error control, as P07-L01 builds it: decoy hits stand in for wrong target hits,
+    and the false discovery rate is estimated as decoys over targets'
+  - index a numpy array with a boolean mask and use np.unique to get one entry per label
+  resources:
+  - title: 'Proteogenomics: concepts, applications and computational strategies'
+    by: Alexey I. Nesvizhskii (Nature Methods 2014, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC4392723/
+    kind: free
+    why: what a customised variant database is, how it is built from genomic and transcriptomic data,
+      and why false positive identifications are its main challenge, which is the whole of this lesson
+  - title: 'Personalized Proteome: Comparing Proteogenomics and Open Variant Search Approaches for Single
+      Amino Acid Variant Detection'
+    by: Salz, Bouwmeester, Gabriels, Degroeve, Martens, Volders and 't Hoen (Journal of Proteome Research
+      2021, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC8280751/
+    kind: free
+    why: the methods section on separate error control for the variant peptide subset and on why it needs
+      enough variant decoys, which is exercise 5
+  - title: The Genetic Codes
+    by: NCBI Taxonomy
+    url: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+    kind: free
+    why: translation table 1, the standard code that CODON_TABLE is built from, for exercises 1 and 2
+  - title: 'Mascot: Amino acid reference data'
+    by: Matrix Science
+    url: https://www.matrixscience.com/help/aa_help.html
+    kind: free
+    why: the residue masses; compare leucine with isoleucine and lysine with glutamine to see the two
+      gaps that exercises 3 and 6 turn on
+  - title: Improved False Discovery Rate Estimation Procedure for Shotgun Proteomics
+    by: Keich, Kertesz-Farkas and Noble (Journal of Proteome Research 2015, PubMed Central)
+    url: https://pmc.ncbi.nlm.nih.gov/articles/PMC4533616/
+    kind: free
+    why: the target-decoy estimate of the false discovery rate as decoys over targets, which every error
+      rate in the lesson is built from
+datasets:
+- name: synthetic-genome-variants-and-spectra
+  kind: synthetic
+  description: 'six worlds, each a 400-gene chromosome with genes on both strands, 2400 candidate single-nucleotide
+    variants, about a hundred of them expressed as protein, about three thousand tandem mass spectra of
+    which 45 per cent come from peptides in no database, with an answer key (variant effects, variant
+    peptides, the variants that really have a spectrum behind them), in lesson.py :: make_world(world)
+    for world 0 to 5, each ingredient drawn from np.random.default_rng([20261112, world, ingredient])'
+  generator: 'lesson.py :: make_world'
+  licence: not applicable - generated at run time by the lesson itself
+  url: ''
+  downloads: false
+points: 105
+status: reviewed
+measured_seconds: 12.0
+measured_peak_mib: 152

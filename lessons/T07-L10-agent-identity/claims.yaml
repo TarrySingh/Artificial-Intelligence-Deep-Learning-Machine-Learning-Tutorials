@@ -1,0 +1,111 @@
+claims:
+- id: mcp-revision
+  claim: As of the access date the Model Context Protocol site labels revision 2026-07-28 as the latest
+    specification version. The lesson is written against that revision.
+  where: lesson.py sections 9 and 13
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+  source_title: 'Model Context Protocol specification, version 2026-07-28: Authorization'
+  quote: Version 2026-07-28 (latest)
+  quote_context: The version selector in the page's navigation
+  accessed: '2026-11-13'
+- id: mcp-audience-validation
+  claim: As of the access date the MCP authorization page requires an MCP server to validate that an access
+    token was issued specifically for it as the intended audience. Exercise 1's audience check and the
+    wrong_service scenario model that requirement.
+  where: lesson.py exercise 1, scenario wrong_service
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+  source_title: 'Model Context Protocol specification, version 2026-07-28: Authorization'
+  quote: MCP servers MUST validate that access tokens were issued specifically for them as the intended
+    audience, according to RFC 8707 Section 2.
+  quote_context: Token Handling section
+  accessed: '2026-11-13'
+- id: mcp-no-other-tokens
+  claim: As of the access date the same page forbids an MCP server to accept or pass on tokens that are
+    not valid for its own resources.
+  where: lesson.py section 9 (what the measurement does not cover) and scenario wrong_service
+  source_url: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+  source_title: 'Model Context Protocol specification, version 2026-07-28: Authorization'
+  quote: MCP servers MUST NOT accept or transit any other tokens.
+  quote_context: The sentence after 'MCP servers MUST only accept tokens that are valid for use with their
+    own resources.' in Token Handling
+  accessed: '2026-11-13'
+- id: mcp-token-passthrough
+  claim: As of the access date the MCP security best practices page names accepting tokens issued for
+    other resources as a way for an attacker to gain unauthorised access.
+  where: lesson.py scenario wrong_service
+  source_url: https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices
+  source_title: 'Model Context Protocol: Security Best Practices (docs for version 2026-07-28)'
+  quote: An attacker can gain unauthorized access or otherwise compromise an MCP server if the server
+    accepts tokens issued for other resources.
+  quote_context: Token Passthrough section, introduction
+  accessed: '2026-11-13'
+- id: mcp-scope-minimization
+  claim: As of the access date the same page says poor scope design increases the impact of token compromise
+    and obscures audit trails. The agent's narrow registration and the exchange's refusal of escalation
+    follow that direction.
+  where: lesson.py exercise 2
+  source_url: https://modelcontextprotocol.io/docs/2026-07-28/tutorials/security/security_best_practices
+  source_title: 'Model Context Protocol: Security Best Practices (docs for version 2026-07-28)'
+  quote: Poor scope design increases token compromise impact, elevates user friction, and obscures audit
+    trails.
+  quote_context: Scope Minimization section, first sentence
+  accessed: '2026-11-13'
+- id: rfc8693-act
+  claim: RFC 8693 defines the act claim as the way a token expresses that delegation has occurred and
+    who the acting party is. Exercise 2 puts the agent in act and keeps the user in sub.
+  where: lesson.py exercise 2
+  source_url: https://www.rfc-editor.org/rfc/rfc8693.html
+  source_title: 'IETF RFC 8693: OAuth 2.0 Token Exchange, section 4.1'
+  quote: The "act" (actor) claim provides a means within a JWT to express that delegation has occurred
+    and identify the acting party to whom authority has been delegated.
+  quote_context: Section 4.1, first sentence
+  accessed: '2026-11-13'
+- id: rfc7519-exp
+  claim: RFC 7519 says a token must not be accepted on or after its exp time, so the verifier refuses
+    when now is equal to exp.
+  where: lesson.py exercise 1
+  source_url: https://www.rfc-editor.org/rfc/rfc7519.html
+  source_title: 'IETF RFC 7519: JSON Web Token, section 4.1.4'
+  quote: The "exp" (expiration time) claim identifies the expiration time on or after which the JWT MUST
+    NOT be accepted for processing.
+  quote_context: Section 4.1.4, first sentence
+  accessed: '2026-11-13'
+- id: rfc7519-aud
+  claim: RFC 7519 says a token must be rejected by a principal that does not identify itself in the aud
+    claim. Exercise 1 accepts one string audience only, a narrower rule than the RFC allows.
+  where: lesson.py exercise 1
+  source_url: https://www.rfc-editor.org/rfc/rfc7519.html
+  source_title: 'IETF RFC 7519: JSON Web Token, section 4.1.3'
+  quote: If the principal processing the claim does not identify itself with a value in the "aud" claim
+    when this claim is present, then the JWT MUST be rejected.
+  quote_context: Section 4.1.3
+  accessed: '2026-11-13'
+- id: rfc7519-jti
+  claim: RFC 7519 says the jti claim can be used to prevent a token from being replayed. Exercise 3's
+    spent-token cache keys on it.
+  where: lesson.py exercise 3
+  source_url: https://www.rfc-editor.org/rfc/rfc7519.html
+  source_title: 'IETF RFC 7519: JSON Web Token, section 4.1.7'
+  quote: The "jti" claim can be used to prevent the JWT from being replayed.
+  quote_context: Section 4.1.7
+  accessed: '2026-11-13'
+- id: rfc7519-unsecured
+  claim: RFC 7519 defines an unsecured token as one whose alg header is none and whose signature is empty.
+    The forged_credential scenario writes one.
+  where: lesson.py scenario forged_credential
+  source_url: https://www.rfc-editor.org/rfc/rfc7519.html
+  source_title: 'IETF RFC 7519: JSON Web Token, section 6'
+  quote: An Unsecured JWT is a JWS using the "alg" Header Parameter value "none" and with the empty string
+    for its JWS Signature value, as defined in the JWA specification [JWA];
+  quote_context: Section 6, first paragraph
+  accessed: '2026-11-13'
+- id: rfc8725-algorithms
+  claim: RFC 8725 says a library must let the caller fix the set of accepted algorithms and use no other,
+    which is why exercise 1 refuses any alg but HS256 whatever the signature.
+  where: lesson.py exercise 1
+  source_url: https://www.rfc-editor.org/rfc/rfc8725.html
+  source_title: 'IETF RFC 8725: JSON Web Token Best Current Practices, section 3.1'
+  quote: Libraries MUST enable the caller to specify a supported set of algorithms and MUST NOT use any
+    other algorithms when performing cryptographic operations.
+  quote_context: Section 3.1, first sentence
+  accessed: '2026-11-13'

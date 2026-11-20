@@ -1,0 +1,58 @@
+id: T07-L10-agent-identity
+title: Build a token verifier, an on-behalf-of exchange and a replay-safe resource server, and count which
+  attacks a static key and a delegated, scoped, expiring token each stop
+track: T07
+flagship: ''
+tier: cpu8
+budget_seconds: 120
+language: python
+prerequisites:
+- T07-L02-mcp-from-the-wire-up
+- T07-L08-mcp-vetting
+objectives:
+- Implement a token verifier that checks algorithm, signature, expiry, audience and scope in a stated
+  order and names the reason it refuses
+- Implement an on-behalf-of exchange that issues an agent a narrower, shorter-lived token carrying an
+  act claim and refuses scope escalation
+- Implement a resource-server pipeline with revocation, single-use replay protection, an expiring replay
+  cache and an audit record of who acted for whom
+- Measure with exact counts which of a fixed list of attacks a static key and a delegated token each stop,
+  and which neither stops
+- Explain why a short token lifetime bounds a stolen token without preventing its use inside that lifetime
+before_you_start:
+  assumed:
+  - write a Python function that raises a custom exception carrying a short code, and catch it by that
+    code
+  - decode base64 text and parse JSON in Python, and compute an HMAC with the hmac and hashlib modules
+  - say what a bearer token or an API key is, and what it means for a service to accept one
+  resources:
+  - title: OAuth 2.0 Token Exchange (RFC 8693)
+    by: IETF
+    url: https://www.rfc-editor.org/rfc/rfc8693.html
+    kind: free
+    why: the standard behind exercise 2; section 4.1 defines the act claim that names the agent acting
+      for a user
+  - title: JSON Web Token Best Current Practices (RFC 8725)
+    by: IETF
+    url: https://www.rfc-editor.org/rfc/rfc8725.html
+    kind: free
+    why: why exercise 1 lets the verifier, not the token's header, choose the algorithm (section 3.1)
+  - title: 'MCP specification: Authorization'
+    by: Model Context Protocol
+    url: https://modelcontextprotocol.io/specification/2026-07-28/basic/authorization
+    kind: free
+    why: what the revision current when this lesson was written requires of a server about token audience
+  - title: 'hmac: keyed-hashing for message authentication'
+    by: Python documentation
+    url: https://docs.python.org/3/library/hmac.html
+    kind: free
+    why: compare_digest, the constant-time comparison exercise 1 needs, and what it accepts
+datasets:
+- name: T07-L10 synthetic platform with two users, one agent and three services (generated from fixed
+    constants, no randomness)
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 68
+status: reviewed
+measured_seconds: 0.3
+measured_peak_mib: 32

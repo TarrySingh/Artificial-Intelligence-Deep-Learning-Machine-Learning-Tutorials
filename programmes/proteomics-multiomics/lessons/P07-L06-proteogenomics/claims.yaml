@@ -1,0 +1,146 @@
+claims:
+- id: proteogenomics-customised-databases
+  claim: Proteogenomics uses customised protein sequence databases built from genomic and transcriptomic
+    information to help identify novel peptides that reference protein databases do not contain, and the
+    same review draws attention to the challenge of false positive identifications. The lesson's variant
+    database and its error control follow that framing.
+  where: lesson.py title cell and section 2 (the world); section 6 (the database)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:25357241%20AND%20SRC:MED&resultType=core&format=json
+  source_title: 'Nesvizhskii AI. Proteogenomics: concepts, applications and computational strategies.
+    Nat Methods 2014;11(11):1114-1125. DOI 10.1038/nmeth.3144. PubMed 25357241, PMC4392723, abstract read
+    through Europe PMC''s copy of the record'
+  quote: customized protein sequence databases generated using genomic and transcriptomic information
+    are used to help identify novel peptides
+  quote_context: the abstract; the same abstract ends 'I also draw attention to the challenge of false
+    positive identifications in proteogenomics'
+  accessed: 2026-11-12
+- id: proteogenomics-false-positives-challenge
+  claim: The same review states that false positive identifications are a challenge specific to proteogenomics.
+    The lesson measures that on its own simulated worlds and makes no claim about the size of the problem
+    on real data.
+  where: lesson.py section 7 (an error rate for the variant group) and section 10
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:25357241%20AND%20SRC:MED&resultType=core&format=json
+  source_title: 'Nesvizhskii AI. Proteogenomics: concepts, applications and computational strategies.
+    Nat Methods 2014;11(11):1114-1125. PubMed 25357241, read through Europe PMC''s copy of the record'
+  quote: I also draw attention to the challenge of false positive identifications in proteogenomics
+  quote_context: the last sentence of the abstract but one, followed by 'and provide guidelines for analyzing
+    the data and reporting the results'
+  accessed: 2026-11-12
+- id: variant-peptides-need-separate-fdr
+  claim: When PSMs are divided into groups such as variant peptides, the error rate has to be corrected
+    for that group separately. The lesson's exercise 5 computes q-values inside each group for this reason.
+  where: lesson.py section 7 (exercise 5)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8280751/fullTextXML
+  source_title: 'Personalized Proteome: Comparing Proteogenomics and Open Variant Search Approaches for
+    Single Amino Acid Variant Detection. J Proteome Res 2021. DOI 10.1021/acs.jproteome.1c00264. PMC8280751
+    (open access full text, methods section)'
+  quote: Since subsetting PSMs into groups such as variant peptides requires separate FDR correction
+  quote_context: the methods; the sentence goes on 'both VC and VF underwent a separate FDR correction
+    for the variant peptide subset', after a reference number
+  accessed: 2026-11-12
+- id: variant-subset-needs-enough-decoys
+  claim: A separate error estimate for variant peptides needs a sufficient number of decoy variant peptide
+    identifications to model the false-positive population. The lesson's min_decoys rule (a group with
+    fewer decoy hits gets no estimate) and its decoys that keep the group of their target follow from
+    this; the threshold of ten is the lesson's own choice, not the paper's.
+  where: lesson.py section 6 (exercise 4) and section 7 (exercise 5, min_decoys)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC8280751/fullTextXML
+  source_title: 'Personalized Proteome: Comparing Proteogenomics and Open Variant Search Approaches for
+    Single Amino Acid Variant Detection. J Proteome Res 2021. PMC8280751 (open access full text, methods
+    section)'
+  quote: a sufficient number of decoy variant peptide identifications must be present to accurately model
+    the population of false-positive peptides
+  quote_context: the methods, two sentences after the one that requires a separate FDR correction
+  accessed: 2026-11-12
+- id: variants-in-database-indispensable
+  claim: Adding genetic variants to the search database remains indispensable for correct identification
+    of variant peptides, according to the abstract of the same study. The lesson searches with and without
+    variant peptides to measure what the augmented database adds.
+  where: lesson.py section 6 (the search with and without variant peptides)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=EXT_ID:33998808%20AND%20SRC:MED&resultType=core&format=json
+  source_title: 'Personalized Proteome: Comparing Proteogenomics and Open Variant Search Approaches for
+    Single Amino Acid Variant Detection. J Proteome Res 2021. PubMed 33998808, PMC8280751, abstract read
+    through Europe PMC''s copy of the record'
+  quote: While adding genetic variants to the search database remains indispensable for correct peptide
+    identification
+  quote_context: the abstract, which continues 'inclusion of long-read RNA sequences in the search database
+    contributes only 0.3% new peptide identifications'
+  accessed: 2026-11-12
+- id: standard-genetic-code
+  claim: The standard genetic code (NCBI translation table 1) is the string of 64 residue letters in CODE,
+    with bases ordered T, C, A, G in all three positions, and '*' for the three stop codons. CODON_TABLE
+    in the lesson is built from it, and the lesson's genes use it on both strands.
+  where: lesson.py setup cell (CODON_TABLE) and exercises 1 and 2
+  source_url: https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+  source_title: 'The Genetic Codes, NCBI Taxonomy: section 1, The Standard Code (transl_table=1)'
+  quote: AAs = FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG
+  quote_context: the first table on the page, under '1. The Standard Code (transl_table=1)'; its Base1,
+    Base2 and Base3 lines list T, C, A, G in that order
+  accessed: 2026-11-12
+- id: lysine-glutamine-mass
+  claim: The monoisotopic residue mass of lysine (128.094963) and of glutamine (128.058578) differ by
+    0.036385 Da, which is 36 parts per million of a 1000 Da peptide and 18 parts per million of a 2000
+    Da peptide. The lesson computes the gap from RESIDUE_MASS and prints it; the values are those of the
+    table.
+  where: lesson.py section 1 (table of mass gaps) and exercise 6
+  source_url: https://www.matrixscience.com/help/aa_help.html
+  source_title: 'Mascot: Amino acid reference data, Matrix Science'
+  quote: Gln Q 128.058578
+  quote_context: the Glutamine row; the Lysine row reads 'Lys K 128.094963' (text read with the page's
+    tags removed)
+  accessed: 2026-11-12
+- id: leucine-isoleucine-identical-mass
+  claim: Leucine and isoleucine have the same monoisotopic residue mass, 113.084064, so a search that
+    works on masses cannot separate them. Exercise 3 reads I as L when it decides whether a peptide is
+    novel.
+  where: lesson.py section 1 (table of mass gaps) and exercise 3
+  source_url: https://www.matrixscience.com/help/aa_help.html
+  source_title: 'Mascot: Amino acid reference data, Matrix Science'
+  quote: Ile I 113.084064
+  quote_context: the Isoleucine row; the Leucine row reads 'Leu L 113.084064' (text read with the page's
+    tags removed)
+  accessed: 2026-11-12
+- id: trypsin-cleaves-after-arg-lys
+  claim: Trypsin cleaves preferentially after arginine and lysine. The engine's digest (carried over from
+    P07-L01) cuts after every K or R.
+  where: lesson.py section 1 (the engine, digest)
+  source_url: https://web.expasy.org/peptide_cutter/peptidecutter_enzymes.html
+  source_title: 'PeptideCutter: enzymes and their cleavage rules, SIB Swiss Institute of Bioinformatics
+    (ExPASy)'
+  quote: Preferentially cleaves at Arg and Lys in position P1
+  quote_context: the Trypsin entry; P1 is the residue before the cleaved bond
+  accessed: 2026-11-12
+- id: trypsin-proline-rule
+  claim: A proline after the cleavage site usually blocks trypsin, the rule the digest uses; the same
+    source lists exceptions, so the lesson's rule is a simplification.
+  where: lesson.py section 1 (the engine, digest)
+  source_url: https://web.expasy.org/peptide_cutter/peptidecutter_enzymes.html
+  source_title: 'PeptideCutter: enzymes and their cleavage rules, SIB Swiss Institute of Bioinformatics
+    (ExPASy)'
+  quote: Pro usually blocks the action when found in position P1'
+  quote_context: the same Trypsin entry, which continues with the exception for Lys at P1 and Trp at P2
+  accessed: 2026-11-12
+- id: fragment-ions-need-a-charge
+  claim: Fragments of a peptide are detected only if they carry at least one charge, and the charge on
+    the N-terminal piece makes it an a, b or c ion and on the C-terminal piece an x, y or z ion. The engine
+    matches b and y ions only, each singly charged.
+  where: lesson.py section 1 (the engine, fragment_ions)
+  source_url: https://www.matrixscience.com/help/fragmentation_help.html
+  source_title: 'Mascot: Peptide fragmentation, Matrix Science'
+  quote: Fragments will only be detected if they carry at least one charge.
+  quote_context: the same paragraph continues 'If this charge is retained on the N terminal fragment,
+    the ion is classed as either a, b or c.'
+  accessed: 2026-11-12
+- id: target-decoy-estimate-d-over-t
+  claim: In the target-only form of target-decoy competition the false discovery rate is estimated as
+    the number of decoys divided by the number of targets, D / T, which is what q_values (carried over
+    from P07-L01) computes for each group of PSMs.
+  where: lesson.py section 1 (q_values) and section 7 (exercise 5)
+  source_url: https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4533616/fullTextXML
+  source_title: Keich U, Kertesz-Farkas A, Noble WS. Improved False Discovery Rate Estimation Procedure
+    for Shotgun Proteomics. J Proteome Res 2015;14(8):3148-61. DOI 10.1021/acs.jproteome.5b00081. PMC4533616
+    (open access full text)
+  quote: The FDR estimate is simply the number of decoys divided by the number of targets
+  quote_context: the introduction, on the target-only variant; the same article assumes no ties or that
+    ties are randomly broken
+  accessed: 2026-11-12

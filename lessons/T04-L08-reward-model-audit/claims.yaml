@@ -1,0 +1,112 @@
+claims:
+- id: bt-difference-of-rewards
+  claim: 'The Bradley-Terry model is a standard model of human preference labels in RLHF, and it depends
+    only on the difference of the two answers'' rewards. Section 1 and exercise 1 fit exactly that: the
+    chosen answer wins with probability sigmoid(r(a) - r(b)).'
+  where: lesson.py section 1 (the setting); exercise 1 preamble; before-you-start resource 1
+  source_url: https://arxiv.org/abs/2305.18290
+  source_title: 'Rafailov et al., Direct Preference Optimization: Your Language Model is Secretly a Reward
+    Model, arXiv 2305.18290 (PDF, section 3 and section 4)'
+  quote: the Bradley-Terry model depends only on the difference of rewards between two completions
+  quote_context: Section 4, the sentence after the reparameterisation of the ground-truth reward
+  accessed: 2026-11-12
+- id: bt-popular-choice
+  claim: Bradley-Terry is described as a popular choice among models of preference labels (Plackett-Luce
+    being the more general one). Section 1 uses it as the standard model without claiming it is the only
+    one.
+  where: lesson.py section 1 (the setting)
+  source_url: https://arxiv.org/abs/2305.18290
+  source_title: Rafailov et al., Direct Preference Optimization, arXiv 2305.18290 (PDF, section 3)
+  quote: the Bradley-Terry (BT) [5] model being a popular choice
+  quote_context: Section 3, 'Preliminaries', the paragraph on reward modelling (the bracketed [5] is the
+    paper's own citation marker)
+  accessed: 2026-11-12
+- id: rb2-best-of-4-random-baseline
+  claim: RewardBench 2 scores a model (on the subsets it scores by accuracy, see the next entry) by selecting
+    the correct response from four completions per prompt, so a random reward scores 25% accuracy. Section
+    1 quotes this format; section 6 reproduces it as best-of-4 with the measured quantity "is this candidate
+    the best of the four" and measures the random baseline rather than quoting it.
+  where: lesson.py section 1 (the setting); section 6 (the RewardBench-2-style score)
+  source_url: https://arxiv.org/abs/2506.01937
+  source_title: 'Malik et al., RewardBench 2: Advancing Reward Model Evaluation, arXiv 2506.01937 (v2,
+    ICLR 2026 version, PDF, section on scoring)'
+  quote: There is only one correct chosen response, meaning the random baseline is 25% accuracy, versus
+    50% for many related works with only 2 completions per prompt.
+  quote_context: Paragraph 'Scoring RewardBench 2'; the previous sentence reads 'judged by selecting the
+    correct response from 4 completions per prompt'
+  accessed: 2026-11-12
+- id: rb2-accuracy-except-ties
+  claim: RewardBench 2 reports accuracy (select the one correct completion of four) for all of its subsets
+    except Ties, and covers six domains. Section 1 therefore says that five of its six domains are scored
+    by picking one of four, and that Ties has a score of its own.
+  where: lesson.py section 1 (the setting)
+  source_url: https://arxiv.org/abs/2506.01937
+  source_title: 'Malik et al., RewardBench 2: Advancing Reward Model Evaluation, arXiv 2506.01937 (v2,
+    ICLR 2026 version, PDF, section on scoring)'
+  quote: The primary scoring metric for RewardBench 2 is accuracy, which is used for all subsets except
+    Ties.
+  quote_context: Paragraph 'Scoring RewardBench 2', first sentence; the second sentence reads 'the final
+    score is an unweighted average across all six domains', and the introduction says 'The benchmark covers
+    six domains'
+  accessed: 2026-11-12
+- id: rb2-tie-credit
+  claim: 'RewardBench 2 gives partial credit for ties when it scores a generative model''s ratings as
+    rewards: 0.5 for a two-way tie. Exercise 2''s half credit for an exact tie follows that convention;
+    the lesson states the rule itself and does not claim the benchmark uses it for scalar reward models.'
+  where: lesson.py section 4 (exercise 2 preamble)
+  source_url: https://arxiv.org/abs/2506.01937
+  source_title: Malik et al., RewardBench 2, arXiv 2506.01937 (v2, PDF, appendix on generative models
+    as judges)
+  quote: scoring two-way ties as partial credit of 0.5, three-way ties as 0.33, and four-way ties as 0.25
+    (random)
+  quote_context: Appendix paragraph on scoring the ratings of a generative model over a set of four (or
+    more, for ties) completions
+  accessed: 2026-11-12
+- id: m-rewardbench-languages
+  claim: M-RewardBench is a multilingual reward-model benchmark of preference instances in 23 languages.
+    Section 1 names it, as the catalog item does, for what it measures; the lesson does not run it.
+  where: lesson.py section 1 (the setting); section 10
+  source_url: https://arxiv.org/abs/2410.15522
+  source_title: 'Gureja et al., M-RewardBench: Evaluating Reward Models in Multilingual Settings, arXiv
+    2410.15522 (abstract page, latest version)'
+  quote: consisting of 2.87k preference instances for 23 typologically diverse languages
+  quote_context: Abstract
+  accessed: 2026-11-12
+- id: length-correlations-rlhf
+  claim: Published work reports that reward models are easily influenced by length biases in preference
+    data, and that improvements in reward are largely driven by increasing response length. Section 10
+    cites this as the reason a length shortcut is worth planting and auditing, not as a measurement of
+    any particular dataset or model.
+  where: lesson.py section 10 (what this lesson does not cover); before-you-start resource 3
+  source_url: https://arxiv.org/abs/2310.03716
+  source_title: 'Singhal et al., A Long Way to Go: Investigating Length Correlations in RLHF, arXiv 2310.03716
+    (abstract page)'
+  quote: improvements in reward to largely be driven by increasing response length, instead of other features
+  quote_context: Abstract; the same abstract says the reward models 'are non-robust and easily influenced
+    by length biases in preference data'
+  accessed: 2026-11-12
+- id: gao-gold-proxy-setup
+  claim: The method of a fixed gold-standard reward that stands in for humans, a proxy reward trained
+    on its labels, and the gold score read as the proxy is optimised, is the one Gao et al. use. Sections
+    1 and 6 build the small version of it with a hidden quality as the gold reward.
+  where: lesson.py section 1 (the setting); section 6 (best-of-n); before-you-start resource 4
+  source_url: https://arxiv.org/abs/2210.10760
+  source_title: Gao et al., Scaling Laws for Reward Model Overoptimization, arXiv 2210.10760 (abstract
+    page)
+  quote: a synthetic setup in which a fixed "gold-standard" reward model plays the role of humans, providing
+    labels used to train a proxy reward model
+  quote_context: Abstract
+  accessed: 2026-11-12
+- id: gao-overoptimisation-goodhart
+  claim: Optimising a proxy reward too much can hurt ground-truth performance, in accordance with Goodhart's
+    law, and the effect was studied with best-of-n sampling and with reinforcement learning. Section 6
+    shows one best-of-n curve; it does not fit the functional forms the paper reports.
+  where: lesson.py section 6 (exercise 4 preamble); section 10
+  source_url: https://arxiv.org/abs/2210.10760
+  source_title: Gao et al., Scaling Laws for Reward Model Overoptimization, arXiv 2210.10760 (abstract
+    page)
+  quote: optimizing its value too much can hinder ground truth performance, in accordance with Goodhart's
+    law
+  quote_context: Abstract; the same abstract says the gold score is studied 'as we optimize against the
+    proxy reward model using either reinforcement learning or best-of-$n$ sampling'
+  accessed: 2026-11-12

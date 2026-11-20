@@ -1,0 +1,63 @@
+id: T08-L04-cost-per-successful-task
+title: Build a cache-aware prompt layout, an exact token-level cost ledger and a latency-budgeted cost
+  per successful task, and measure which layout changes cost the most
+track: T08
+flagship: ''
+tier: cpu8
+budget_seconds: 60
+language: python
+prerequisites:
+- T07-L03-evaluating-agents
+- T08-L01-agent-observability
+objectives:
+- Build the prompt of an agent call under three layouts (static prefix first, timestamp first, tool results
+  inline) from the same segments
+- Implement a prefix cache with a lifetime and a minimum length, and price every call exactly from a dated
+  snapshot, cache writes and reads included
+- Compute cost per successful task and a nearest-rank p95 latency under a latency budget, in exact arithmetic
+- Measure which layout changes cost per successful task the most, and how traffic gaps and a shared prefix
+  below the minimum limit what the cache serves
+before_you_start:
+  assumed:
+  - write Python functions that loop over lists of tuples and dicts, compare lists position by position
+    and build f-strings
+  - read a model call as input tokens in and output tokens out, each billed per million tokens
+  - use fractions.Fraction for exact arithmetic, and read cost per success as T07-L03 defines it
+  resources:
+  - title: Prompt caching
+    by: Anthropic (Claude API documentation)
+    url: https://platform.claude.com/docs/en/build-with-claude/prompt-caching
+    kind: free
+    why: the order tools, system, messages, the 5-minute lifetime, the minimum lengths and the breakpoint
+      mistake that exercises 1 and 2 model
+  - title: Pricing
+    by: Anthropic (Claude API documentation)
+    url: https://platform.claude.com/docs/en/about-claude/pricing
+    kind: free
+    why: the model rows and the cache write and read multipliers that the lesson's price snapshot copies
+      and exercise 3 prices
+  - title: Prompt caching
+    by: OpenAI (API guide)
+    url: https://developers.openai.com/api/docs/guides/prompt-caching
+    kind: free
+    why: full-prefix matching, the 1.25x write and discounted read rates and the 30-minute lifetime used
+      by the third profile
+  - title: 'fractions: rational numbers'
+    by: Python documentation
+    url: https://docs.python.org/3/library/fractions.html
+    kind: free
+    why: 'exact money and exact ranks: why exercises 3 and 4 return Fractions and never floats'
+  - title: 'Percentile: the nearest-rank method'
+    by: Wikipedia
+    url: https://en.wikipedia.org/wiki/Percentile#The_nearest-rank_method
+    kind: free
+    why: the definition of the rank, ceil(q n / 100), that exercise 4's percentile implements
+datasets:
+- name: T08-L04 synthetic agent runs (token sizes, tool times and outcomes generated from a fixed seed)
+    and a dated price snapshot typed from the vendors' public pages
+  kind: synthetic
+  licence: not applicable - generated at run time by the lesson itself
+points: 76
+status: reviewed
+measured_seconds: 2.0
+measured_peak_mib: 32
